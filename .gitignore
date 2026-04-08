@@ -11,6 +11,9 @@ android/build
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/assets/public
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # IDE
 .idea
 *.iml
