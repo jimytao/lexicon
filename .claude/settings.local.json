@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x \"d:/vibe coding/lexicon/lexicon-docs/scripts/check-doc-sync.sh\" \"d:/vibe coding/lexicon/lexicon-docs/scripts/track-changes.sh\")",
+      "Bash(npm create:*)",
+      "Bash(printf 'y\\\\n')",
+      "Bash(npx create-vite@latest . --template react-ts)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Read(//d/vibe coding/牛津高阶英汉双解词典（第9版）- 带高清版图片/**)",
+      "Read(//d/vibe coding/**)",
+      "Bash(python3 -c ':*)",
+      "Bash(npm search:*)",
+      "Bash(node scripts/probe-mdx.mjs)",
+      "Bash(python3 -c \"import readmdict; print\\('ok'\\)\")",
+      "Bash(pip install:*)",
+      "Bash(rm -f \"d:/vibe coding/lexicon/scripts/test-parse.mjs\")",
+      "Bash(node scripts/mdx-to-sqlite.mjs)",
+      "Bash(node -e ':*)",
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(export PATH=\"$PATH:$HOME/.cargo/bin:/c/Users/82648/.cargo/bin\")",
+      "Bash(npx tauri:*)",
+      "Bash(taskkill //F //IM \"lexicon.exe\")",
+      "Bash(taskkill //F //IM \"cargo.exe\")",
+      "Bash(tasklist)",
+      "Bash(rm -rf \"d:/vibe coding/lexicon/src/components/Popup\")",
+      "Bash(npm uninstall:*)",
+      "Bash(npx cap:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

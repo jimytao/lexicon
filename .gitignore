@@ -1,0 +1,23 @@
+node_modules
+dist
+
+# Tauri
+src-tauri/target
+
+# Capacitor Android
+android/.gradle
+android/app/build
+android/build
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/public
+
+# IDE
+.idea
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+app-icon.png

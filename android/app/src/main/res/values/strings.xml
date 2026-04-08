@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lexicon</string>
+    <string name="title_activity_main">Lexicon</string>
+    <string name="package_name">com.julian.lexicon</string>
+    <string name="custom_url_scheme">com.julian.lexicon</string>
+</resources>

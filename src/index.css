@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* class-based dark mode：给 html 加 .dark 类即可触发 */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-ai-bg: #EEEDFE;
+  --color-ai-text: #3C3489;
+  --color-ai-dot: #7F77DD;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4B5563;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6B7280;
+}
