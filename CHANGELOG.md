@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## 2026-04-09 — Bug Fix：Android 键盘色块 + AI 网络兼容 + PC 暗黑过滚
+
+### Bug 修复
+
+- **Android 输入框色块**：点击输入框弹出键盘时，大块 teal 色块遮挡界面
+  - 根因：`AndroidManifest.xml` 缺少 `windowSoftInputMode`，默认 `adjustResize` 缩小 WebView 露出底层背景色
+  - 修复：activity 加 `android:windowSoftInputMode="adjustPan"` + `capacitor.config.ts` 配置 `plugins.Keyboard.resize: 'none'`
+
+- **Android AI mode fetch failed**：WebView / 原生网络栈在代理环境下 SSL 握手失败
+  - 根因：Capacitor WebView 的 Chromium 网络栈和 Android 原生 `HttpURLConnection` 在 VPN 代理（如 NekoBox TUN 模式）下 SSL 握手失败（`net_error -100` / `SSLHandshakeException: Connection closed by peer`），尤其在 GFW 环境下通过代理访问境外 API 时
+  - 调试过程：
+    1. `server.allowNavigation` 白名单 → 无效（仅影响 navigation，不影响 fetch）
+    2. `CapacitorHttp.enabled: true`（原生 Java HTTP）→ `SSLHandshakeException`，原生栈与代理兼容性差
+    3. `androidScheme: 'http'`（避免 localhost 自签证书）→ 无效，不影响外发 HTTPS 请求
+    4. `network_security_config.xml` 信任用户 CA → 无效，问题不是证书信任
+  - 最终方案：`CapacitorHttp.enabled: true` + `androidScheme: 'http'` + `network_security_config.xml`（信任用户 CA + 允许明文）三管齐下；**关键发现**：安装新 app 后必须重启 VPN 连接，否则 Android 的 VPN 路由表不包含新 app
+  - 注意：使用 VPN 代理软件（NekoBox / Clash / v2rayNG 等）的用户，安装或更新 Lexicon 后需重启代理连接
+
+- **PC 暗黑模式 overscroll 白色**：Tauri 桌面端暗黑模式下过度滚动露出白色背景
+  - 根因：html/body 无背景色，Tailwind dark class 仅作用于 App 组件内 div
+  - 修复：`src/index.css` 添加 html/body 背景色（gray-50 / dark: gray-950）+ `overscroll-behavior: none`
+
+### 修改文件
+
+- `capacitor.config.ts`：`server.androidScheme: 'http'` + `plugins.CapacitorHttp.enabled: true` + `plugins.Keyboard.resize: 'none'`
+- `android/app/src/main/AndroidManifest.xml`：activity 加 `windowSoftInputMode="adjustPan"` + application 加 `networkSecurityConfig`
+- `android/app/src/main/res/xml/network_security_config.xml`：新增，信任系统 + 用户 CA 证书，允许明文流量
+- `src/index.css`：html/body 背景色 + dark 适配 + overscroll-behavior
+
+---
+
 ## 2026-04-09 — Phase 2 & 5：跨平台打包（Tauri PC + Capacitor Android）
 
 ### 新增

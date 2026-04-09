@@ -96,7 +96,7 @@ sql.js（本地 SQLite，WASM）
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
 - [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
 
-**最近一次重要改动**：2026-04-09，Phase 2 & 5 跨平台打包（Tauri PC exe/msi + Capacitor Android apk）
+**最近一次重要改动**：2026-04-09，Bug Fix — Android 键盘色块 + AI 请求失败 + PC 暗黑过滚
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based
@@ -107,10 +107,14 @@ sql.js（本地 SQLite，WASM）
 - `resultStore` 有三路结果：`wordResult`（词库）、`aiFullResult`（AI 全量单词）、`phraseResult`（AI 词组/句子）
 - App.tsx 按三路结果条件渲染 ResultView / AiFullView / PhraseView
 - AI prompt 返回 `correctForm` 用于拼写纠正，视图大字显示正确拼写
+- `capacitor.config.ts` 配置了 `server.androidScheme: 'http'`（避免 localhost 自签证书问题）、`plugins.CapacitorHttp.enabled: true`（原生 HTTP 栈）和 `plugins.Keyboard.resize: 'none'`
+- Android `windowSoftInputMode="adjustPan"` 防止键盘弹出时缩小 WebView
+- Android `networkSecurityConfig` 信任用户 CA 证书 + 允许明文流量（代理软件兼容）
+- `src/index.css` 的 html/body 有背景色兜底（防 overscroll 白色）+ `overscroll-behavior: none`
 
 ## 已知问题 / 待解决
 
-（无）
+- **Android 代理兼容**：安装或更新 app 后，需重启 VPN 代理连接（Android VPN 路由表不自动包含新安装 app）
 
 ## 跨平台打包
 
