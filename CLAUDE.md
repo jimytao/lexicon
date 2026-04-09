@@ -96,7 +96,7 @@ sql.js（本地 SQLite，WASM）
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
 - [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
 
-**最近一次重要改动**：2026-04-09，Bug Fix — Android 键盘色块 + AI 请求失败 + PC 暗黑过滚
+**最近一次重要改动**：2026-04-09，Bug Fix — 启动画面暗黑适配（Android splash night 变体 + Tauri 窗口背景色 + index.html 预加载 dark 类）
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based
@@ -111,6 +111,9 @@ sql.js（本地 SQLite，WASM）
 - Android `windowSoftInputMode="adjustPan"` 防止键盘弹出时缩小 WebView
 - Android `networkSecurityConfig` 信任用户 CA 证书 + 允许明文流量（代理软件兼容）
 - `src/index.css` 的 html/body 有背景色兜底（防 overscroll 白色）+ `overscroll-behavior: none`
+- `index.html` `<head>` 有同步 inline script，读 `lexicon-settings` localStorage 预加 `.dark` 类，防 React 挂载前 CSS 白闪
+- Android `values-night/styles.xml` 覆盖 launch theme 使用 `@drawable/splash_dark`（深色 splash 变体）
+- Tauri 窗口配 `backgroundColor: "#030712"` 防 native 窗口层白闪（浅色用户启动瞬间会看到一次深色，< 200ms）
 
 ## 已知问题 / 待解决
 

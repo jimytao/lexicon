@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-04-09 — 启动画面暗黑模式适配
+
+### Bug 修复
+
+- **Android splash 暗黑适配**：暗黑模式下启动 app 时白色 splash 闪屏
+  - 新建 `drawable/splash_dark.png`（深色 `#030712` + 蓝 X 图标，1280×1920），基于现有 `drawable-port-xxxhdpi/splash.png` 去白底合成
+  - 新建 `values-night/styles.xml`，覆盖 `AppTheme.NoActionBarLaunch` 的 `android:background` 为 `@drawable/splash_dark`
+  - 系统暗黑模式下 Android 资源系统自动选中 night 变体
+
+- **PC Tauri 启动白闪**：暗黑用户启动时先看到白色窗口再切深色
+  - `tauri.conf.json` 窗口配置加 `backgroundColor: "#030712"`，消除 native 窗口层白闪
+  - `index.html` `<head>` 加同步 inline script：读 `localStorage` 中的 `lexicon-settings`，若 `darkMode: true` 则在 CSS 解析前给 `html` 加 `.dark` 类，消除 CSS 层白闪
+  - 浅色用户启动瞬间会看到一次深色（< 200ms，可接受）
+
+### 修改文件
+
+- `android/app/src/main/res/drawable/splash_dark.png`（新建）
+- `android/app/src/main/res/values-night/styles.xml`（新建）
+- `src-tauri/tauri.conf.json`：窗口加 `backgroundColor`
+- `index.html`：`<head>` 加 dark-mode 预加载脚本
+
+---
+
 ## 2026-04-09 — PC 端图标替换
 
 ### 改进
