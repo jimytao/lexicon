@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-04-09 — PC 端图标替换
+
+### 改进
+
+- **PC 端应用图标**：将 Tauri 默认蓝色方块替换为 Lexicon "X" 图标（与 Android 端一致）
+  - 从 Android `ic_launcher.png`（192×192）放大至 512×512，生成全部 Tauri 所需尺寸
+  - 手动构建多尺寸 ICO（16~256px，7 个尺寸），PIL 默认保存只嵌入单尺寸
+  - **注意**：替换图标后必须 `cargo clean` 再构建，否则 Rust 增量编译缓存旧图标资源不会更新
+
+### 修改文件
+
+- `src-tauri/icons/*`：全部 17 个图标文件替换为 Lexicon 品牌图标
+
+---
+
 ## 2026-04-09 — Bug Fix：Android 键盘色块 + AI 网络兼容 + PC 暗黑过滚
 
 ### Bug 修复
