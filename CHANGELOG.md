@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2026-04-11 — iOS 平台支持（GitHub Actions + AltStore，无 Mac 方案）
+
+### 新增
+
+- **iOS 平台初始化**：安装 `@capacitor/ios`，执行 `npx cap add ios` 生成 `ios/` 目录（Capacitor 8，SPM 依赖管理）
+- **GitHub Actions iOS 构建流**：`.github/workflows/ios-build.yml`，使用 `macos-latest` runner 编译未签名 IPA
+  - 触发条件：推 tag（`v*`）自动构建 + 手动 `workflow_dispatch`
+  - 打 tag 时自动上传 IPA 至 GitHub Release
+  - 非 tag 构建保存为 Actions Artifact（30 天）
+- **ExportOptions.plist**：`ios/ExportOptions.plist`，配置 xcodebuild 无签名导出（ad-hoc / manual signing）
+- **安装方式**：AltStore for Windows + 免费 Apple ID 签名安装，7 天自动续签，无需 Mac、无需付费开发者账号
+
+### 修改文件
+
+- `package.json`：添加 `@capacitor/ios ^8.3.0`
+- `ios/`（新建目录）：Capacitor 生成的 Xcode 项目
+- `ios/ExportOptions.plist`（新建）：xcodebuild 导出配置
+- `.github/workflows/ios-build.yml`（新建）：iOS CI 构建工作流
+- `lexicon-docs/06-crossplatform.md`：记录 iOS 无 Mac 构建方案
+
+---
+
 ## 2026-04-09 — 启动画面暗黑模式适配
 
 ### Bug 修复
