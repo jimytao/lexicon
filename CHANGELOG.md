@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 2026-04-11 — iOS 平台支持（GitHub Actions + AltStore，无 Mac 方案）
+## 2026-04-11 — iOS 平台支持（GitHub Actions + AltStore，无 Mac 方案）v0.2.3
 
 ### 新增
 
@@ -12,13 +12,20 @@
 - **ExportOptions.plist**：`ios/ExportOptions.plist`，配置 xcodebuild 无签名导出（ad-hoc / manual signing）
 - **安装方式**：AltStore for Windows + 免费 Apple ID 签名安装，7 天自动续签，无需 Mac、无需付费开发者账号
 
+### 构建过程中修复的问题
+
+- **v0.2.0**：Node 版本为 20，Capacitor 8 要求 ≥ 22 → 改为 Node 22
+- **v0.2.1**：`xcodebuild -exportArchive` 报 `No Team Found`（无签名 archive 无法走 exportArchive 流程）→ 改为手动从 archive 的 `Products/Applications/` 提取 `.app`，zip 打包成 IPA
+- **v0.2.2**：GitHub Actions `GITHUB_TOKEN` 默认无 Release 写权限（403）→ 在 job 中声明 `permissions: contents: write`
+- **v0.2.3**：构建成功，IPA 上传至 Release ✅
+
 ### 修改文件
 
 - `package.json`：添加 `@capacitor/ios ^8.3.0`
-- `ios/`（新建目录）：Capacitor 生成的 Xcode 项目
-- `ios/ExportOptions.plist`（新建）：xcodebuild 导出配置
+- `ios/`（新建目录）：Capacitor 生成的 Xcode 项目（SPM，无 CocoaPods）
 - `.github/workflows/ios-build.yml`（新建）：iOS CI 构建工作流
 - `lexicon-docs/06-crossplatform.md`：记录 iOS 无 Mac 构建方案
+- `CLAUDE.md`：更新跨平台打包说明
 
 ---
 

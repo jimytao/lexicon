@@ -96,7 +96,7 @@ sql.js（本地 SQLite，WASM）
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
 - [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
 
-**最近一次重要改动**：2026-04-09，Bug Fix — 启动画面暗黑适配（Android splash night 变体 + Tauri 窗口背景色 + index.html 预加载 dark 类）
+**最近一次重要改动**：2026-04-11，feat — iOS 平台支持（GitHub Actions + AltStore，无 Mac、无付费账号方案）
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based
@@ -127,6 +127,13 @@ sql.js（本地 SQLite，WASM）
 - **Capacitor（Android）**：`android/` 目录，`npx cap sync android` 同步，Gradle 构建 APK
   - 词库自动从 `dist/` 复制到 Android assets
   - 当前仍用 sql.js，后续可切换 `@capacitor-community/sqlite`
+- **Capacitor（iOS）**：`ios/` 目录，构建通过 GitHub Actions（`.github/workflows/ios-build.yml`）
+  - 触发：推 tag（`git tag vX.Y.Z && git push origin vX.Y.Z`）或 Actions 页手动触发
+  - 输出：未签名 `Lexicon.ipa`，上传到 GitHub Release
+  - 安装：AltStore（Windows）+ 免费 Apple ID 自签，7 天 Wi-Fi 自动续签
+  - Capacitor 8 使用 SPM（非 CocoaPods），无 xcworkspace，xcodebuild 用 `-project`
+  - 打包方式：archive 后手动从 Products/Applications 提取 .app 压缩成 IPA（绕过 exportArchive 需要 Team ID 的限制）
+  - 本地工具依赖：`D:\AltStore\AltServer.exe`（需常驻托盘）、iTunes + iCloud 官网版（非 Store）
 - **平台检测**：`src/services/platform.ts` 提供 `isTauri()` / `isCapacitor()` / `isWeb()`
 
 ## 环境说明
