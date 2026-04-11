@@ -42,26 +42,23 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Export IPA
+      - name: Package IPA (unsigned)
         run: |
-          xcodebuild \
-            -exportArchive \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -exportPath "$RUNNER_TEMP/IPA" \
-            -exportOptionsPlist ios/ExportOptions.plist \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+          APP_PATH=$(find "$RUNNER_TEMP/App.xcarchive/Products/Applications" -name "*.app" | head -1)
+          mkdir -p "$RUNNER_TEMP/IPA/Payload"
+          cp -r "$APP_PATH" "$RUNNER_TEMP/IPA/Payload/"
+          cd "$RUNNER_TEMP/IPA"
+          zip -r Lexicon.ipa Payload/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Lexicon-iOS-${{ github.ref_name }}
-          path: ${{ runner.temp }}/IPA/*.ipa
+          path: ${{ runner.temp }}/IPA/Lexicon.ipa
           retention-days: 30
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ runner.temp }}/IPA/*.ipa
+          files: ${{ runner.temp }}/IPA/Lexicon.ipa
