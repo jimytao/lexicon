@@ -58,6 +58,15 @@ export function App() {
     }
   }
 
+  function handleForceAi(rawQuery: string) {
+    const qt = detectQueryType(rawQuery)
+    if (qt === 'phrase' || qt === 'sentence') {
+      triggerPhraseQuery(rawQuery)
+    } else {
+      triggerFullLookup(rawQuery)
+    }
+  }
+
   function handleRetry() {
     if (wordResult && mode === 'ai') {
       triggerAi(wordResult.word, wordResult.meanings)
@@ -118,7 +127,7 @@ export function App() {
           <ImageTranslateView />
         ) : (
           <>
-            <SearchBar onWordSelect={handleWordSelect} />
+            <SearchBar onWordSelect={handleWordSelect} onForceAi={handleForceAi} />
 
             {showPhraseView ? (
               <PhraseView
