@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-04-13 — 异形屏 Safe Area 适配（iOS 刘海 / Android 挖孔屏）
+
+### 改进
+
+- **顶部安全区**：顶栏（Tab + 设置按钮）在 iPhone 刘海 / Dynamic Island / Android 挖孔屏下不再被状态栏遮挡
+- **底部安全区**：内容区底部自动留出 iPhone Home 指示条高度
+- 纯 CSS 方案，无需 Capacitor 插件；Web 版 fallback 为 0，外观不变
+
+### 修改文件
+
+- `index.html`：viewport meta 加 `viewport-fit=cover`
+- `src/index.css`：追加 `.pt-safe` / `.pb-safe` utility（`env(safe-area-inset-top/bottom)`）
+- `src/App.tsx`：顶栏 `pt-3` → `pt-safe`；外层容器加 `pb-safe`
+
+---
+
 ## 2026-04-11 — iOS 平台支持（GitHub Actions + AltStore，无 Mac 方案）v0.2.3
 
 ### 新增

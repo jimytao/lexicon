@@ -18,6 +18,14 @@ html, body {
   background-color: #030712; /* gray-950 */
 }
 
+/* Safe area utilities — iOS 刘海 / Android 挖孔屏适配 */
+.pt-safe {
+  padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 6px;
