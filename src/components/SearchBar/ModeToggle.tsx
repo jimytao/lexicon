@@ -7,7 +7,7 @@ interface ModeToggleProps {
 
 export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
-    <div className="flex gap-1 mt-2">
+    <div className="flex gap-1">
       <button
         onClick={() => onModeChange('instant')}
         className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${

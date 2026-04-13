@@ -86,7 +86,7 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-[480px] min-h-screen bg-white dark:bg-gray-900 shadow-sm relative pb-safe">
+      <div className="mx-auto max-w-[480px] h-screen overflow-y-auto bg-white dark:bg-gray-900 shadow-sm relative pb-safe">
         {/* Top bar: tabs + settings */}
         <div className="flex items-center justify-between px-4 pt-safe pb-1">
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">

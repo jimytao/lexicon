@@ -107,6 +107,10 @@ export interface TextBlock {
   bbox: { x: number; y: number; w: number; h: number }
   type: TextBlockType
   direction: TextDirection
+  // Optional per-block color overrides (bubble/caption background)
+  colorHue?: number        // hue shift in degrees, -180~180, default 0
+  colorSaturation?: number // saturation multiplier 0~2, default 1
+  colorOpacity?: number    // opacity 0~1, default 1
 }
 
 export interface ImageTranslation {

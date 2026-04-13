@@ -205,7 +205,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <div className="flex items-center justify-between px-4 pt-safe pb-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">设置</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

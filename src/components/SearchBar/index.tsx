@@ -65,31 +65,9 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
     <div className="px-4 pt-4 pb-2">
       <div ref={containerRef} className="relative">
         <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 shadow-sm focus-within:border-indigo-400 dark:focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-400/20 transition-all">
-          {/* 普通搜索按钮（回车逻辑） */}
-          <button
-            type="button"
-            onClick={() => { if (query.trim()) { const word = suggestions[0]?.word ?? query.trim(); handleSelect(word) } }}
-            className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            aria-label="搜索"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-            </svg>
-          </button>
-          {/* AI 强制搜索按钮（跳过备选项，直接 AI 查询） */}
-          <button
-            type="button"
-            onClick={() => { if (query.trim()) { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) } }}
-            className="shrink-0 text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
-            aria-label="AI 搜索"
-            title="强制 AI 查询（或 Ctrl+Enter）"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <circle cx="11" cy="11" r="6" />
-              <line x1="21" y1="21" x2="16.35" y2="16.35" />
-              <text x="11" y="14.5" textAnchor="middle" fontSize="5.5" fontWeight="700" stroke="none" fill="currentColor" fontFamily="sans-serif">AI</text>
-            </svg>
-          </button>
+          <svg className="w-4 h-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
           <input
             type="text"
             value={query}
@@ -125,7 +103,26 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
         {showHistory && <HistoryList onSelect={handleSelect} />}
       </div>
 
-      <ModeToggle mode={mode} onModeChange={setMode} />
+      <div className="flex items-center justify-between mt-2">
+        <ModeToggle mode={mode} onModeChange={setMode} />
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => { if (query.trim()) { const word = suggestions[0]?.word ?? query.trim(); handleSelect(word) } }}
+            className="px-3 py-1 rounded-full text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (query.trim()) { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) } }}
+            className="px-3 py-1 rounded-full text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+            title="强制 AI 查询（或 Ctrl+Enter）"
+          >
+            AI Search
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

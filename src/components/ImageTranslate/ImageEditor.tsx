@@ -37,12 +37,17 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
       const blockType: TextBlockType = block.type || 'bubble'
       const dir: TextDirection = block.direction || 'horizontal'
 
+      const colorOpts = {
+        hue: block.colorHue ?? 0,
+        saturation: block.colorSaturation ?? 1,
+        opacity: block.colorOpacity ?? 1,
+      }
       if (blockType === 'bubble') {
-        renderBubble(ctx, block.translation, x, y, w, h, fontFamily, dir)
+        renderBubble(ctx, block.translation, x, y, w, h, fontFamily, dir, colorOpts)
       } else if (blockType === 'sfx') {
         renderSfx(ctx, block.translation, x, y, w, h, fontFamily, dir)
       } else {
-        renderCaption(ctx, block.translation, x, y, w, h, fontFamily, dir)
+        renderCaption(ctx, block.translation, x, y, w, h, fontFamily, dir, colorOpts)
       }
     }
   }, [blocks, fontFamily])
@@ -74,17 +79,22 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
 
 ImageEditor.displayName = 'ImageEditor'
 
+interface ColorOpts { hue: number; saturation: number; opacity: number }
+
 // ── Bubble: background fill + text ──
 function renderBubble(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
-  fontFamily: string, dir: TextDirection,
+  fontFamily: string, dir: TextDirection, colorOpts: ColorOpts,
 ) {
   if (!text) return
 
-  const bgColor = sampleBorderColor(ctx, x, y, w, h)
-  ctx.fillStyle = bgColor
+  const bgColor = sampleFillColor(ctx, x, y, w, h)
+  const adjusted = adjustColor(bgColor, colorOpts)
+  ctx.fillStyle = adjusted
+  ctx.globalAlpha = colorOpts.opacity
   ctx.fillRect(x, y, w, h)
+  ctx.globalAlpha = 1
 
   const brightness = parseBrightness(bgColor)
   const textColor = brightness > 128 ? '#000000' : '#ffffff'
@@ -115,16 +125,19 @@ function renderSfx(
 function renderCaption(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
-  fontFamily: string, dir: TextDirection,
+  fontFamily: string, dir: TextDirection, colorOpts: ColorOpts,
 ) {
   if (!text) return
 
   // Draw semi-transparent background
   const pad = 4
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
+  const base = adjustColor('rgb(255,255,255)', colorOpts)
+  ctx.fillStyle = base
+  ctx.globalAlpha = colorOpts.opacity * 0.75
   ctx.beginPath()
   roundRect(ctx, x, y, w, h, 4)
   ctx.fill()
+  ctx.globalAlpha = 1
 
   if (dir === 'vertical') {
     renderVertical(ctx, text, x + pad, y + pad, w - pad * 2, h - pad * 2, fontFamily, '#222222')
@@ -235,28 +248,72 @@ function renderVertical(
 
 // ── Helpers ──
 
-function sampleBorderColor(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): string {
+function sampleFillColor(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): string {
+  // Sample a 5×5 grid from the interior center of the bbox
   const samples: Array<[number, number, number]> = []
-  const padding = 2
-  const positions: Array<[number, number]> = []
-  for (let i = 0; i < 5; i++) {
-    const fx = x + (w * i) / 4
-    const fy = y + (h * i) / 4
-    positions.push([fx, Math.max(0, y - padding)])
-    positions.push([fx, y + h + padding])
-    positions.push([Math.max(0, x - padding), fy])
-    positions.push([x + w + padding, fy])
-  }
-  for (const [px, py] of positions) {
-    try {
-      const pixel = ctx.getImageData(Math.round(px), Math.round(py), 1, 1).data
-      samples.push([pixel[0], pixel[1], pixel[2]])
-    } catch { /* skip */ }
+  const cx = x + w / 2
+  const cy = y + h / 2
+  const rx = Math.max(4, w * 0.15)
+  const ry = Math.max(4, h * 0.15)
+  for (let di = -2; di <= 2; di++) {
+    for (let dj = -2; dj <= 2; dj++) {
+      const px = Math.round(cx + dj * rx / 2)
+      const py = Math.round(cy + di * ry / 2)
+      try {
+        const pixel = ctx.getImageData(px, py, 1, 1).data
+        samples.push([pixel[0], pixel[1], pixel[2]])
+      } catch { /* skip */ }
+    }
   }
   if (samples.length === 0) return 'rgb(255, 255, 255)'
   const avg = samples.reduce((a, [r, g, b]) => [a[0] + r, a[1] + g, a[2] + b], [0, 0, 0])
   const n = samples.length
   return `rgb(${Math.round(avg[0] / n)}, ${Math.round(avg[1] / n)}, ${Math.round(avg[2] / n)})`
+}
+
+/** Apply hue shift, saturation multiplier to an rgb(...) color string */
+function adjustColor(color: string, opts: ColorOpts): string {
+  const m = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/)
+  if (!m) return color
+  const r = parseInt(m[1]) / 255
+  const g = parseInt(m[2]) / 255
+  const b = parseInt(m[3]) / 255
+
+  // RGB → HSL
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  let h = 0, s = 0
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+      case g: h = ((b - r) / d + 2) / 6; break
+      case b: h = ((r - g) / d + 4) / 6; break
+    }
+  }
+
+  // Apply adjustments
+  h = (h + opts.hue / 360 + 1) % 1
+  s = Math.max(0, Math.min(1, s * opts.saturation))
+
+  // HSL → RGB
+  function hue2rgb(p: number, q: number, t: number) {
+    if (t < 0) t += 1; if (t > 1) t -= 1
+    if (t < 1/6) return p + (q - p) * 6 * t
+    if (t < 1/2) return q
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+    return p
+  }
+  let nr: number, ng: number, nb: number
+  if (s === 0) { nr = ng = nb = l } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+    nr = hue2rgb(p, q, h + 1/3)
+    ng = hue2rgb(p, q, h)
+    nb = hue2rgb(p, q, h - 1/3)
+  }
+  return `rgb(${Math.round(nr * 255)},${Math.round(ng * 255)},${Math.round(nb * 255)})`
 }
 
 function parseBrightness(color: string): number {

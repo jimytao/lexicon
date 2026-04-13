@@ -1,5 +1,63 @@
 # CHANGELOG
 
+## 2026-04-13 — 图片翻译嵌字增强 v0.4.0
+
+### 新功能
+
+- **图片缩放 + 平移视图**（ImageViewer 组件）：
+  - **PC**：`Ctrl+滚轮` 缩放（以鼠标位置为中心）；`Ctrl+拖拽` 平移
+  - **触屏**：双指 pinch 缩放；单指在空白区域拖拽平移
+  - 提示文本：底部显示操作说明
+
+- **可交互 bbox 编辑叠加层**（BlockOverlay 组件）：
+  - **拖拽移动**：点击 bbox 内部区域拖动调整位置
+  - **8 控制点缩放**：4 角 + 4 边中点，拖拽调整大小和形状
+  - **选中高亮**：点击 bbox 选中（同步 TranslationList 滚动）
+  - **删除**：选中后显示右上角 × 按钮
+  - **手动绘制新框**：在空白区域按住拖拽画新框，松开后弹出表单填译文、类型、方向
+  - **鼠标 + 触屏双协议**：统一 `getPointer()` 提取坐标，mouse 和 touch 逻辑共用
+
+- **两阶段翻译流程**（性能优化）：
+  - **阶段 1（快速）**：点「开始翻译」→ AI 只返回 `original + translation + type + direction`，不计算 bbox
+  - **阶段 2（按需）**：点「嵌字编辑」→ 触发第二次 AI 请求补全 bbox 数据
+  - 效果：纯列表查看时响应快，进入嵌字模式时才计算坐标（减少不必要的 AI 开销）
+
+- **粘性图片展示**（TranslationList 模式）：
+  - 原图默认展开在顶部，右上角「收起」按钮隐藏
+  - 收起后顶部显示「展开原图」按钮
+  - 图片区为 sticky top-0，滚动翻译列表时保持可见
+
+- **Per-block 颜色调整**（TranslationList 选中时）：
+  - **色调滑块**：-180° ~ +180°（RGB→HSL 色彩空间变换）
+  - **饱和度滑块**：0% ~ 200%（0=灰度，100=正常，200=高饱和）
+  - **透明度滑块**：0% ~ 100%（背景色的 alpha）
+  - 实时预览：ImageEditor canvas 立即应用颜色变换
+
+### 改进
+
+- **搜索按钮重新布局**：从搜索框内移到下方，与 Mode Toggle 同一行，改为两个独立按钮「搜索」「AI 搜索」
+- **设置面板 Safe Area 优化**：修复 Settings Drawer 顶部 padding，避免在 iOS 刘海下被遮挡
+- **bbox 颜色采样优化**：从边框采样改为内部 5×5 网格均值采样，更准确代表气泡背景色
+- **ImageEditor 架构准备**：支持 Canvas `ctx.clip()` 多边形剪裁，为未来自由形状文字框预留接口
+
+### 修改文件
+
+- `package.json`：版本 `0.4.0`
+- `src/App.tsx`：改为 `h-screen overflow-y-auto` 以支持 sticky positioning
+- `src/components/SearchBar/index.tsx`：移除搜索框内按钮，新增下方两个按钮
+- `src/components/SearchBar/ModeToggle.tsx`：移除 `mt-2` margin
+- `src/components/Settings/SettingsDrawer.tsx`：顶部 padding 改用 `pt-safe`
+- `src/components/ImageTranslate/index.tsx`：整体结构重构，两阶段流程、粘性图片、collapsible 图片
+- `src/components/ImageTranslate/ImageViewer.tsx`（**新建**）：缩放/平移容器，支持鼠标 wheel + Ctrl + touchpad pinch + touch pinch
+- `src/components/ImageTranslate/BlockOverlay.tsx`（**新建**）：可交互 bbox 叠加层，支持移动、缩放、删除、绘制
+- `src/components/ImageTranslate/ImageEditor.tsx`：per-block 颜色调整、improved `sampleFillColor`
+- `src/components/ImageTranslate/TranslationList.tsx`：新增 `selectedIndex`、color control sliders
+- `src/stores/imageStore.ts`：新增 `imageBase64`、`bboxReady`、`updateBlock`、`deleteBlock`、`addBlock`
+- `src/services/ai.ts`：拆分为 `aiImageTranslateFast()` 和 `aiImageTranslateFull()`
+- `src/types/index.ts`：TextBlock 新增 `colorHue?`、`colorSaturation?`、`colorOpacity?`
+
+---
+
 ## 2026-04-13 — AI 强制搜索 + 异形屏适配 v0.3.0
 
 ### 新功能

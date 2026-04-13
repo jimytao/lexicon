@@ -432,9 +432,39 @@ Keep answers concise and practical.`
 
 // ── 图片翻译 ──
 
-const IMAGE_TRANSLATE_PROMPT = `You are a professional manga/image text detector and translator.
+// ── Fast prompt: OCR + translate only, no bbox (for translation list view) ──
+const IMAGE_TRANSLATE_FAST_PROMPT = `You are a professional manga/image text detector and translator.
 
-Given an image, detect ALL text regions, classify them, and translate them.
+Detect ALL text regions and translate them. Do NOT calculate bounding boxes.
+
+Return ONLY a valid JSON object. No markdown code fences. No explanation.
+
+{
+  "blocks": [
+    {
+      "original": "detected text in original language",
+      "translation": "translated text in target language",
+      "type": "bubble",
+      "direction": "vertical"
+    }
+  ]
+}
+
+type: "bubble" | "sfx" | "caption"
+direction: "vertical" | "horizontal"
+
+Rules:
+- Detect ALL visible text
+- Keep translations natural, preserve tone and style
+- For sfx: provide short description (e.g. "ゴゴゴ" → "隆隆隆")
+- Order blocks top-to-bottom, left-to-right
+- If no text found, return {"blocks": []}
+- Never output anything outside the JSON object`
+
+// ── Full prompt: OCR + translate + bbox (for embed/inlay mode) ──
+const IMAGE_TRANSLATE_FULL_PROMPT = `You are a professional manga/image text detector and translator.
+
+Given an image, detect ALL text regions, classify them, translate them, and provide precise bounding boxes.
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation.
 
@@ -450,32 +480,24 @@ Return ONLY a valid JSON object. No markdown code fences. No explanation.
   ]
 }
 
-type must be one of:
-- "bubble": text inside a speech/thought bubble or text box with a clear background (white, solid color)
-- "sfx": sound effects, onomatopoeia, action text drawn directly on the artwork (no bubble background)
-- "caption": small labels, character names, narrator text, or UI-like annotations
-
-direction must be one of:
-- "vertical": text is laid out top-to-bottom (common in Japanese/Chinese manga)
-- "horizontal": text is laid out left-to-right
+type: "bubble" | "sfx" | "caption"
+direction: "vertical" | "horizontal"
 
 Rules:
 - bbox coordinates are normalized 0-1 (relative to image width/height)
-- x,y is the top-left corner of the text region
-- bbox should tightly fit the text, NOT extend beyond the speech bubble boundary
-- For bubble type: bbox must stay WITHIN the bubble border, do not include the bubble outline
-- Detect ALL visible text including speech bubbles, sound effects, captions, labels
-- Keep translations natural and contextual, preserve tone and style
-- For manga/comics sound effects, provide a short translation/description (e.g. "ゴゴゴ" → "隆隆隆")
+- x,y is the top-left corner; bbox must stay WITHIN the bubble border
+- Detect ALL visible text
+- Keep translations natural, preserve tone and style
 - Order blocks top-to-bottom, left-to-right
-- If no text is found, return {"blocks": []}
+- If no text found, return {"blocks": []}
 - Never output anything outside the JSON object`
 
-export async function aiImageTranslate(
+async function callImageTranslateAPI(
   imageBase64: string,
   sourceLang: string,
   targetLang: string,
-  signal?: AbortSignal
+  prompt: string,
+  signal?: AbortSignal,
 ): Promise<import('../types').TextBlock[]> {
   const config = getConfig()
   if (!config.apiKey) throw new Error('API key not configured')
@@ -498,7 +520,7 @@ export async function aiImageTranslate(
       model: config.model,
       temperature: 0.2,
       messages: [
-        { role: 'system', content: IMAGE_TRANSLATE_PROMPT },
+        { role: 'system', content: prompt },
         { role: 'user', content: userContent },
       ],
     }),
@@ -529,6 +551,36 @@ export async function aiImageTranslate(
   }
 
   return parsed.blocks ?? []
+}
+
+/** Fast: OCR + translate only, no bbox. Use for translation list view. */
+export async function aiImageTranslateFast(
+  imageBase64: string,
+  sourceLang: string,
+  targetLang: string,
+  signal?: AbortSignal,
+): Promise<import('../types').TextBlock[]> {
+  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FAST_PROMPT, signal)
+}
+
+/** Full: OCR + translate + bbox. Use when entering embed/inlay mode. */
+export async function aiImageTranslateFull(
+  imageBase64: string,
+  sourceLang: string,
+  targetLang: string,
+  signal?: AbortSignal,
+): Promise<import('../types').TextBlock[]> {
+  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FULL_PROMPT, signal)
+}
+
+/** @deprecated use aiImageTranslateFast or aiImageTranslateFull */
+export async function aiImageTranslate(
+  imageBase64: string,
+  sourceLang: string,
+  targetLang: string,
+  signal?: AbortSignal,
+): Promise<import('../types').TextBlock[]> {
+  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FULL_PROMPT, signal)
 }
 
 export async function testConnection(signal?: AbortSignal): Promise<string> {
