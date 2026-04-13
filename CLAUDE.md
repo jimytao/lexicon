@@ -96,7 +96,7 @@ sql.js（本地 SQLite，WASM）
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
 - [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
 
-**最近一次重要改动**：2026-04-11，feat — iOS 平台支持（GitHub Actions + AltStore，无 Mac、无付费账号方案）
+**最近一次重要改动**：2026-04-13，feat — AI 强制搜索按钮 + Ctrl+Enter + 异形屏 Safe Area 适配
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based

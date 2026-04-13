@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-04-13 — AI 强制搜索 + 异形屏适配 v0.3.0
+
+### 新功能
+
+- **AI 强制搜索按钮**：搜索框左侧新增 🔍AI 按钮，点击后跳过备选项、直接用 AI 查询输入框原文
+  - 解决问题：输入 "fest" 回车后被自动跳转到 "fester" 的问题
+  - 旧放大镜按钮保留，行为与 Enter 一致（取备选项第一项或原文）
+- **Ctrl+Enter 快捷键**（PC / Cmd+Enter on Mac）：键盘触发 AI 强制搜索，与 AI 按钮逻辑相同
+
+### 修改文件
+
+- `src/components/SearchBar/index.tsx`：新增 `onForceAi` prop、两个左侧按钮、Ctrl+Enter 处理
+- `src/App.tsx`：新增 `handleForceAi` 函数，传入 SearchBar
+
+---
+
 ## 2026-04-13 — 异形屏 Safe Area 适配（iOS 刘海 / Android 挖孔屏）
 
 ### 改进
