@@ -36,12 +36,19 @@ export function useAiLookup() {
     const cached = getCachedAiFull(word)
     if (cached) { setAiFullResult(word, cached); return }
 
+    const timeout = AbortSignal.timeout(30000)
+    const combined = AbortSignal.any([abortRef.current.signal, timeout])
+
     setAiStatus('loading')
     try {
-      const result = await aiFullLookup(word, abortRef.current.signal)
+      const result = await aiFullLookup(word, combined)
       setAiFullResult(word, result)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
+      if ((e as Error).name === 'TimeoutError') {
+        setAiError(`「${word}」较为生僻，AI 30 秒内未能解析，建议直接向 AI 提问`)
+        return
+      }
       setAiError((e as Error).message)
     }
   }, [getCachedAiFull, setAiFullResult, setAiStatus, setAiError])

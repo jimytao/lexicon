@@ -188,9 +188,13 @@ async function callApi(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
+  // 60s hard cap so requests never hang indefinitely
+  const timeout = AbortSignal.timeout(60000)
+  const merged = signal ? AbortSignal.any([signal, timeout]) : timeout
+
   const response = await fetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
-    signal,
+    signal: merged,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
