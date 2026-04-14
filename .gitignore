@@ -1,6 +1,14 @@
 node_modules
 dist
 
+# Internal docs (not useful for external contributors)
+CLAUDE.md
+CHANGELOG.md
+lexicon-docs/
+
+# Android keystore (never commit — back up locally)
+*.keystore
+
 # Tauri
 src-tauri/target
 
@@ -21,6 +29,10 @@ android/app/src/main/assets/public
 # OS
 .DS_Store
 Thumbs.db
+
+# SQLite WAL/SHM temp files
+*.db-shm
+*.db-wal
 
 # Temp
 app-icon.png
