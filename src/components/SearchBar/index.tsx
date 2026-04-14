@@ -92,6 +92,16 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
               </svg>
             </button>
           )}
+          {query && (
+            <button
+              type="button"
+              onClick={() => { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) }}
+              className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+              title="AI 查询（或 Ctrl+Enter）"
+            >
+              AI
+            </button>
+          )}
         </div>
 
         <SuggestList
@@ -103,25 +113,8 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
         {showHistory && <HistoryList onSelect={handleSelect} />}
       </div>
 
-      <div className="flex items-center justify-between mt-2">
+      <div className="mt-2">
         <ModeToggle mode={mode} onModeChange={setMode} />
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => { if (query.trim()) { const word = suggestions[0]?.word ?? query.trim(); handleSelect(word) } }}
-            className="px-3 py-1 rounded-full text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            Search
-          </button>
-          <button
-            type="button"
-            onClick={() => { if (query.trim()) { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) } }}
-            className="px-3 py-1 rounded-full text-xs font-medium text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
-            title="强制 AI 查询（或 Ctrl+Enter）"
-          >
-            AI Search
-          </button>
-        </div>
       </div>
     </div>
   )

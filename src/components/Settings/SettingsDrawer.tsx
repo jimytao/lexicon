@@ -120,6 +120,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
 
+  const [showKey, setShowKey] = useState(false)
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
   const [showModelList, setShowModelList] = useState(false)
@@ -256,13 +257,32 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 <span className="text-xs text-green-500 dark:text-green-400">已保存</span>
               )}
             </div>
-            <input
-              type="password"
-              value={currentApiKey}
-              onChange={(e) => setApiKeyForProvider(aiProvider || 'custom', e.target.value)}
-              placeholder="sk-..."
-              className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
-            />
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={currentApiKey}
+                onChange={(e) => setApiKeyForProvider(aiProvider || 'custom', e.target.value)}
+                placeholder="sk-..."
+                className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 pr-9 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(v => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                tabIndex={-1}
+              >
+                {showKey ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4-9-7 0-1.3.6-2.5 1.6-3.5M6.1 6.1A9.97 9.97 0 0112 5c5 0 9 4 9 7 0 1.3-.6 2.5-1.6 3.5M3 3l18 18" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Model */}
