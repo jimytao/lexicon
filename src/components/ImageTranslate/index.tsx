@@ -280,7 +280,7 @@ export function ImageTranslateView() {
                 /* ── 翻译列表模式 ── */
                 <div>
                   {/* Sticky collapsible image — breaks out of p-4 with -mx-4 */}
-                  <div className="sticky top-0 z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
+                  <div className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"

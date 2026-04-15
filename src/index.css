@@ -25,6 +25,9 @@ html, body {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+.top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
 
 /* iOS 防输入框 focus 自动放大（font-size < 16px 时 Safari 会 zoom）*/
 @supports (-webkit-touch-callout: none) {
