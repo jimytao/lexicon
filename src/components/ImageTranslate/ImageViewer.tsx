@@ -3,6 +3,8 @@ import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, ReactN
 interface Props {
   children: ReactNode
   onScaleChange?: (scale: number) => void
+  compact?: boolean
+  className?: string
 }
 
 export interface ImageViewerHandle {
@@ -10,7 +12,7 @@ export interface ImageViewerHandle {
   getScale: () => number
 }
 
-export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onScaleChange }, ref) => {
+export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onScaleChange, compact, className }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
 
@@ -171,7 +173,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800"
+      className={`relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800${className ? ` ${className}` : ''}`}
       style={{ minHeight: 200, touchAction: 'none', userSelect: 'none' }}
     >
       <div
@@ -182,9 +184,11 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
       </div>
 
       {/* Zoom hint */}
-      <div className="absolute bottom-2 right-2 text-[10px] text-gray-400 dark:text-gray-500 pointer-events-none select-none bg-white/70 dark:bg-gray-900/70 px-1.5 py-0.5 rounded">
-        Ctrl+滚轮/双指捏合缩放 · Ctrl+拖拽平移
-      </div>
+      {!compact && (
+        <div className="absolute bottom-2 right-2 text-[10px] text-gray-400 dark:text-gray-500 pointer-events-none select-none bg-white/70 dark:bg-gray-900/70 px-1.5 py-0.5 rounded">
+          Ctrl+滚轮/双指捏合缩放 · Ctrl+拖拽平移
+        </div>
+      )}
     </div>
   )
 })

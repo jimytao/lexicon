@@ -39,6 +39,7 @@ export function ImageTranslateView() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<ImageEditorHandle | null>(null)
   const viewerRef = useRef<ImageViewerHandle | null>(null)
+  const listViewerRef = useRef<ImageViewerHandle | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   /** Convert imageFile to base64, cache in store */
@@ -251,21 +252,58 @@ export function ImageTranslateView() {
               {embedMode ? (
                 /* ── 嵌字编辑模式 ── */
                 <div className="space-y-3">
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    拖拽色框调整位置 · 拖拽控制点缩放 · 空白处画框新增 · 选中后点 × 删除
-                  </p>
-                  <ImageViewer ref={viewerRef} onScaleChange={setViewerScale}>
-                    <ImageEditor ref={editorRef} imageUrl={imageUrl!} blocks={blocks} fontFamily={fontFamily} />
-                    <BlockOverlay
-                      blocks={blocks}
-                      selectedIndex={selectedIndex}
-                      onSelect={handleSelect}
-                      onUpdateBlock={(i, partial) => updateBlock(i, partial)}
-                      onDeleteBlock={deleteBlock}
-                      onAddBlock={addBlock}
-                    />
-                  </ImageViewer>
-                  <ExportButton editorRef={editorRef} />
+                  {/* Sticky image + controls */}
+                  <div className="sticky top-safe z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
+                    {imageCollapsed ? (
+                      <button
+                        type="button"
+                        onClick={() => setImageCollapsed(false)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-b border-gray-100 dark:border-gray-800"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                        展开原图
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between pt-2 pb-1">
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            拖拽色框调整位置 · 拖拽控制点缩放 · 空白处画框新增 · 选中后点 × 删除
+                          </p>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <button
+                              type="button"
+                              onClick={() => viewerRef.current?.resetTransform()}
+                              className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              title="重置图片缩放和位置"
+                            >
+                              重置视图
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setImageCollapsed(true)}
+                              className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              收起
+                            </button>
+                          </div>
+                        </div>
+                        <ImageViewer ref={viewerRef} onScaleChange={setViewerScale} className="max-h-[50vh]">
+                          <ImageEditor ref={editorRef} imageUrl={imageUrl!} blocks={blocks} fontFamily={fontFamily} />
+                          <BlockOverlay
+                            blocks={blocks}
+                            selectedIndex={selectedIndex}
+                            onSelect={handleSelect}
+                            onUpdateBlock={(i, partial) => updateBlock(i, partial)}
+                            onDeleteBlock={deleteBlock}
+                            onAddBlock={addBlock}
+                          />
+                        </ImageViewer>
+                        <ExportButton editorRef={editorRef} />
+                      </>
+                    )}
+                  </div>
                   <div ref={listRef}>
                     <TranslationList
                       blocks={blocks}
@@ -273,6 +311,7 @@ export function ImageTranslateView() {
                       onUpdateBlock={updateBlock}
                       selectedIndex={selectedIndex ?? undefined}
                       onSelect={handleSelect}
+                      onDeselect={() => setSelectedIndex(null)}
                     />
                   </div>
                 </div>
@@ -294,21 +333,35 @@ export function ImageTranslateView() {
                       </button>
                     ) : (
                       <div className="relative">
-                        <img
-                          src={imageUrl!}
-                          alt="原图"
-                          className="w-full object-contain max-h-[45vh]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setImageCollapsed(true)}
-                          className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/50 text-white text-[11px] hover:bg-black/70 transition-colors"
-                        >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                          </svg>
-                          收起
-                        </button>
+                        <ImageViewer ref={listViewerRef} onScaleChange={() => {}} compact>
+                          <img
+                            src={imageUrl!}
+                            alt="原图"
+                            className="w-full object-contain max-h-[50vh]"
+                          />
+                        </ImageViewer>
+                        <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => listViewerRef.current?.resetTransform()}
+                            className="flex items-center justify-center w-6 h-6 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
+                            title="重置视图"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setImageCollapsed(true)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md bg-black/50 text-white text-[11px] hover:bg-black/70 transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                            </svg>
+                            收起
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -320,7 +373,6 @@ export function ImageTranslateView() {
                         <TranslationList
                           blocks={blocks}
                           onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
-                          onUpdateBlock={updateBlock}
                           selectedIndex={selectedIndex ?? undefined}
                           onSelect={handleSelect}
                         />

@@ -6,9 +6,10 @@ interface Props {
   onUpdateBlock?: (index: number, partial: Partial<TextBlock>) => void
   selectedIndex?: number
   onSelect?: (index: number) => void
+  onDeselect?: () => void
 }
 
-export function TranslationList({ blocks, onUpdateTranslation, onUpdateBlock, selectedIndex, onSelect }: Props) {
+export function TranslationList({ blocks, onUpdateTranslation, onUpdateBlock, selectedIndex, onSelect, onDeselect }: Props) {
   if (blocks.length === 0) {
     return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">未检测到文字</p>
   }
@@ -22,7 +23,7 @@ export function TranslationList({ blocks, onUpdateTranslation, onUpdateBlock, se
           <div
             key={i}
             id={`block-item-${i}`}
-            onClick={() => onSelect?.(i)}
+            onClick={(e) => { e.stopPropagation(); onSelect?.(i) }}
             className={`rounded-lg border p-3 cursor-pointer transition-colors ${
               isSelected
                 ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
@@ -46,19 +47,34 @@ export function TranslationList({ blocks, onUpdateTranslation, onUpdateBlock, se
               <p className="text-sm text-gray-800 dark:text-gray-200 mb-2">{block.original}</p>
             )}
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">译文</p>
-            <input
-              type="text"
+            <textarea
               value={block.translation}
-              onChange={(e) => onUpdateTranslation(i, e.target.value)}
+              rows={1}
+              ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
+              onChange={(e) => {
+                onUpdateTranslation(i, e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = e.target.scrollHeight + 'px'
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
               onClick={(e) => e.stopPropagation()}
               placeholder="输入译文"
-              className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none overflow-hidden"
             />
 
             {/* Color controls (bubble / caption only, shown when selected) */}
             {showColor && onUpdateBlock && (
               <div className="mt-3 space-y-2 border-t border-blue-200 dark:border-blue-700 pt-2" onClick={(e) => e.stopPropagation()}>
-                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">背景色调整</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">背景色调整</p>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDeselect?.() }}
+                    className="text-[11px] px-1.5 py-0.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    收起
+                  </button>
+                </div>
                 <label className="flex items-center gap-2">
                   <span className="text-[11px] text-gray-500 dark:text-gray-400 w-10 shrink-0">色调</span>
                   <input
