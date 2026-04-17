@@ -105,6 +105,7 @@ export interface TextBlock {
   original: string
   translation: string
   bbox: { x: number; y: number; w: number; h: number }
+  polygon?: Array<{ x: number; y: number }>  // normalized 0-1, bubble outline vertices (bubble/caption only)
   type: TextBlockType
   direction: TextDirection
   // Optional per-block color overrides (bubble/caption background)

@@ -42,6 +42,11 @@ export function TranslationList({ blocks, onUpdateTranslation, onUpdateBlock, se
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                 {block.direction === 'vertical' ? '竖排' : '横排'}
               </span>
+              {block.polygon && block.polygon.length >= 3 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                  多边形
+                </span>
+              )}
             </div>
             {block.original && (
               <p className="text-sm text-gray-800 dark:text-gray-200 mb-2">{block.original}</p>

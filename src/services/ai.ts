@@ -468,7 +468,7 @@ Rules:
 // ── Full prompt: OCR + translate + bbox (for embed/inlay mode) ──
 const IMAGE_TRANSLATE_FULL_PROMPT = `You are a professional manga/image text detector and translator.
 
-Given an image, detect ALL text regions, classify them, translate them, and provide precise bounding boxes.
+Given an image, detect ALL text regions, classify them, translate them, provide precise bounding boxes, and for bubble/caption types also trace the speech bubble outline as a polygon.
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation.
 
@@ -479,7 +479,8 @@ Return ONLY a valid JSON object. No markdown code fences. No explanation.
       "translation": "translated text in target language",
       "type": "bubble",
       "direction": "vertical",
-      "bbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.08 }
+      "bbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.08 },
+      "polygon": [{"x": 0.10, "y": 0.08}, {"x": 0.20, "y": 0.04}, {"x": 0.35, "y": 0.05}, {"x": 0.38, "y": 0.12}, {"x": 0.20, "y": 0.14}]
     }
   ]
 }
@@ -488,8 +489,8 @@ type: "bubble" | "sfx" | "caption"
 direction: "vertical" | "horizontal"
 
 Rules:
-- bbox coordinates are normalized 0-1 (relative to image width/height)
-- x,y is the top-left corner; bbox must stay WITHIN the bubble border
+- bbox coordinates are normalized 0-1 (relative to image width/height); x,y is top-left corner; bbox must stay WITHIN the bubble border
+- polygon: for bubble and caption types, trace the actual speech bubble / caption box outline as an ordered list of vertices (clockwise); normalized 0-1 coordinates; choose as many points as needed to accurately represent the shape — use more points for round or irregular bubbles, fewer for simple rectangles; the first and last point should NOT be repeated (the path is auto-closed); omit polygon for sfx type
 - Detect ALL visible text
 - Keep translations natural, preserve tone and style
 - Order blocks top-to-bottom, left-to-right

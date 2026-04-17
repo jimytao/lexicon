@@ -204,10 +204,31 @@ export function BlockOverlay({
         }
       }}
     >
+      {/* SVG polygon outlines for blocks that have polygon data */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        viewBox="0 0 1 1"
+        preserveAspectRatio="none"
+      >
+        {blocks.map((block, i) =>
+          block.polygon && block.polygon.length >= 3 ? (
+            <polygon
+              key={i}
+              points={block.polygon.map(p => `${p.x},${p.y}`).join(' ')}
+              fill={selectedIndex === i ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)'}
+              stroke="#3b82f6"
+              strokeWidth={selectedIndex === i ? '0.003' : '0.002'}
+              strokeDasharray={selectedIndex === i ? undefined : '0.012,0.006'}
+            />
+          ) : null
+        )}
+      </svg>
+
       {/* Existing blocks */}
       {blocks.map((block, i) => {
         const { x, y, w, h } = block.bbox
         const isSelected = selectedIndex === i
+        const hasPolygon = block.polygon && block.polygon.length >= 3
         return (
           <div
             key={i}
@@ -218,8 +239,10 @@ export function BlockOverlay({
               width: `${w * 100}%`,
               height: `${h * 100}%`,
               boxSizing: 'border-box',
-              border: isSelected ? '2px solid #3b82f6' : '1px dashed rgba(59,130,246,0.5)',
-              backgroundColor: isSelected ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)',
+              // When polygon exists, hide the rect border (SVG polygon shows instead)
+              // but keep the div for drag/select interaction
+              border: hasPolygon ? 'none' : (isSelected ? '2px solid #3b82f6' : '1px dashed rgba(59,130,246,0.5)'),
+              backgroundColor: hasPolygon ? 'transparent' : (isSelected ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)'),
               cursor: 'move',
             }}
             onMouseDown={(e) => {

@@ -42,6 +42,19 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
         saturation: block.colorSaturation ?? 1,
         opacity: block.colorOpacity ?? 1,
       }
+
+      const poly = block.polygon && block.polygon.length >= 3 ? block.polygon : null
+      if (poly) {
+        ctx.save()
+        ctx.beginPath()
+        ctx.moveTo(poly[0].x * img.naturalWidth, poly[0].y * img.naturalHeight)
+        for (let pi = 1; pi < poly.length; pi++) {
+          ctx.lineTo(poly[pi].x * img.naturalWidth, poly[pi].y * img.naturalHeight)
+        }
+        ctx.closePath()
+        ctx.clip()
+      }
+
       if (blockType === 'bubble') {
         renderBubble(ctx, block.translation, x, y, w, h, fontFamily, dir, colorOpts)
       } else if (blockType === 'sfx') {
@@ -49,6 +62,8 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
       } else {
         renderCaption(ctx, block.translation, x, y, w, h, fontFamily, dir, colorOpts)
       }
+
+      if (poly) ctx.restore()
     }
   }, [blocks, fontFamily])
 
@@ -249,21 +264,21 @@ function renderVertical(
 // ── Helpers ──
 
 function sampleFillColor(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): string {
-  // Sample a 5×5 grid from the interior center of the bbox
+  // Sample along the four edges of the bbox (avoids text pixels in the interior)
   const samples: Array<[number, number, number]> = []
-  const cx = x + w / 2
-  const cy = y + h / 2
-  const rx = Math.max(4, w * 0.15)
-  const ry = Math.max(4, h * 0.15)
-  for (let di = -2; di <= 2; di++) {
-    for (let dj = -2; dj <= 2; dj++) {
-      const px = Math.round(cx + dj * rx / 2)
-      const py = Math.round(cy + di * ry / 2)
-      try {
-        const pixel = ctx.getImageData(px, py, 1, 1).data
-        samples.push([pixel[0], pixel[1], pixel[2]])
-      } catch { /* skip */ }
-    }
+  const steps = 8
+  function sample(px: number, py: number) {
+    try {
+      const pixel = ctx.getImageData(Math.round(px), Math.round(py), 1, 1).data
+      samples.push([pixel[0], pixel[1], pixel[2]])
+    } catch { /* skip */ }
+  }
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    sample(x + t * w, y)              // top edge
+    sample(x + t * w, y + h)          // bottom edge
+    sample(x, y + t * h)              // left edge
+    sample(x + w, y + t * h)          // right edge
   }
   if (samples.length === 0) return 'rgb(255, 255, 255)'
   const avg = samples.reduce((a, [r, g, b]) => [a[0] + r, a[1] + g, a[2] + b], [0, 0, 0])
