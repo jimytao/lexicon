@@ -26,7 +26,7 @@ export function ImageTranslateView() {
     images, currentIndex,
     sourceLang, targetLang, fontFamily,
     addImages, removeCurrentImage, clearAll, setCurrentIndex, nextImage, prevImage,
-    setImageBase64, setBlocks, updateBlock, deleteBlock, addBlock, setStatus,
+    setBlocks, updateBlock, deleteBlock, addBlock,
     setImageBase64At, setBlocksAt, setStatusAt,
     setSourceLang, setTargetLang, setFontFamily,
   } = useImageStore()
@@ -55,19 +55,6 @@ export function ImageTranslateView() {
   const listViewerRef = useRef<ImageViewerHandle | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const stickyRef = useRef<HTMLDivElement>(null)
-
-  /** Convert current imageFile to base64, cache in store */
-  async function getBase64(): Promise<string> {
-    if (storedBase64) return storedBase64
-    if (!imageFile) throw new Error('No image file')
-    const buffer = await imageFile.arrayBuffer()
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-    const b64 = `data:${imageFile.type};base64,${btoa(binary)}`
-    setImageBase64(b64)
-    return b64
-  }
 
   const handleFiles = useCallback((files: FileList | File[]) => {
     addImages(Array.from(files))
