@@ -101,6 +101,40 @@ export type TextBlockType = 'bubble' | 'sfx' | 'caption'
 
 export type TextDirection = 'vertical' | 'horizontal'
 
+export interface TextRegion {
+  id: string
+  original: string
+  translation: string
+  type: TextBlockType
+  direction: TextDirection
+  // AI-detected position information
+  detectedBbox: { x: number; y: number; w: number; h: number }
+  detectedPolygon?: Array<{ x: number; y: number }>
+  visualReference?: string  // AI description for position verification
+}
+
+export interface L1Polygon {
+  regionId: string  // Links to TextRegion.id
+  polygon: Array<{ x: number; y: number }>
+  // L1 polygon fill color — completely independent from L2
+  l1ColorHue?: number
+  l1ColorSaturation?: number
+  l1ColorOpacity?: number
+  rotation?: number
+}
+
+export interface L2Text {
+  regionId: string  // Links to TextRegion.id
+  // L2 text positioning — independent from L1
+  bbox: { x: number; y: number; w: number; h: number }
+  // L2 text background color (for non-polygon blocks)
+  colorHue?: number
+  colorSaturation?: number
+  colorOpacity?: number
+  rotation?: number
+}
+
+// Legacy TextBlock for backward compatibility
 export interface TextBlock {
   original: string
   translation: string
@@ -108,10 +142,15 @@ export interface TextBlock {
   polygon?: Array<{ x: number; y: number }>  // normalized 0-1, bubble outline vertices (bubble/caption only)
   type: TextBlockType
   direction: TextDirection
-  // Optional per-block color overrides (bubble/caption background)
+  // L2 text background color (non-polygon blocks)
   colorHue?: number        // hue shift in degrees, -180~180, default 0
   colorSaturation?: number // saturation multiplier 0~2, default 1
   colorOpacity?: number    // opacity 0~1, default 1
+  // L1 polygon fill color (polygon blocks only) — separate from L2
+  l1ColorHue?: number
+  l1ColorSaturation?: number
+  l1ColorOpacity?: number  // default 1 (opaque white)
+  rotation?: number        // rotation in degrees, default 0
 }
 
 export interface ImageTranslation {

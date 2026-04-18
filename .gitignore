@@ -2,9 +2,9 @@ node_modules
 dist
 
 # Internal docs (not useful for external contributors)
-CLAUDE.md
-CHANGELOG.md
-lexicon-docs/
+# CLAUDE.md
+# CHANGELOG.md
+# lexicon-docs/
 
 # Android keystore (never commit — back up locally)
 *.keystore

@@ -27,43 +27,105 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
     canvas.height = img.naturalHeight
     ctx.drawImage(img, 0, 0)
 
+    // Pre-compute pixel coords for all blocks with L1/L2 separation
+    type BlockRenderInfo = {
+      block: TextBlock
+      // L1 positioning - independent from L2
+      l1x: number; l1y: number; l1w: number; l1h: number
+      l1PolyPixels: Array<{x: number, y: number}> | null
+      l1ColorOpts: { hue: number; saturation: number; opacity: number }
+      // L2 positioning - independent from L1
+      l2x: number; l2y: number; l2w: number; l2h: number
+      l2ColorOpts: { hue: number; saturation: number; opacity: number }
+    }
+    const infos: BlockRenderInfo[] = []
     for (const block of blocks) {
       const x = Math.round(block.bbox.x * img.naturalWidth)
       const y = Math.round(block.bbox.y * img.naturalHeight)
       const w = Math.round(block.bbox.w * img.naturalWidth)
       const h = Math.round(block.bbox.h * img.naturalHeight)
       if (w <= 0 || h <= 0) continue
-
-      const blockType: TextBlockType = block.type || 'bubble'
-      const dir: TextDirection = block.direction || 'horizontal'
-
-      const colorOpts = {
-        hue: block.colorHue ?? 0,
-        saturation: block.colorSaturation ?? 1,
-        opacity: block.colorOpacity ?? 1,
-      }
-
+      
+      // L1: Polygon positioning (if polygon exists)
+      let l1x = x, l1y = y, l1w = w, l1h = h
+      let l1PolyPixels: Array<{x: number, y: number}> | null = null
       const poly = block.polygon && block.polygon.length >= 3 ? block.polygon : null
       if (poly) {
-        ctx.save()
-        ctx.beginPath()
-        ctx.moveTo(poly[0].x * img.naturalWidth, poly[0].y * img.naturalHeight)
-        for (let pi = 1; pi < poly.length; pi++) {
-          ctx.lineTo(poly[pi].x * img.naturalWidth, poly[pi].y * img.naturalHeight)
-        }
-        ctx.closePath()
-        ctx.clip()
+        l1PolyPixels = poly.map(p => ({ x: p.x * img.naturalWidth, y: p.y * img.naturalHeight }))
+        const pxs = l1PolyPixels.map(p => p.x)
+        const pys = l1PolyPixels.map(p => p.y)
+        l1x = Math.round(Math.min(...pxs))
+        l1y = Math.round(Math.min(...pys))
+        l1w = Math.round(Math.max(...pxs) - l1x)
+        l1h = Math.round(Math.max(...pys) - l1y)
       }
+      
+      // L2: Text positioning (always use original bbox, completely independent)
+      const l2x = x
+      const l2y = y
+      const l2w = w
+      const l2h = h
+      
+      infos.push({
+        block,
+        // L1 data
+        l1x, l1y, l1w, l1h, l1PolyPixels,
+        l1ColorOpts: {
+          hue: block.l1ColorHue ?? 0,
+          saturation: block.l1ColorSaturation ?? 1,
+          opacity: block.l1ColorOpacity ?? 1,
+        },
+        // L2 data
+        l2x, l2y, l2w, l2h,
+        l2ColorOpts: {
+          hue: block.colorHue ?? 0,
+          saturation: block.colorSaturation ?? 1,
+          opacity: poly ? 0 : (block.colorOpacity ?? 1),  // L2 polygon: always transparent
+        },
+      })
+    }
 
+    // Pass 1: Layer 1 — polygon background fill (completely independent from L2)
+    for (const { block, l1x, l1y, l1w, l1h, l1PolyPixels, l1ColorOpts } of infos) {
+      if (!l1PolyPixels) continue
+      const rotation = block.rotation ?? 0
+      const fillColor = adjustColor('rgb(255, 255, 255)', l1ColorOpts)
+      ctx.save()
+      if (rotation !== 0) {
+        ctx.translate(l1x + l1w / 2, l1y + l1h / 2)
+        ctx.rotate(rotation * Math.PI / 180)
+        ctx.translate(-(l1x + l1w / 2), -(l1y + l1h / 2))
+      }
+      ctx.beginPath()
+      ctx.moveTo(l1PolyPixels[0].x, l1PolyPixels[0].y)
+      for (let pi = 1; pi < l1PolyPixels.length; pi++) ctx.lineTo(l1PolyPixels[pi].x, l1PolyPixels[pi].y)
+      ctx.closePath()
+      ctx.fillStyle = fillColor
+      ctx.globalAlpha = l1ColorOpts.opacity
+      ctx.fill()
+      ctx.restore()
+    }
+
+    // Pass 2: Layer 2 — translation text (completely independent from L1)
+    // Always use independent L2 positioning data
+    for (const { block, l2x, l2y, l2w, l2h, l2ColorOpts } of infos) {
+      const blockType: TextBlockType = block.type || 'bubble'
+      const dir: TextDirection = block.direction || 'horizontal'
+      const rotation = block.rotation ?? 0
+      ctx.save()
+      if (rotation !== 0) {
+        ctx.translate(l2x + l2w / 2, l2y + l2h / 2)
+        ctx.rotate(rotation * Math.PI / 180)
+        ctx.translate(-(l2x + l2w / 2), -(l2y + l2h / 2))
+      }
       if (blockType === 'bubble') {
-        renderBubble(ctx, block.translation, x, y, w, h, fontFamily, dir, colorOpts)
+        renderBubble(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, l2ColorOpts, null)
       } else if (blockType === 'sfx') {
-        renderSfx(ctx, block.translation, x, y, w, h, fontFamily, dir)
+        renderSfx(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir)
       } else {
-        renderCaption(ctx, block.translation, x, y, w, h, fontFamily, dir, colorOpts)
+        renderCaption(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, l2ColorOpts, null)
       }
-
-      if (poly) ctx.restore()
+      ctx.restore()
     }
   }, [blocks, fontFamily])
 
@@ -101,6 +163,7 @@ function renderBubble(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
   fontFamily: string, dir: TextDirection, colorOpts: ColorOpts,
+  polyPixels?: Array<{x: number, y: number}> | null,
 ) {
   if (!text) return
 
@@ -117,7 +180,7 @@ function renderBubble(
   if (dir === 'vertical') {
     renderVertical(ctx, text, x, y, w, h, fontFamily, textColor)
   } else {
-    renderHorizontal(ctx, text, x, y, w, h, fontFamily, textColor)
+    renderHorizontal(ctx, text, x, y, w, h, fontFamily, textColor, polyPixels)
   }
 }
 
@@ -141,10 +204,10 @@ function renderCaption(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
   fontFamily: string, dir: TextDirection, colorOpts: ColorOpts,
+  polyPixels?: Array<{x: number, y: number}> | null,
 ) {
   if (!text) return
 
-  // Draw semi-transparent background
   const pad = 4
   const base = adjustColor('rgb(255,255,255)', colorOpts)
   ctx.fillStyle = base
@@ -157,7 +220,7 @@ function renderCaption(
   if (dir === 'vertical') {
     renderVertical(ctx, text, x + pad, y + pad, w - pad * 2, h - pad * 2, fontFamily, '#222222')
   } else {
-    renderHorizontal(ctx, text, x + pad, y + pad, w - pad * 2, h - pad * 2, fontFamily, '#222222')
+    renderHorizontal(ctx, text, x + pad, y + pad, w - pad * 2, h - pad * 2, fontFamily, '#222222', polyPixels)
   }
 }
 
@@ -166,6 +229,7 @@ function renderHorizontal(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
   fontFamily: string, color: string,
+  polyPixels?: Array<{x: number, y: number}> | null,
 ) {
   ctx.fillStyle = color
   const fontSize = fitFontSizeH(ctx, text, w * 0.85, h * 0.85, fontFamily)
@@ -179,8 +243,37 @@ function renderHorizontal(
   const startY = y + (h - totalHeight) / 2
 
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], x + w / 2, startY + i * lineHeight)
+    const lineY = startY + i * lineHeight
+    if (polyPixels) {
+      // Scanline: find polygon x-range at this line's center y
+      const scanY = lineY + lineHeight / 2
+      const range = getPolygonScanline(polyPixels, scanY)
+      if (range) {
+        const pad = (range[1] - range[0]) * 0.05
+        ctx.fillText(lines[i], (range[0] + range[1]) / 2, lineY)
+        void pad  // used implicitly via clip
+      } else {
+        ctx.fillText(lines[i], x + w / 2, lineY)
+      }
+    } else {
+      ctx.fillText(lines[i], x + w / 2, lineY)
+    }
   }
+}
+
+/** Compute left/right x intersection of polygon at a given y scanline */
+function getPolygonScanline(poly: Array<{x: number, y: number}>, y: number): [number, number] | null {
+  const xs: number[] = []
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]
+    const b = poly[(i + 1) % poly.length]
+    if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
+      const t = (y - a.y) / (b.y - a.y)
+      xs.push(a.x + t * (b.x - a.x))
+    }
+  }
+  if (xs.length < 2) return null
+  return [Math.min(...xs), Math.max(...xs)]
 }
 
 function renderHorizontalOutlined(

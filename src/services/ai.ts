@@ -466,36 +466,49 @@ Rules:
 - Never output anything outside the JSON object`
 
 // ── Full prompt: OCR + translate + bbox (for embed/inlay mode) ──
-const IMAGE_TRANSLATE_FULL_PROMPT = `You are a professional manga/image text detector and translator.
+const IMAGE_TRANSLATE_FULL_PROMPT = `You are a professional manga/comic localization expert specializing in precise text region detection and translation.
 
-Given an image, detect ALL text regions, classify them, translate them, provide precise bounding boxes, and for bubble/caption types also trace the speech bubble outline as a polygon.
+POSITIONING REFERENCE SYSTEM:
+- Imagine a 3x3 grid overlay on the image (top-left, top-center, top-right, middle-left, center, middle-right, bottom-left, bottom-center, bottom-right)
+- Use this grid to describe and verify text positions
+- Always include visual reference like "top-left speech bubble" or "center caption box"
 
-Return ONLY a valid JSON object. No markdown code fences. No explanation.
+CRITICAL RULES FOR ACCURATE POSITIONING:
+1. First, scan entire image and COUNT all distinct text regions
+2. For each region: 
+   - Identify its grid position (e.g., "top-left area", "center-right area")
+   - Read ONLY the text visible at that exact location
+   - Verify: "The text at [grid position] is [text]" before proceeding
+3. Never assign one region's text to another region's coordinates
+4. For polygon shapes: trace ONLY the inner smooth boundary, ignore decorative spikes
+
+Return ONLY a valid JSON object. No markdown, no explanation, no extra text.
 
 {
-  "blocks": [
+  "regions": [
     {
-      "original": "detected text in original language",
-      "translation": "translated text in target language",
+      "id": "region_1",
+      "original": "detected text in source language",
+      "translation": "translated text",
       "type": "bubble",
       "direction": "vertical",
-      "bbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.08 },
-      "polygon": [{"x": 0.10, "y": 0.08}, {"x": 0.20, "y": 0.04}, {"x": 0.35, "y": 0.05}, {"x": 0.38, "y": 0.12}, {"x": 0.20, "y": 0.14}]
+      "detectedBbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.18 },
+      "detectedPolygon": [{"x": 0.11, "y": 0.09}, {"x": 0.18, "y": 0.05}, {"x": 0.30, "y": 0.05}, {"x": 0.37, "y": 0.10}, {"x": 0.35, "y": 0.20}, {"x": 0.18, "y": 0.23}],
+      "visualReference": "top-left speech bubble with spiky tail"
     }
   ]
 }
 
-type: "bubble" | "sfx" | "caption"
-direction: "vertical" | "horizontal"
-
-Rules:
-- bbox coordinates are normalized 0-1 (relative to image width/height); x,y is top-left corner; bbox must stay WITHIN the bubble border
-- polygon: for bubble and caption types, trace the actual speech bubble / caption box outline as an ordered list of vertices (clockwise); normalized 0-1 coordinates; choose as many points as needed to accurately represent the shape — use more points for round or irregular bubbles, fewer for simple rectangles; the first and last point should NOT be repeated (the path is auto-closed); omit polygon for sfx type
-- Detect ALL visible text
-- Keep translations natural, preserve tone and style
-- Order blocks top-to-bottom, left-to-right
-- If no text found, return {"blocks": []}
-- Never output anything outside the JSON object`
+Field rules:
+- id: unique identifier (region_1, region_2, etc.)
+- type: "bubble" | "sfx" | "caption"
+- direction: "vertical" | "horizontal"
+- detectedBbox: normalized 0-1 coordinates of where text is actually located
+- detectedPolygon: clockwise vertices of inner boundary for bubble/caption only
+- visualReference: brief description using grid position for verification
+- Order regions top-to-bottom, then left-to-right
+- If no text found: {"regions": []}
+- Never output anything outside of JSON object`
 
 async function callImageTranslateAPI(
   imageBase64: string,
@@ -541,7 +554,7 @@ async function callImageTranslateAPI(
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
   const cleaned = fenceMatch ? fenceMatch[1].trim() : raw.trim()
 
-  let parsed: { blocks: import('../types').TextBlock[] }
+  let parsed: { regions?: import('../types').TextRegion[], blocks?: import('../types').TextBlock[] }
   try {
     parsed = JSON.parse(cleaned)
   } catch {
@@ -555,6 +568,27 @@ async function callImageTranslateAPI(
     }
   }
 
+  // Handle new regions format (with L1/L2 separation)
+  if (parsed.regions) {
+    return parsed.regions.map(region => ({
+      original: region.original,
+      translation: region.translation,
+      type: region.type,
+      direction: region.direction,
+      bbox: region.detectedBbox,
+      polygon: region.detectedPolygon,
+      // Default values for L1/L2 properties
+      l1ColorHue: 0,
+      l1ColorSaturation: 1,
+      l1ColorOpacity: 1,
+      colorHue: 0,
+      colorSaturation: 1,
+      colorOpacity: 1,
+      rotation: 0,
+    }))
+  }
+
+  // Handle legacy blocks format (backward compatibility)
   return parsed.blocks ?? []
 }
 

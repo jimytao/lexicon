@@ -4,21 +4,25 @@ import type { TextBlock, TextBlockType, TextDirection } from '../../types'
 interface Props {
   blocks: TextBlock[]
   selectedIndex: number | null
-  onSelect: (index: number | null) => void
+  selectedLayer?: 1 | 2
+  onSelect: (index: number | null, layer?: 1 | 2) => void
   onUpdateBlock: (index: number, partial: Partial<TextBlock>) => void
   onDeleteBlock: (index: number) => void
   onAddBlock: (block: TextBlock) => void
+  drawPolygonForIndex?: number | null   // activate polygon-draw mode for this block
+  onPolygonDrawn?: () => void           // called when drawing finishes or is cancelled
 }
 
 type HandlePos = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
 interface DragState {
-  kind: 'move' | 'resize' | 'draw'
+  kind: 'move' | 'resize' | 'draw' | 'rotate'
   blockIndex?: number
   handle?: HandlePos
-  startNX: number  // normalized coords at drag start
+  startNX: number
   startNY: number
   startBbox?: { x: number; y: number; w: number; h: number }
+  startPolygon?: Array<{ x: number; y: number }>
   drawEndNX?: number
   drawEndNY?: number
 }
@@ -64,27 +68,34 @@ function applyHandleDelta(
   if (handle.includes('e')) { w += dnx }
   if (handle.includes('n')) { y += dny; h -= dny }
   if (handle.includes('s')) { h += dny }
-  // Minimum size
   w = Math.max(0.02, w)
   h = Math.max(0.02, h)
-  // Clamp to [0, 1]
   x = Math.max(0, Math.min(1 - w, x))
   y = Math.max(0, Math.min(1 - h, y))
   return { x, y, w, h }
 }
 
 export function BlockOverlay({
-  blocks, selectedIndex, onSelect, onUpdateBlock, onDeleteBlock, onAddBlock,
+  blocks, selectedIndex, selectedLayer = 2, onSelect,
+  onUpdateBlock, onDeleteBlock, onAddBlock,
+  drawPolygonForIndex, onPolygonDrawn,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const [drawingRect, setDrawingRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
-  const [newBlockForm, setNewBlockForm] = useState<{
-    nx: number; ny: number; nw: number; nh: number
-  } | null>(null)
+  const [newBlockForm, setNewBlockForm] = useState<{ nx: number; ny: number; nw: number; nh: number } | null>(null)
   const [newTranslation, setNewTranslation] = useState('')
   const [newType, setNewType] = useState<TextBlockType>('bubble')
   const [newDirection, setNewDirection] = useState<TextDirection>('horizontal')
+  // Polygon drawing state
+  const [polyPts, setPolyPts] = useState<Array<{ x: number; y: number }>>([])
+
+  const isDrawingPoly = drawPolygonForIndex != null
+
+  // Reset polygon points when target block changes
+  useEffect(() => {
+    setPolyPts([])
+  }, [drawPolygonForIndex])
 
   const getPtr = useCallback((e: MouseEvent | TouchEvent) => {
     if (!overlayRef.current) return null
@@ -93,21 +104,19 @@ export function BlockOverlay({
 
   const handlePointerDown = useCallback((
     e: MouseEvent | TouchEvent,
-    kind: 'move' | 'resize' | 'draw',
+    kind: 'move' | 'resize' | 'draw' | 'rotate',
     blockIndex?: number,
     handle?: HandlePos,
   ) => {
     const ptr = getPtr(e)
     if (!ptr) return
-
     const block = blockIndex !== undefined ? blocks[blockIndex] : undefined
     dragRef.current = {
-      kind,
-      blockIndex,
-      handle,
+      kind, blockIndex, handle,
       startNX: ptr.nx,
       startNY: ptr.ny,
       startBbox: block ? { ...block.bbox } : undefined,
+      startPolygon: block?.polygon ? block.polygon.map(p => ({ ...p })) : undefined,
     }
   }, [blocks, getPtr])
 
@@ -116,26 +125,41 @@ export function BlockOverlay({
     if (!drag) return
     const ptr = getPtr(e)
     if (!ptr) return
-
     const dnx = ptr.nx - drag.startNX
     const dny = ptr.ny - drag.startNY
 
     if (drag.kind === 'move' && drag.blockIndex !== undefined && drag.startBbox) {
+      const bbox = drag.startBbox
+      const newBbox = {
+        x: Math.max(0, Math.min(1 - bbox.w, bbox.x + dnx)),
+        y: Math.max(0, Math.min(1 - bbox.h, bbox.y + dny)),
+        w: bbox.w, h: bbox.h,
+      }
+      const update: Partial<TextBlock> = { bbox: newBbox }
+      if (drag.startPolygon) {
+        update.polygon = drag.startPolygon.map(p => ({
+          x: Math.max(0, Math.min(1, p.x + dnx)),
+          y: Math.max(0, Math.min(1, p.y + dny)),
+        }))
+      }
+      onUpdateBlock(drag.blockIndex, update)
+    } else if (drag.kind === 'resize' && drag.blockIndex !== undefined && drag.startBbox && drag.handle) {
+      const newBbox = applyHandleDelta(drag.handle, drag.startBbox, dnx, dny)
+      const update: Partial<TextBlock> = { bbox: newBbox }
+      if (drag.startPolygon && drag.startBbox.w > 0 && drag.startBbox.h > 0) {
+        update.polygon = drag.startPolygon.map(p => ({
+          x: Math.max(0, Math.min(1, newBbox.x + ((p.x - drag.startBbox!.x) / drag.startBbox!.w) * newBbox.w)),
+          y: Math.max(0, Math.min(1, newBbox.y + ((p.y - drag.startBbox!.y) / drag.startBbox!.h) * newBbox.h)),
+        }))
+      }
+      onUpdateBlock(drag.blockIndex, update)
+    } else if (drag.kind === 'rotate' && drag.blockIndex !== undefined && drag.startBbox) {
       const block = blocks[drag.blockIndex]
       if (!block) return
-      const bbox = drag.startBbox
-      onUpdateBlock(drag.blockIndex, {
-        bbox: {
-          x: Math.max(0, Math.min(1 - bbox.w, bbox.x + dnx)),
-          y: Math.max(0, Math.min(1 - bbox.h, bbox.y + dny)),
-          w: bbox.w,
-          h: bbox.h,
-        },
-      })
-    } else if (drag.kind === 'resize' && drag.blockIndex !== undefined && drag.startBbox && drag.handle) {
-      onUpdateBlock(drag.blockIndex, {
-        bbox: applyHandleDelta(drag.handle, drag.startBbox, dnx, dny),
-      })
+      const cx = block.bbox.x + block.bbox.w / 2
+      const cy = block.bbox.y + block.bbox.h / 2
+      const angle = Math.atan2(ptr.ny - cy, ptr.nx - cx) * 180 / Math.PI + 90
+      onUpdateBlock(drag.blockIndex, { rotation: Math.round(angle) })
     } else if (drag.kind === 'draw') {
       const x = Math.min(drag.startNX, ptr.nx)
       const y = Math.min(drag.startNY, ptr.ny)
@@ -150,7 +174,6 @@ export function BlockOverlay({
   const handlePointerUp = useCallback(() => {
     const drag = dragRef.current
     dragRef.current = null
-
     if (drag?.kind === 'draw' && drawingRect && drawingRect.w > 0.02 && drawingRect.h > 0.02) {
       setNewBlockForm({ nx: drawingRect.x, ny: drawingRect.y, nw: drawingRect.w, nh: drawingRect.h })
       setNewTranslation('')
@@ -176,35 +199,70 @@ export function BlockOverlay({
   function confirmNewBlock() {
     if (!newBlockForm || !newTranslation.trim()) return
     onAddBlock({
-      original: '',
-      translation: newTranslation.trim(),
-      type: newType,
-      direction: newDirection,
+      original: '', translation: newTranslation.trim(),
+      type: newType, direction: newDirection,
       bbox: { x: newBlockForm.nx, y: newBlockForm.ny, w: newBlockForm.nw, h: newBlockForm.nh },
     })
     setNewBlockForm(null)
+  }
+
+  function commitPolygon(pts: Array<{ x: number; y: number }>) {
+    if (drawPolygonForIndex == null || pts.length < 3) return
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
+    const minX = Math.min(...xs), maxX = Math.max(...xs)
+    const minY = Math.min(...ys), maxY = Math.max(...ys)
+    onUpdateBlock(drawPolygonForIndex, {
+      polygon: pts,
+      bbox: { x: minX, y: minY, w: maxX - minX, h: maxY - minY },
+    })
+    setPolyPts([])
+    onPolygonDrawn?.()
+  }
+
+  function cancelPolygon() {
+    setPolyPts([])
+    onPolygonDrawn?.()
+  }
+
+  function handleOverlayClick(e: React.MouseEvent) {
+    if (!overlayRef.current) return
+    const ptr = getPointer(e, overlayRef.current)
+    if (!ptr) return
+
+    if (isDrawingPoly) {
+      // Check if clicking near the first point to close the polygon
+      if (polyPts.length >= 3) {
+        const first = polyPts[0]
+        const dist = Math.hypot(ptr.nx - first.x, ptr.ny - first.y)
+        if (dist < 0.025) {
+          commitPolygon(polyPts)
+          return
+        }
+      }
+      setPolyPts(prev => [...prev, { x: ptr.nx, y: ptr.ny }])
+    }
   }
 
   return (
     <div
       ref={overlayRef}
       className="absolute inset-0"
-      style={{ touchAction: 'none' }}
-      onMouseDown={(e) => {
-        // Only start drawing if clicking on the overlay itself (not a block)
+      style={{ touchAction: 'none', cursor: isDrawingPoly ? 'crosshair' : 'default' }}
+      onClick={isDrawingPoly ? handleOverlayClick : undefined}
+      onMouseDown={!isDrawingPoly ? (e) => {
         if (e.target === overlayRef.current) {
           onSelect(null)
           handlePointerDown(e.nativeEvent, 'draw')
         }
-      }}
-      onTouchStart={(e) => {
+      } : undefined}
+      onTouchStart={!isDrawingPoly ? (e) => {
         if (e.target === overlayRef.current && e.touches.length === 1) {
           onSelect(null)
           handlePointerDown(e.nativeEvent, 'draw')
         }
-      }}
+      } : undefined}
     >
-      {/* SVG polygon outlines for blocks that have polygon data */}
+      {/* SVG polygon outlines + drawing preview */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
         viewBox="0 0 1 1"
@@ -215,20 +273,76 @@ export function BlockOverlay({
             <polygon
               key={i}
               points={block.polygon.map(p => `${p.x},${p.y}`).join(' ')}
-              fill={selectedIndex === i ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.06)'}
-              stroke="#3b82f6"
+              fill={
+                selectedIndex === i && selectedLayer === 1
+                  ? 'rgba(168,85,247,0.18)'
+                  : selectedIndex === i
+                    ? 'rgba(59,130,246,0.15)'
+                    : 'rgba(59,130,246,0.06)'
+              }
+              stroke={selectedIndex === i && selectedLayer === 1 ? '#a855f7' : '#3b82f6'}
               strokeWidth={selectedIndex === i ? '0.003' : '0.002'}
               strokeDasharray={selectedIndex === i ? undefined : '0.012,0.006'}
             />
           ) : null
         )}
+
+        {/* In-progress polygon drawing */}
+        {isDrawingPoly && polyPts.length >= 2 && (
+          <polygon
+            points={polyPts.map(p => `${p.x},${p.y}`).join(' ')}
+            fill="rgba(16,185,129,0.12)"
+            stroke="#10b981"
+            strokeWidth="0.003"
+            strokeDasharray="0.01,0.005"
+          />
+        )}
+        {isDrawingPoly && polyPts.length >= 1 && polyPts.length < 2 && (
+          <circle cx={polyPts[0].x} cy={polyPts[0].y} r="0.006" fill="#10b981" />
+        )}
+        {isDrawingPoly && polyPts.map((pt, i) => (
+          <circle
+            key={i}
+            cx={pt.x} cy={pt.y} r="0.005"
+            fill={i === 0 && polyPts.length >= 3 ? '#f59e0b' : '#10b981'}
+            stroke="#fff" strokeWidth="0.002"
+          />
+        ))}
       </svg>
 
+      {/* Polygon drawing controls */}
+      {isDrawingPoly && (
+        <div
+          className="absolute top-2 left-1/2 z-20 flex gap-2 items-center bg-black/70 text-white text-xs px-3 py-1.5 rounded-full"
+          style={{ transform: 'translateX(-50%)', pointerEvents: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span>{polyPts.length < 3 ? `点击添加顶点 (${polyPts.length}/3+)` : `${polyPts.length}点 · 点首点闭合`}</span>
+          {polyPts.length >= 3 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); commitPolygon(polyPts) }}
+              className="px-2 py-0.5 rounded bg-green-500 hover:bg-green-400 font-medium transition-colors"
+            >
+              完成
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); cancelPolygon() }}
+            className="px-2 py-0.5 rounded bg-gray-500 hover:bg-gray-400 transition-colors"
+          >
+            取消
+          </button>
+        </div>
+      )}
+
       {/* Existing blocks */}
-      {blocks.map((block, i) => {
+      {!isDrawingPoly && blocks.map((block, i) => {
         const { x, y, w, h } = block.bbox
         const isSelected = selectedIndex === i
-        const hasPolygon = block.polygon && block.polygon.length >= 3
+        const hasPolygon = !!(block.polygon && block.polygon.length >= 3)
+        const rotation = block.rotation ?? 0
         return (
           <div
             key={i}
@@ -239,24 +353,24 @@ export function BlockOverlay({
               width: `${w * 100}%`,
               height: `${h * 100}%`,
               boxSizing: 'border-box',
-              // When polygon exists, hide the rect border (SVG polygon shows instead)
-              // but keep the div for drag/select interaction
+              transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
+              transformOrigin: 'center center',
               border: hasPolygon ? 'none' : (isSelected ? '2px solid #3b82f6' : '1px dashed rgba(59,130,246,0.5)'),
               backgroundColor: hasPolygon ? 'transparent' : (isSelected ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)'),
               cursor: 'move',
             }}
             onMouseDown={(e) => {
               e.stopPropagation()
-              onSelect(i)
+              onSelect(i, 2)
               handlePointerDown(e.nativeEvent, 'move', i)
             }}
             onTouchStart={(e) => {
               e.stopPropagation()
-              onSelect(i)
+              onSelect(i, 2)
               handlePointerDown(e.nativeEvent, 'move', i)
             }}
           >
-            {/* Block label */}
+            {/* Block number label */}
             <div
               className="absolute text-[9px] font-medium px-1 leading-none rounded-sm select-none pointer-events-none"
               style={{ top: -14, left: 0, backgroundColor: '#3b82f6', color: '#fff' }}
@@ -264,7 +378,30 @@ export function BlockOverlay({
               {i + 1}
             </div>
 
-            {/* Delete button (selected only) */}
+            {/* Rotation handle */}
+            {isSelected && (
+              <div
+                style={{
+                  position: 'absolute', top: -36, left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    backgroundColor: '#fff', border: '2px solid #6366f1',
+                    cursor: 'grab', pointerEvents: 'auto', marginBottom: 2,
+                  }}
+                  onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e.nativeEvent, 'rotate', i) }}
+                  onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e.nativeEvent, 'rotate', i) }}
+                />
+                <div style={{ width: 2, height: 18, backgroundColor: '#6366f1' }} />
+              </div>
+            )}
+
+            {/* Delete button */}
             {isSelected && (
               <button
                 type="button"
@@ -278,27 +415,20 @@ export function BlockOverlay({
               </button>
             )}
 
-            {/* Resize handles (selected only) */}
+            {/* Resize handles */}
             {isSelected && HANDLE_POSITIONS.map((hp) => (
               <div
                 key={hp}
                 style={{
                   position: 'absolute',
-                  width: 10,
-                  height: 10,
+                  width: 10, height: 10,
                   backgroundColor: '#fff',
-                  border: '2px solid #3b82f6',
+                  border: `2px solid ${selectedLayer === 1 ? '#a855f7' : '#3b82f6'}`,
                   borderRadius: 2,
                   ...HANDLE_STYLE[hp],
                 }}
-                onMouseDown={(e) => {
-                  e.stopPropagation()
-                  handlePointerDown(e.nativeEvent, 'resize', i, hp)
-                }}
-                onTouchStart={(e) => {
-                  e.stopPropagation()
-                  handlePointerDown(e.nativeEvent, 'resize', i, hp)
-                }}
+                onMouseDown={(e) => { e.stopPropagation(); handlePointerDown(e.nativeEvent, 'resize', i, hp) }}
+                onTouchStart={(e) => { e.stopPropagation(); handlePointerDown(e.nativeEvent, 'resize', i, hp) }}
               />
             ))}
           </div>
@@ -321,21 +451,19 @@ export function BlockOverlay({
         />
       )}
 
-      {/* New block form (appears after drawing) */}
+      {/* New block form */}
       {newBlockForm && (
         <div
           className="absolute z-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-3 space-y-2"
           style={{
             left: `${Math.min(newBlockForm.nx * 100, 60)}%`,
             top: `${(newBlockForm.ny + newBlockForm.nh) * 100}%`,
-            minWidth: 200,
-            marginTop: 4,
+            minWidth: 200, marginTop: 4,
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <input
-            autoFocus
-            type="text"
+            autoFocus type="text"
             value={newTranslation}
             onChange={(e) => setNewTranslation(e.target.value)}
             placeholder="输入译文"
@@ -343,39 +471,25 @@ export function BlockOverlay({
             onKeyDown={(e) => { if (e.key === 'Enter') confirmNewBlock() }}
           />
           <div className="flex gap-2">
-            <select
-              aria-label="文字类型"
-              value={newType}
-              onChange={(e) => setNewType(e.target.value as TextBlockType)}
-              className="flex-1 text-xs px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-            >
+            <select aria-label="文字类型" value={newType} onChange={(e) => setNewType(e.target.value as TextBlockType)}
+              className="flex-1 text-xs px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
               <option value="bubble">对话</option>
               <option value="sfx">音效</option>
               <option value="caption">标注</option>
             </select>
-            <select
-              aria-label="排版方向"
-              value={newDirection}
-              onChange={(e) => setNewDirection(e.target.value as TextDirection)}
-              className="flex-1 text-xs px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-            >
+            <select aria-label="排版方向" value={newDirection} onChange={(e) => setNewDirection(e.target.value as TextDirection)}
+              className="flex-1 text-xs px-1.5 py-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
               <option value="horizontal">横排</option>
               <option value="vertical">竖排</option>
             </select>
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={confirmNewBlock}
-              className="flex-1 text-xs py-1 rounded bg-green-500 hover:bg-green-600 text-white font-medium transition-colors"
-            >
+            <button type="button" onClick={confirmNewBlock}
+              className="flex-1 text-xs py-1 rounded bg-green-500 hover:bg-green-600 text-white font-medium transition-colors">
               添加
             </button>
-            <button
-              type="button"
-              onClick={() => setNewBlockForm(null)}
-              className="flex-1 text-xs py-1 rounded border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
+            <button type="button" onClick={() => setNewBlockForm(null)}
+              className="flex-1 text-xs py-1 rounded border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               取消
             </button>
           </div>

@@ -35,7 +35,18 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
   }
 
   function resetTransform() {
-    scaleRef.current = 1
+    if (!containerRef.current || !innerRef.current) return
+    // Clear transform first so we measure the natural (unscaled) dimensions
+    innerRef.current.style.transform = 'none'
+    // Reading offsetHeight forces a synchronous reflow with the cleared transform
+    const naturalH = innerRef.current.offsetHeight
+    const naturalW = innerRef.current.offsetWidth
+    const containerH = containerRef.current.clientHeight
+    const containerW = containerRef.current.clientWidth
+    let scale = 1
+    if (naturalH > containerH && containerH > 0) scale = containerH / naturalH
+    if (naturalW * scale > containerW && containerW > 0) scale = containerW / naturalW
+    scaleRef.current = scale
     offsetRef.current = { x: 0, y: 0 }
     applyTransform()
   }
