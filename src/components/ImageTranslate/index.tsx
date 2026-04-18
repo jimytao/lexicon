@@ -23,26 +23,40 @@ const TARGET_OPTIONS = [
 
 export function ImageTranslateView() {
   const {
-    imageUrl, imageFile, imageBase64: storedBase64, sourceLang, targetLang, fontFamily,
-    blocks, bboxReady, status, error,
-    setImage, setImageBase64, clearImage, setSourceLang, setTargetLang, setFontFamily,
-    setBlocks, updateBlock, deleteBlock, addBlock, setStatus,
+    images, currentIndex,
+    sourceLang, targetLang, fontFamily,
+    addImages, removeCurrentImage, clearAll, setCurrentIndex, nextImage, prevImage,
+    setImageBase64, setBlocks, updateBlock, deleteBlock, addBlock, setStatus,
+    setImageBase64At, setBlocksAt, setStatusAt,
+    setSourceLang, setTargetLang, setFontFamily,
   } = useImageStore()
+
+  const current = images[currentIndex] ?? null
+  const imageUrl = current?.imageUrl ?? null
+  const imageFile = current?.file ?? null
+  const storedBase64 = current?.imageBase64 ?? null
+  const blocks = current?.blocks ?? []
+  const bboxReady = current?.bboxReady ?? false
+  const status = current?.status ?? 'idle'
+  const error = current?.error ?? null
 
   const [embedMode, setEmbedMode] = useState(false)
   const [embedLoading, setEmbedLoading] = useState(false)
   const [imageCollapsed, setImageCollapsed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [selectedLayer, setSelectedLayer] = useState<1 | 2>(2)
   const [, setViewerScale] = useState(1)
 
   const abortRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const addFileInputRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<ImageEditorHandle | null>(null)
   const viewerRef = useRef<ImageViewerHandle | null>(null)
   const listViewerRef = useRef<ImageViewerHandle | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const stickyRef = useRef<HTMLDivElement>(null)
 
-  /** Convert imageFile to base64, cache in store */
+  /** Convert current imageFile to base64, cache in store */
   async function getBase64(): Promise<string> {
     if (storedBase64) return storedBase64
     if (!imageFile) throw new Error('No image file')
@@ -55,38 +69,63 @@ export function ImageTranslateView() {
     return b64
   }
 
-  const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return
-    setImage(file)
+  const handleFiles = useCallback((files: FileList | File[]) => {
+    addImages(Array.from(files))
     setSelectedIndex(null)
     setEmbedMode(false)
-  }, [setImage])
+  }, [addImages])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
-  }, [handleFile])
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files)
+  }, [handleFiles])
 
-  /** Stage 1: fast OCR+translate, no bbox */
+  const handleSwitchImage = useCallback((index: number) => {
+    setCurrentIndex(index)
+    setSelectedIndex(null)
+    setEmbedMode(false)
+    setImageCollapsed(false)
+  }, [setCurrentIndex])
+
+  /** Convert any image file to base64, cache in store at given index */
+  async function getBase64At(imgIndex: number): Promise<string> {
+    const entry = images[imgIndex]
+    if (!entry) throw new Error('No image entry')
+    if (entry.imageBase64) return entry.imageBase64
+    const buffer = await entry.file.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    const b64 = `data:${entry.file.type};base64,${btoa(binary)}`
+    setImageBase64At(imgIndex, b64)
+    return b64
+  }
+
+  /** Stage 1: batch translate all images in parallel */
   const handleTranslate = useCallback(async () => {
-    if (!imageFile) return
+    if (images.length === 0) return
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
-    setStatus('loading')
     setSelectedIndex(null)
     setEmbedMode(false)
-    try {
-      const base64 = await getBase64()
-      const result = await aiImageTranslateFast(base64, sourceLang, targetLang, controller.signal)
-      setBlocks(result, false)
-      setStatus('done')
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') return
-      setStatus('error', (err as Error).message)
-    }
-  }, [imageFile, sourceLang, targetLang, setBlocks, setStatus])
+
+    // Mark all as loading
+    images.forEach((_, i) => setStatusAt(i, 'loading'))
+
+    // Translate all in parallel
+    await Promise.all(images.map(async (_, i) => {
+      try {
+        const base64 = await getBase64At(i)
+        const result = await aiImageTranslateFast(base64, sourceLang, targetLang, controller.signal)
+        setBlocksAt(i, result, false)
+        setStatusAt(i, 'done')
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return
+        setStatusAt(i, 'error', (err as Error).message)
+      }
+    }))
+  }, [images, sourceLang, targetLang, setBlocksAt, setStatusAt])
 
   /** Stage 2: full bbox, triggered on entering embed mode */
   const handleEnterEmbed = useCallback(async () => {
@@ -99,7 +138,6 @@ export function ImageTranslateView() {
     abortRef.current = controller
     try {
       const result = await aiImageTranslateFull(base64, sourceLang, targetLang, controller.signal)
-      // Merge: keep user-edited translations, replace bbox from new result
       const merged = result.map((newBlock, i) => ({
         ...newBlock,
         translation: blocks[i]?.translation ?? newBlock.translation,
@@ -112,20 +150,44 @@ export function ImageTranslateView() {
       viewerRef.current?.resetTransform()
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
-      // On failure, enter embed mode anyway with existing data
       setEmbedMode(true)
     } finally {
       setEmbedLoading(false)
     }
   }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks])
 
-  function handleSelect(index: number | null) {
+  const handleSelect = useCallback((index: number | null, layer: 1 | 2 = 2) => {
     setSelectedIndex(index)
-    if (index !== null && listRef.current) {
-      const el = listRef.current.querySelector(`#block-item-${index}`)
-      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    setSelectedLayer(layer)
+    if (index === null || !listRef.current) return
+    const block = index < blocks.length ? blocks[index] : null
+    const hasPolygon = !!(block?.polygon && block.polygon.length >= 3)
+    const elId = hasPolygon ? `block-item-${index}-${layer}` : `block-item-${index}`
+    const el = listRef.current.querySelector(`#${elId}`)
+    if (!el) return
+    const stickyH = (stickyRef.current?.offsetHeight ?? 0) + 12
+    let scrollContainer: Element | null = el.parentElement
+    while (scrollContainer) {
+      const ov = getComputedStyle(scrollContainer).overflowY
+      if (ov === 'auto' || ov === 'scroll') break
+      scrollContainer = scrollContainer.parentElement
     }
-  }
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const target = scrollContainer.scrollTop + elRect.top - containerRect.top - stickyH
+      scrollContainer.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+    } else {
+      const target = window.scrollY + el.getBoundingClientRect().top - stickyH
+      window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+    }
+  }, [blocks])
+
+  const [drawPolygonForIndex, setDrawPolygonForIndex] = useState<number | null>(null)
+  const handleDrawL1 = useCallback((index: number) => { setDrawPolygonForIndex(index) }, [])
+
+  const hasImages = images.length > 0
+  const multiImage = images.length > 1
 
   return (
     <div className="p-4 space-y-4">
@@ -158,8 +220,8 @@ export function ImageTranslateView() {
         </select>
       </div>
 
-      {/* Upload area */}
-      {!imageUrl ? (
+      {/* Upload area (no images yet) */}
+      {!hasImages ? (
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
@@ -169,19 +231,20 @@ export function ImageTranslateView() {
           <svg className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
           </svg>
-          <p className="text-sm text-gray-400 dark:text-gray-500">点击或拖拽上传图片</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">点击或拖拽上传图片（可多选）</p>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             aria-label="上传图片"
             className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+            onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = '' }}
           />
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Translate button */}
+          {/* Action bar */}
           <div className="flex gap-2">
             <button
               type="button"
@@ -189,22 +252,83 @@ export function ImageTranslateView() {
               disabled={status === 'loading'}
               className="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {status === 'loading' ? '翻译中...' : status === 'done' ? '重新翻译' : '开始翻译'}
+              {images.some(img => img.status === 'loading')
+              ? '翻译中...'
+              : images.some(img => img.status === 'done')
+                ? `重新翻译全部`
+                : '开始翻译全部'}
             </button>
+            {/* Add more images */}
             <button
               type="button"
-              onClick={() => { clearImage(); setSelectedIndex(null) }}
+              onClick={() => addFileInputRef.current?.click()}
               className="px-3 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="添加更多图片"
             >
-              换图
+              +
             </button>
+            <input
+              ref={addFileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              aria-label="添加图片"
+              className="hidden"
+              onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = '' }}
+            />
+            <button
+              type="button"
+              onClick={() => { removeCurrentImage(); setSelectedIndex(null); setEmbedMode(false) }}
+              className="px-3 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="删除此图"
+            >
+              删除
+            </button>
+            {multiImage && (
+              <button
+                type="button"
+                onClick={() => { clearAll(); setSelectedIndex(null); setEmbedMode(false) }}
+                className="px-3 py-2 rounded-lg text-sm border border-red-200 dark:border-red-800 text-red-400 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title="清空所有图片"
+              >
+                清空
+              </button>
+            )}
           </div>
+
+          {/* Image strip (thumbnail navigation) when multiple images */}
+          {multiImage && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => handleSwitchImage(i)}
+                  className={`relative shrink-0 w-14 h-14 rounded-md overflow-hidden border-2 transition-colors ${
+                    i === currentIndex
+                      ? 'border-blue-500'
+                      : 'border-transparent hover:border-gray-400'
+                  }`}
+                >
+                  <img src={img.imageUrl} alt={`图片${i + 1}`} className="w-full h-full object-cover" />
+                  {img.status === 'done' && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-tl-sm" />
+                  )}
+                  {img.status === 'loading' && (
+                    <span className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Error */}
           {status === 'error' && error && (
             <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
               {error}
-              <button onClick={handleTranslate} className="ml-2 underline">重试</button>
+              <button type="button" onClick={handleTranslate} className="ml-2 underline">重试</button>
             </div>
           )}
 
@@ -217,10 +341,9 @@ export function ImageTranslateView() {
             </div>
           )}
 
-          {/* Results: always show viewer after translation done */}
+          {/* Results */}
           {(status === 'done' || status === 'idle') && (
             <>
-              {/* Mode toggle (only when there are blocks) */}
               {blocks.length > 0 && (
                 <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                   <button
@@ -244,7 +367,7 @@ export function ImageTranslateView() {
                         : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
-                    {embedLoading ? '计算位置…' : '嵌字编辑'}
+                    {embedLoading ? '计算位置…' : '嵌字此图'}
                   </button>
                 </div>
               )}
@@ -252,8 +375,7 @@ export function ImageTranslateView() {
               {embedMode ? (
                 /* ── 嵌字编辑模式 ── */
                 <div className="space-y-3">
-                  {/* Sticky image + controls */}
-                  <div className="sticky top-safe z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
+                  <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"
@@ -294,15 +416,20 @@ export function ImageTranslateView() {
                           <BlockOverlay
                             blocks={blocks}
                             selectedIndex={selectedIndex}
+                            selectedLayer={selectedLayer}
                             onSelect={handleSelect}
                             onUpdateBlock={(i, partial) => updateBlock(i, partial)}
                             onDeleteBlock={deleteBlock}
                             onAddBlock={addBlock}
+                            drawPolygonForIndex={drawPolygonForIndex}
+                            onPolygonDrawn={() => setDrawPolygonForIndex(null)}
                           />
                         </ImageViewer>
-                        <ExportButton editorRef={editorRef} />
                       </>
                     )}
+                  </div>
+                  <div className="pt-2 pb-1">
+                    <ExportButton editorRef={editorRef} />
                   </div>
                   <div ref={listRef}>
                     <TranslationList
@@ -310,16 +437,17 @@ export function ImageTranslateView() {
                       onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
                       onUpdateBlock={updateBlock}
                       selectedIndex={selectedIndex ?? undefined}
+                      selectedLayer={selectedLayer}
                       onSelect={handleSelect}
                       onDeselect={() => setSelectedIndex(null)}
+                      onDrawL1={handleDrawL1}
                     />
                   </div>
                 </div>
               ) : (
                 /* ── 翻译列表模式 ── */
                 <div>
-                  {/* Sticky collapsible image — breaks out of p-4 with -mx-4 */}
-                  <div className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
+                  <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"
@@ -340,6 +468,36 @@ export function ImageTranslateView() {
                             className="w-full object-contain max-h-[50vh]"
                           />
                         </ImageViewer>
+                        {/* Navigation arrows */}
+                        {multiImage && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { prevImage(); setSelectedIndex(null); setImageCollapsed(false) }}
+                              disabled={currentIndex === 0}
+                              className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title="上一张"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { nextImage(); setSelectedIndex(null); setImageCollapsed(false) }}
+                              disabled={currentIndex === images.length - 1}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              title="下一张"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                            <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[11px] text-white bg-black/50 px-1.5 py-0.5 rounded-full pointer-events-none">
+                              {currentIndex + 1} / {images.length}
+                            </span>
+                          </>
+                        )}
                         <div className="absolute top-2 right-2 flex items-center gap-1.5">
                           <button
                             type="button"
@@ -366,7 +524,6 @@ export function ImageTranslateView() {
                     )}
                   </div>
 
-                  {/* Translation list — scrolls below the sticky image */}
                   <div className="pt-3">
                     {blocks.length > 0 ? (
                       <div ref={listRef}>
@@ -374,6 +531,7 @@ export function ImageTranslateView() {
                           blocks={blocks}
                           onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
                           selectedIndex={selectedIndex ?? undefined}
+                          selectedLayer={selectedLayer}
                           onSelect={handleSelect}
                         />
                       </div>
