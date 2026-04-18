@@ -33,7 +33,6 @@ export function ImageTranslateView() {
 
   const current = images[currentIndex] ?? null
   const imageUrl = current?.imageUrl ?? null
-  const imageFile = current?.file ?? null
   const storedBase64 = current?.imageBase64 ?? null
   const blocks = current?.blocks ?? []
   const bboxReady = current?.bboxReady ?? false
