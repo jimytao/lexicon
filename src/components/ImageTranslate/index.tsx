@@ -71,6 +71,10 @@ export function ImageTranslateView() {
     setSelectedIndex(null)
     setEmbedMode(false)
     setImageCollapsed(false)
+    requestAnimationFrame(() => {
+      listRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    })
   }, [setCurrentIndex])
 
   /** Convert any image file to base64, cache in store at given index */
@@ -459,7 +463,7 @@ export function ImageTranslateView() {
                           <>
                             <button
                               type="button"
-                              onClick={() => { prevImage(); setSelectedIndex(null); setImageCollapsed(false) }}
+                              onClick={() => handleSwitchImage(currentIndex - 1)}
                               disabled={currentIndex === 0}
                               className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                               title="上一张"
@@ -470,7 +474,7 @@ export function ImageTranslateView() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => { nextImage(); setSelectedIndex(null); setImageCollapsed(false) }}
+                              onClick={() => handleSwitchImage(currentIndex + 1)}
                               disabled={currentIndex === images.length - 1}
                               className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                               title="下一张"

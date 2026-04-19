@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-04-19 — 列表模式交互修复 (v0.5.1)
+
+### 改动
+
+- **平移守卫**：图片未放大（scale ≤ 1）时禁止平移，避免误触；仅在放大后 Ctrl+拖拽（PC）或单指拖拽（触屏）才触发平移
+- **切图自动回顶**：切换图片（缩略图、左右箭头）后，页面和列表容器自动滚回顶部，避免多图阅读时列表停留在上一张的滚动位置
+
+### 修改文件
+
+- `src/components/ImageTranslate/ImageViewer.tsx`：`handleMouseDown` 和 `handleTouchMove` 加 `scaleRef.current > 1` 守卫
+- `src/components/ImageTranslate/index.tsx`：`handleSwitchImage` 加 `scrollTo(top:0)`；prev/next 箭头按钮改用 `handleSwitchImage`
+
+---
+
 ## 2026-04-18 — 多图批量翻译 (v0.5.0)
 
 ### 改动

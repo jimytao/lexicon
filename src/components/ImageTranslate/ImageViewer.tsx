@@ -82,6 +82,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
   // ── Ctrl + drag pan (PC) ──
   const handleMouseDown = useCallback((e: MouseEvent) => {
     if (!e.ctrlKey && !e.metaKey) return
+    if (scaleRef.current <= 1) return
     e.preventDefault()
     isPanningRef.current = true
     panStartRef.current = { x: e.clientX, y: e.clientY, ox: offsetRef.current.x, oy: offsetRef.current.y }
@@ -143,7 +144,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
       // Single finger pan (only when not dragging a block — block overlay stops propagation)
       const dx = e.touches[0].clientX - panStartRef.current.x
       const dy = e.touches[0].clientY - panStartRef.current.y
-      if (Math.hypot(dx, dy) > 5) isPanningRef.current = true
+      if (Math.hypot(dx, dy) > 5 && scaleRef.current > 1) isPanningRef.current = true
       if (isPanningRef.current) {
         e.preventDefault()
         offsetRef.current = {
