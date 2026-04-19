@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-04-19 — 列表模式交互修复 (v0.5.2)
+
+### 改动
+
+- **切图跳至 sticky 位置**：切换图片后页面自动滚到图片恰好 sticky 吸顶的位置，图片固定在顶部，译文列表从第一条开始显示，方便沉浸式阅读
+- **修复滚动容器检测**：改用 `useEffect` 监听 `currentIndex`（保证 DOM 更新后再测量），先 reset 到 0 再用 `getBoundingClientRect` 精确定位 stickyRef，解决 `offsetTop` 在内容切换后不准的问题
+
+### 修改文件
+
+- `src/components/ImageTranslate/index.tsx`：切图滚动逻辑改为 `useEffect` + 两步定位
+
+---
+
 ## 2026-04-19 — 列表模式交互修复 (v0.5.1)
 
 ### 改动

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useImageStore, FONT_OPTIONS } from '../../stores/imageStore'
 import { aiImageTranslateFast, aiImageTranslateFull } from '../../services/ai'
 import { TranslationList } from './TranslationList'
@@ -71,11 +71,32 @@ export function ImageTranslateView() {
     setSelectedIndex(null)
     setEmbedMode(false)
     setImageCollapsed(false)
-    requestAnimationFrame(() => {
-      listRef.current?.scrollTo({ top: 0, behavior: 'instant' })
-      window.scrollTo({ top: 0, behavior: 'instant' })
-    })
   }, [setCurrentIndex])
+
+  // 切图后 DOM 更新完再滚动：让图片刚好处于 sticky 状态，列表从第一条开始
+  const prevIndexRef = useRef(currentIndex)
+  useEffect(() => {
+    if (prevIndexRef.current === currentIndex) return
+    prevIndexRef.current = currentIndex
+    // 找滚动容器
+    let sc: Element | null = listRef.current
+    while (sc) {
+      const ov = getComputedStyle(sc).overflowY
+      if (ov === 'auto' || ov === 'scroll') break
+      sc = sc.parentElement
+    }
+    if (!sc || !stickyRef.current) return
+    // 先 reset 到 0，让布局回到自然状态
+    sc.scrollTo({ top: 0, behavior: 'instant' })
+    // 再测量 stickyRef 相对于滚动容器的距离（此时 scrollTop=0，BoundingClientRect 准确）
+    requestAnimationFrame(() => {
+      if (!stickyRef.current || !sc) return
+      const scRect = sc.getBoundingClientRect()
+      const stickyRect = stickyRef.current.getBoundingClientRect()
+      const target = stickyRect.top - scRect.top
+      sc.scrollTo({ top: Math.max(0, target), behavior: 'instant' })
+    })
+  }, [currentIndex])
 
   /** Convert any image file to base64, cache in store at given index */
   async function getBase64At(imgIndex: number): Promise<string> {

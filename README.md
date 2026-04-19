@@ -1,128 +1,146 @@
 # Lexicon
 
-**English learning tool for Chinese speakers** | **面向中文母语者的英语学习工具**
+**面向中文母语者的英语学习工具** | **English learning tool for Chinese speakers**
 
-Not just a dictionary — Lexicon helps you truly understand words through semantic scenes, etymology, synonym comparison, and AI-powered practice.
-
-不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
+不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。帮你读懂漫画、截图和任意图片中的外语文字。
 
 ---
 
-## Features | 功能
+## 下载安装 | Download
 
-### Dictionary | 词库查词
-- 52,000+ entries from OALD9 (Oxford Advanced Learner's Dictionary)
-- Instant search with auto-complete, keyboard navigation
-- Meanings, examples, related phrases
-- Search history with persistence
+### Windows
+| 文件 | 说明 |
+|------|------|
+| `Lexicon_x64-setup.exe` | **推荐**，NSIS 安装包，双击安装 |
+| `Lexicon_x64_en-US.msi` | MSI 格式，企业/脚本部署用 |
 
-### AI Mode | AI 增强模式
-- **Semantic Scenes** — Conversational Chinese explanations of each meaning's usage context
-- **Etymology** — Root/affix breakdown + origin story + derived words
-- **Synonym Comparison** — Nuanced distinctions between similar words
-- **Practice Exercises** — AI-generated scenarios for active recall, with real-time scoring
-- **AI Chat** — Ask follow-up questions about any word or phrase
-- **Spelling Correction** — Auto-detects and corrects misspelled input
-- **Phrase & Sentence Query** — Not just single words; paste any phrase or sentence for analysis
-
-### Image Translation | 图片翻译
-- Upload manga/comics/screenshots
-- AI Vision detects and translates all text regions
-- Text overlay preview on canvas (bubble/sfx/caption classification)
-- Export translated image as PNG
-
-### Cross-Platform | 跨平台
-- **Web** — Works in any modern browser
-- **Windows** — Native desktop app (Tauri, ~5MB installer)
-- **Android** — Mobile app (Capacitor)
-
----
-
-## Tech Stack | 技术栈
-
-| Layer | Tech |
-|-------|------|
-| Framework | React 18 + TypeScript (strict) |
-| Build | Vite 5 |
-| Styling | Tailwind CSS v4 |
-| State | Zustand |
-| Database | sql.js (SQLite via WASM) |
-| AI | Any OpenAI-compatible API (Gemini, OpenAI, DeepSeek, etc.) |
-| Desktop | Tauri v2 |
-| Mobile | Capacitor v7 |
-
----
-
-## Quick Start | 快速开始
-
-```bash
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-### Desktop (Windows)
-
-```bash
-# Requires Rust toolchain
-npm run tauri:dev    # Dev mode
-npm run tauri:build  # Build .exe installer
-```
+> 安装后在开始菜单或桌面找到 **Lexicon** 启动。首次启动需配置 API Key（见下方配置说明）。
 
 ### Android
+| 文件 | 说明 |
+|------|------|
+| `app-universal-release.apk` | **推荐**，兼容所有架构 |
+| `app-arm64-v8a-release.apk` | 仅 64 位 ARM，体积略小 |
+
+> **安装方法**：设置 → 安全 → 允许未知来源，然后打开 APK 文件安装。
+> 安装或更新后如 AI 请求失败，重启一下 VPN/代理连接即可。
+
+### iOS
+下载 `.ipa` 文件，通过 [AltStore](https://altstore.io/) 安装（免费 Apple ID，7 天 Wi-Fi 自动续签）。
+
+### Web
+直接在浏览器访问部署地址，或本地 `npm run dev` 运行。
+
+---
+
+## 功能介绍 | Features
+
+### 词库查词
+- 52,000+ 词条，来自 OALD9（牛津高阶英语词典）
+- 零延迟即搜即显，支持自动补全、键盘导航
+- 释义、例句、相关词组完整呈现
+- 搜索历史持久化
+
+### AI 增强模式
+配置 API Key 后解锁，L1 词库内容立即显示，AI 板块异步加载：
+
+| 功能 | 说明 |
+|------|------|
+| **语义情景** | 用中文对话讲解每个义项的使用场景和情感质感 |
+| **词根词缀** | 拆解词根/词缀 + 起源故事 + 同源派生词 |
+| **近义词辨析** | 相似词之间的细微差别和使用语境 |
+| **练习题** | AI 生成情景选择题，实时评分 + 解析 |
+| **AI 对话** | 针对当前词随时提问 |
+| **拼写纠正** | 自动检测并展示正确拼写 |
+| **词组/句子查询** | 不限于单词，粘贴任意词组或句子均可分析 |
+
+### 图片翻译（漫画翻译）
+专为漫画、截图、扫描件设计的多图翻译工作流：
+
+**上传与翻译**
+- 支持一次上传多张图片
+- 点「开始翻译全部」并行翻译所有图片，各自独立进度
+- 顶部缩略图条切换图片，绿点 = 已完成，转圈 = 翻译中
+
+**阅读体验**
+- 图片滚动到顶部后自动 sticky 吸顶，边看原图边看译文列表
+- 切换图片自动跳到图片 sticky 位置，译文列表从第一条开始
+- 支持 Ctrl+滚轮缩放，放大后可拖拽平移（未放大时不响应平移）
+
+**嵌字编辑模式**
+进入嵌字模式后，AI 识别的文字框叠加在图片上：
+- 拖拽移动、8 个控制点缩放、旋转文字框
+- 手动新增文字框（在空白区域拖拽画框）
+- 字体、文字方向（横排/竖排）可调
+- 不规则气泡多边形支持：背景填充精确覆盖气泡轮廓，不溢出边框
+- 双层渲染：L1 层填充背景色擦除原文，L2 层独立排版译文
+- 手动绘制 L1 多边形：列表中点「手动绘制 L1」逐点描边
+- 完成后导出 PNG
+
+### 跨平台
+- **Web** — 任意现代浏览器
+- **Windows** — Tauri 原生桌面，安装包约 5 MB
+- **Android** — Capacitor，APK 直装
+- **iOS** — Capacitor，AltStore 安装
+
+---
+
+## 配置 API Key | Setup
+
+1. 打开应用，点右上角 ⚙️ 设置图标
+2. 选择 AI 服务商（推荐 **Google Gemini** — 有免费额度）
+3. 粘贴 API Key（点眼睛图标可切换显示/隐藏）
+4. 点「测试连接」验证
+5. 搜索词后切换到 **AI mode** 解锁增强分析
+
+**支持的服务商（15+）**：Google Gemini、OpenAI、Anthropic Claude、DeepSeek、Moonshot/Kimi、智谱 GLM、零一万物、SiliconFlow、OpenRouter、xAI/Grok、Perplexity、Mistral、Groq、Together AI、自定义 Endpoint
+
+---
+
+## 使用技巧 | Tips
+
+- **Ctrl+Enter**：在搜索框强制触发 AI 搜索
+- **搜索框内 AI 按钮**：强制 AI 查词，搜索结果不满意时用
+- **图片翻译快捷流程**：上传图片 → 开始翻译全部 → 阅读列表 → 需要嵌字时点「嵌字此图」→ 调整 → 导出
+- **漫画多图**：一次上传全部页面，批量翻译后逐页切换阅读
+
+---
+
+## 本地开发 | Development
 
 ```bash
-# Requires Android SDK
+npm install
+npm run dev        # Web 开发服务器
+npm run build      # 生产构建
+```
+
+```bash
+# Windows 桌面（需要 Rust 工具链）
+npm run tauri:dev
+npm run tauri:build
+
+# Android（需要 Android SDK）
 npx cap sync android
-cd android && ./gradlew assembleDebug
+cd android && ./gradlew assembleRelease
 ```
 
 ---
 
-## Configuration | 配置
+## 技术栈 | Tech Stack
 
-1. Open the app and click the gear icon (top-right)
-2. Select your AI provider (Gemini, OpenAI, DeepSeek, etc.)
-3. Paste your API key
-4. Click "Test Connection" to verify
-5. Switch to AI mode to unlock enhanced analysis
-
-支持 15+ AI 服务商，包括 Google Gemini、OpenAI、DeepSeek、Moonshot、智谱 GLM 等。
-
----
-
-## Screenshots | 截图
-
-*Coming soon*
+| 层 | 技术 |
+|----|------|
+| 框架 | React 18 + TypeScript (strict) |
+| 构建 | Vite 5 |
+| 样式 | Tailwind CSS v4 |
+| 状态 | Zustand |
+| 数据库 | sql.js（SQLite via WASM）|
+| AI | 任意 OpenAI 兼容 API |
+| 桌面 | Tauri v2 |
+| 移动 | Capacitor v8 |
 
 ---
 
-## Project Structure | 项目结构
-
-```
-src/
-├── components/       # React components
-│   ├── SearchBar/    # Search input + suggestions + history
-│   ├── ResultView/   # Dictionary results + AI analysis
-│   ├── ImageTranslate/  # Image upload + translation
-│   └── Settings/     # Settings drawer
-├── services/         # db.ts (SQLite), ai.ts (API calls), platform.ts
-├── stores/           # Zustand stores (search, result, settings, history, image)
-├── hooks/            # useSearch, useAiLookup
-└── types/            # TypeScript type definitions
-
-src-tauri/            # Tauri desktop (Rust)
-android/              # Capacitor Android
-lexicon-docs/         # Architecture & design docs
-```
-
----
-
-## License | 许可
+## License
 
 MIT
