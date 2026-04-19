@@ -25,7 +25,7 @@ export function ImageTranslateView() {
   const {
     images, currentIndex,
     sourceLang, targetLang, fontFamily,
-    addImages, removeCurrentImage, clearAll, setCurrentIndex, nextImage, prevImage,
+    addImages, removeCurrentImage, clearAll, setCurrentIndex,
     setBlocks, updateBlock, deleteBlock, addBlock,
     setImageBase64At, setBlocksAt, setStatusAt,
     setSourceLang, setTargetLang, setFontFamily,
