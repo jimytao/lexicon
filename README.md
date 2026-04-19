@@ -122,10 +122,10 @@ npm install
 npm run dev
 ```
 
-启动后终端会显示本地地址，用浏览器打开即可：
+启动后终端会显示本地地址，复制到浏览器打开即可：
 
 ```
-Local:   http://localhost:5173/
+Local:   http://localhost:5173/   ← 实际端口以终端输出为准
 ```
 
 > 首次加载会下载约 31 MB 的词库文件（`lexicon.db`），稍等片刻即可搜索。
