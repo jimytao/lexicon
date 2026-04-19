@@ -106,15 +106,37 @@
 
 ---
 
+## 本地运行 Web 版 | Run Locally
+
+**前置条件**：安装 [Node.js](https://nodejs.org/) LTS 版本（≥ 18）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/jimytao/lexicon.git
+cd lexicon
+
+# 2. 安装依赖
+npm install
+
+# 3. 启动开发服务器
+npm run dev
+```
+
+启动后终端会显示本地地址，用浏览器打开即可：
+
+```
+Local:   http://localhost:5173/
+```
+
+> 首次加载会下载约 31 MB 的词库文件（`lexicon.db`），稍等片刻即可搜索。
+
+---
+
 ## 本地开发 | Development
 
 ```bash
-npm install
-npm run dev        # Web 开发服务器
-npm run build      # 生产构建
-```
+npm run build      # 生产构建（输出到 dist/）
 
-```bash
 # Windows 桌面（需要 Rust 工具链）
 npm run tauri:dev
 npm run tauri:build
