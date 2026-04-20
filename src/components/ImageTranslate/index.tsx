@@ -7,6 +7,16 @@ import { ImageViewer, type ImageViewerHandle } from './ImageViewer'
 import { BlockOverlay } from './BlockOverlay'
 import { ExportButton } from './ExportButton'
 
+function findScrollContainer(el: Element | null): Element | null {
+  let cur = el
+  while (cur) {
+    const ov = getComputedStyle(cur).overflowY
+    if (ov === 'auto' || ov === 'scroll') return cur
+    cur = cur.parentElement
+  }
+  return null
+}
+
 const LANG_OPTIONS = [
   { value: 'auto', label: '自动检测' },
   { value: '日语', label: '日语' },
@@ -73,29 +83,22 @@ export function ImageTranslateView() {
     setImageCollapsed(false)
   }, [setCurrentIndex])
 
-  // 切图后 DOM 更新完再滚动：让图片刚好处于 sticky 状态，列表从第一条开始
-  const prevIndexRef = useRef(currentIndex)
+  // After image switch, scroll so the sticky image is just pinned at top and list starts from item 1.
+  // Two-step: reset to 0 first so getBoundingClientRect is accurate, then jump to stickyRef's natural offset.
+  const hasMountedRef = useRef(false)
+  const scrollContainerRef = useRef<Element | null>(null)
   useEffect(() => {
-    if (prevIndexRef.current === currentIndex) return
-    prevIndexRef.current = currentIndex
-    // 找滚动容器
-    let sc: Element | null = listRef.current
-    while (sc) {
-      const ov = getComputedStyle(sc).overflowY
-      if (ov === 'auto' || ov === 'scroll') break
-      sc = sc.parentElement
-    }
+    if (!hasMountedRef.current) { hasMountedRef.current = true; return }
+    if (!scrollContainerRef.current) scrollContainerRef.current = findScrollContainer(listRef.current)
+    const sc = scrollContainerRef.current
     if (!sc || !stickyRef.current) return
-    // 先 reset 到 0，让布局回到自然状态
     sc.scrollTo({ top: 0, behavior: 'instant' })
-    // 再测量 stickyRef 相对于滚动容器的距离（此时 scrollTop=0，BoundingClientRect 准确）
-    requestAnimationFrame(() => {
+    const rafId = requestAnimationFrame(() => {
       if (!stickyRef.current || !sc) return
-      const scRect = sc.getBoundingClientRect()
-      const stickyRect = stickyRef.current.getBoundingClientRect()
-      const target = stickyRect.top - scRect.top
-      sc.scrollTo({ top: Math.max(0, target), behavior: 'instant' })
+      const target = stickyRef.current.getBoundingClientRect().top - sc.getBoundingClientRect().top
+      sc.scrollTo({ top: target, behavior: 'instant' })
     })
+    return () => cancelAnimationFrame(rafId)
   }, [currentIndex])
 
   /** Convert any image file to base64, cache in store at given index */
@@ -177,12 +180,7 @@ export function ImageTranslateView() {
     const el = listRef.current.querySelector(`#${elId}`)
     if (!el) return
     const stickyH = (stickyRef.current?.offsetHeight ?? 0) + 12
-    let scrollContainer: Element | null = el.parentElement
-    while (scrollContainer) {
-      const ov = getComputedStyle(scrollContainer).overflowY
-      if (ov === 'auto' || ov === 'scroll') break
-      scrollContainer = scrollContainer.parentElement
-    }
+    const scrollContainer = scrollContainerRef.current ?? findScrollContainer(el.parentElement)
     if (scrollContainer) {
       const containerRect = scrollContainer.getBoundingClientRect()
       const elRect = el.getBoundingClientRect()

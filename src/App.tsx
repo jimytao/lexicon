@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { isCapacitor } from './services/platform'
 import { useSearchStore, detectQueryType } from './stores/searchStore'
 import { useResultStore } from './stores/resultStore'
 import { useSettingsStore } from './stores/settingsStore'
@@ -22,6 +23,22 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
+
+  // Android: when virtual keyboard opens, scroll focused input into view.
+  // iOS handles this natively; desktop has no virtual keyboard.
+  useEffect(() => {
+    if (!isCapacitor() || !window.visualViewport) return
+    const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android'
+    if (!isAndroid) return
+    function onViewportResize() {
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+        setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 100)
+      }
+    }
+    window.visualViewport!.addEventListener('resize', onViewportResize)
+    return () => window.visualViewport!.removeEventListener('resize', onViewportResize)
+  }, [])
 
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()

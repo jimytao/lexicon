@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-04-20 — Android 虚拟键盘遮挡修复 (v0.5.3)
+
+### 改动
+
+- **Android 输入框被键盘遮挡**：在 Android 上，底部输入框（如 AI 对话框）弹出虚拟键盘后会被遮住，看不到输入内容。新增 `visualViewport` resize 监听，键盘弹出时自动将焦点输入框 `scrollIntoView`，确保始终可见。iOS 原生已处理此问题，PC 无虚拟键盘，均不受影响。
+- **代码简化（/simplify）**：提取 `findScrollContainer` 工具函数消除重复的 DOM 遍历；切图滚动逻辑用 `hasMountedRef` 替代 `prevIndexRef`，语义更清晰；缓存滚动容器引用避免重复遍历；新增 `cancelAnimationFrame` 清理防止组件卸载后回调残留。
+
+### 修改文件
+
+- `src/App.tsx`：新增 `visualViewport` resize 监听（仅 Android Capacitor）
+- `src/components/ImageTranslate/index.tsx`：提取 `findScrollContainer`；`scrollContainerRef` 缓存容器；`hasMountedRef` 替代 `prevIndexRef`；rAF 清理
+
+---
+
 ## 2026-04-19 — 列表模式交互修复 (v0.5.2)
 
 ### 改动
