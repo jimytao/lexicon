@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { isCapacitor } from './services/platform'
 import { useSearchStore, detectQueryType } from './stores/searchStore'
 import { useResultStore } from './stores/resultStore'
 import { useSettingsStore } from './stores/settingsStore'
@@ -11,12 +10,25 @@ import { AiFullView } from './components/ResultView/AiFullView'
 import { PhraseView } from './components/ResultView/PhraseView'
 import { SettingsDrawer } from './components/Settings/SettingsDrawer'
 import { ImageTranslateView } from './components/ImageTranslate'
+import { Keyboard } from '@capacitor/keyboard'
+import { Device } from '@capacitor/device'
+
+function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = el.parentElement
+  while (node && node !== document.body) {
+    const { overflow, overflowY } = getComputedStyle(node)
+    if (/(auto|scroll)/.test(overflow + overflowY)) return node
+    node = node.parentElement
+  }
+  return document.documentElement
+}
 
 type AppView = 'dictionary' | 'translate'
 
 export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [view, setView] = useState<AppView>('dictionary')
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { mode, query } = useSearchStore()
   const { darkMode } = useSettingsStore()
 
@@ -24,23 +36,7 @@ export function App() {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
 
-  // Android: when virtual keyboard opens, scroll focused input into view.
-  // iOS handles this natively; desktop has no virtual keyboard.
-  useEffect(() => {
-    if (!isCapacitor() || !window.visualViewport) return
-    const isAndroid = (window as any).Capacitor?.getPlatform?.() === 'android'
-    if (!isAndroid) return
-    function onViewportResize() {
-      const el = document.activeElement as HTMLElement | null
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
-        setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 100)
-      }
-    }
-    window.visualViewport!.addEventListener('resize', onViewportResize)
-    return () => window.visualViewport!.removeEventListener('resize', onViewportResize)
-  }, [])
-
-  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
+const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
 
@@ -53,7 +49,12 @@ export function App() {
     prevModeRef.current = mode
   }, [mode])
 
+  function scrollToTop() {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
   async function handleWordSelect(word: string) {
+    scrollToTop()
     const { result, queryType } = await selectWord(word)
 
     if (result) {
@@ -76,6 +77,7 @@ export function App() {
   }
 
   function handleForceAi(rawQuery: string) {
+    scrollToTop()
     const qt = detectQueryType(rawQuery)
     if (qt === 'phrase' || qt === 'sentence') {
       triggerPhraseQuery(rawQuery)
@@ -97,13 +99,85 @@ export function App() {
     }
   }
 
+  // Android virtual keyboard occlusion fix - Robust fallback for older Androids
+  useEffect(() => {
+    let scrollTimeout: any;
+
+    const initKeyboardFix = async () => {
+      const isCapacitorAndroid = typeof window !== 'undefined' &&
+        (window as any).Capacitor &&
+        (window as any).Capacitor.getPlatform() === 'android'
+
+      if (!isCapacitorAndroid) return
+
+      try {
+        const info = await Device.getInfo()
+        // 只在 Android 10 (API 29) 及以下老设备执行暴力撑开逻辑
+        const isOldAndroid = info.operatingSystem === 'android' && parseFloat(info.osVersion) <= 10
+        if (!isOldAndroid) return
+
+        const handleFocusIn = (e: FocusEvent) => {
+          const activeEl = e.target as HTMLElement
+          if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
+
+          const scrollable = getScrollableAncestor(activeEl)
+          if (scrollable) {
+            scrollable.style.paddingBottom = `400px`
+            scrollable.dataset.kbPadded = 'true'
+            
+            clearTimeout(scrollTimeout)
+            scrollTimeout = setTimeout(() => {
+              activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' })
+            }, 150)
+          }
+        }
+
+        const handleFocusOut = () => {
+          clearTimeout(scrollTimeout)
+          scrollTimeout = setTimeout(() => {
+            document.querySelectorAll<HTMLElement>('[data-kb-padded]').forEach(el => {
+              el.style.paddingBottom = ''
+              delete el.dataset.kbPadded
+            })
+          }, 100)
+        }
+
+        document.addEventListener('focusin', handleFocusIn)
+        document.addEventListener('focusout', handleFocusOut)
+        Keyboard.addListener('keyboardDidHide', handleFocusOut)
+        
+        // Save cleanup references to window to clear on unmount
+        ;(window as any)._kbFixCleanup = () => {
+          document.removeEventListener('focusin', handleFocusIn)
+          document.removeEventListener('focusout', handleFocusOut)
+          Keyboard.removeAllListeners()
+          clearTimeout(scrollTimeout)
+        }
+      } catch (e) {
+        console.error('Failed to init keyboard fix', e)
+      }
+    }
+
+    initKeyboardFix()
+
+    return () => {
+      if ((window as any)._kbFixCleanup) {
+        (window as any)._kbFixCleanup()
+      }
+    }
+  }, [])
+
   // Determine which view to render
   const showPhraseView = !wordResult && (phraseResult || (aiStatus === 'loading' && detectQueryType(query) !== 'word'))
   const showAiFullView = !wordResult && !showPhraseView && (aiFullResult || aiStatus === 'loading' || aiStatus === 'error')
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-[480px] h-screen overflow-y-auto bg-white dark:bg-gray-900 shadow-sm relative pb-safe">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950" style={{ minHeight: '100vh', backgroundColor: 'var(--twc-bg)' }}>
+      <div
+        ref={scrollContainerRef}
+        className="mx-auto max-w-[480px] min-h-screen overflow-y-auto bg-white dark:bg-gray-900 shadow-sm relative pb-safe"
+        style={{ backgroundColor: 'var(--twc-bg)' }}
+      >
         {/* Top bar: tabs + settings */}
         <div className="flex items-center justify-between px-4 pt-safe pb-1">
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">

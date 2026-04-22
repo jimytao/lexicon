@@ -249,9 +249,7 @@ function renderHorizontal(
       const scanY = lineY + lineHeight / 2
       const range = getPolygonScanline(polyPixels, scanY)
       if (range) {
-        const pad = (range[1] - range[0]) * 0.05
         ctx.fillText(lines[i], (range[0] + range[1]) / 2, lineY)
-        void pad  // used implicitly via clip
       } else {
         ctx.fillText(lines[i], x + w / 2, lineY)
       }

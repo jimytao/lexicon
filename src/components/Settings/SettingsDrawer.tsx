@@ -198,17 +198,17 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   return (
     <>
       {open && (
-        <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-20" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-20" onClick={() => { testAbortRef.current?.abort(); onClose() }} />
       )}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl z-30 flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 right-0 bottom-0 w-80 bg-white dark:bg-gray-900 shadow-xl z-30 flex flex-col transition-transform duration-300 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-safe pb-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">设置</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <button onClick={() => { testAbortRef.current?.abort(); onClose() }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { generateExercises, evaluateAnswer } from '../../../services/ai'
 import type { Exercise } from '../../../types'
@@ -25,6 +25,8 @@ export function PracticeSection({ word, meanings }: PracticeSectionProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [exStates, setExStates] = useState<ExState[]>([])
   const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => { abortRef.current?.abort() }, [])
 
   function updateExState(index: number, patch: Partial<ExState>) {
     setExStates(prev => prev.map((s, i) => i === index ? { ...s, ...patch } : s))

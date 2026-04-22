@@ -12,6 +12,8 @@ export function AiChatBox({ context }: AiChatBoxProps) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const contextRef = useRef(context)
+  contextRef.current = context
 
   async function handleSend() {
     const question = input.trim()
@@ -19,6 +21,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
 
     abortRef.current?.abort()
     abortRef.current = new AbortController()
+    const requestContext = context
 
     const userMsg: ChatMessage = { role: 'user', content: question }
     addChatMessage(userMsg)
@@ -27,11 +30,15 @@ export function AiChatBox({ context }: AiChatBoxProps) {
 
     try {
       const allMessages = [...chatMessages, userMsg]
-      const reply = await askQuestion(context, allMessages, abortRef.current.signal)
-      addChatMessage({ role: 'assistant', content: reply })
+      const reply = await askQuestion(requestContext, allMessages, abortRef.current.signal)
+      if (contextRef.current === requestContext) {
+        addChatMessage({ role: 'assistant', content: reply })
+      }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      addChatMessage({ role: 'assistant', content: `出错了：${(e as Error).message}` })
+      if (contextRef.current === requestContext) {
+        addChatMessage({ role: 'assistant', content: `出错了：${(e as Error).message}` })
+      }
     } finally {
       setLoading(false)
     }

@@ -54,7 +54,6 @@ export function ImageTranslateView() {
   const [imageCollapsed, setImageCollapsed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [selectedLayer, setSelectedLayer] = useState<1 | 2>(2)
-  const [, setViewerScale] = useState(1)
 
   const abortRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -420,7 +419,7 @@ export function ImageTranslateView() {
                             </button>
                           </div>
                         </div>
-                        <ImageViewer ref={viewerRef} onScaleChange={setViewerScale} className="max-h-[50vh]">
+                        <ImageViewer ref={viewerRef} className="max-h-[50vh]">
                           <ImageEditor ref={editorRef} imageUrl={imageUrl!} blocks={blocks} fontFamily={fontFamily} />
                           <BlockOverlay
                             blocks={blocks}

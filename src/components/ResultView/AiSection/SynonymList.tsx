@@ -20,7 +20,7 @@ export function SynonymList({ synonyms, onSynonymClick }: SynonymListProps) {
           <div key={i} className="flex gap-2 items-start">
             <button
               onClick={() => onSynonymClick(s.word)}
-              className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full underline-offset-2 hover:underline bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-200"
+              className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full underline-offset-2 hover:underline cursor-pointer bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-200"
             >
               {s.word}
             </button>

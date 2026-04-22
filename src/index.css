@@ -12,7 +12,6 @@
 /* 根元素背景 + 防 overscroll 白色 */
 html, body {
   background-color: #f9fafb; /* gray-50 */
-  overscroll-behavior: none;
 }
 .dark, .dark body {
   background-color: #030712; /* gray-950 */

@@ -1,5 +1,184 @@
 # CHANGELOG
 
+## 2026-04-22 — v0.5.4 发版
+
+### 包含内容
+- Android 键盘遮挡终极方案（详见 2026-04-21 v5 条目）
+- 补齐 App.tsx 缺失的 `@capacitor/device` 导入（老 Android 运行时崩溃修复）
+- 同步 Android `versionName` / iOS `MARKETING_VERSION` 至 `0.5.4`（此前写死 `1.0`，导致 app 详情页显示错误版本）
+- Android `versionCode` 1 → 2、iOS `CURRENT_PROJECT_VERSION` 1 → 2
+
+## 2026-04-21 — Android 键盘遮挡终极解决方案 v5（新老设备动态适配）
+
+### 最终结论与发现
+- **新版 Android (API > 29, 比如 Android 11+)**：系统原生的 Edge-to-Edge 和 `adjustResize` 已经足够完善。强行用 JS 加 padding 或干预，反而会引发异常。对于这类设备，我们选择完全退让，交由系统原生处理。
+- **老版 Android (API <= 29, 比如 Android 10)**：系统在处理 WebView 的 `adjustResize` 时存在严重 Bug（会暴露出底层黑色的 DecorView，即用户看到的巨大“色块”）。同时，在此系统下开启 `adjustPan` 会导致 Capacitor Keyboard 插件的 `keyboardDidShow` 事件失效，导致 JS 失去响应能力。
+- **动态隔离方案**：我们在同一个代码库中，通过 Native 层和 JS 层的双重系统版本检测，对新老设备分发两套完全不同的适配逻辑，彻底化解了碎片化深坑。
+
+### 核心改动
+
+**1. 原生层 (Native) 动态隔离**：
+- `AndroidManifest.xml`：将 `windowSoftInputMode` 恢复为现代标准的 `adjustResize`。
+- `MainActivity.java`：在 `onCreate` 中加入版本判断，若是 `SDK_INT <= 29` (Android 10 及以下)，则将当前窗口模式强制篡改为 `adjustPan`，彻底封杀原生渲染黑洞。
+
+**2. 前端层 (JavaScript) 动态隔离**：
+- 引入 `@capacitor/device` 官方插件。
+- `src/App.tsx`：在 React 挂载时异步获取系统真实版本（`osVersion`）。
+- **如果是老安卓（<= 10）**：挂载专用的 `focusin` / `focusout` 事件监听器。点击输入框瞬间，无视失效的 Capacitor 键盘事件，直接给当前滚动容器暴力塞入 `paddingBottom: 400px`，并延迟 150ms 强制 `scrollIntoView({block: 'center'})`。因为此时应用处于 `adjustPan` 全屏模式，这 400px 被完美藏在键盘后方，绝不产生可见色块！
+- **如果是新安卓（> 10）**：不注册任何 JS 键盘监听器，完全信任系统原生的 `adjustResize` 缩放，保持与 v0.5.2 原版一致。
+
+### 状态
+- **色块问题彻底解决** ✅（老版本用 adjustPan 掩盖，新版本原生无此 Bug）
+- **输入框遮挡彻底解决** ✅（老版本用强力 focusin 撑开居中，新版本系统原生处理）
+- **多设备兼容性达成** ✅（一套代码，同一个 APK，无缝自动适配不同年代的 Android 系统）
+
+---
+
+## 2026-04-21 — Android 键盘遮挡 v4（色块消除，遮挡未解决）
+
+### 结论
+
+- **色块问题已彻底解决** ✅
+- **输入框被键盘遮挡问题仍未解决** ❌（多次尝试均无效，暂搁置）
+
+### 最终配置
+
+- `AndroidManifest.xml`：`android:windowSoftInputMode="adjustPan"`
+- `capacitor.config.ts`：`Keyboard: { resize: 'none' }`
+- `src/App.tsx`：
+  - 移除 `keyboardHeight` state 和 `paddingBottom`（这两个本身就是色块来源）
+  - 新增 `getScrollableAncestor()` 辅助函数，查找最近可滚动祖先
+  - 键盘监听从 `keyboardWillShow` 改为 `keyboardDidShow`（等 pan 动画完成）
+  - 滚动目标从固定的 `scrollContainerRef` 改为动态祖先查找
+  - 滚动计算：`overshoot = elRect.bottom - (window.innerHeight - kbHeight - 8)`
+
+### 色块消除的关键
+
+色块来自两处叠加：
+1. `adjustResize` + `resize: 'none'` 的设置冲突（Android 缩 WebView，Capacitor 不让响应 → 底部 native 层露出）
+2. JS 主动加的 `paddingBottom: keyboardHeight` 本身就是一块空白
+
+切到 `adjustPan` + 移除 `paddingBottom` 后色块消失。
+
+### 遮挡未解决的可能原因（留给未来自己）
+
+- `adjustPan` 模式下，`fixed` 元素（如 SettingsDrawer）不随窗口上移，键盘直接盖住
+- `scrollBy` 对 fixed 容器内部的 `overflow-y-auto` 滚动无视觉效果（因为 fixed 容器位置不变）
+- 可能需要 CSS 层解决：键盘显示时给 fixed 容器一个 `transform: translateY(-kbHeight)` 或动态调整高度
+- 或改回 `adjustResize` 并彻底重构 CSS 避免色块（但代价大）
+
+---
+
+## 2026-04-21 — Android 虚拟键盘遮挡修复 v3 - 调试会话记录（未解决）
+
+### 背景
+
+用户反馈 Android 虚拟键盘遮挡问题：
+- AI 聊天输入框已经工作正常（之前已修复）
+- 其他输入框仍有问题：设置抽屉中的输入框（模型选择、API key 输入）、搜索框、翻译文本框
+- 点击输入框时出现"黑色方块"遮挡 UI
+- 用户明确要求：不想要任何色块（黑色、白色或透明），因为这会遮挡内容且无法操作
+
+### 尝试的方案
+
+**方案 1：恢复 adjustResize + scrollIntoView**
+- AndroidManifest.xml: 添加 `android:windowSoftInputMode="adjustResize"`
+- capacitor.config.ts: Keyboard 插件 `resize: 'none'`
+- App.tsx: 使用 `scrollIntoView({ behavior: 'smooth', block: 'center' })`
+- 结果：滚动成功，但出现色块
+
+**方案 2：使用 visualViewport API**
+- App.tsx: 监听 `visualViewport.resize` 事件
+- 结果：未解决，被移除
+
+**方案 3：使用 focusin/focusout 事件**
+- App.tsx: 监听 `focusin` 和 `focusout` 事件
+- 结果：未解决，被移除
+
+**方案 4：Capacitor Keyboard 插件不同配置**
+- 尝试 `resize: 'none'`、`resize: 'body'`、`resize: 'ionic'`
+- 结果：均未解决问题
+
+**方案 5：adjustPan 模式**
+- AndroidManifest.xml: 改为 `android:windowSoftInputMode="adjustPan"`
+- capacitor.config.ts: Keyboard 插件 `resize: 'body'`
+- 结果：色块消失，但自动滚动失效，输入框被键盘遮挡
+
+**方案 6：移除 JavaScript 滚动逻辑**
+- App.tsx: 移除所有 scrollIntoView 逻辑，让 adjustPan 自然处理
+- 结果：无色块，但输入框被键盘遮挡
+
+**方案 7：移除高度约束**
+- SettingsDrawer.tsx: 移除 `h-full`，添加 `bottom-0`
+- App.tsx: 移除 CSS `overscroll-behavior: none`
+- 结果：未解决
+
+**方案 8：调整 windowBackground 颜色**
+- values/styles.xml: 改为白色 (#F9FAFB)
+- values-night/styles.xml: 改为白色 (#FFFFFF)、然后改为暗色 (#030712)
+- 结果：色块仍然存在
+
+**方案 9：使用 Capacitor Keyboard 插件读取键盘高度**
+- App.tsx:
+  - 添加 `keyboardHeight` 状态
+  - 监听 `keyboardWillShow` 事件获取键盘高度
+  - 给滚动容器添加 `paddingBottom` 等于键盘高度
+  - 使用 `scrollIntoView({ behavior: 'smooth', block: 'center' })`
+- 结果：色块再次出现，输入框跑到顶端
+
+**方案 10：手动计算滚动位置**
+- App.tsx: 移除 `scrollIntoView`，手动计算滚动位置
+  ```typescript
+  const targetScrollTop = scrollContainer.scrollTop + elementRect.top - containerRect.top - keyboardHeight + 20
+  ```
+- 结果：色块仍然存在，输入框仍跑到顶端
+
+**方案 11：窗口背景改为透明**
+- values/styles.xml: 改为 `@android:color/transparent`
+- values-night/styles.xml: 改为 `@android:color/transparent`
+- 结果：色块仍然存在
+
+### 用户发现的关键悖论
+
+用户在调试过程中发现了两个规律：
+1. 要么成功滚动了，但是出现了一个巨大的色块遮挡
+2. 要么色块确实不存在了，但是自动滚动失效了，输入框又被键盘遮挡了
+
+用户提出的根本原因假设：
+- 我们没有即时读取键盘的高度，所以不可避免地，不知道这玩意要向上滚动多少
+
+### 当前状态
+
+- 色块问题仍未解决
+- 输入框滚动到正确位置（键盘上方）仍未实现
+- 用户决定休息，暂停调试
+
+### 修改的文件
+
+- `android/app/src/main/AndroidManifest.xml`：多次修改 windowSoftInputMode
+- `capacitor.config.ts`：多次修改 Keyboard 插件 resize 模式
+- `src/App.tsx`：多次修改键盘处理逻辑（visualViewport、focusin、scrollIntoView、手动滚动计算）
+- `src/components/Settings/SettingsDrawer.tsx`：移除高度约束
+- `src/index.css`：移除 overscroll-behavior: none
+- `android/app/src/main/res/values/styles.xml`：修改 windowBackground 为透明
+- `android/app/src/main/res/values-night/styles.xml`：多次修改 windowBackground（白色、暗色、透明）
+
+---
+
+## 2026-04-21 — Android 虚拟键盘遮挡修复 v2 (v0.5.4)
+
+### 改动
+
+- **恢复 visualViewport.resize 监听**：之前添加的 visualViewport 监听被移除，导致除 AI 问答框外的其他输入框（搜索框、翻译文本框、设置输入框）在页面底部时仍被键盘遮挡。现恢复该监听，与 `adjustResize` 配合使用，确保所有输入框在键盘弹出时自动滚动到可见区域。
+- **双重保障机制**：`adjustResize`（AndroidManifest）处理 WebView 窗口调整，`visualViewport.resize`（App.tsx）处理输入框滚动定位，两者配合解决所有场景的键盘遮挡问题。
+
+### 修改文件
+
+- `src/App.tsx`：恢复 visualViewport.resize 监听（仅 Android Capacitor）
+- `memory/project_android_keyboard_debug.md`：更新当前方案记录
+
+---
+
 ## 2026-04-20 — Android 虚拟键盘遮挡修复 (v0.5.3)
 
 ### 改动

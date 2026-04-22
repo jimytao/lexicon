@@ -79,7 +79,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }:
 
           {/* 练习 */}
           {phraseResult.exercises.length > 0 && (
-            <PhraseExercises phrase={phrase} exercises={phraseResult.exercises} />
+            <PhraseExercises phrase={phraseResult.correctForm || phrase} exercises={phraseResult.exercises} />
           )}
 
           {/* AI 问答 */}

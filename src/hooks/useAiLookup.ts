@@ -3,6 +3,14 @@ import { useResultStore } from '../stores/resultStore'
 import { analyzeWord, aiFullLookup, aiPhraseQuery } from '../services/ai'
 import type { Meaning } from '../types'
 
+// AbortSignal.any() and AbortSignal.timeout() may be absent on older Android WebViews
+function combineSignals(userSignal: AbortSignal, timeoutMs: number): AbortSignal {
+  const ctrl = new AbortController()
+  const tid = setTimeout(() => ctrl.abort(new DOMException('TimeoutError', 'TimeoutError')), timeoutMs)
+  userSignal.addEventListener('abort', () => { clearTimeout(tid); ctrl.abort(userSignal.reason) }, { once: true })
+  return ctrl.signal
+}
+
 export function useAiLookup() {
   const {
     setAiStatus, setAiAnalysis, setAiFullResult, setPhraseResult, setAiError,
@@ -36,8 +44,7 @@ export function useAiLookup() {
     const cached = getCachedAiFull(word)
     if (cached) { setAiFullResult(word, cached); return }
 
-    const timeout = AbortSignal.timeout(30000)
-    const combined = AbortSignal.any([abortRef.current.signal, timeout])
+    const combined = combineSignals(abortRef.current.signal, 30000)
 
     setAiStatus('loading')
     try {
