@@ -1,5 +1,64 @@
 # CHANGELOG
 
+## 2026-05-01 — AI 深度助记系统与数据持久化全量上线
+
+### 1. 核心特性：AI 触发式助记 (Mnemonics)
+- **多策略记忆算法**：为单词引入了「词源逻辑 (Philology)」、「趣味故事 (Story)」与「智能联想 (Smart)」三种助记模式。
+- **AI 评估与推荐系统**：AI 会自动评估各模式的潜力并打分 (0-100)，优先推荐逻辑性最强的记忆方案，并在卡片顶部展示推荐理由与得分仪表盘。
+- **词组母语者逻辑**：新增「词组/短语专用助记」。针对介词搭配（如 `pop in`），通过解析介词的核心意象（Core Image）还原母语者的直觉思考，告别死记硬背。
+
+### 2. 性能与数据管理 (Persistence & Data)
+- **全量会话持久化**：接入 Zustand 持久化中间件，所有生成的 AI 分析结果都会同步至本地。再次查看历史记录时可“秒开”内容，且**零 Token 消耗**。
+- **LRU 智能缓存机制**：实现了「最久未使用 (Least Recently Used)」缓存清理策略，自动保持 100 条最常用数据的活性，确保本地存储精简且高效。
+- **数据透明化看板**：在设置页面新增「数据管理」模块，支持实时查看 AI 缓存占用大小，并提供一键清理历史记录与缓存的功能。
+
+### 3. UI/UX 体验与稳健性
+- **词性标注精准化**：重构了词典查询逻辑，支持在同一单词下展示多个独立词性标签（Badge），确保每个释义项都能对应准确的语法属性。
+- **并发请求控制**：引入 `AbortController` 机制，在快速切换单词或关闭界面时自动中止未完成的 AI 请求，防止状态溢出与资源浪费。
+- **视觉优化**：优化了助记卡片的图标系统（如 Sparkles 智能图标）、版式权重与交互反馈。
+
+### 4. 逻辑修复
+- **缓存唯一性修复**：修复了重复搜索可能导致缓存冗余的潜在风险，确保每个独立条目仅占用一个缓存名额。
+- **状态同步优化**：解决了关联词跳转时旧数据残留的 UX Bug。
+
+---
+
+## 2026-05-01 — 嵌字模式 (Embed Mode) 定位与渲染全量重构 (v0.6.0)
+
+### 核心改进：从“AI 猜位置”到“OCR 工业级对位”
+
+**1. OCR 粒度升级 (Line-level Detection)**
+- **技术变更**：将 Tesseract.js 的检测级别从 `blocks` 切换为 `lines`。
+- **价值**：解决了 Tesseract 经常将不相关的多个气泡错误合并的问题，提供了最高精度的原始坐标。
+
+**2. 空间约束的贪婪匹配算法 (Spatial Greedy Match)**
+- **逻辑**：AI 块（Phase 1）现在可以匹配多个 OCR 行。
+- **防重复机制**：引入空间距离校验（30% 阈值）。如果两个“Hello”分别在图片两角，系统会识别出它们是不同实例，不再错误地将它们连成一个横跨全图的巨型框。
+- **几何联合**：自动计算所有匹配行的最小外接矩形（Union），确保多行气泡能被完整覆盖。
+
+**3. “清理 -> 填词” L1/L2 架构重塑**
+- **背景遮罩 (L1) - 始终开启**：不再依赖手动绘制多边形。系统会自动根据 `bubble`（椭圆）或 `caption`（圆角矩形）类型生成底层遮罩，先行“抹除”原文字。
+- **译文文字 (L2) - 独立渲染**：L2 现在是透明层，只负责在 L1 清理出的空地上进行文本填充。彻底解决了两层颜色冲突或边缘锯齿问题。
+- **UI 语义化**：标签由 `L1/L2` 更名为更直观的 `背景遮罩 (L1)` 和 `译文文字 (L2)`。
+
+**4. 几何感应渲染与安全区 (Geometric-Aware)**
+- **气泡椭圆化**：`bubble` 类型默认使用椭圆遮罩，完美契合 90% 的漫画对话框。
+- **遮罩外扩 (2px Outset)**：遮罩自动向外扩张 2 像素，确保覆盖原文字边缘的阴影和抗锯齿毛边。
+- **安全区排版 (Safe Area)**：为文字渲染预留 10-15% 的内缩边距，确保文字不撞边，且在椭圆中自动居中。
+
+**5. UX 细节优化**
+- **智能采样内缩**：背景色采样点向内收缩 2px，避开黑色气泡框。
+- **进度可视化**：嵌字按钮实时显示 OCR 进度百分比。
+- **语言感知拼接**：针对 CJK 语言取消多行合并时的空格，保持原文整洁。
+
+### 相关文件
+- `src/services/ocr.ts`：核心匹配算法与空间校验
+- `src/components/ImageTranslate/ImageEditor.tsx`：两阶段渲染逻辑与几何适配
+- `src/components/ImageTranslate/index.tsx`：进度状态维护与 UI 联动
+- `src/components/ImageTranslate/TranslationList.tsx`：语义化标签更新
+
+---
+
 ## 2026-04-22 — v0.5.4 发版
 
 ### 包含内容
@@ -8,11 +67,13 @@
 - 同步 Android `versionName` / iOS `MARKETING_VERSION` 至 `0.5.4`（此前写死 `1.0`，导致 app 详情页显示错误版本）
 - Android `versionCode` 1 → 2、iOS `CURRENT_PROJECT_VERSION` 1 → 2
 
+---
+
 ## 2026-04-21 — Android 键盘遮挡终极解决方案 v5（新老设备动态适配）
 
 ### 最终结论与发现
 - **新版 Android (API > 29, 比如 Android 11+)**：系统原生的 Edge-to-Edge 和 `adjustResize` 已经足够完善。强行用 JS 加 padding 或干预，反而会引发异常。对于这类设备，我们选择完全退让，交由系统原生处理。
-- **老版 Android (API <= 29, 比如 Android 10)**：系统在处理 WebView 的 `adjustResize` 时存在严重 Bug（会暴露出底层黑色的 DecorView，即用户看到的巨大“色块”）。同时，在此系统下开启 `adjustPan` 会导致 Capacitor Keyboard 插件的 `keyboardDidShow` 事件失效，导致 JS 失去响应能力。
+- **老版 Android (API <= 29, 比如 Android 10)**：系统在处理 WebView 的 `adjustResize` 时存在严重 Bug（会暴露出底层黑色的 DecorView，即用户看到的巨大"色块"）。同时，在此系统下开启 `adjustPan` 会导致 Capacitor Keyboard 插件的 `keyboardDidShow` 事件失效，导致 JS 失去响应能力。
 - **动态隔离方案**：我们在同一个代码库中，通过 Native 层和 JS 层的双重系统版本检测，对新老设备分发两套完全不同的适配逻辑，彻底化解了碎片化深坑。
 
 ### 核心改动
@@ -175,7 +236,6 @@
 ### 修改文件
 
 - `src/App.tsx`：恢复 visualViewport.resize 监听（仅 Android Capacitor）
-- `memory/project_android_keyboard_debug.md`：更新当前方案记录
 
 ---
 
@@ -414,7 +474,7 @@
 
 ---
 
-## 2026-04-14 — 图片翻译 sticky 图片异形屏适配 v0.4.2（补丁）
+## 2026-04-15 — 图片翻译 sticky 图片异形屏适配 v0.4.2（补丁）
 
 ### 改动
 
@@ -578,7 +638,6 @@
 - `package.json`：添加 `@capacitor/ios ^8.3.0`
 - `ios/`（新建目录）：Capacitor 生成的 Xcode 项目（SPM，无 CocoaPods）
 - `.github/workflows/ios-build.yml`（新建）：iOS CI 构建工作流
-- `lexicon-docs/06-crossplatform.md`：记录 iOS 无 Mac 构建方案
 - `CLAUDE.md`：更新跨平台打包说明
 
 ---
@@ -652,18 +711,18 @@
 
 ---
 
-## 2026-04-09 — Phase 2 & 5：跨平台打包（Tauri PC + Capacitor Android）
+## 2026-04-09 — 跨平台打包（Tauri PC + Capacitor Android）
 
 ### 新增
 
-- **Tauri 桌面打包**（Phase 2）
+- **Tauri 桌面打包**
   - `src-tauri/` 目录：`Cargo.toml`、`tauri.conf.json`、`lib.rs`、`main.rs`、`build.rs`
   - 应用窗口 420×720，可调整大小，最小 360×600
   - `capabilities/default.json`：Tauri v2 权限配置
   - 生成占位图标（蓝色方块，后续可替换）
   - 输出：`Lexicon_0.1.0_x64-setup.exe`（NSIS）+ `Lexicon_0.1.0_x64_en-US.msi`
 
-- **Capacitor Android 打包**（Phase 5）
+- **Capacitor Android 打包**
   - `capacitor.config.ts`：appId `com.julian.lexicon`，webDir `dist`
   - `android/` 目录：Gradle 项目，词库自动复制到 assets
   - 输出：`app-debug.apk`（19MB）
@@ -686,7 +745,7 @@
 
 ---
 
-## 2026-04-08 — Phase 3：图片嵌字（Canvas 去原文 + 贴译文）
+## 2026-04-08 — 图片嵌字（Canvas 去原文 + 贴译文）
 
 ### 新增
 
@@ -711,7 +770,7 @@
 
 ---
 
-## 2026-04-08 — Phase 1：图片上传 + AI 翻译
+## 2026-04-08 — 图片上传 + AI 翻译
 
 ### 新增
 
@@ -907,7 +966,7 @@
 
 - **搜索框 focus ring**：输入框获得焦点时显示 indigo 色边框 + 光晕（`focus-within`）
 
-- **WordHeader 词性 badge 暗黑适配**：读取 `settingsStore.darkMode`，动态切换 `badgeBg`/`badgeText`，修复 CLAUDE.md 中记录的 known issue
+- **WordHeader 词性 badge 暗黑适配**：读取 `settingsStore.darkMode`，动态切换 `badgeBg`/`badgeText`
 
 - **ModeToggle 暗黑适配**：非激活按钮补充 `dark:` 系列 Tailwind 类
 
@@ -919,42 +978,25 @@
 
 ### 完成内容
 
-- **Step 1-2**：手动创建 Vite React-TS 项目结构（create-vite 不支持非交互式运行，直接写文件）
+- **Step 1-2**：手动创建 Vite React-TS 项目结构
   - 安装：react 18、react-dom、zustand、sql.js、tailwindcss、@tailwindcss/vite、@types/sql.js
   - 注意：安装的是 Tailwind **v4**（非 v3），配置方式为 CSS `@import "tailwindcss"` + `@theme` block
 
 - **Step 3**：配置 vite.config.ts（含 COOP/COEP headers for sql.js WASM）
-  - 复制 sql-wasm.wasm 到 public/sql-wasm/
 
-- **Step 4**：Tailwind v4 配置
-  - 颜色 token（ai-bg/ai-text/ai-dot）通过 src/index.css `@theme` 定义
+- **Step 4**：Tailwind v4 配置（颜色 token 通过 src/index.css `@theme` 定义）
 
 - **Step 5**：创建目录结构
-  - src/components/{SearchBar,SuggestList,ResultView/{InstantSection,AiSection},Settings}
-  - src/{services,stores,hooks,types}，scripts/
 
-- **Step 6**：src/types/index.ts — 全部全局类型（Mode, SuggestItem, Meaning, Scene, Etymology, Synonym, Example, WordResult, AiAnalysis）
+- **Step 6**：src/types/index.ts — 全部全局类型
 
-- **Step 7**：Zustand stores
-  - searchStore（query, suggestions, mode）
-  - resultStore（wordResult, aiAnalysis, aiStatus, aiCache）
-  - settingsStore（aiEndpoint, aiModel, aiApiKey, historyEnabled，persist 到 localStorage）
+- **Step 7**：Zustand stores（searchStore、resultStore、settingsStore）
 
-- **Step 8**：服务层
-  - db.ts — DBService 接口 + 平台选择入口
-  - db.web.ts — sql.js 实现，词库未就绪时自动 fallback 到 mock 数据
-  - ai.ts — 完整 system prompt + OpenAI-compatible API 调用 + AbortSignal 支持
+- **Step 8**：服务层（db.ts + db.web.ts + ai.ts）
 
-- **Step 9**：Hooks
-  - useSearch.ts — 300ms debounce 补全 + selectWord
-  - useAiLookup.ts — AbortController 取消 + session cache
+- **Step 9**：Hooks（useSearch + useAiLookup）
 
-- **Step 10**：全部组件
-  - WordHeader, MeaningList, ExampleList
-  - SemanticScene, EtymologyCard, SynonymList, AiStatusBar/SkeletonBlock
-  - InstantSection, AiSection, ResultView
-  - SuggestList, ModeToggle, SearchBar
-  - SettingsDrawer, App
+- **Step 10**：全部组件（SearchBar、ResultView、SettingsDrawer 等）
 
 - **Step 11**：TypeScript 零报错，vite build 成功（207KB JS + 15KB CSS）
 
@@ -967,17 +1009,8 @@
 - **白屏修复**：`db.web.ts` 改用动态 `import('sql.js')` 避免 CJS 静态导入兼容问题
 - **Step 12**：编写并执行 `scripts/mdx-to-sqlite.mjs`
   - 来源：牛津高阶英汉双解词典（第9版）OALD9.mdx（52MB）
-  - 修复 js-mdict 读取该 MDX 时的 surrogate 编码问题（fixSurrogates 函数）
-  - 解析 OALD9 自定义 HTML 标签（sn-g, def, chn, x-g-blk）
-  - 输出：`public/lexicon.db`（31MB）
-    - 52,861 词条，99,359 释义，67,683 例句，51,899 suggest 条目
+  - 输出：`public/lexicon.db`（31MB）：52,861 词条，99,359 释义，67,683 例句，51,899 suggest 条目
   - 用时：32.7 秒，0 错误
-
-### 注意
-
-- `cigen_en_new.eudic`（词根词缀词典）为 Eudic 私有格式，无法解析，跳过；词源信息由 AI mode 在线生成
-- 柯林斯 COBUILD MDX 暂未导入（当前词库质量已满足需求）
-- `scripts/mdx-to-sqlite.mjs` 为一次性脚本，生成的 `public/lexicon.db` 提交到 git
 
 ---
 
@@ -985,45 +1018,33 @@
 
 ### Bug 修复
 
-- **sql.js 无法加载（词库实际未工作）**：
-  - 根因：`optimizeDeps: { exclude: ['sql.js'] }` 阻止 Vite 做 CJS→ESM 转换，浏览器无法 import CJS 模块，所有查词 fallback 到 mock 数据
-  - 修复：移除 `optimizeDeps.exclude`，让 Vite 预打包 sql.js（sql-wasm-browser.js 不内嵌 WASM，esbuild 可处理）
-  - 同步：补充复制 `sql-wasm-browser.wasm` 到 `public/sql-wasm/`（浏览器 variant 需要）
-  - `db.web.ts` 恢复静态 `import initSqlJs from 'sql.js'`
+- **sql.js 无法加载**：移除 `optimizeDeps.exclude`，让 Vite 预打包 sql.js
 
 ### 新增功能
 
-- **Enter 键直接查词**（SearchBar）：优先取第一条补全结果，否则查输入的原词
+- **Enter 键直接查词**、**Suggest 列表优化**（短词优先、最多 20 条）
+- **相关词组板块**：`DBService` 新增 `getRelatedPhrases`，新增 `PhrasesSection` 组件
+- **义项/例句折叠**：超出阈值折叠展开
+- **深色模式**：class-based dark mode，`settingsStore` 新增 `darkMode`
 
-- **Suggest 列表优化**：
-  - SQL 过滤掉含空格的短语条目（`word NOT LIKE '% %'`），只显示单词
-  - 排序改为 `length(word), word`（短词优先）
-  - 最多返回 20 条，列表可滚动（`max-h-72 overflow-y-auto`）
+---
 
-- **相关词组板块**（词条结果页）：
-  - `DBService` 新增 `getRelatedPhrases(word)` 方法
-  - 查询以该词开头的短语条目（如 make → "make a point of sth" 等）
-  - `resultStore` 新增 `relatedPhrases` 字段
-  - `useSearch.selectWord` 用 `Promise.all` 并行查词条 + 短语
-  - 新增 `PhrasesSection` 组件，展示在例句之前；超过 6 条折叠
+<!-- 模板：每次改动复制下面这个块到顶部 -->
+<!--
+## [日期 YYYY-MM-DD]
 
-- **义项/例句折叠**：
-  - `MeaningList`：超过 4 条义项折叠，底部"展开更多 (N)"
-  - `ExampleList`：超过 3 条例句折叠
+### 新增
+- 
 
-- **深色模式**：
-  - Tailwind v4 改为 class-based dark mode（`@variant dark (&:where(.dark, .dark *))`）
-  - `settingsStore` 新增 `darkMode: boolean`（persist 到 localStorage）
-  - App.tsx 用 `useEffect` 同步 `darkMode` → `document.documentElement.classList`
-  - SettingsDrawer 新增"深色模式"开关
-  - 所有组件添加 `dark:` Tailwind 类
+### 修改
+- 
 
-### Store 接口变更
+### 修复
+- 
 
-- `ResultStore`：新增 `relatedPhrases: SuggestItem[]`、`setRelatedPhrases`
-- `SettingsStore`：新增 `darkMode: boolean`、`setDarkMode`
-- `DBService`：新增 `getRelatedPhrases(word, limit?): Promise<SuggestItem[]>`
+### 架构变更
+- （在这里说明为什么改，不只是改了什么）
 
-### 新增组件
-
-- `src/components/ResultView/InstantSection/PhrasesSection.tsx`
+### 同步更新的文档
+- 
+-->
