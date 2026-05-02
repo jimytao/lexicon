@@ -524,6 +524,30 @@ export async function generatePhraseMnemonic(
   throw new Error('AI returned invalid JSON for phrase mnemonic')
 }
 
+export async function generateMnemonicForType(
+  word: string,
+  type: 'philology' | 'story' | 'smart',
+  signal?: AbortSignal
+): Promise<import('../types').Mnemonic> {
+  const typeLabel = type === 'philology' ? 'PHILOLOGY (词源逻辑)' : type === 'story' ? 'STORY (趣味故事)' : 'SMART (智能联想)'
+  const cleaned = await callApi(
+    MNEMONIC_SYSTEM_PROMPT,
+    `Word: ${word}\n\nYou MUST use the ${typeLabel} approach. Set type="${type}" in the JSON output. Generate a mnemonic and return the JSON.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as import('../types').Mnemonic
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
+        throw new Error('AI returned invalid JSON for mnemonic')
+      }
+    }
+  }
+  throw new Error('AI returned invalid JSON for mnemonic')
+}
+
 export async function generateMnemonic(
   word: string,
   signal?: AbortSignal

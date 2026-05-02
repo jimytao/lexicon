@@ -384,8 +384,6 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
             )}
           </div>
 
-          </div>
-          
           <div className="border-t border-border pt-8 space-y-6">
             {/* Dark mode */}
             <div className="flex items-center justify-between">

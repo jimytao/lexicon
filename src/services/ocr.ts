@@ -19,15 +19,6 @@ function toLangCode(uiLang: string): string {
   return LANG_MAP[uiLang] || 'jpn+eng'
 }
 
-async function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
-    img.onerror = reject
-    img.src = dataUrl
-  })
-}
-
 export async function detectTextRegions(
   imageDataUrl: string,
   sourceLang: string,
@@ -44,10 +35,12 @@ export async function detectTextRegions(
   })
 
   // Use dimensions from Tesseract result to ensure consistency
-  const { width, height } = result.data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = result.data as any
+  const { width, height } = data
 
   const detections: OcrDetection[] = []
-  const lines = result.data.lines
+  const lines: any[] = data.lines
   if (!lines) return detections
 
   for (const line of lines) {

@@ -1,6 +1,7 @@
 import initSqlJs from 'sql.js'
 import type { Database } from 'sql.js'
 import type { DBService } from './db'
+import type { Meaning, Example } from '../types'
 
 let _db: Database | null = null
 

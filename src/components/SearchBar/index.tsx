@@ -121,15 +121,17 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
         </div>
 
         {/* Suggestion Dropdown - Floating style */}
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
-          <SuggestList
-            items={suggestions}
-            onSelect={handleSelect}
-            visible={showSuggestions}
-            activeIndex={activeIndex}
-          />
-          {showHistory && <HistoryList onSelect={handleSelect} />}
-        </div>
+        {(showSuggestions || showHistory) && (
+          <div className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+            <SuggestList
+              items={suggestions}
+              onSelect={handleSelect}
+              visible={showSuggestions}
+              activeIndex={activeIndex}
+            />
+            {showHistory && <HistoryList onSelect={handleSelect} />}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex justify-center">

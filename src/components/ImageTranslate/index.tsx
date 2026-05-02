@@ -1,12 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useImageStore, FONT_OPTIONS } from '../../stores/imageStore'
-import { aiImageTranslateFast } from '../../services/ai'
-import { detectTextRegions, matchBlocksToOcr } from '../../services/ocr'
+import { aiImageTranslateFast, aiImageTranslateFull } from '../../services/ai'
 import { TranslationList } from './TranslationList'
 import { ImageEditor, type ImageEditorHandle } from './ImageEditor'
 import { ImageViewer, type ImageViewerHandle } from './ImageViewer'
 import { BlockOverlay } from './BlockOverlay'
 import { ExportButton } from './ExportButton'
+
+import type { TextBlock } from '../../types'
+
+/** Transfer Phase 1 user-edited translations into Phase 2 blocks (which have accurate bboxes).
+ *  Matches by normalised original-text character overlap; each Phase 1 block is used at most once. */
+function mergePhase1Translations(p2Blocks: TextBlock[], p1Blocks: TextBlock[]): TextBlock[] {
+  function similarity(a: string, b: string): number {
+    if (!a || !b) return 0
+    const na = a.toLowerCase().replace(/\s/g, '')
+    const nb = b.toLowerCase().replace(/\s/g, '')
+    if (na === nb) return 1
+    const freq = new Map<string, number>()
+    for (const c of na) freq.set(c, (freq.get(c) ?? 0) + 1)
+    let match = 0
+    const bFreq = new Map<string, number>()
+    for (const c of nb) bFreq.set(c, (bFreq.get(c) ?? 0) + 1)
+    for (const [c, cnt] of freq) match += Math.min(cnt, bFreq.get(c) ?? 0)
+    return match / Math.max(na.length, nb.length)
+  }
+
+  const used = new Set<number>()
+  return p2Blocks.map((p2) => {
+    let bestIdx = -1
+    let bestScore = 0.4 // minimum threshold
+    for (let i = 0; i < p1Blocks.length; i++) {
+      if (used.has(i)) continue
+      const score = similarity(p2.original ?? '', p1Blocks[i].original ?? '')
+      if (score > bestScore) { bestScore = score; bestIdx = i }
+    }
+    if (bestIdx >= 0 && p1Blocks[bestIdx].translation) {
+      used.add(bestIdx)
+      return { ...p2, translation: p1Blocks[bestIdx].translation }
+    }
+    return p2
+  })
+}
 
 function findScrollContainer(el: Element | null): Element | null {
   let cur = el
@@ -52,7 +87,6 @@ export function ImageTranslateView() {
 
   const [embedMode, setEmbedMode] = useState(false)
   const [embedLoading, setEmbedLoading] = useState(false)
-  const [embedProgress, setEmbedProgress] = useState(0)
   const [imageCollapsed, setImageCollapsed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [selectedLayer, setSelectedLayer] = useState<1 | 2>(2)
@@ -144,27 +178,27 @@ export function ImageTranslateView() {
 
   const [embedError, setEmbedError] = useState<string | null>(null)
 
-  /** Stage 2: Tesseract OCR for accurate bbox, merged with Phase 1 AI translations */
+  /** Stage 2: AI full-vision bbox detection, merged with Phase 1 user-edited translations */
   const handleEnterEmbed = useCallback(async () => {
     if (bboxReady) { setEmbedMode(true); return }
     const base64 = storedBase64
     if (!base64) return
     setEmbedLoading(true)
-    setEmbedProgress(0)
     setEmbedError(null)
     try {
-      const ocrBlocks = await detectTextRegions(base64, sourceLang, (p) => setEmbedProgress(p))
-      const matched = matchBlocksToOcr(blocks, ocrBlocks, sourceLang)
-      setBlocks(matched, true)
+      // Phase 2: AI detects bboxes/polygons visually (more accurate for manga bubbles than OCR)
+      const p2Blocks = await aiImageTranslateFull(base64, sourceLang, targetLang)
+      // Merge Phase 1 user-edited translations into Phase 2 blocks (by original text similarity)
+      const merged = mergePhase1Translations(p2Blocks, blocks)
+      setBlocks(merged, true)
       setEmbedMode(true)
       viewerRef.current?.resetTransform()
     } catch (err) {
-      setEmbedError((err as Error).message || 'OCR 定位失败，请重试')
+      setEmbedError((err as Error).message || 'AI 定位失败，请重试')
     } finally {
       setEmbedLoading(false)
-      setEmbedProgress(0)
     }
-  }, [bboxReady, storedBase64, sourceLang, blocks, setBlocks])
+  }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks])
 
   const handleSelect = useCallback((index: number | null, layer: 1 | 2 = 2) => {
     setSelectedIndex(index)
@@ -374,13 +408,13 @@ export function ImageTranslateView() {
                     }`}
                   >
                     {embedLoading 
-                      ? `计算位置 ${Math.round(embedProgress * 100)}%` 
+                      ? `AI 定位中...`
                       : '嵌字此图'}
                   </button>
                 </div>
                 {embedError && (
                   <div className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-                    OCR 失败：{embedError}
+                    AI 定位失败：{embedError}
                     <button type="button" onClick={handleEnterEmbed} className="ml-2 underline">重试</button>
                   </div>
                 )}

@@ -58,11 +58,13 @@ export function App() {
     const { result, queryType } = await selectWord(word)
 
     if (result) {
-      if (mode === 'ai' || queryType === 'word') {
-        const currentMode = useSearchStore.getState().mode
-        if (currentMode === 'ai') {
-          triggerAi(word, result.meanings)
-        }
+      const currentMode = useSearchStore.getState().mode
+      const cachedAi = useResultStore.getState().getCachedAi(word)
+      if (cachedAi) {
+        useResultStore.getState().setAiAnalysis(word, cachedAi)
+        useSearchStore.getState().setMode('ai')
+      } else if (currentMode === 'ai') {
+        triggerAi(word, result.meanings)
       }
     } else {
       if (queryType === 'phrase' || queryType === 'sentence') {

@@ -30,13 +30,13 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
     // Pre-compute pixel coords for all blocks with L1/L2 separation
     type BlockRenderInfo = {
       block: TextBlock
-      // L1 positioning - independent from L2
+      // L1 positioning + color (polygon blocks use l1Color*, non-polygon use color*)
       l1x: number; l1y: number; l1w: number; l1h: number
       l1PolyPixels: Array<{x: number, y: number}> | null
       l1ColorOpts: { hue: number; saturation: number; opacity: number }
-      // L2 positioning - independent from L1
+      // L2 positioning (text)
       l2x: number; l2y: number; l2w: number; l2h: number
-      l2ColorOpts: { hue: number; saturation: number; opacity: number }
+      sampledBg: string
     }
     const infos: BlockRenderInfo[] = []
     for (const block of blocks) {
@@ -69,22 +69,17 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
       const l2w = w
       const l2h = h
       
+      // Polygon blocks use l1Color* (controlled via L1 card in TranslationList)
+      // Non-polygon blocks use color* (controlled via single color panel in TranslationList)
       infos.push({
         block,
         // L1 data
         l1x, l1y, l1w, l1h, l1PolyPixels,
-        l1ColorOpts: {
-          hue: block.l1ColorHue ?? 0,
-          saturation: block.l1ColorSaturation ?? 1,
-          opacity: block.l1ColorOpacity ?? 1,
-        },
+        l1ColorOpts: poly
+          ? { hue: block.l1ColorHue ?? 0, saturation: block.l1ColorSaturation ?? 1, opacity: block.l1ColorOpacity ?? 1 }
+          : { hue: block.colorHue ?? 0, saturation: block.colorSaturation ?? 1, opacity: block.colorOpacity ?? 1 },
         // L2 data
         l2x, l2y, l2w, l2h,
-        l2ColorOpts: {
-          hue: block.colorHue ?? 0,
-          saturation: block.colorSaturation ?? 1,
-          opacity: poly ? 0 : (block.colorOpacity ?? 1),
-        },
         sampledBg,
       })
     }
@@ -130,7 +125,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
     }
 
     // Pass 2: Layer 2 — translation text inlay
-    for (const { block, l2x, l2y, l2w, l2h, l2ColorOpts, sampledBg } of infos) {
+    for (const { block, l2x, l2y, l2w, l2h, sampledBg } of infos) {
       const blockType: TextBlockType = block.type || 'bubble'
       const dir: TextDirection = block.direction || 'horizontal'
       const rotation = block.rotation ?? 0
