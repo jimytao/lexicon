@@ -7,52 +7,85 @@
   --color-ai-bg: #EEEDFE;
   --color-ai-text: #3C3489;
   --color-ai-dot: #7F77DD;
+  
+  /* Neo-Native Palette */
+  --color-background: #FFFFFF;
+  --color-background-soft: #F9FAFB;
+  --color-foreground: #111827;
+  --color-foreground-muted: #6B7280;
+  --color-accent: #6366F1;
+  --color-accent-soft: #EEF2FF;
+  --color-border: #E5E7EB;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
 }
 
-/* 根元素背景 + 防 overscroll 白色 */
+/* 强制使用 .dark 类触发深色变量，避免系统 prefers-color-scheme 干扰 */
+.dark {
+  --color-background: #030712;
+  --color-background-soft: #0F172A;
+  --color-foreground: #F9FAFB;
+  --color-foreground-muted: #9CA3AF;
+  --color-accent: #818CF8;
+  --color-accent-soft: #1E1B4B;
+  --color-border: #1F2937;
+}
+
+/* Base Styles */
 html, body {
-  background-color: #f9fafb; /* gray-50 */
-}
-.dark, .dark body {
-  background-color: #030712; /* gray-950 */
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
 }
 
-/* Safe area utilities — iOS 刘海 / Android 挖孔屏适配 */
+/* Safe area utilities — iOS Notch / Android Punch-hole */
 .pt-safe {
-  padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-.top-safe {
-  top: env(safe-area-inset-top, 0px);
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* iOS 防输入框 focus 自动放大（font-size < 16px 时 Safari 会 zoom）*/
-@supports (-webkit-touch-callout: none) {
-  input, select, textarea {
-    font-size: 16px;
-  }
-}
-
-/* 滚动条样式 */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
-  border-radius: 3px;
+  background: var(--color-border);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: var(--color-foreground-muted);
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #4B5563;
+/* Fluid Layout Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6B7280;
+
+.dark .glass {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Prevent auto-zoom on iOS */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }

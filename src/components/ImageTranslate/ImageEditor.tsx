@@ -45,8 +45,11 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
       const w = Math.round(block.bbox.w * img.naturalWidth)
       const h = Math.round(block.bbox.h * img.naturalHeight)
       if (w <= 0 || h <= 0) continue
+
+      // Sample background color once for this block
+      const sampledBg = sampleFillColor(ctx, x, y, w, h)
       
-      // L1: Polygon positioning (if polygon exists)
+      // L1: Cleanup positioning
       let l1x = x, l1y = y, l1w = w, l1h = h
       let l1PolyPixels: Array<{x: number, y: number}> | null = null
       const poly = block.polygon && block.polygon.length >= 3 ? block.polygon : null
@@ -60,7 +63,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
         l1h = Math.round(Math.max(...pys) - l1y)
       }
       
-      // L2: Text positioning (always use original bbox, completely independent)
+      // L2: Text positioning
       const l2x = x
       const l2y = y
       const l2w = w
@@ -80,35 +83,54 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
         l2ColorOpts: {
           hue: block.colorHue ?? 0,
           saturation: block.colorSaturation ?? 1,
-          opacity: poly ? 0 : (block.colorOpacity ?? 1),  // L2 polygon: always transparent
+          opacity: poly ? 0 : (block.colorOpacity ?? 1),
         },
+        sampledBg,
       })
     }
 
-    // Pass 1: Layer 1 — polygon background fill (completely independent from L2)
-    for (const { block, l1x, l1y, l1w, l1h, l1PolyPixels, l1ColorOpts } of infos) {
-      if (!l1PolyPixels) continue
+    // Pass 1: Layer 1 — background cleanup (fills polygon or rounded rect)
+    for (const { block, l1x, l1y, l1w, l1h, l1PolyPixels, l1ColorOpts, sampledBg } of infos) {
+      const blockType = block.type || 'bubble'
+      if (blockType === 'sfx') continue // SFX usually doesn't have a background cleanup layer
+      
       const rotation = block.rotation ?? 0
-      const fillColor = adjustColor('rgb(255, 255, 255)', l1ColorOpts)
+      const fillColor = adjustColor(sampledBg, l1ColorOpts)
+      
       ctx.save()
       if (rotation !== 0) {
         ctx.translate(l1x + l1w / 2, l1y + l1h / 2)
         ctx.rotate(rotation * Math.PI / 180)
         ctx.translate(-(l1x + l1w / 2), -(l1y + l1h / 2))
       }
+
       ctx.beginPath()
-      ctx.moveTo(l1PolyPixels[0].x, l1PolyPixels[0].y)
-      for (let pi = 1; pi < l1PolyPixels.length; pi++) ctx.lineTo(l1PolyPixels[pi].x, l1PolyPixels[pi].y)
-      ctx.closePath()
+      if (l1PolyPixels) {
+        ctx.moveTo(l1PolyPixels[0].x, l1PolyPixels[0].y)
+        for (let pi = 1; pi < l1PolyPixels.length; pi++) ctx.lineTo(l1PolyPixels[pi].x, l1PolyPixels[pi].y)
+        ctx.closePath()
+      } else {
+        // Auto-adapt shape based on block type
+        const outset = 2 // Small expansion to ensure original text is fully covered
+        const ox = l1x - outset, oy = l1y - outset, ow = l1w + outset * 2, oh = l1h + outset * 2
+        
+        if (blockType === 'bubble') {
+          // Use ellipse for speech bubbles
+          ctx.ellipse(ox + ow / 2, oy + oh / 2, ow / 2, oh / 2, 0, 0, Math.PI * 2)
+        } else {
+          // Use rounded rect for captions
+          roundRect(ctx, ox, oy, ow, oh, 8)
+        }
+      }
+      
       ctx.fillStyle = fillColor
       ctx.globalAlpha = l1ColorOpts.opacity
       ctx.fill()
       ctx.restore()
     }
 
-    // Pass 2: Layer 2 — translation text (completely independent from L1)
-    // Always use independent L2 positioning data
-    for (const { block, l2x, l2y, l2w, l2h, l2ColorOpts } of infos) {
+    // Pass 2: Layer 2 — translation text inlay
+    for (const { block, l2x, l2y, l2w, l2h, l2ColorOpts, sampledBg } of infos) {
       const blockType: TextBlockType = block.type || 'bubble'
       const dir: TextDirection = block.direction || 'horizontal'
       const rotation = block.rotation ?? 0
@@ -119,11 +141,11 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
         ctx.translate(-(l2x + l2w / 2), -(l2y + l2h / 2))
       }
       if (blockType === 'bubble') {
-        renderBubble(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, l2ColorOpts, null)
+        renderBubbleText(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, sampledBg)
       } else if (blockType === 'sfx') {
         renderSfx(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir)
       } else {
-        renderCaption(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, l2ColorOpts, null)
+        renderCaptionText(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir)
       }
       ctx.restore()
     }
@@ -159,28 +181,25 @@ ImageEditor.displayName = 'ImageEditor'
 interface ColorOpts { hue: number; saturation: number; opacity: number }
 
 // ── Bubble: background fill + text ──
-function renderBubble(
+// ── Bubble: text only (Pass 2) ──
+function renderBubbleText(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
-  fontFamily: string, dir: TextDirection, colorOpts: ColorOpts,
-  polyPixels?: Array<{x: number, y: number}> | null,
+  fontFamily: string, dir: TextDirection, sampledBg: string,
 ) {
   if (!text) return
-
-  const bgColor = sampleFillColor(ctx, x, y, w, h)
-  const adjusted = adjustColor(bgColor, colorOpts)
-  ctx.fillStyle = adjusted
-  ctx.globalAlpha = colorOpts.opacity
-  ctx.fillRect(x, y, w, h)
-  ctx.globalAlpha = 1
-
-  const brightness = parseBrightness(bgColor)
+  const brightness = parseBrightness(sampledBg)
   const textColor = brightness > 128 ? '#000000' : '#ffffff'
 
+  // Use tighter safe area for elliptical bubbles (80% of width/height)
+  const padW = w * 0.1, padH = h * 0.1
+  const sw = w - padW * 2, sh = h - padH * 2
+  const sx = x + padW, sy = y + padH
+
   if (dir === 'vertical') {
-    renderVertical(ctx, text, x, y, w, h, fontFamily, textColor)
+    renderVertical(ctx, text, sx, sy, sw, sh, fontFamily, textColor)
   } else {
-    renderHorizontal(ctx, text, x, y, w, h, fontFamily, textColor, polyPixels)
+    renderHorizontal(ctx, text, sx, sy, sw, sh, fontFamily, textColor, null)
   }
 }
 
@@ -199,28 +218,22 @@ function renderSfx(
   }
 }
 
-// ── Caption: semi-transparent bg + text ──
-function renderCaption(
+// ── Caption: text only (Pass 2) ──
+function renderCaptionText(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
-  fontFamily: string, dir: TextDirection, colorOpts: ColorOpts,
-  polyPixels?: Array<{x: number, y: number}> | null,
+  fontFamily: string, dir: TextDirection,
 ) {
   if (!text) return
-
-  const pad = 4
-  const base = adjustColor('rgb(255,255,255)', colorOpts)
-  ctx.fillStyle = base
-  ctx.globalAlpha = colorOpts.opacity * 0.75
-  ctx.beginPath()
-  roundRect(ctx, x, y, w, h, 4)
-  ctx.fill()
-  ctx.globalAlpha = 1
-
+  // Captions use 15% safe area to avoid hitting rounded corners
+  const padW = w * 0.15, padH = h * 0.15
+  const sw = w - padW * 2, sh = h - padH * 2
+  const sx = x + padW, sy = y + padH
+  
   if (dir === 'vertical') {
-    renderVertical(ctx, text, x + pad, y + pad, w - pad * 2, h - pad * 2, fontFamily, '#222222')
+    renderVertical(ctx, text, sx, sy, sw, sh, fontFamily, '#222222')
   } else {
-    renderHorizontal(ctx, text, x + pad, y + pad, w - pad * 2, h - pad * 2, fontFamily, '#222222', polyPixels)
+    renderHorizontal(ctx, text, sx, sy, sw, sh, fontFamily, '#222222', null)
   }
 }
 
@@ -355,21 +368,30 @@ function renderVertical(
 // ── Helpers ──
 
 function sampleFillColor(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): string {
-  // Sample along the four edges of the bbox (avoids text pixels in the interior)
+  // Sample along the four edges, but shifted 2px inward to avoid picking up borders
   const samples: Array<[number, number, number]> = []
   const steps = 8
+  const inset = 2
+  
   function sample(px: number, py: number) {
     try {
       const pixel = ctx.getImageData(Math.round(px), Math.round(py), 1, 1).data
       samples.push([pixel[0], pixel[1], pixel[2]])
     } catch { /* skip */ }
   }
+  
+  // Only sample if box is large enough to inset
+  const sx = w > inset * 2 ? x + inset : x
+  const sy = y > inset * 2 ? y + inset : y
+  const sw = w > inset * 2 ? w - inset * 2 : w
+  const sh = h > inset * 2 ? h - inset * 2 : h
+
   for (let i = 0; i <= steps; i++) {
     const t = i / steps
-    sample(x + t * w, y)              // top edge
-    sample(x + t * w, y + h)          // bottom edge
-    sample(x, y + t * h)              // left edge
-    sample(x + w, y + t * h)          // right edge
+    sample(sx + t * sw, sy)              // top edge (inset)
+    sample(sx + t * sw, sy + sh)          // bottom edge (inset)
+    sample(sx, sy + t * sh)              // left edge (inset)
+    sample(sx + sw, sy + t * sh)          // right edge (inset)
   }
   if (samples.length === 0) return 'rgb(255, 255, 255)'
   const avg = samples.reduce((a, [r, g, b]) => [a[0] + r, a[1] + g, a[2] + b], [0, 0, 0])

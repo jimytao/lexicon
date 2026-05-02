@@ -7,6 +7,8 @@ const isTauri = !!process.env.TAURI_ENV_PLATFORM
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    port: 5173,
+    strictPort: true,
     // COOP/COEP needed for SharedArrayBuffer (sql.js), but can cause
     // issues inside Tauri's WebView2 — only enable for plain browser dev
     headers: isTauri ? {} : {

@@ -36,7 +36,7 @@ export function App() {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
 
-const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
+  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
 
@@ -50,7 +50,7 @@ const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiSt
   }, [mode])
 
   function scrollToTop() {
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function handleWordSelect(word: string) {
@@ -58,16 +58,13 @@ const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiSt
     const { result, queryType } = await selectWord(word)
 
     if (result) {
-      // Word found in dictionary
       if (mode === 'ai' || queryType === 'word') {
-        // If already in AI mode, trigger analysis
         const currentMode = useSearchStore.getState().mode
         if (currentMode === 'ai') {
           triggerAi(word, result.meanings)
         }
       }
     } else {
-      // No dictionary result → AI fallback
       if (queryType === 'phrase' || queryType === 'sentence') {
         triggerPhraseQuery(word)
       } else {
@@ -99,10 +96,9 @@ const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiSt
     }
   }
 
-  // Android virtual keyboard occlusion fix - Robust fallback for older Androids
+  // Android virtual keyboard occlusion fix
   useEffect(() => {
     let scrollTimeout: any;
-
     const initKeyboardFix = async () => {
       const isCapacitorAndroid = typeof window !== 'undefined' &&
         (window as any).Capacitor &&
@@ -112,19 +108,16 @@ const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiSt
 
       try {
         const info = await Device.getInfo()
-        // 只在 Android 10 (API 29) 及以下老设备执行暴力撑开逻辑
         const isOldAndroid = info.operatingSystem === 'android' && parseFloat(info.osVersion) <= 10
         if (!isOldAndroid) return
 
         const handleFocusIn = (e: FocusEvent) => {
           const activeEl = e.target as HTMLElement
           if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
-
           const scrollable = getScrollableAncestor(activeEl)
           if (scrollable) {
             scrollable.style.paddingBottom = `400px`
             scrollable.dataset.kbPadded = 'true'
-            
             clearTimeout(scrollTimeout)
             scrollTimeout = setTimeout(() => {
               activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -145,8 +138,6 @@ const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiSt
         document.addEventListener('focusin', handleFocusIn)
         document.addEventListener('focusout', handleFocusOut)
         Keyboard.addListener('keyboardDidHide', handleFocusOut)
-        
-        // Save cleanup references to window to clear on unmount
         ;(window as any)._kbFixCleanup = () => {
           document.removeEventListener('focusin', handleFocusIn)
           document.removeEventListener('focusout', handleFocusOut)
@@ -157,104 +148,100 @@ const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiSt
         console.error('Failed to init keyboard fix', e)
       }
     }
-
     initKeyboardFix()
-
-    return () => {
-      if ((window as any)._kbFixCleanup) {
-        (window as any)._kbFixCleanup()
-      }
-    }
+    return () => { if ((window as any)._kbFixCleanup) (window as any)._kbFixCleanup() }
   }, [])
 
-  // Determine which view to render
   const showPhraseView = !wordResult && (phraseResult || (aiStatus === 'loading' && detectQueryType(query) !== 'word'))
   const showAiFullView = !wordResult && !showPhraseView && (aiFullResult || aiStatus === 'loading' || aiStatus === 'error')
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950" style={{ minHeight: '100vh', backgroundColor: 'var(--twc-bg)' }}>
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div
         ref={scrollContainerRef}
-        className="mx-auto max-w-[480px] min-h-screen overflow-y-auto bg-white dark:bg-gray-900 shadow-sm relative pb-safe"
-        style={{ backgroundColor: 'var(--twc-bg)' }}
+        className="mx-auto max-w-2xl min-h-screen overflow-y-auto relative pb-safe selection:bg-accent/20"
       >
-        {/* Top bar: tabs + settings */}
-        <div className="flex items-center justify-between px-4 pt-safe pb-1">
-          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+        {/* Top bar: Elegant and minimal */}
+        <header className="sticky top-0 z-20 pt-safe px-6 pb-4 glass">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-baseline gap-4">
+              <h1 
+                className={`text-xl font-bold tracking-tight transition-all cursor-pointer ${view === 'dictionary' ? 'text-foreground' : 'text-foreground-muted opacity-50 text-sm'}`}
+                onClick={() => setView('dictionary')}
+              >
+                Dictionary
+              </h1>
+              <h1 
+                className={`text-xl font-bold tracking-tight transition-all cursor-pointer ${view === 'translate' ? 'text-foreground' : 'text-foreground-muted opacity-50 text-sm'}`}
+                onClick={() => setView('translate')}
+              >
+                Image
+              </h1>
+            </div>
+            
             <button
-              onClick={() => setView('dictionary')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                view === 'dictionary'
-                  ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
+              onClick={() => setSettingsOpen(true)}
+              className="p-2 -mr-2 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors"
+              aria-label="Settings"
             >
-              查词
-            </button>
-            <button
-              onClick={() => setView('translate')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                view === 'translate'
-                  ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              图片翻译
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            aria-label="Settings"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-        </div>
+        </header>
 
-        {view === 'translate' ? (
-          <ImageTranslateView />
-        ) : (
-          <>
-            <SearchBar onWordSelect={handleWordSelect} onForceAi={handleForceAi} />
+        <main className="px-6 py-4">
+          {view === 'translate' ? (
+            <ImageTranslateView />
+          ) : (
+            <div className="space-y-6">
+              <SearchBar onWordSelect={handleWordSelect} onForceAi={handleForceAi} />
 
-            {showPhraseView ? (
-              <PhraseView
-                phrase={query}
-                phraseResult={phraseResult}
-                aiStatus={aiStatus}
-                aiError={aiError}
-                onRetry={handleRetry}
-              />
-            ) : showAiFullView ? (
-              <AiFullView
-                word={query}
-                aiFullResult={aiFullResult}
-                aiStatus={aiStatus}
-                aiError={aiError}
-                onRetry={handleRetry}
-                onWordClick={handleWordSelect}
-              />
-            ) : wordResult ? (
-              <ResultView
-                wordResult={wordResult}
-                relatedPhrases={relatedPhrases}
-                aiAnalysis={aiAnalysis}
-                aiStatus={aiStatus}
-                aiError={aiError}
-                mode={mode}
-                onRetry={handleRetry}
-                onWordClick={handleWordSelect}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center pt-24 text-gray-400 dark:text-gray-600">
-                <p className="text-sm">输入单词开始查询</p>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {showPhraseView ? (
+                  <PhraseView
+                    phrase={query}
+                    phraseResult={phraseResult}
+                    aiStatus={aiStatus}
+                    aiError={aiError}
+                    onRetry={handleRetry}
+                  />
+                ) : showAiFullView ? (
+                  <AiFullView
+                    word={query}
+                    aiFullResult={aiFullResult}
+                    aiStatus={aiStatus}
+                    aiError={aiError}
+                    onRetry={handleRetry}
+                    onWordClick={handleWordSelect}
+                  />
+                ) : wordResult ? (
+                  <ResultView
+                    wordResult={wordResult}
+                    relatedPhrases={relatedPhrases}
+                    aiAnalysis={aiAnalysis}
+                    aiStatus={aiStatus}
+                    aiError={aiError}
+                    mode={mode}
+                    onRetry={handleRetry}
+                    onWordClick={handleWordSelect}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center pt-32 text-foreground-muted">
+                    <div className="w-16 h-16 mb-4 rounded-3xl bg-accent/10 flex items-center justify-center text-accent">
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium">Type a word to start exploring</p>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          )}
+        </main>
       </div>
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />

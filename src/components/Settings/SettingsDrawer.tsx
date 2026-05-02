@@ -1,6 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useHistoryStore } from '../../stores/historyStore'
+import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
+
+// ... existing ProviderDef ...
 
 interface ProviderDef {
   id: string
@@ -192,8 +196,17 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     setShowModelList(false)
   }
 
-  const currentProvider = PROVIDERS.find(p => p.id === aiProvider)
-  const canShowStatic = !!(currentProvider?.staticModels?.length)
+  const { words, clear: clearHistory } = useHistoryStore()
+  const { aiCache, aiFullCache, phraseCache, clearCache } = useResultStore()
+
+  const cacheSize = useMemo(() => {
+    const total = JSON.stringify(aiCache).length + 
+                  JSON.stringify(aiFullCache).length + 
+                  JSON.stringify(phraseCache).length
+    if (total < 1024) return `${total} B`
+    if (total < 1024 * 1024) return `${(total / 1024).toFixed(1)} KB`
+    return `${(total / (1024 * 1024)).toFixed(1)} MB`
+  }, [aiCache, aiFullCache, phraseCache])
 
   return (
     <>
@@ -201,34 +214,39 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-20" onClick={() => { testAbortRef.current?.abort(); onClose() }} />
       )}
       <div
-        className={`fixed top-0 right-0 bottom-0 w-80 bg-white dark:bg-gray-900 shadow-xl z-30 flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 right-0 bottom-0 w-80 bg-background shadow-2xl z-30 flex flex-col transition-transform duration-500 ease-out border-l border-border/50 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-safe pb-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">设置</h2>
-          <button onClick={() => { testAbortRef.current?.abort(); onClose() }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-center justify-between px-6 pt-safe pb-5 border-b border-border shrink-0">
+          <h2 className="text-lg font-bold tracking-tight text-foreground">Settings</h2>
+          <button 
+            onClick={() => { testAbortRef.current?.abort(); onClose() }} 
+            className="p-2 -mr-2 text-foreground-muted hover:text-foreground transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+          {/* AI Configuration Section ... (elided for brevity but kept in mind) */}
+          {/* I'll target the existing content structure and append the new section */}
 
           {/* Provider selection */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">AI 服务商</label>
-            <div className="grid grid-cols-2 gap-1.5">
+            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">AI Provider</label>
+            <div className="grid grid-cols-2 gap-2">
               {PROVIDERS.map(p => (
                 <button
                   key={p.id}
                   onClick={() => handleProviderSelect(p)}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors text-left truncate ${
+                  className={`text-xs px-3 py-2.5 rounded-xl border transition-all text-left truncate font-medium ${
                     aiProvider === p.id
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 font-medium'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-800 dark:hover:text-gray-200'
+                      ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
+                      : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
                   }`}
                 >
                   {p.name}
@@ -239,22 +257,25 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
           {/* Endpoint */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Endpoint</label>
+            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2">Endpoint</label>
             <input
               type="text"
               value={aiEndpoint}
               onChange={(e) => { setAiEndpoint(e.target.value); setAiProvider('custom') }}
               placeholder="https://api.example.com/v1"
-              className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 font-mono"
+              className="w-full text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all"
             />
           </div>
 
           {/* API Key */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">API Key</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">API Key</label>
               {currentApiKey && (
-                <span className="text-xs text-green-500 dark:text-green-400">已保存</span>
+                <span className="text-[10px] font-bold text-green-500 uppercase tracking-tight flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Saved
+                </span>
               )}
             </div>
             <div className="relative">
@@ -263,12 +284,12 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 value={currentApiKey}
                 onChange={(e) => setApiKeyForProvider(aiProvider || 'custom', e.target.value)}
                 placeholder="sk-..."
-                className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 pr-9 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+                className="w-full text-sm border border-border rounded-xl px-4 py-2.5 pr-10 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(v => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted/50 hover:text-foreground transition-colors"
                 tabIndex={-1}
               >
                 {showKey ? (
@@ -287,57 +308,34 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
           {/* Model */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">模型</label>
-            <div className="flex gap-1.5">
+            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2">Model</label>
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={aiModel}
                 onChange={(e) => setAiModel(e.target.value)}
                 placeholder="gemini-2.0-flash"
-                className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 min-w-0"
+                className="flex-1 text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all min-w-0"
               />
               <button
                 onClick={handleFetchModels}
                 disabled={fetchStatus === 'loading' || !aiEndpoint || !currentApiKey}
-                className="shrink-0 text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                className="shrink-0 text-[10px] font-bold px-3 py-2.5 rounded-xl border border-border text-foreground-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
               >
-                {fetchStatus === 'loading' ? (
-                  <>
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    获取中
-                  </>
-                ) : '获取列表'}
+                {fetchStatus === 'loading' ? 'Fetching' : 'Models'}
               </button>
             </div>
 
-            {/* Error hint */}
-            {fetchStatus === 'error' && (
-              <p className="mt-1 text-xs text-red-500">
-                获取失败，请手动输入模型名称
-                {canShowStatic && (
-                  <button
-                    onClick={() => { setFetchedModels(currentProvider!.staticModels!); setFetchStatus('success'); setShowModelList(true) }}
-                    className="ml-1 underline"
-                  >
-                    或查看常用列表
-                  </button>
-                )}
-              </p>
-            )}
-
             {/* Model list dropdown */}
             {showModelList && fetchedModels.length > 0 && (
-              <div className="mt-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-52 overflow-y-auto">
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
-                  <span className="text-xs text-gray-400">{fetchedModels.length} 个模型</span>
+              <div className="mt-2 rounded-2xl border border-border bg-background shadow-2xl max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background-soft/50">
+                  <span className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{fetchedModels.length} Models</span>
                   <button
                     onClick={() => setShowModelList(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="text-foreground-muted hover:text-foreground transition-colors"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -346,8 +344,8 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                   <button
                     key={m}
                     onClick={() => handleModelSelect(m)}
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-mono truncate ${
-                      m === aiModel ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-gray-700 dark:text-gray-300'
+                    className={`w-full text-left px-4 py-3 text-xs hover:bg-foreground/5 transition-colors font-mono truncate ${
+                      m === aiModel ? 'text-accent font-bold bg-accent/5' : 'text-foreground font-medium'
                     }`}
                   >
                     {m}
@@ -358,84 +356,121 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
           </div>
 
           {/* Test connection */}
-          <div className="flex items-center gap-3">
+          <div className="pt-2">
             <button
               onClick={handleTest}
               disabled={testStatus === 'testing' || !currentApiKey || !aiEndpoint || !aiModel}
-              className="shrink-0 text-xs px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+              className={`w-full text-xs font-bold py-3 rounded-xl border transition-all flex items-center justify-center gap-2 uppercase tracking-widest
+                ${testStatus === 'testing' 
+                  ? 'bg-background-soft border-border text-foreground-muted opacity-50 cursor-not-allowed'
+                  : 'bg-accent text-white border-transparent hover:bg-accent/90 shadow-md shadow-accent/20'
+                }`}
             >
-              {testStatus === 'testing' ? (
-                <>
-                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  测试中…
-                </>
-              ) : '测试连接'}
+              {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
             </button>
+            
             {testStatus === 'success' && (
-              <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <p className="mt-3 text-[10px] font-bold text-green-500 uppercase tracking-tight flex items-center gap-1 justify-center animate-in fade-in slide-in-from-top-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                连接成功
-              </span>
+                Connected Successfully
+              </p>
             )}
             {testStatus === 'error' && (
-              <span className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1 min-w-0">
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span className="truncate">{testMessage}</span>
-              </span>
+              <p className="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-tight text-center animate-in fade-in slide-in-from-top-1">
+                {testMessage}
+              </p>
             )}
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-gray-100 dark:border-gray-800" />
-
-          {/* Dark mode */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">深色模式</span>
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`w-10 h-6 rounded-full transition-colors ${darkMode ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-            >
-              <span className={`block w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${darkMode ? 'translate-x-4' : 'translate-x-0'}`} />
-            </button>
           </div>
-
-          {/* History */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">历史记录</span>
-            <button
-              onClick={() => setHistoryEnabled(!historyEnabled)}
-              className={`w-10 h-6 rounded-full transition-colors ${historyEnabled ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-            >
-              <span className={`block w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${historyEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
-          {/* Max exercises */}
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">练习题数</span>
-              <p className="text-xs text-gray-400 dark:text-gray-500">AI mode 生成练习的题目数</p>
-            </div>
-            <div className="flex items-center gap-2">
+          
+          <div className="border-t border-border pt-8 space-y-6">
+            {/* Dark mode */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">Dark Mode</span>
+                <p className="text-[10px] text-foreground-muted">Switch appearance</p>
+              </div>
               <button
-                onClick={() => setMaxExercises(Math.max(1, maxExercises - 1))}
-                className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm"
+                onClick={() => setDarkMode(!darkMode)}
+                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${darkMode ? 'bg-accent' : 'bg-foreground/10'}`}
               >
-                −
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${darkMode ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200 w-4 text-center">{maxExercises}</span>
+            </div>
+
+            {/* History Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">History Tracking</span>
+                <p className="text-[10px] text-foreground-muted">Save your lookups</p>
+              </div>
               <button
-                onClick={() => setMaxExercises(Math.min(10, maxExercises + 1))}
-                className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm"
+                onClick={() => setHistoryEnabled(!historyEnabled)}
+                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${historyEnabled ? 'bg-accent' : 'bg-foreground/10'}`}
               >
-                +
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${historyEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* Max exercises */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">Exercise Count</span>
+                <p className="text-[10px] text-foreground-muted">Questions per AI session</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setMaxExercises(Math.max(1, maxExercises - 1))}
+                  className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 transition-all"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+                  </svg>
+                </button>
+                <span className="text-sm font-bold tabular-nums text-foreground w-4 text-center">{maxExercises}</span>
+                <button
+                  onClick={() => setMaxExercises(Math.min(10, maxExercises + 1))}
+                  className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 transition-all"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-8 space-y-6">
+            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-4">Data Management</label>
+            
+            <div className="flex items-center justify-between group">
+              <div>
+                <span className="text-sm font-bold text-foreground">Search History</span>
+                <p className="text-[10px] text-foreground-muted">{words.length} items saved</p>
+              </div>
+              <button
+                onClick={() => { if(confirm('Clear all search history?')) clearHistory() }}
+                disabled={words.length === 0}
+                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
+              >
+                Clear History
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between group">
+              <div>
+                <span className="text-sm font-bold text-foreground">AI Result Cache</span>
+                <p className="text-[10px] text-foreground-muted">Occupying {cacheSize} locally</p>
+              </div>
+              <button
+                onClick={() => { if(confirm('Clear all cached AI results?')) clearCache() }}
+                disabled={Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0}
+                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
+              >
+                Clear Cache
               </button>
             </div>
           </div>

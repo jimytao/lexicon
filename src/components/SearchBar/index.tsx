@@ -48,7 +48,6 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
       }
     } else if (e.key === 'Enter' && query.trim()) {
       if (e.ctrlKey || e.metaKey) {
-        // Ctrl+Enter / Cmd+Enter：强制 AI 查询，跳过备选项
         setSuggestions([])
         setActiveIndex(-1)
         onForceAi?.(query.trim())
@@ -62,19 +61,31 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
   }
 
   return (
-    <div className="px-4 pt-4 pb-2">
-      <div ref={containerRef} className="relative">
-        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 shadow-sm focus-within:border-indigo-400 dark:focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-400/20 transition-all">
-          <svg className="w-4 h-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <div className="relative group">
+      <div 
+        ref={containerRef} 
+        className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.02]' : 'scale-100'}`}
+      >
+        <div className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-300 shadow-sm
+          ${isFocused 
+            ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg' 
+            : 'bg-background-soft border-border hover:border-foreground-muted/30'
+          }`}
+        >
+          <svg 
+            className={`w-5 h-5 shrink-0 transition-colors ${isFocused ? 'text-accent' : 'text-foreground-muted'}`} 
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
+          
           <input
             type="text"
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder="Search a word…"
-            className="flex-1 text-sm outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            placeholder="Search a word or phrase…"
+            className="flex-1 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50"
             onFocus={async (e) => {
               setIsFocused(true)
               e.target.select()
@@ -83,37 +94,45 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
                 setSuggestions(results)
               }
             }}
-            onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           />
+          
           {query && (
-            <button onClick={() => { setQuery(''); setActiveIndex(-1) }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-          {query && (
-            <button
-              type="button"
-              onClick={() => { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) }}
-              className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-              title="AI 查询（或 Ctrl+Enter）"
-            >
-              AI
-            </button>
+            <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+              <button 
+                onClick={() => { setQuery(''); setActiveIndex(-1) }} 
+                className="p-1 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) }}
+                className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-lg bg-accent text-white hover:bg-accent/90 transition-all shadow-sm"
+                title="AI Query (Ctrl+Enter)"
+              >
+                AI
+              </button>
+            </div>
           )}
         </div>
 
-        <SuggestList
-          items={suggestions}
-          onSelect={handleSelect}
-          visible={showSuggestions}
-          activeIndex={activeIndex}
-        />
-        {showHistory && <HistoryList onSelect={handleSelect} />}
+        {/* Suggestion Dropdown - Floating style */}
+        <div className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+          <SuggestList
+            items={suggestions}
+            onSelect={handleSelect}
+            visible={showSuggestions}
+            activeIndex={activeIndex}
+          />
+          {showHistory && <HistoryList onSelect={handleSelect} />}
+        </div>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-4 flex justify-center">
         <ModeToggle mode={mode} onModeChange={setMode} />
       </div>
     </div>

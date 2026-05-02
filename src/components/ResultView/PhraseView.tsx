@@ -4,6 +4,8 @@ import { ExampleList } from './InstantSection/ExampleList'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
 import { AiChatBox } from './AiSection/AiChatBox'
 import { PhraseExercises } from './PhraseExercises'
+import { MnemonicCard } from './AiSection/MnemonicCard'
+import { useResultStore } from '../../stores/resultStore'
 
 interface PhraseViewProps {
   phrase: string
@@ -14,6 +16,8 @@ interface PhraseViewProps {
 }
 
 export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }: PhraseViewProps) {
+  const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
+
   return (
     <div className="px-4 py-4">
       {/* AI badge */}
@@ -71,6 +75,13 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }:
               </div>
             </div>
           )}
+
+          <MnemonicCard 
+            word={phrase} 
+            initialMnemonic={phraseResult.mnemonic} 
+            isPhrase={true} 
+            onUpdateMnemonic={(m) => updatePhraseMnemonic(phrase, m)}
+          />
 
           {/* 例句 */}
           {phraseResult.examples.length > 0 && (

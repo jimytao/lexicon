@@ -16,16 +16,16 @@ export function ExampleList({ examples }: ExampleListProps) {
   const visible = needsCollapse && !expanded ? examples.slice(0, COLLAPSE_THRESHOLD) : examples
 
   return (
-    <div className="mb-4">
-      <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">例句</h2>
-      <ul className="space-y-3">
+    <div className="mb-8 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
+      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-4">Examples</h2>
+      <div className="space-y-4">
         {visible.map((ex, i) => (
-          <li key={i} className="border-l-2 border-gray-200 dark:border-gray-600 pl-3">
-            <p className="text-sm text-gray-800 dark:text-gray-100">{ex.en}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ex.zh}</p>
-          </li>
+          <div key={i} className="relative pl-4 border-l-2 border-accent/20 hover:border-accent transition-colors py-1">
+            <p className="text-sm font-bold text-foreground leading-relaxed">{ex.en}</p>
+            <p className="text-xs text-foreground-muted mt-1.5 font-medium">{ex.zh}</p>
+          </div>
         ))}
-      </ul>
+      </div>
 
       {needsCollapse && (
         <button

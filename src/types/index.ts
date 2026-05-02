@@ -15,6 +15,7 @@ export interface Scene {
 export interface Meaning {
   zh: string
   en: string
+  pos?: string
   scene?: Scene
 }
 
@@ -37,6 +38,18 @@ export interface Etymology {
 
 export interface Exercise {
   scenario: string
+}
+
+export interface Mnemonic {
+  type: 'story' | 'philology' | 'smart'
+  content: string
+  score: number
+  allScores: {
+    philology: number
+    story: number
+    smart: number
+  }
+  reason: string
 }
 
 export interface EvaluationResult {
@@ -66,16 +79,17 @@ export interface WordResult {
 }
 
 export interface AiAnalysis {
-  meanings: Array<{ zh: string; scene: Scene }>
+  meanings: Array<{ zh: string; pos?: string; scene: Scene }>
   etymology: Etymology
   synonyms: Synonym[]
+  mnemonic?: Mnemonic
 }
 
 export interface AiFullResult {
   correctForm: string
   phonetic: string
   pos: string
-  meanings: Array<{ zh: string; en: string; scene: Scene }>
+  meanings: Array<{ zh: string; en: string; pos?: string; scene: Scene }>
   etymology: Etymology
   synonyms: Synonym[]
   examples: Example[]
@@ -88,6 +102,7 @@ export interface PhraseResult {
   usageScenes: Array<{ label: string; description: string }>
   examples: Example[]
   exercises: Exercise[]
+  mnemonic?: Mnemonic
 }
 
 export interface ChatMessage {

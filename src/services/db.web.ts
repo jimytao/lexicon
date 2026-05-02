@@ -77,31 +77,51 @@ export const webDB: DBService = {
     try {
       const db = await getDb()
       const entryRes = db.exec(
-        `SELECT id, phonetic, pos FROM entries WHERE word_lower = ? LIMIT 1`,
+        `SELECT id, phonetic, pos FROM entries WHERE word_lower = ?`,
         [word.toLowerCase()]
       )
-      if (!entryRes[0]) return null
-      const [id, phonetic, pos] = entryRes[0].values[0]
+      if (!entryRes[0] || entryRes[0].values.length === 0) return null
 
-      const meaningRes = db.exec(
-        `SELECT zh, en FROM meanings WHERE entry_id = ? ORDER BY seq`,
-        [id]
-      )
-      const meanings = (meaningRes[0]?.values ?? []).map(([zh, en]) => ({
-        zh: zh as string,
-        en: en as string,
-      }))
+      const allMeanings: Meaning[] = []
+      const allExamples: Example[] = []
+      const posSet = new Set<string>()
+      let phonetic = ''
 
-      const exampleRes = db.exec(
-        `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 6`,
-        [id]
-      )
-      const examples = (exampleRes[0]?.values ?? []).map(([en, zh]) => ({
-        en: en as string,
-        zh: zh as string,
-      }))
+      for (const [id, ph, pos] of entryRes[0].values) {
+        if (ph && !phonetic) phonetic = ph as string
+        if (pos) posSet.add(pos as string)
 
-      return { word, phonetic: phonetic as string, pos: pos as string, meanings, examples }
+        const meaningRes = db.exec(
+          `SELECT zh, en FROM meanings WHERE entry_id = ? ORDER BY seq`,
+          [id]
+        )
+        const meanings = (meaningRes[0]?.values ?? []).map(([zh, en]) => ({
+          zh: zh as string,
+          en: en as string,
+          pos: pos as string,
+        }))
+        allMeanings.push(...meanings)
+
+        const exampleRes = db.exec(
+          `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 3`,
+          [id]
+        )
+        const examples = (exampleRes[0]?.values ?? []).map(([en, zh]) => ({
+          en: en as string,
+          zh: zh as string,
+        }))
+        allExamples.push(...examples)
+      }
+
+      const finalPos = Array.from(posSet).join('/')
+
+      return {
+        word,
+        phonetic,
+        pos: finalPos,
+        meanings: allMeanings,
+        examples: allExamples.slice(0, 6)
+      }
     } catch {
       if (word !== 'satisfaction') return null
       return {

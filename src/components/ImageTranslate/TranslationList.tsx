@@ -42,7 +42,7 @@ export function TranslationList({
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">L1 背景层</span>
+                  <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">背景遮罩 (L1)</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">多边形</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                     block.type === 'sfx' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
@@ -57,7 +57,7 @@ export function TranslationList({
                       onClick={(e) => { e.stopPropagation(); onDrawL1(i) }}
                       className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                     >
-                      手动绘制L1
+                      手动绘制遮罩
                     </button>
                   )}
                   <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">#{i + 1}</span>
@@ -108,7 +108,7 @@ export function TranslationList({
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">L2 文字层</span>
+                  <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">译文文字 (L2)</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                     {block.direction === 'vertical' ? '竖排' : '横排'}
                   </span>

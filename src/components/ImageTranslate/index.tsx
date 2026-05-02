@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useImageStore, FONT_OPTIONS } from '../../stores/imageStore'
-import { aiImageTranslateFast, aiImageTranslateFull } from '../../services/ai'
+import { aiImageTranslateFast } from '../../services/ai'
+import { detectTextRegions, matchBlocksToOcr } from '../../services/ocr'
 import { TranslationList } from './TranslationList'
 import { ImageEditor, type ImageEditorHandle } from './ImageEditor'
 import { ImageViewer, type ImageViewerHandle } from './ImageViewer'
@@ -51,6 +52,7 @@ export function ImageTranslateView() {
 
   const [embedMode, setEmbedMode] = useState(false)
   const [embedLoading, setEmbedLoading] = useState(false)
+  const [embedProgress, setEmbedProgress] = useState(0)
   const [imageCollapsed, setImageCollapsed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [selectedLayer, setSelectedLayer] = useState<1 | 2>(2)
@@ -140,34 +142,29 @@ export function ImageTranslateView() {
     }))
   }, [images, sourceLang, targetLang, setBlocksAt, setStatusAt])
 
-  /** Stage 2: full bbox, triggered on entering embed mode */
+  const [embedError, setEmbedError] = useState<string | null>(null)
+
+  /** Stage 2: Tesseract OCR for accurate bbox, merged with Phase 1 AI translations */
   const handleEnterEmbed = useCallback(async () => {
     if (bboxReady) { setEmbedMode(true); return }
     const base64 = storedBase64
     if (!base64) return
     setEmbedLoading(true)
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
+    setEmbedProgress(0)
+    setEmbedError(null)
     try {
-      const result = await aiImageTranslateFull(base64, sourceLang, targetLang, controller.signal)
-      const merged = result.map((newBlock, i) => ({
-        ...newBlock,
-        translation: blocks[i]?.translation ?? newBlock.translation,
-        colorHue: blocks[i]?.colorHue,
-        colorSaturation: blocks[i]?.colorSaturation,
-        colorOpacity: blocks[i]?.colorOpacity,
-      }))
-      setBlocks(merged, true)
+      const ocrBlocks = await detectTextRegions(base64, sourceLang, (p) => setEmbedProgress(p))
+      const matched = matchBlocksToOcr(blocks, ocrBlocks, sourceLang)
+      setBlocks(matched, true)
       setEmbedMode(true)
       viewerRef.current?.resetTransform()
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return
-      setEmbedMode(true)
+      setEmbedError((err as Error).message || 'OCR 定位失败，请重试')
     } finally {
       setEmbedLoading(false)
+      setEmbedProgress(0)
     }
-  }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks])
+  }, [bboxReady, storedBase64, sourceLang, blocks, setBlocks])
 
   const handleSelect = useCallback((index: number | null, layer: 1 | 2 = 2) => {
     setSelectedIndex(index)
@@ -353,6 +350,7 @@ export function ImageTranslateView() {
           {(status === 'done' || status === 'idle') && (
             <>
               {blocks.length > 0 && (
+                <>
                 <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                   <button
                     type="button"
@@ -375,9 +373,18 @@ export function ImageTranslateView() {
                         : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
-                    {embedLoading ? '计算位置…' : '嵌字此图'}
+                    {embedLoading 
+                      ? `计算位置 ${Math.round(embedProgress * 100)}%` 
+                      : '嵌字此图'}
                   </button>
                 </div>
+                {embedError && (
+                  <div className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+                    OCR 失败：{embedError}
+                    <button type="button" onClick={handleEnterEmbed} className="ml-2 underline">重试</button>
+                  </div>
+                )}
+                </>
               )}
 
               {embedMode ? (

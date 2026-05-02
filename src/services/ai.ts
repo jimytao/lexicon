@@ -43,6 +43,7 @@ The JSON must follow this exact schema:
   "meanings": [
     {
       "zh": "（情景前缀）中文释义",
+      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)",
       "scene": {
         "label": "2-4字的情景标签",
         "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"
@@ -286,11 +287,12 @@ Return ONLY a valid JSON object. No markdown code fences. No explanation.
 {
   "correctForm": "the correct spelling of this word (fix typos if any)",
   "phonetic": "IPA phonetic transcription (e.g. /wɜːrd/)",
-  "pos": "part of speech (noun/verb/adj/adv/abbr/etc.)",
+  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",
   "meanings": [
     {
       "zh": "中文释义",
       "en": "English definition",
+      "pos": "specific part of speech for this meaning (e.g. noun)",
       "scene": {
         "label": "2-4字情景标签",
         "description": "1-3句口语化中文，解释这个含义在什么情境下使用"
@@ -432,6 +434,116 @@ Keep answers concise and practical.`
 
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
   return data.choices?.[0]?.message?.content?.trim() ?? ''
+}
+
+// ── AI 助记生成 ──
+const MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your goal is to evaluate and provide the most effective memory aid for a given word.
+
+Evaluate THREE main approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
+
+1. PHILOLOGY (词源逻辑):
+   - Symbolic letter shapes (A=sharp, V=valley).
+   - Root evolution and letter interchanges (d/t, ac/acg).
+   - Variations of common words.
+   - High score if the word has a clear, deep logical connection.
+
+2. STORY (趣味故事):
+   - Chinese homophones (scorpion -> 死抠屁眼, pest -> 拍死它).
+   - Absurd, vivid, or humorous stories.
+   - High score if the word sounds like a funny Chinese phrase.
+
+3. SMART (智能联想):
+   - A hybrid approach or a completely unique association (e.g., visual cues, connection to pop culture, or breaking the word into recognizable "mini-words" that aren't strictly roots).
+   - Use this if the other two methods feel forced or weak.
+
+JSON Output Schema:
+{
+  "type": "philology" | "story" | "smart",
+  "content": "The actual mnemonic text in Chinese.",
+  "score": 85,
+  "allScores": {
+    "philology": 90,
+    "story": 30,
+    "smart": 60
+  },
+  "reason": "Brief explanation in Chinese why this method was chosen as the best."
+}
+
+Rules:
+- Content should be 1-3 sentences.
+- Priority: Philology > Story > Smart (if scores are close).
+- Scores must be honest. If a word is extremely hard to remember, scores should reflect that.
+- Return ONLY the JSON object.`
+
+// ── AI 词组助记生成 ──
+const PHRASE_MNEMONIC_SYSTEM_PROMPT = `You are an English phrasal verb and idiom expert. Your goal is to help students understand the "why" behind phrases, especially those involving prepositions.
+
+Explain phrases from a NATIVE SPEAKER'S perspective using these approaches:
+
+1. CORE IMAGE (核心意象 - Preferred for prepositions):
+   - Explain the root image of the preposition (e.g., 'in' is entering a space, 'up' is completeness/arrival, 'off' is detachment).
+   - Use vivid metaphors (e.g., "pop in" is like a quick head-pop into a room through a window).
+   - Show how the combination creates a logical "mental movie".
+
+2. STORY (趣味故事 - For idioms):
+   - Use the historical origin or a modern humorous scenario to link the words.
+
+JSON Output Schema:
+{
+  "type": "philology" | "story" | "smart",
+  "content": "The actual mnemonic text in Chinese, explaining the native logic.",
+  "score": 85,
+  "allScores": { "philology": 90, "story": 30, "smart": 60 },
+  "reason": "Brief explanation in Chinese."
+}
+
+Rules:
+- Focus on the "Native Thinking" (母语者思维).
+- Explain the logic of prepositions clearly.
+- Never output anything outside the JSON object.`
+
+export async function generatePhraseMnemonic(
+  phrase: string,
+  signal?: AbortSignal
+): Promise<import('../types').Mnemonic> {
+  const cleaned = await callApi(
+    PHRASE_MNEMONIC_SYSTEM_PROMPT,
+    `Phrase: ${phrase}\n\nGenerate a mnemonic from a native speaker's perspective and return the JSON.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as import('../types').Mnemonic
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
+        throw new Error('AI returned invalid JSON for phrase mnemonic')
+      }
+    }
+  }
+  throw new Error('AI returned invalid JSON for phrase mnemonic')
+}
+
+export async function generateMnemonic(
+  word: string,
+  signal?: AbortSignal
+): Promise<import('../types').Mnemonic> {
+  const cleaned = await callApi(
+    MNEMONIC_SYSTEM_PROMPT,
+    `Word: ${word}\n\nGenerate a mnemonic for this word and return the JSON.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as import('../types').Mnemonic
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
+        throw new Error('AI returned invalid JSON for mnemonic')
+      }
+    }
+  }
+  throw new Error('AI returned invalid JSON for mnemonic')
 }
 
 // ── 图片翻译 ──
@@ -602,7 +714,9 @@ export async function aiImageTranslateFast(
   return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FAST_PROMPT, signal)
 }
 
-/** Full: OCR + translate + bbox. Use when entering embed/inlay mode. */
+/** @deprecated since v0.6.0 — bbox detection moved to Tesseract.js OCR (src/services/ocr.ts).
+ * Phase 2 embed mode no longer calls this function.
+ * Use `aiImageTranslateFast` for Phase 1, then `detectTextRegions` + `matchBlocksToOcr` for Phase 2. */
 export async function aiImageTranslateFull(
   imageBase64: string,
   sourceLang: string,
@@ -612,7 +726,7 @@ export async function aiImageTranslateFull(
   return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FULL_PROMPT, signal)
 }
 
-/** @deprecated use aiImageTranslateFast or aiImageTranslateFull */
+/** @deprecated use aiImageTranslateFast for Phase 1, then OCR for Phase 2 bbox */
 export async function aiImageTranslate(
   imageBase64: string,
   sourceLang: string,

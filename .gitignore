@@ -1,10 +1,8 @@
 node_modules
 dist
 
-# Internal docs (not useful for external contributors)
-# CLAUDE.md
-# CHANGELOG.md
-# lexicon-docs/
+# Internal docs — now tracked in repo for version history
+# (keystore and signing configs are still excluded below)
 
 # Android keystore (never commit — back up locally)
 *.keystore
@@ -33,6 +31,9 @@ Thumbs.db
 # SQLite WAL/SHM temp files
 *.db-shm
 *.db-wal
+
+# Playwright MCP temp files
+.playwright-mcp/
 
 # Temp
 app-icon.png
