@@ -1,5 +1,136 @@
 # CHANGELOG
 
+## 2026-05-04 — 嵌字/翻译模式 Sticky 失效 + 背景色调整修复
+
+### Bug 1：Sticky 图片在 Tauri/PC 端失效
+
+**根因**：App.tsx 重构后新增了 sticky header（`h-14 + pb-4` = 72px），ImageTranslateView 的两个 sticky 容器仍用 `top-safe`（PC 上 = `top: 0px`）。两者同时争占 `top: 0`，图片被 header（z-20）遮盖，滚动时视觉上消失。
+
+**修复**：
+- `src/index.css`：新增 `.top-header-offset { top: calc(72px + env(safe-area-inset-top, 0px)) }`，精确对齐 App header 底部（含 iOS 安全区兼容）。
+- `src/components/ImageTranslate/index.tsx`：嵌字模式和翻译列表模式的 sticky 容器，`top-safe` → `top-header-offset`。
+
+### Bug 2：嵌字模式背景色调/饱和度滑条无效果
+
+**根因**：`ImageEditor.tsx` 的 `adjustColor()` 用 `s * opts.saturation` 计算饱和度。白色漫画气泡的采样背景色 `s ≈ 0`（近乎无彩色），任何值乘 0 仍为 0，导致色调和饱和度滑条均无视觉效果。透明度单独用 `ctx.globalAlpha` 设置，不走此逻辑，因此透明度一直正常。
+
+**修复**（`ImageEditor.tsx` `adjustColor` 函数）：
+- 饱和度滑条 > 1 时改为 additive boost（向满饱和度线性趋近），不再是乘法，白底也能加色。
+- 色调滑条非零时，强制最低饱和度 `Math.min(0.55, |hue| / 180 * 0.6)`，确保白色气泡在调整色调时可见染色效果。
+
+---
+
+## 2026-05-04 — 配置清理：移除 Capacitor 8 中无效的 adjustMarginsForEdgeToEdge
+
+### 问题根因
+`capacitor.config.ts` 的 `android` 块中存在 `adjustMarginsForEdgeToEdge: true` 配置项。经核实，该字段在 `@capacitor/cli@8.x` 的类型定义中不存在，TypeScript 不报错是因为 `android` 字段有宽松的 `[key: string]: any` 签名，但运行时完全无效，属于死配置。
+
+### 修复
+- 删除 `capacitor.config.ts` 中的 `android: { adjustMarginsForEdgeToEdge: true }` 整块。
+- Android 15+ 强制全屏的安全区问题已由 `index.css` 中的 `.pt-safe / .pb-safe / .top-safe` CSS 工具类（使用 `env(safe-area-inset-*)` 变量）正确处理，无需额外配置。
+
+### 同步更新 CLAUDE.md
+- 修正 `windowSoftInputMode` 的记录值为实际值 `adjustResize`（原文档误写为 `adjustPan`）。
+
+---
+
+## 2026-05-04 — 搜索界面布局优化、空间压缩与溢出修复
+
+### 1. 搜索区域纵向布局压缩 (Vertical Space Optimization)
+- **空间节约**：将原先垂直排列的“Dictionary/Image”大标题重构为顶栏 (Sticky Header) 内的胶囊式分段切换按钮。这一改动大幅缩减了页眉高度，显著提升了搜索结果的有效可视面积。
+- **布局一体化**：将搜索框、模式切换按钮的垂直间距从 `space-y-6` 优化为 `space-y-4`，组件衔接更紧凑，整体视觉重心更趋向核心内容。
+
+### 2. 模式切换控件 Bug 修复与升级 (Segmented Control)
+- **溢出修复**：彻底解决了在特定宽度下“AI Mode”按钮超出滑块框架的布局 Bug。通过重构滑块的 `calc` 逻辑并强制文字不换行 (`whitespace-nowrap`)，确保了布局在各种窄屏下的稳健性。
+- **语义升级**：将“AI Mode”更名为更具操作导向的 **“AI Lookup”**，提升了功能的语义清晰度。
+- **滑块动画微调**：修正了滑块的起始位移逻辑，确保在切换时滑块背景能精准覆盖选中文字，消除视觉偏移。
+
+### 3. 视觉美化与细节打磨 (Polishing)
+- **Tab 交互增强**：Dictionary/Image 切换按钮引入了柔和的背景阴影与缩放反馈，体验更接近原生移动应用。
+- **深色模式适配**：优化了深色模式下分段控件的背景色对比度，使其在极暗背景下依然保持清晰的层次感。
+
+---
+
+## 2026-05-04 — UI/UX 重构、逻辑统一与多平台交互修复
+
+### 1. 高级分段控件 (Segmented Control)
+- **位置重置**：将 `Instant / AI Mode` 模式切换开关从搜索框下方移至正上方，符合 Google/iOS 大厂主流搜索布局逻辑。
+- **高级动效**：重构为分段选择器，引入了平滑的滑动背景动画（Sliding Background），显著提升了操作的物理感与视觉反馈。
+- **色彩和谐**：深度适配 `var(--color-accent)` 等主题变量，确保在 Light/Dark Mode 下滑块与文字的对比度、投影均达到 Premium 级别。
+
+### 2. 搜索交互逻辑统一 (Unified Search Logic)
+- **冗余清理**：移除了搜索框内独立的 "AI" 小按钮，将所有搜索意图合并至右侧统一的“搜索”按钮。
+- **逻辑收口**：重写了 `SearchBar` 的提交逻辑，无论是键盘回车、点击搜索图标、还是选择历史/建议词，全部调用统一的 `handleSelect` 状态机。
+- **原生键盘适配**：引入 `<form>` 容器并配置 `enterkeyhint="search"`，使 Android/iOS 原生键盘的“搜索”键能直接触发应用内逻辑，体验更接近原生 App。
+
+### 3. Tauri & 移动端历史记录交互修复
+- **点击竞争修复**：针对 Tauri 和移动端 WebView 常见的“失焦导致点击失效”问题，将下拉列表的点击事件改为 `onMouseDown` 优先捕获，确保在列表卸载前搜索动作已成功发出。
+- **失焦逻辑优化**：在搜索完成后主动调用 `inputRef.current.blur()`，优化了移动端软键盘自动收起的连贯性。
+
+### 4. 跨平台安全区与 CSS 增强
+- **多版本 Android 适配**：增强了 `index.css` 中的 `.pt-safe` 等工具类，增加变量回退机制以兼容 Android 8、10、14+ 不同系统对 `env(safe-area-inset-top)` 的差异化表现。
+- **玻璃效果升级**：优化了 `.glass` 类的模糊度 (16px) 与边框色，使其在深色模式下更具质感。
+
+### 5. 代码质量与清理
+- **移除冗余组件**：删除了已被替代的 `ModeToggle.tsx`。
+- **精简 App.tsx**：移除了 `App.tsx` 中过时的 `handleForceAi` 逻辑与未使用的历史存储导入，通过 build 校验确保无死代码。
+
+---
+
+## 2026-05-03 — 移动端键盘深度优化、嵌字架构合并与 AI 稳健性增强
+
+### 1. 移动端键盘遮挡终极方案 (iOS/Android 8-16)
+- **多版本适配**：重写了 `App.tsx` 中的键盘监听逻辑，同时支持 `keyboardWillShow` 和 `keyboardDidShow` 事件，确保从 Android 8 到最新 Android 16 的全版本兼容。
+- **动态视口计算**：放弃了硬编码的 padding，改为根据 `window.innerHeight` 和 `keyboardHeight` 动态计算剩余可见空间，确保输入框始终能完美平滑滚动到屏幕中心。
+- **Edge-to-Edge 适配**：在 `capacitor.config.ts` 中开启 `adjustMarginsForEdgeToEdge`，配合 `viewport-fit=cover` 彻底解决 Android 15+ 强制全屏模式下的手势条遮挡与“黑条”问题。
+- **主题背景同步**：确保键盘弹起后的 padding 区域颜色与系统暗黑/亮色模式背景色自动同步，消除视觉断层。
+
+### 2. 漫画嵌字模式架构合并 (Consolidation)
+- **图层逻辑统一**：合并了 L1（背景清理）和 L2（译文渲染）在 UI 层的展示逻辑，不再区分“背景层”和“文字层”卡片。现在每个文本块在 `TranslationList` 中只对应一个卡片，降低了操作复杂度。
+- **简化交互**：移除了 `BlockOverlay` 中的图层选择状态，点击图中任意文本块即可直接呼出包含背景颜色（色调/饱和度/不透明度）和译文编辑的综合面板。
+- **属性透明化**：根据块是否包含多边形轮廓，自动切换读写底层属性（`l1Color*` vs `color*`），对用户保持界面一致性。
+
+### 3. AI 交互稳健性与 Token 优化
+- **正则 JSON 提取**：升级了 `services/ai.ts` 的解析引擎，使用更强大的正则提取逻辑（`match(/\{[\s\S]*\}/)`）从 AI 的回复中精准剥离 JSON，彻底杜绝了因 AI 多嘴（输出 Markdown 代码块或前言）导致的 `invalid json` 错误。
+- **模块化 Prompt 生成**：查词、深度解析及词组查询的 Prompt 现在会根据用户在设置中开启/关闭的模块（词源、近义词、例句、助记等）动态生成。未开启的功能不会出现在 Prompt 中，既减少了 Token 消耗，也提升了 AI 逻辑的专注度。
+
+### 4. UI/UX 体验细节优化
+- **语义场景折叠**：在结果页中为「语义情景」模块增加了折叠功能。对于词典命中词默认折叠以保持整洁，对于 AI 全量查词则保持展开。
+- **模块管理系统**：在设置面板新增「模块管理」功能，支持一键开关或通过上下箭头调整各个 AI 功能模块的显示顺序。
+
+### 5. 结果页动态渲染引擎与排序逻辑修复
+- **全动态渲染架构**：重构了 `ResultView`、`AiFullView` 及 `PhraseView` 的核心渲染逻辑。通过 `modules.map` 循环取代了原有的硬编码布局，实现了查词结果模块与设置中「模块管理」定义的顺序及开关状态的完全同步。
+- **实时交互反馈**：在结果页组件中直接接入 `useSettingsStore` 状态。现在用户在设置抽屉中拖拽调整模块顺序或切换开关时，背景中的结果页会立即实时重绘，实现了“调整即所得”的流畅交互体验。
+- **组件原子化重组**：将 `AiSection` 和 `InstantSection` 中的子功能块（近义词辨析、词源、助记、练习等）拆解为独立的原子组件，由主视图统一调度渲染。这种“平铺”结构彻底解决了排序难题，同时也精简了组件层级。
+
+---
+
+## 2026-05-02 — 助记功能恢复与 UI 全量抗溢出优化
+
+### 1. 助记功能 (Mnemonics) 找回
+- **深度模式适配**：修复了 `AiFullView`（生僻词深度解析模式）下助记卡片（MnemonicCard）缺失的回归 Bug，确保深度解析同样享有三种 AI 记忆策略。
+- **状态持久化**：在 `ResultStore` 中新增 `updateFullMnemonic` 逻辑，支持深度模式下的助记切换缓存，保证“秒开”体验与数据一致性。
+
+### 2. 全布局 UI 抗溢出处理 (Layout Robustness)
+- **长单词换行**：为 `WordHeader` 单词标题添加 `break-words` 和 `overflow-hidden`，彻底解决长单词在移动端溢出容器的问题。
+- **搜索组件抗压**：对搜索框、建议列表（SuggestList）、历史记录（HistoryList）中的文本项全面应用 `min-w-0` 与 `truncate`（省略号）策略，确保在窄屏下不挤压操作按钮。
+- **侧边栏防护**：设置面板增加 `max-w-full`，防止在极端缩放或超窄设备下产生横向滚动条。
+
+---
+
+## 2026-05-02 — 搜索历史逻辑修复与移动端 UI 布局优化
+
+### 1. 搜索历史记录增强
+- **AI 模式历史持久化**：修复了点击“AI”按钮或通过 `Ctrl+Enter` 触发强制 AI 查询时，搜索词未被计入历史记录的问题。
+- **句子查询支持**：确保长句及复杂短语在 AI 模式下也能正确同步到 `lexicon-history` 存储中。
+
+### 2. 搜索框移动端适配优化 (iOS/Android 9/Tauri)
+- **Flex 容器溢出修复**：为搜索输入框添加 `min-w-0`，解决在窄屏设备上 Input 无法收缩导致“AI”按钮被挤出搜索框甚至屏幕外的布局 Bug。
+- **组件抗压优化**：为搜索图标及操作按钮组添加 `shrink-0`，确保在任何屏幕宽度下图标不被压缩变形。
+- **边界剪裁**：搜索框容器新增 `overflow-hidden`，确保在极端缩放或动画过程中子元素不会溢出圆角边框。
+
+---
+
 ## 2026-05-02 — 嵌字错误文案修正 + 代码审查
 
 ### 代码审查与微调

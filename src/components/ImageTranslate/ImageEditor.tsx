@@ -416,9 +416,22 @@ function adjustColor(color: string, opts: ColorOpts): string {
     }
   }
 
-  // Apply adjustments
+  // Hue shift
   h = (h + opts.hue / 360 + 1) % 1
-  s = Math.max(0, Math.min(1, s * opts.saturation))
+  // Saturation: slider 0-2, where 1 = unchanged.
+  // Below 1: desaturate (multiply). Above 1: boost toward full saturation (additive).
+  // This ensures the slider works even on near-achromatic (white) sampled backgrounds.
+  if (opts.saturation <= 1) {
+    s = s * opts.saturation
+  } else {
+    s = s + (1 - s) * (opts.saturation - 1) * 0.8
+  }
+  // When hue is shifted on a near-grey background, enforce a minimum saturation
+  // so the hue change is actually visible (e.g., white manga bubble gets a tint).
+  if (opts.hue !== 0) {
+    s = Math.max(s, Math.min(0.55, Math.abs(opts.hue) / 180 * 0.6))
+  }
+  s = Math.max(0, Math.min(1, s))
 
   // HSL → RGB
   function hue2rgb(p: number, q: number, t: number) {

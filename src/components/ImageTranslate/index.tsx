@@ -89,7 +89,6 @@ export function ImageTranslateView() {
   const [embedLoading, setEmbedLoading] = useState(false)
   const [imageCollapsed, setImageCollapsed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const [selectedLayer, setSelectedLayer] = useState<1 | 2>(2)
 
   const abortRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -200,13 +199,10 @@ export function ImageTranslateView() {
     }
   }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks])
 
-  const handleSelect = useCallback((index: number | null, layer: 1 | 2 = 2) => {
+  const handleSelect = useCallback((index: number | null) => {
     setSelectedIndex(index)
-    setSelectedLayer(layer)
     if (index === null || !listRef.current) return
-    const block = index < blocks.length ? blocks[index] : null
-    const hasPolygon = !!(block?.polygon && block.polygon.length >= 3)
-    const elId = hasPolygon ? `block-item-${index}-${layer}` : `block-item-${index}`
+    const elId = `block-item-${index}`
     const el = listRef.current.querySelector(`#${elId}`)
     if (!el) return
     const stickyH = (stickyRef.current?.offsetHeight ?? 0) + 12
@@ -220,7 +216,7 @@ export function ImageTranslateView() {
       const target = window.scrollY + el.getBoundingClientRect().top - stickyH
       window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
     }
-  }, [blocks])
+  }, [])
 
   const [drawPolygonForIndex, setDrawPolygonForIndex] = useState<number | null>(null)
   const handleDrawL1 = useCallback((index: number) => { setDrawPolygonForIndex(index) }, [])
@@ -424,7 +420,7 @@ export function ImageTranslateView() {
               {embedMode ? (
                 /* ── 嵌字编辑模式 ── */
                 <div className="space-y-3">
-                  <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
+                  <div ref={stickyRef} className="sticky top-header-offset z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"
@@ -465,7 +461,6 @@ export function ImageTranslateView() {
                           <BlockOverlay
                             blocks={blocks}
                             selectedIndex={selectedIndex}
-                            selectedLayer={selectedLayer}
                             onSelect={handleSelect}
                             onUpdateBlock={(i, partial) => updateBlock(i, partial)}
                             onDeleteBlock={deleteBlock}
@@ -486,7 +481,6 @@ export function ImageTranslateView() {
                       onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
                       onUpdateBlock={updateBlock}
                       selectedIndex={selectedIndex ?? undefined}
-                      selectedLayer={selectedLayer}
                       onSelect={handleSelect}
                       onDeselect={() => setSelectedIndex(null)}
                       onDrawL1={handleDrawL1}
@@ -496,7 +490,7 @@ export function ImageTranslateView() {
               ) : (
                 /* ── 翻译列表模式 ── */
                 <div>
-                  <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
+                  <div ref={stickyRef} className="sticky top-header-offset z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"
@@ -580,7 +574,6 @@ export function ImageTranslateView() {
                           blocks={blocks}
                           onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
                           selectedIndex={selectedIndex ?? undefined}
-                          selectedLayer={selectedLayer}
                           onSelect={handleSelect}
                         />
                       </div>

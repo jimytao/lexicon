@@ -4,8 +4,7 @@ import type { TextBlock, TextBlockType, TextDirection } from '../../types'
 interface Props {
   blocks: TextBlock[]
   selectedIndex: number | null
-  selectedLayer?: 1 | 2
-  onSelect: (index: number | null, layer?: 1 | 2) => void
+  onSelect: (index: number | null) => void
   onUpdateBlock: (index: number, partial: Partial<TextBlock>) => void
   onDeleteBlock: (index: number) => void
   onAddBlock: (block: TextBlock) => void
@@ -76,7 +75,7 @@ function applyHandleDelta(
 }
 
 export function BlockOverlay({
-  blocks, selectedIndex, selectedLayer = 2, onSelect,
+  blocks, selectedIndex, onSelect,
   onUpdateBlock, onDeleteBlock, onAddBlock,
   drawPolygonForIndex, onPolygonDrawn,
 }: Props) {
@@ -274,13 +273,11 @@ export function BlockOverlay({
               key={i}
               points={block.polygon.map(p => `${p.x},${p.y}`).join(' ')}
               fill={
-                selectedIndex === i && selectedLayer === 1
-                  ? 'rgba(168,85,247,0.18)'
-                  : selectedIndex === i
-                    ? 'rgba(59,130,246,0.15)'
-                    : 'rgba(59,130,246,0.06)'
+                selectedIndex === i
+                  ? 'rgba(59,130,246,0.18)'
+                  : 'rgba(59,130,246,0.06)'
               }
-              stroke={selectedIndex === i && selectedLayer === 1 ? '#a855f7' : '#3b82f6'}
+              stroke="#3b82f6"
               strokeWidth={selectedIndex === i ? '0.003' : '0.002'}
               strokeDasharray={selectedIndex === i ? undefined : '0.012,0.006'}
             />
@@ -355,18 +352,18 @@ export function BlockOverlay({
               boxSizing: 'border-box',
               transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
               transformOrigin: 'center center',
-              border: hasPolygon ? 'none' : (isSelected ? '2px solid #3b82f6' : '1px dashed rgba(59,130,246,0.5)'),
-              backgroundColor: hasPolygon ? 'transparent' : (isSelected ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)'),
+              border: hasPolygon ? (isSelected ? '1px solid rgba(59,130,246,0.3)' : 'none') : (isSelected ? '2px solid #3b82f6' : '1px dashed rgba(59,130,246,0.5)'),
+              backgroundColor: hasPolygon ? (isSelected ? 'rgba(59,130,246,0.04)' : 'transparent') : (isSelected ? 'rgba(59,130,246,0.08)' : 'rgba(59,130,246,0.04)'),
               cursor: 'move',
             }}
             onMouseDown={(e) => {
               e.stopPropagation()
-              onSelect(i, 2)
+              onSelect(i)
               handlePointerDown(e.nativeEvent, 'move', i)
             }}
             onTouchStart={(e) => {
               e.stopPropagation()
-              onSelect(i, 2)
+              onSelect(i)
               handlePointerDown(e.nativeEvent, 'move', i)
             }}
           >
@@ -423,7 +420,7 @@ export function BlockOverlay({
                   position: 'absolute',
                   width: 10, height: 10,
                   backgroundColor: '#fff',
-                  border: `2px solid ${selectedLayer === 1 ? '#a855f7' : '#3b82f6'}`,
+                  border: `2px solid #3b82f6`,
                   borderRadius: 2,
                   ...HANDLE_STYLE[hp],
                 }}

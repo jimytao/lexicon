@@ -93,6 +93,7 @@ export interface AiFullResult {
   etymology: Etymology
   synonyms: Synonym[]
   examples: Example[]
+  mnemonic?: Mnemonic
 }
 
 export interface PhraseResult {

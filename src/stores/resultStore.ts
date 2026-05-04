@@ -27,6 +27,7 @@ interface ResultStore {
   addChatMessage: (msg: ChatMessage) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
+  updateFullMnemonic: (word: string, m: Mnemonic) => void
   updatePhraseMnemonic: (key: string, m: Mnemonic) => void
   getCachedAi: (word: string) => AiAnalysis | null
   getCachedAiFull: (word: string) => AiFullResult | null
@@ -74,6 +75,16 @@ export const useResultStore = create<ResultStore>()(
           delete cache[word]
           cache[word] = updated
           set({ aiCache: cache, aiAnalysis: updated })
+        }
+      },
+      updateFullMnemonic: (word, mnemonic) => {
+        const current = get().aiFullResult
+        if (current) {
+          const updated = { ...current, mnemonic }
+          const cache = { ...get().aiFullCache }
+          delete cache[word]
+          cache[word] = updated
+          set({ aiFullCache: cache, aiFullResult: updated })
         }
       },
       updatePhraseMnemonic: (key, mnemonic) => {

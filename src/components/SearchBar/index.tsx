@@ -4,17 +4,16 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { db } from '../../services/db'
 import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
-import { ModeToggle } from './ModeToggle'
 
 interface SearchBarProps {
   onWordSelect: (word: string) => void
-  onForceAi?: (query: string) => void
 }
 
-export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
-  const { query, suggestions, mode, setQuery, setMode, setSuggestions } = useSearchStore()
+export function SearchBar({ onWordSelect }: SearchBarProps) {
+  const { query, suggestions, setQuery, setSuggestions } = useSearchStore()
   const { historyEnabled } = useSettingsStore()
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLFormElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
 
@@ -24,7 +23,19 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
   function handleSelect(word: string) {
     setSuggestions([])
     setActiveIndex(-1)
+    inputRef.current?.blur()
     onWordSelect(word)
+  }
+
+  function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!query.trim()) return
+
+    const word = activeIndex >= 0
+      ? (suggestions[activeIndex]?.word ?? query.trim())
+      : (suggestions[0]?.word ?? query.trim())
+    
+    handleSelect(word)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -46,27 +57,17 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
       } else {
         setQuery('')
       }
-    } else if (e.key === 'Enter' && query.trim()) {
-      if (e.ctrlKey || e.metaKey) {
-        setSuggestions([])
-        setActiveIndex(-1)
-        onForceAi?.(query.trim())
-      } else {
-        const word = activeIndex >= 0
-          ? (suggestions[activeIndex]?.word ?? query.trim())
-          : (suggestions[0]?.word ?? query.trim())
-        handleSelect(word)
-      }
     }
   }
 
   return (
     <div className="relative group">
-      <div 
+      <form 
         ref={containerRef} 
-        className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.02]' : 'scale-100'}`}
+        onSubmit={handleSubmit}
+        className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
-        <div className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-300 shadow-sm
+        <div className={`flex items-center gap-3 px-4 py-3.5 rounded-3xl border transition-all duration-300 shadow-sm overflow-hidden
           ${isFocused 
             ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg' 
             : 'bg-background-soft border-border hover:border-foreground-muted/30'
@@ -80,12 +81,14 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
           </svg>
           
           <input
-            type="text"
+            ref={inputRef}
+            type="search"
+            enterKeyHint="search"
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="Search a word or phrase…"
-            className="flex-1 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50"
+            className="flex-1 min-w-0 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50"
             onFocus={async (e) => {
               setIsFocused(true)
               e.target.select()
@@ -97,30 +100,36 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           />
           
-          {query && (
-            <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+          <div className="flex shrink-0 items-center gap-1">
+            {query && (
               <button 
-                onClick={() => { setQuery(''); setActiveIndex(-1) }} 
-                className="p-1 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors"
+                type="button"
+                onClick={() => { setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }} 
+                className="p-1.5 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-              
-              <button
-                type="button"
-                onClick={() => { setSuggestions([]); setActiveIndex(-1); onForceAi?.(query.trim()) }}
-                className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-lg bg-accent text-white hover:bg-accent/90 transition-all shadow-sm"
-                title="AI Query (Ctrl+Enter)"
-              >
-                AI
-              </button>
-            </div>
-          )}
+            )}
+
+            <button
+              type="submit"
+              disabled={!query.trim()}
+              className={`p-2 rounded-2xl transition-all ${
+                query.trim() 
+                  ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95' 
+                  : 'text-foreground-muted opacity-0 translate-x-4 pointer-events-none'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Suggestion Dropdown - Floating style */}
+        {/* Suggestion Dropdown */}
         {(showSuggestions || showHistory) && (
           <div className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
             <SuggestList
@@ -129,14 +138,14 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
               visible={showSuggestions}
               activeIndex={activeIndex}
             />
-            {showHistory && <HistoryList onSelect={handleSelect} />}
+            {showHistory && (
+              <div onMouseDown={(e) => e.preventDefault()}>
+                <HistoryList onSelect={handleSelect} />
+              </div>
+            )}
           </div>
         )}
-      </div>
-
-      <div className="mt-4 flex justify-center">
-        <ModeToggle mode={mode} onModeChange={setMode} />
-      </div>
+      </form>
     </div>
   )
 }

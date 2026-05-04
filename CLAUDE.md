@@ -109,7 +109,7 @@ Tesseract.js（WASM OCR，嵌字模式文字定位）
 - App.tsx 按三路结果条件渲染 ResultView / AiFullView / PhraseView
 - AI prompt 返回 `correctForm` 用于拼写纠正，视图大字显示正确拼写
 - `capacitor.config.ts` 配置了 `server.androidScheme: 'http'`（避免 localhost 自签证书问题）、`plugins.CapacitorHttp.enabled: true`（原生 HTTP 栈）和 `plugins.Keyboard.resize: 'none'`
-- Android `windowSoftInputMode="adjustPan"` 防止键盘弹出时缩小 WebView
+- Android `windowSoftInputMode="adjustResize"`（AndroidManifest.xml 实际值；Capacitor `Keyboard.resize: 'none'` 会覆盖 WebView 缩放行为，键盘遮挡由 App.tsx 的 Capacitor Keyboard 事件监听动态处理）
 - Android `networkSecurityConfig` 信任用户 CA 证书 + 允许明文流量（代理软件兼容）
 - `src/index.css` 的 html/body 有背景色兜底（防 overscroll 白色）+ `overscroll-behavior: none`
 - `index.html` `<head>` 有同步 inline script，读 `lexicon-settings` localStorage 预加 `.dark` 类，防 React 挂载前 CSS 白闪

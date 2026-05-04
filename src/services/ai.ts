@@ -4,9 +4,19 @@ interface AiConfig {
   endpoint: string
   model: string
   apiKey: string
+  modules: Array<{ id: string; enabled: boolean }>
 }
 
 function getConfig(): AiConfig {
+  const defaultModules = [
+    { id: 'dictionary', enabled: true },
+    { id: 'synonyms', enabled: true },
+    { id: 'etymology', enabled: true },
+    { id: 'mnemonic', enabled: true },
+    { id: 'examples', enabled: true },
+    { id: 'practice', enabled: true },
+    { id: 'chat', enabled: true },
+  ]
   try {
     const stored = JSON.parse(localStorage.getItem('lexicon-settings') ?? '{}') as {
       state?: {
@@ -14,6 +24,7 @@ function getConfig(): AiConfig {
         aiEndpoint?: string
         aiModel?: string
         aiApiKeys?: Record<string, string>
+        modules?: Array<{ id: string; enabled: boolean }>
       }
     }
     const s = stored.state ?? {}
@@ -22,62 +33,51 @@ function getConfig(): AiConfig {
       endpoint: s.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || '',
       model: s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
       apiKey: s.aiApiKeys?.[providerId] || import.meta.env.VITE_AI_API_KEY || '',
+      modules: s.modules || defaultModules,
     }
   } catch {
     return {
       endpoint: import.meta.env.VITE_AI_ENDPOINT ?? '',
       model: import.meta.env.VITE_AI_MODEL ?? 'gemini-2.0-flash',
       apiKey: import.meta.env.VITE_AI_API_KEY ?? '',
+      modules: defaultModules,
     }
   }
 }
 
-const SYSTEM_PROMPT = `You are a professional English vocabulary analyst for Chinese native speakers.
+function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>): string {
+  const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+
+  let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)",\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      }\n    }\n  ]`
+  
+  if (isEnabled('etymology')) {
+    schema += `,\n  "etymology": {\n    "parts": [\n      { "segment": "词根或词缀", "meaning": "中文含义（来源语言）" }\n    ],\n    "story": "1-2句话，说明字面意义如何演变成现在的含义",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }\n    ]\n  }`
+  }
+  
+  if (isEnabled('synonyms')) {
+    schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "1句话，说明与主词的情感色彩、使用场景或强度差异"\n    }\n  ]`
+  }
+  
+  schema += `\n}`
+
+  return `You are a professional English vocabulary analyst for Chinese native speakers.
 
 Given an English word and its basic Chinese translation, analyze the word deeply.
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
 The JSON must follow this exact schema:
-{
-  "meanings": [
-    {
-      "zh": "（情景前缀）中文释义",
-      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)",
-      "scene": {
-        "label": "2-4字的情景标签",
-        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"
-      }
-    }
-  ],
-  "etymology": {
-    "parts": [
-      { "segment": "词根或词缀", "meaning": "中文含义（来源语言）" }
-    ],
-    "story": "1-2句话，说明字面意义如何演变成现在的含义",
-    "derivedWords": [
-      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }
-    ]
-  },
-  "synonyms": [
-    {
-      "word": "近义词",
-      "distinction": "1句话，说明与主词的情感色彩、使用场景或强度差异"
-    }
-  ]
-}
+${schema}
 
 Rules:
 - meanings array length must match the number of meanings provided in the user message
 - scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style
-- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)
-- etymology.story: 1-2 sentences max
-- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)
-- synonyms: provide 3-5 words, ordered from closest to most distant in meaning
-- synonyms distinction: 1 sentence each
+${isEnabled('etymology') ? '- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)\n- etymology.story: 1-2 sentences max\n- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)' : ''}
+${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest to most distant in meaning\n- synonyms distinction: 1 sentence each' : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
 - Never output anything outside the JSON object`
+}
 
 const EXERCISES_SYSTEM_PROMPT = `You are an English practice exercise designer for Chinese learners.
 
@@ -149,7 +149,7 @@ export async function analyzeWord(
       model: config.model,
       temperature: 0.3,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: getSystemPrompt(config.modules) },
         { role: 'user', content: userPrompt },
       ],
     }),
@@ -163,6 +163,7 @@ export async function analyzeWord(
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
   const raw = data.choices?.[0]?.message?.content ?? ''
 
+  // Use the same robust cleaning as callApi
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
 
   try {
@@ -217,9 +218,21 @@ async function callApi(
 
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
   const raw = data.choices?.[0]?.message?.content ?? ''
-  // Extract content from code fences if present (handles text before/after fences too)
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  return fenceMatch ? fenceMatch[1].trim() : raw.trim()
+  
+  // Extract content from code fences if present
+  let cleaned = raw.trim()
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim()
+  } else {
+    // If no fences, try to find the first '{' and last '}' to extract JSON
+    const firstBrace = cleaned.indexOf('{')
+    const lastBrace = cleaned.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.slice(firstBrace, lastBrace + 1)
+    }
+  }
+  return cleaned
 }
 
 export async function generateExercises(
@@ -278,50 +291,45 @@ export async function evaluateAnswer(
 
 // ── AI 全量查词（词库无结果时） ──
 
-const AI_FULL_LOOKUP_PROMPT = `You are a professional English vocabulary analyst for Chinese native speakers.
+function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>): string {
+  const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "IPA phonetic transcription (e.g. /wɜːrd/)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition",\n      "pos": "specific part of speech for this meaning (e.g. noun)",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      }\n    }\n  ]`
+
+  if (isEnabled('etymology')) {
+    schema += `,\n  "etymology": {\n    "parts": [{ "segment": "词根或词缀或缩写来源", "meaning": "含义（来源）" }],\n    "story": "1-2句话说明来源或演变",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
+  }
+  if (isEnabled('synonyms')) {
+    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }]`
+  }
+  if (isEnabled('examples')) {
+    schema += `,\n  "examples": [\n    { "en": "English example sentence", "zh": "中文翻译" }\n  ]`
+  }
+  schema += `\n}`
+
+  return `You are a professional English vocabulary analyst for Chinese native speakers.
 
 Given an English word that is NOT in the dictionary (could be slang, abbreviation, neologism, etc.), provide a complete analysis.
 
-Return ONLY a valid JSON object. No markdown code fences. No explanation.
+Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
-{
-  "correctForm": "the correct spelling of this word (fix typos if any)",
-  "phonetic": "IPA phonetic transcription (e.g. /wɜːrd/)",
-  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",
-  "meanings": [
-    {
-      "zh": "中文释义",
-      "en": "English definition",
-      "pos": "specific part of speech for this meaning (e.g. noun)",
-      "scene": {
-        "label": "2-4字情景标签",
-        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"
-      }
-    }
-  ],
-  "etymology": {
-    "parts": [{ "segment": "词根或词缀或缩写来源", "meaning": "含义（来源）" }],
-    "story": "1-2句话说明来源或演变",
-    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]
-  },
-  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }],
-  "examples": [
-    { "en": "English example sentence", "zh": "中文翻译" }
-  ]
-}
+The JSON must follow this exact schema:
+${schema}
 
 Rules:
 - For abbreviations (e.g. RAG, OOC), explain what each letter stands for in etymology.parts
 - correctForm: if the user misspelled the word, provide the correct spelling; if correct, just echo the word back
 - Provide 1-5 meanings, 3-5 synonyms, 3-5 examples
 - Keep everything concise`
+}
 
 export async function aiFullLookup(
   word: string,
   signal?: AbortSignal
 ): Promise<AiFullResult> {
+  const config = getConfig()
   const cleaned = await callApi(
-    AI_FULL_LOOKUP_PROMPT,
+    getFullLookupPrompt(config.modules),
     `Word: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -337,28 +345,27 @@ export async function aiFullLookup(
 
 // ── AI 词组/句子查询 ──
 
-const AI_PHRASE_PROMPT = `You are a professional English language analyst for Chinese native speakers.
+function getPhrasePrompt(modules: Array<{ id: string; enabled: boolean }>): string {
+  const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+
+  let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "中文释义/翻译",\n  "usageScenes": [\n    {\n      "label": "2-4字场景标签",\n      "description": "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"\n      }\n    ]\n  ]`
+
+  if (isEnabled('examples')) {
+    schema += `,\n  "examples": [\n    { "en": "Example sentence using this phrase", "zh": "中文翻译" }\n  ]`
+  }
+  if (isEnabled('practice')) {
+    schema += `,\n  "exercises": [\n    { "scenario": "中文场景描述，让学习者用这个表达造句" }\n  ]`
+  }
+  schema += `\n}`
+
+  return `You are a professional English language analyst for Chinese native speakers.
 
 Given an English phrase or sentence, provide a complete analysis.
 
-Return ONLY a valid JSON object. No markdown code fences. No explanation.
+Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
-{
-  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",
-  "meaning": "中文释义/翻译",
-  "usageScenes": [
-    {
-      "label": "2-4字场景标签",
-      "description": "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"
-    }
-  ],
-  "examples": [
-    { "en": "Example sentence using this phrase", "zh": "中文翻译" }
-  ],
-  "exercises": [
-    { "scenario": "中文场景描述，让学习者用这个表达造句" }
-  ]
-}
+The JSON must follow this exact schema:
+${schema}
 
 Rules:
 - correctForm: if the user's phrase has errors (wrong preposition, grammar, spelling), provide the corrected standard form; if correct, echo the phrase back
@@ -366,13 +373,15 @@ Rules:
 - If it looks like the user may have the phrase slightly wrong (e.g. wrong preposition), still analyze the CORRECT form but mention the error in usageScenes
 - Provide 2-4 usage scenes, 2-4 examples, 2-3 exercises
 - Keep everything concise`
+}
 
 export async function aiPhraseQuery(
   phrase: string,
   signal?: AbortSignal
 ): Promise<PhraseResult> {
+  const config = getConfig()
   const cleaned = await callApi(
-    AI_PHRASE_PROMPT,
+    getPhrasePrompt(config.modules),
     `Phrase/Sentence: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
   )

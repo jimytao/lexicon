@@ -29,7 +29,7 @@ export function SuggestList({ items, onSelect, visible, activeIndex = -1 }: Sugg
             }`}
             onClick={() => onSelect(item.word)}
           >
-            <span className={`text-sm font-bold ${i === activeIndex ? 'text-accent' : 'text-foreground'}`}>{item.word}</span>
+            <span className={`text-sm font-bold truncate min-w-0 flex-1 text-left ${i === activeIndex ? 'text-accent' : 'text-foreground'}`}>{item.word}</span>
             <span className="text-xs text-foreground-muted ml-4 shrink-0 max-w-[160px] truncate">{item.zhBrief}</span>
           </button>
         </li>

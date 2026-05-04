@@ -4,8 +4,6 @@ import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
 
-// ... existing ProviderDef ...
-
 interface ProviderDef {
   id: string
   name: string
@@ -117,9 +115,9 @@ interface SettingsDrawerProps {
 
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const {
-    aiProvider, aiEndpoint, aiModel, aiApiKeys, historyEnabled, darkMode, maxExercises,
+    aiProvider, aiEndpoint, aiModel, aiApiKeys, historyEnabled, darkMode, maxExercises, modules,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
-    setHistoryEnabled, setDarkMode, setMaxExercises,
+    setHistoryEnabled, setDarkMode, setMaxExercises, setModules,
   } = useSettingsStore()
 
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
@@ -208,13 +206,26 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     return `${(total / (1024 * 1024)).toFixed(1)} MB`
   }, [aiCache, aiFullCache, phraseCache])
 
+  function toggleModule(id: string) {
+    setModules(modules.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m))
+  }
+
+  function moveModule(index: number, direction: 'up' | 'down') {
+    const newModules = [...modules]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= newModules.length) return
+    const [moved] = newModules.splice(index, 1)
+    newModules.splice(targetIndex, 0, moved)
+    setModules(newModules)
+  }
+
   return (
     <>
       {open && (
         <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-20" onClick={() => { testAbortRef.current?.abort(); onClose() }} />
       )}
       <div
-        className={`fixed top-0 right-0 bottom-0 w-80 bg-background shadow-2xl z-30 flex flex-col transition-transform duration-500 ease-out border-l border-border/50 ${
+        className={`fixed top-0 right-0 bottom-0 w-80 max-w-full bg-background shadow-2xl z-30 flex flex-col transition-transform duration-500 ease-out border-l border-border/50 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -232,9 +243,6 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
-          {/* AI Configuration Section ... (elided for brevity but kept in mind) */}
-          {/* I'll target the existing content structure and append the new section */}
-
           {/* Provider selection */}
           <div>
             <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">AI Provider</label>
@@ -382,6 +390,59 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 {testMessage}
               </p>
             )}
+          </div>
+
+          {/* Module Management */}
+          <div className="border-t border-border pt-8 space-y-4">
+            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Module Management</label>
+            <div className="space-y-2">
+              {modules.map((m, i) => (
+                <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-background-soft border border-border group">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleModule(m.id)}
+                      className={`w-5 h-5 rounded border transition-all flex items-center justify-center ${
+                        m.enabled ? 'bg-accent border-accent text-white' : 'border-border bg-background'
+                      }`}
+                    >
+                      {m.enabled && (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <span className={`text-sm font-medium transition-colors ${m.enabled ? 'text-foreground' : 'text-foreground-muted opacity-50'}`}>
+                      {m.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => moveModule(i, 'up')}
+                      disabled={i === 0}
+                      className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
+                      aria-label="Move Up"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => moveModule(i, 'down')}
+                      disabled={i === modules.length - 1}
+                      className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
+                      aria-label="Move Down"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-foreground-muted px-1">
+              Drag modules to reorder. Unchecked modules will be omitted from AI requests to save tokens.
+            </p>
           </div>
 
           <div className="border-t border-border pt-8 space-y-6">

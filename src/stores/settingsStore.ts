@@ -1,6 +1,22 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export interface AppModule {
+  id: string
+  label: string
+  enabled: boolean
+}
+
+export const DEFAULT_MODULES: AppModule[] = [
+  { id: 'dictionary', label: '字典/词典', enabled: true },
+  { id: 'synonyms', label: '近义词/反义词', enabled: true },
+  { id: 'etymology', label: '词根词缀', enabled: true },
+  { id: 'mnemonic', label: 'AI 助记', enabled: true },
+  { id: 'examples', label: '双语例句', enabled: true },
+  { id: 'practice', label: '场景练习', enabled: true },
+  { id: 'chat', label: 'AI 问答', enabled: true },
+]
+
 interface SettingsStore {
   aiProvider: string
   aiEndpoint: string
@@ -9,6 +25,7 @@ interface SettingsStore {
   historyEnabled: boolean
   darkMode: boolean
   maxExercises: number
+  modules: AppModule[]
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -16,6 +33,7 @@ interface SettingsStore {
   setHistoryEnabled: (v: boolean) => void
   setDarkMode: (v: boolean) => void
   setMaxExercises: (v: number) => void
+  setModules: (v: AppModule[]) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -28,6 +46,7 @@ export const useSettingsStore = create<SettingsStore>()(
       historyEnabled: true,
       darkMode: false,
       maxExercises: 5,
+      modules: DEFAULT_MODULES,
       setAiProvider: (aiProvider) => set({ aiProvider }),
       setAiEndpoint: (aiEndpoint) => set({ aiEndpoint }),
       setAiModel: (aiModel) => set({ aiModel }),
@@ -36,6 +55,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
       setDarkMode: (darkMode) => set({ darkMode }),
       setMaxExercises: (maxExercises) => set({ maxExercises }),
+      setModules: (modules) => set({ modules }),
     }),
     { name: 'lexicon-settings' }
   )
