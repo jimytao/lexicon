@@ -24,6 +24,8 @@ interface SettingsStore {
   aiApiKeys: Record<string, string>  // keyed by providerId
   historyEnabled: boolean
   darkMode: boolean
+  webSearchEnabled: boolean
+  tavilyApiKey: string
   maxExercises: number
   modules: AppModule[]
   setAiProvider: (v: string) => void
@@ -32,6 +34,8 @@ interface SettingsStore {
   setApiKeyForProvider: (providerId: string, key: string) => void
   setHistoryEnabled: (v: boolean) => void
   setDarkMode: (v: boolean) => void
+  setWebSearchEnabled: (v: boolean) => void
+  setTavilyApiKey: (v: string) => void
   setMaxExercises: (v: number) => void
   setModules: (v: AppModule[]) => void
 }
@@ -45,6 +49,8 @@ export const useSettingsStore = create<SettingsStore>()(
       aiApiKeys: {},
       historyEnabled: true,
       darkMode: false,
+      webSearchEnabled: false,
+      tavilyApiKey: '',
       maxExercises: 5,
       modules: DEFAULT_MODULES,
       setAiProvider: (aiProvider) => set({ aiProvider }),
@@ -54,6 +60,8 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({ aiApiKeys: { ...state.aiApiKeys, [providerId]: key } })),
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
       setDarkMode: (darkMode) => set({ darkMode }),
+      setWebSearchEnabled: (webSearchEnabled) => set({ webSearchEnabled }),
+      setTavilyApiKey: (tavilyApiKey) => set({ tavilyApiKey }),
       setMaxExercises: (maxExercises) => set({ maxExercises }),
       setModules: (modules) => set({ modules }),
     }),

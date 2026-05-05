@@ -121,19 +121,27 @@ export function ImageTranslateView() {
   // Two-step: reset to 0 first so getBoundingClientRect is accurate, then jump to stickyRef's natural offset.
   const hasMountedRef = useRef(false)
   const scrollContainerRef = useRef<Element | null>(null)
+  const scrollStickyToPinned = useCallback((delay = 0) => {
+    const run = () => {
+      if (!stickyRef.current) return
+      const sc = scrollContainerRef.current ?? findScrollContainer(stickyRef.current)
+      if (!sc) return
+      scrollContainerRef.current = sc
+      sc.scrollTo({ top: 0, behavior: 'instant' })
+      requestAnimationFrame(() => {
+        if (!stickyRef.current) return
+        const target = stickyRef.current.getBoundingClientRect().top - sc.getBoundingClientRect().top
+        sc.scrollTo({ top: Math.max(0, target), behavior: 'instant' })
+      })
+    }
+    if (delay > 0) window.setTimeout(run, delay)
+    else run()
+  }, [])
+
   useEffect(() => {
     if (!hasMountedRef.current) { hasMountedRef.current = true; return }
-    if (!scrollContainerRef.current) scrollContainerRef.current = findScrollContainer(listRef.current)
-    const sc = scrollContainerRef.current
-    if (!sc || !stickyRef.current) return
-    sc.scrollTo({ top: 0, behavior: 'instant' })
-    const rafId = requestAnimationFrame(() => {
-      if (!stickyRef.current || !sc) return
-      const target = stickyRef.current.getBoundingClientRect().top - sc.getBoundingClientRect().top
-      sc.scrollTo({ top: target, behavior: 'instant' })
-    })
-    return () => cancelAnimationFrame(rafId)
-  }, [currentIndex])
+    scrollStickyToPinned()
+  }, [currentIndex, scrollStickyToPinned])
 
   /** Convert any image file to base64, cache in store at given index */
   async function getBase64At(imgIndex: number): Promise<string> {
@@ -179,7 +187,11 @@ export function ImageTranslateView() {
 
   /** Stage 2: AI full-vision bbox detection, merged with Phase 1 user-edited translations */
   const handleEnterEmbed = useCallback(async () => {
-    if (bboxReady) { setEmbedMode(true); return }
+    if (bboxReady) {
+      setEmbedMode(true)
+      scrollStickyToPinned()
+      return
+    }
     const base64 = storedBase64
     if (!base64) return
     setEmbedLoading(true)
@@ -192,12 +204,13 @@ export function ImageTranslateView() {
       setBlocks(merged, true)
       setEmbedMode(true)
       viewerRef.current?.resetTransform()
+      scrollStickyToPinned(100)
     } catch (err) {
       setEmbedError((err as Error).message || 'AI 定位失败，请重试')
     } finally {
       setEmbedLoading(false)
     }
-  }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks])
+  }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks, scrollStickyToPinned])
 
   const handleSelect = useCallback((index: number | null) => {
     setSelectedIndex(index)
@@ -205,17 +218,22 @@ export function ImageTranslateView() {
     const elId = `block-item-${index}`
     const el = listRef.current.querySelector(`#${elId}`)
     if (!el) return
-    const stickyH = (stickyRef.current?.offsetHeight ?? 0) + 12
-    const scrollContainer = scrollContainerRef.current ?? findScrollContainer(el.parentElement)
-    if (scrollContainer) {
-      const containerRect = scrollContainer.getBoundingClientRect()
+    const sc = scrollContainerRef.current ?? findScrollContainer(el.parentElement)
+    if (!sc) return
+    scrollContainerRef.current = sc
+    // Show the full photo first, then position item just below its bottom edge
+    sc.scrollTo({ top: 0, behavior: 'instant' })
+    requestAnimationFrame(() => {
+      const scRect = sc.getBoundingClientRect()
       const elRect = el.getBoundingClientRect()
-      const target = scrollContainer.scrollTop + elRect.top - containerRect.top - stickyH
-      scrollContainer.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
-    } else {
-      const target = window.scrollY + el.getBoundingClientRect().top - stickyH
-      window.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
-    }
+      const elTopRelative = sc.scrollTop + elRect.top - scRect.top
+      const stickyEl = stickyRef.current
+      const photoBottom = stickyEl
+        ? stickyEl.getBoundingClientRect().bottom - scRect.top
+        : 80  // fallback: approximate header height
+      const target = elTopRelative - photoBottom
+      sc.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+    })
   }, [])
 
   const [drawPolygonForIndex, setDrawPolygonForIndex] = useState<number | null>(null)
@@ -420,7 +438,7 @@ export function ImageTranslateView() {
               {embedMode ? (
                 /* ── 嵌字编辑模式 ── */
                 <div className="space-y-3">
-                  <div ref={stickyRef} className="sticky top-header-offset z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
+                   <div ref={stickyRef} className="sticky top-header-offset z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"

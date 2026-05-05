@@ -7,9 +7,10 @@ import { HistoryList } from './HistoryList'
 
 interface SearchBarProps {
   onWordSelect: (word: string) => void
+  onForceAi?: (word: string) => void
 }
 
-export function SearchBar({ onWordSelect }: SearchBarProps) {
+export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
   const { query, suggestions, setQuery, setSuggestions } = useSearchStore()
   const { historyEnabled } = useSettingsStore()
   const containerRef = useRef<HTMLFormElement>(null)
@@ -100,12 +101,12 @@ export function SearchBar({ onWordSelect }: SearchBarProps) {
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           />
           
-          <div className="flex shrink-0 items-center gap-1">
+          <div className={`flex shrink-0 items-center gap-2 p-1 rounded-2xl border transition-all duration-300 ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
             {query && (
               <button 
                 type="button"
                 onClick={() => { setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }} 
-                className="p-1.5 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
+                className="p-1.5 rounded-xl hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -113,19 +114,42 @@ export function SearchBar({ onWordSelect }: SearchBarProps) {
               </button>
             )}
 
-            <button
-              type="submit"
-              disabled={!query.trim()}
-              className={`p-2 rounded-2xl transition-all ${
-                query.trim() 
-                  ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95' 
-                  : 'text-foreground-muted opacity-0 translate-x-4 pointer-events-none'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setSuggestions([])
+                  onForceAi?.(query.trim())
+                }}
+                disabled={!query.trim()}
+                className={`p-2 rounded-xl transition-all duration-300 ${
+                  query.trim() 
+                    ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100' 
+                    : 'text-foreground-muted/20 opacity-40 cursor-default'
+                }`}
+                title="Force AI Search"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+              </button>
+
+              <div className={`w-[1px] h-4 bg-foreground/10 mx-1 transition-opacity duration-300 ${query.trim() ? 'opacity-100' : 'opacity-0'}`} />
+
+              <button
+                type="submit"
+                disabled={!query.trim()}
+                className={`p-2 rounded-xl transition-all duration-500 ${
+                  query.trim() 
+                    ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95 translate-x-0 opacity-100' 
+                    : 'bg-foreground/5 text-foreground-muted/20 translate-x-0 opacity-40 cursor-default'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 

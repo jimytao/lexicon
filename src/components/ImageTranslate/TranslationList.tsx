@@ -11,8 +11,8 @@ interface Props {
 }
 
 export function TranslationList({
-  blocks, onUpdateTranslation, onUpdateBlock,
-  selectedIndex, onSelect, onDeselect, onDrawL1,
+  blocks, onUpdateTranslation,
+  selectedIndex, onSelect, onDrawL1,
 }: Props) {
   if (blocks.length === 0) {
     return <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">未检测到文字</p>
@@ -21,31 +21,10 @@ export function TranslationList({
   return (
     <div className="space-y-3">
       {blocks.map((block, i) => {
-        const hasPolygon = !!(block.polygon && block.polygon.length >= 3)
-        const isSelected = selectedIndex === i
+      const hasPolygon = !!(block.polygon && block.polygon.length >= 3)
+      const isSelected = selectedIndex === i
 
-        const showColor = isSelected && (block.type === 'bubble' || block.type === 'caption')
-        
-        // Colors: use l1Color* for polygons, color* otherwise
-        const hue = hasPolygon ? (block.l1ColorHue ?? 0) : (block.colorHue ?? 0)
-        const saturation = hasPolygon ? (block.l1ColorSaturation ?? 1) : (block.colorSaturation ?? 1)
-        const opacity = hasPolygon ? (block.l1ColorOpacity ?? 1) : (block.colorOpacity ?? 1)
-
-        const updateColor = (partial: Partial<TextBlock>) => {
-          if (!onUpdateBlock) return
-          if (hasPolygon) {
-            // Update l1Color*
-            const update: any = {}
-            if (partial.colorHue !== undefined) update.l1ColorHue = partial.colorHue
-            if (partial.colorSaturation !== undefined) update.l1ColorSaturation = partial.colorSaturation
-            if (partial.colorOpacity !== undefined) update.l1ColorOpacity = partial.colorOpacity
-            onUpdateBlock(i, update)
-          } else {
-            onUpdateBlock(i, partial)
-          }
-        }
-
-        return (
+      return (
           <div
             key={i}
             id={`block-item-${i}`}
@@ -108,51 +87,6 @@ export function TranslationList({
               className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none overflow-hidden"
             />
 
-            {/* Color controls */}
-            {showColor && onUpdateBlock && (
-              <div className="mt-3 space-y-2 border-t border-blue-200 dark:border-blue-700 pt-2" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">背景调整</p>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onDeselect?.() }}
-                    className="text-[11px] px-1.5 py-0.5 rounded text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    收起
-                  </button>
-                </div>
-                <label className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 w-10 shrink-0">色调</span>
-                  <input
-                    type="range" min={-180} max={180} step={1}
-                    value={hue}
-                    onChange={(e) => updateColor({ colorHue: Number(e.target.value) })}
-                    className="flex-1 h-1.5 accent-blue-500"
-                  />
-                  <span className="text-[11px] text-gray-400 w-8 text-right">{hue}°</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 w-10 shrink-0">饱和</span>
-                  <input
-                    type="range" min={0} max={2} step={0.05}
-                    value={saturation}
-                    onChange={(e) => updateColor({ colorSaturation: Number(e.target.value) })}
-                    className="flex-1 h-1.5 accent-blue-500"
-                  />
-                  <span className="text-[11px] text-gray-400 w-8 text-right">{(saturation * 100).toFixed(0)}%</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400 w-10 shrink-0">透明</span>
-                  <input
-                    type="range" min={0} max={1} step={0.02}
-                    value={opacity}
-                    onChange={(e) => updateColor({ colorOpacity: Number(e.target.value) })}
-                    className="flex-1 h-1.5 accent-blue-500"
-                  />
-                  <span className="text-[11px] text-gray-400 w-8 text-right">{(opacity * 100).toFixed(0)}%</span>
-                </label>
-              </div>
-            )}
           </div>
         )
       })}

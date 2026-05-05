@@ -125,7 +125,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
     }
 
     // Pass 2: Layer 2 — translation text inlay
-    for (const { block, l2x, l2y, l2w, l2h, sampledBg } of infos) {
+    for (const { block, l2x, l2y, l2w, l2h, sampledBg, l1PolyPixels } of infos) {
       const blockType: TextBlockType = block.type || 'bubble'
       const dir: TextDirection = block.direction || 'horizontal'
       const rotation = block.rotation ?? 0
@@ -136,11 +136,11 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({ imageUrl, blo
         ctx.translate(-(l2x + l2w / 2), -(l2y + l2h / 2))
       }
       if (blockType === 'bubble') {
-        renderBubbleText(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, sampledBg)
+        renderBubbleText(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, sampledBg, l1PolyPixels)
       } else if (blockType === 'sfx') {
         renderSfx(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir)
       } else {
-        renderCaptionText(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir)
+        renderCaptionText(ctx, block.translation, l2x, l2y, l2w, l2h, fontFamily, dir, l1PolyPixels)
       }
       ctx.restore()
     }
@@ -181,20 +181,26 @@ function renderBubbleText(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
   fontFamily: string, dir: TextDirection, sampledBg: string,
+  polyPixels?: Array<{x: number, y: number}> | null,
 ) {
   if (!text) return
   const brightness = parseBrightness(sampledBg)
   const textColor = brightness > 128 ? '#000000' : '#ffffff'
 
-  // Use tighter safe area for elliptical bubbles (80% of width/height)
-  const padW = w * 0.1, padH = h * 0.1
-  const sw = w - padW * 2, sh = h - padH * 2
-  const sx = x + padW, sy = y + padH
+  // For polygon blocks: use polygon-aware centering (no padding, scanline-based)
+  // For non-polygon blocks: use tighter safe area (10% padding) for elliptical fit
+  const hasPoly = polyPixels && polyPixels.length >= 3
+  const padW = hasPoly ? 0 : w * 0.1
+  const padH = hasPoly ? 0 : h * 0.1
+  const sw = w - padW * 2
+  const sh = h - padH * 2
+  const sx = x + padW
+  const sy = y + padH
 
   if (dir === 'vertical') {
     renderVertical(ctx, text, sx, sy, sw, sh, fontFamily, textColor)
   } else {
-    renderHorizontal(ctx, text, sx, sy, sw, sh, fontFamily, textColor, null)
+    renderHorizontal(ctx, text, sx, sy, sw, sh, fontFamily, textColor, polyPixels)
   }
 }
 
@@ -218,17 +224,19 @@ function renderCaptionText(
   ctx: CanvasRenderingContext2D,
   text: string, x: number, y: number, w: number, h: number,
   fontFamily: string, dir: TextDirection,
+  polyPixels?: Array<{x: number, y: number}> | null,
 ) {
   if (!text) return
-  // Captions use 15% safe area to avoid hitting rounded corners
-  const padW = w * 0.15, padH = h * 0.15
+  const hasPoly = polyPixels && polyPixels.length >= 3
+  const padW = hasPoly ? 0 : w * 0.15
+  const padH = hasPoly ? 0 : h * 0.15
   const sw = w - padW * 2, sh = h - padH * 2
   const sx = x + padW, sy = y + padH
-  
+
   if (dir === 'vertical') {
     renderVertical(ctx, text, sx, sy, sw, sh, fontFamily, '#222222')
   } else {
-    renderHorizontal(ctx, text, sx, sy, sw, sh, fontFamily, '#222222', null)
+    renderHorizontal(ctx, text, sx, sy, sw, sh, fontFamily, '#222222', polyPixels)
   }
 }
 

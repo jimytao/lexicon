@@ -26,6 +26,23 @@ export const webDB: DBService = {
     const hasSpace = lp.includes(' ')
     try {
       const db = await getDb()
+      const isChinese = /[\u4e00-\u9fa5]/.test(lp)
+
+      if (isChinese) {
+        // 中文反向查词：搜索 zh_brief 包含该词的内容
+        const results = db.exec(
+          `SELECT word, zh_brief FROM suggest
+           WHERE zh_brief LIKE ?
+           ORDER BY length(zh_brief), word LIMIT ?`,
+          [`%${lp}%`, limit]
+        )
+        if (!results[0]) return []
+        return results[0].values.map(([word, zhBrief]) => ({
+          word: word as string,
+          zhBrief: zhBrief as string,
+        }))
+      }
+
       if (!hasSpace) {
         // 单词模式：排除短语
         const results = db.exec(

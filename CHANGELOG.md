@@ -1,6 +1,223 @@
 # CHANGELOG
 
-## 2026-05-04 — 嵌字/翻译模式 Sticky 失效 + 背景色调整修复
+## 2026-05-05 — v0.6.2 发布
+
+汇总自 v0.6.1 以来的修复：
+
+- **历史记录长文本溢出修复**：HistoryList 引入 `min-w-0` 与展开/收起交互，长句不再撑出面板；横向滚动条厚度对齐竖向。
+- **PC 端图片 sticky/pinned 失效修复**：主滚动容器改为 `h-screen overflow-y-auto`；嵌字模式 bbox 复用路径补充 `scrollStickyToPinned()`；修正翻译列表 sticky 图层 z-index。
+
+详见下方各日期段落。
+
+---
+
+## 2026-05-05 — Tauri 历史记录长文本溢出与横向滚动条修复
+
+### 根因
+
+- **历史记录条目只做了截断但布局约束不完整**：`src/components/SearchBar/HistoryList.tsx` 中历史记录条目虽然使用了 `truncate`，但条目、主按钮和文本区域缺少更完整的 `min-w-0` 约束；在 Tauri 桌面端遇到超长句子时，文本容易撑出历史记录面板的横向范围。
+- **长记录缺少展开查看机制**：历史记录默认只有单行截断展示，用户想看完整长句时只能依赖横向滚动，体验不符合历史记录面板应保持规整的预期。
+- **横向滚动条高度未显式设置**：`src/index.css` 的全局滚动条样式只设置了 `width: 5px`，没有设置横向滚动条的 `height`，导致横向滑块在 Tauri/WebView 中可能比竖向滑块粗很多。
+
+### 修复
+
+- `src/components/SearchBar/HistoryList.tsx`：引入本地 `expandedWords` 状态，用 `Set<string>` 记录每条历史记录是否展开。
+- `src/components/SearchBar/HistoryList.tsx`：新增 `toggleExpanded()`，支持单条历史记录独立展开/收起。
+- `src/components/SearchBar/HistoryList.tsx`：历史记录条目改为 `items-start` 布局，并给 `li`、主按钮、文本区域补充 `min-w-0`，确保内容宽度被限制在历史记录框内。
+- `src/components/SearchBar/HistoryList.tsx`：折叠态继续使用 `truncate`，默认只展示一行；展开态切换为 `whitespace-normal break-words`，完整内容在面板内部自动换行。
+- `src/components/SearchBar/HistoryList.tsx`：对较长历史记录显示右侧展开/收起箭头按钮，展开后箭头旋转表示当前状态。
+- `src/components/SearchBar/HistoryList.tsx`：保留原有交互，点击历史记录主体仍会搜索该记录，删除按钮仍会删除单条记录，`CLEAR ALL` 仍会清空全部历史。
+- `src/index.css`：在 `::-webkit-scrollbar` 中补充 `height: 5px`，让横向滚动条厚度与竖向滚动条一致；横向滚动能力暂时保留作为冗余。
+
+### 验证
+
+- `npm run build` 通过。
+
+---
+
+## 2026-05-05 — PC 端图片 sticky/pinned 失效修复
+
+### 根因
+
+- **主滚动容器高度错误**：`src/App.tsx` 的主容器使用 `min-h-screen overflow-y-auto`，PC 端内容会把容器撑高，实际滚动容易落到 `body/window` 上；但 `position: sticky` 会被最近的 `overflow-y-auto` 祖先约束，导致图片区域无法稳定像 pinned 一样吸顶。
+- **嵌字模式缓存路径漏滚动**：`src/components/ImageTranslate/index.tsx` 中 `bboxReady === true` 时只切换到嵌字模式，没有执行自动滚动到 sticky pinned 位置；第一次 AI 定位后可能正常，之后复用 bbox 再进入嵌字模式会缺少 pinned 定位。
+
+### 修复
+
+- `src/App.tsx`：主滚动容器从 `min-h-screen overflow-y-auto` 改为 `h-screen overflow-y-auto`，确保它成为真正的滚动容器，使 sticky 的约束容器和实际滚动容器一致。
+- `src/components/ImageTranslate/index.tsx`：新增复用的 `scrollStickyToPinned()`，统一切图、首次进入嵌字模式、复用 bbox 进入嵌字模式时的 pinned 滚动逻辑。
+- `src/components/ImageTranslate/index.tsx`：`bboxReady === true` 的快速路径现在也会调用 `scrollStickyToPinned()`。
+- `src/components/ImageTranslate/index.tsx`：修正翻译列表模式 sticky 图片残留的 `z-30` 为 `z-10`，与嵌字模式保持一致，避免图片层级高于 header。
+- `src/components/ImageTranslate/index.tsx`：`handleSelect` 找到滚动容器后写回 `scrollContainerRef`，保持后续滚动定位使用同一个容器。
+
+### 验证
+
+- `npm run build` 通过。
+
+---
+
+## 2026-05-04 — 嵌字功能四合一修复（v0.6.1）
+
+### 修复 1：Sticky 定位失效
+
+**根因分析**：ImageTranslateView 中的 sticky div 使用 `z-30`，高于 App header 的 `z-20`，导致 sticky 图片区域覆盖在 header 上方，视觉上看起来 sticky "不工作"。同时，点击「嵌字此图」按钮进入 embed mode 时没有触发自动 scroll，用户需要手动滚动才能看到 sticky pinned 效果。
+
+**修复**：
+- `src/components/ImageTranslate/index.tsx:423,493` — 两个 sticky div 的 z-index 从 `z-30` 改为 `z-10`（低于 header 的 `z-20`）
+- `handleEnterEmbed` 成功后增加 100ms 延迟 + 两段式 scroll：先 `scrollTo(0)` 复位，再 `requestAnimationFrame` 跳到 stickyRef 的 offset 位置
+
+### 修复 2：点击文本框时滚动到照片下缘
+
+**根因分析**：原 `handleSelect` 用 `stickyRef.offsetHeight + 12` 估算照片区高度，而非精确的下缘位置。offsetHeight 在图片缩放后不准确，且 12px 是硬编码魔数。
+
+**修复**：
+- `handleSelect` 改用 `stickyRef.current.getBoundingClientRect().bottom` 获取照片区在 scroll 容器内的精确下缘
+- 将列表项上缘对齐到该下缘位置，实现"点击嵌入图中的文本框 → 对应的翻译列表项上移到照片下缘"
+
+### 修复 3：删除嵌字列表的色彩控件
+
+**根因分析**：`ImageEditor.tsx` 已在 Pass 1 通过 `sampleFillColor()` 自动采样背景色，并自动适配形状（椭圆用于气泡、圆角矩形用于标注）。手动色调/饱和度/透明度滑块会破坏自动匹配效果，且多余控件占用列表空间。
+
+**修复**：
+- `src/components/ImageTranslate/TranslationList.tsx` — 删除 `showColor` 变量、`updateColor` 函数、以及完整的色调/饱和度/透明度滑块区块
+
+### 修复 4：多边形文字自适应失效
+
+**根因分析**：`ImageEditor.tsx` Pass 2（文字层渲染）中，`renderBubbleText` → `renderHorizontal` 调用链始终传入 `null` 作为 `polyPixels` 参数。而 `renderHorizontal` 内部早已实现基于多边形 scanline 的文字居中逻辑（`getPolygonScanline`），但因 `polyPixels` 恒为 `null`，永远退化为矩形 bbox 内居中。对椭圆、八角形等不规则对话气泡，文字会溢出到形状外。
+
+**修复**：
+- Pass 2 的 `for` 循环解构中增加 `l1PolyPixels`（来自 BlockRenderInfo 预计算阶段）
+- `renderBubbleText` 和 `renderCaptionText` 签名增加 `polyPixels` 可选参数
+- 有 polygon 时：跳过 safe area 内缩（padW/padH = 0），将 `polyPixels` 透传给 `renderHorizontal` 激活 scanline 居中
+- 无 polygon 时：保持原有 10%（bubble）/ 15%（caption）padding 内缩逻辑不变
+
+### 附带清理
+- 移除 `TranslationList` 中未使用的 `onUpdateBlock`、`onDeselect` 解构（色彩控件删除后不再需要）
+- 保留 `onDrawL1`（"重绘遮罩"按钮仍在使用）
+
+---
+
+## 2026-05-04 — 回滚另一个 AI 的”深度修复”，并清理残留编辑痕迹
+
+上一轮请另一个 AI 调试遗留 bug，结果它的”修复”思路有误，反而把问题修坏了。本次提交回滚错误改动，恢复到正确状态。
+
+### 改动 1：恢复 sticky 图片到 `top-header-offset`（**回滚**）
+
+另一个 AI 把 sticky 图片的吸附点从 `top-header-offset`（= 72px + safe-area，正好贴在 Header 底部）改成了 `top-safe`（= safe-area-inset-top，桌面端等于 0）。它的描述声称”图片会滑过并覆盖 Header”是预期行为，但这恰恰是 bug：
+
+- Header 是固定导航栏（`sticky top-0 z-20`），用户切换 Dictionary/Image 标签和打开设置都靠它。
+- sticky 图片 `z-30` > Header `z-20`，向下滚动时图片会**完全盖住导航栏**，用户无法切回 Dictionary，也找不到设置入口。
+- 桌面端（Tauri）没有刘海，`safe-area-inset-top` 为 0，图片直接吸附到窗口顶端覆盖整个 header 区域。
+
+**修复**（`src/components/ImageTranslate/index.tsx` 第 423、493 行）：恢复为 `top-header-offset`，让图片吸附在导航栏正下方，不影响导航栏可见性。
+
+```diff
+- <div ref={stickyRef} className=”sticky top-safe z-30 -mx-4 ...”>
++ <div ref={stickyRef} className=”sticky top-header-offset z-30 -mx-4 ...”>
+```
+
+### 改动 2：清理 `App.tsx` 残留编辑标记
+
+另一个 AI 在 `getScrollableAncestor` 函数里留下了一行 `// ... existing code ...`（diff 占位符忘了删）。无功能影响，但属于编辑痕迹，移除。
+
+### 改动 3：保留 SearchBar wrapper 的 `z-50`
+
+另一个 AI 把 SearchBar wrapper 从 `relative z-10` 提升到 `relative z-50` —— 这一项的方向是对的（`z-10` 在某些场景下确实不够强，提到 `z-50` 更稳妥），保留不动。
+
+---
+
+## 2026-05-04 — Bug 修复：历史记录下拉被 SegmentedControl 遮挡 & Sticky 图片宽度失效
+
+### Bug 1：搜索历史/建议词下拉框被 SegmentedControl 遮挡
+
+**根因**：SearchBar 的外层 `<div className="w-full">` 没有建立独立的 stacking context，而 SegmentedControl 在 DOM 中排在它后面。同一 stacking context 内，后来的元素天然压过前者的绝对定位子元素（dropdown），即使 dropdown 本身声明了 `z-50` 也无效。
+
+**修复**（`src/App.tsx`）：给 SearchBar 的外层 wrapper 加上 `relative z-10`：
+```diff
+- <div className="w-full">
++ <div className="w-full relative z-10">
+```
+这使 SearchBar（含其内部的 z-50 dropdown）在同一 stacking context 内优先于 SegmentedControl 渲染，下拉框不再被遮挡。**全平台通杀**（Web/Android/iOS/Tauri 均受影响，一次修复）。
+
+---
+
+### Bug 2：图片翻译 Sticky 图片视觉失效（背景不覆盖全宽）
+
+**根因**：UX 重构后，`<main className="px-6 py-4">` 同时包裹了 Dictionary 和 Image 两个 view。Image view 内的 `ImageTranslateView` 自身有 `p-4` padding，sticky 元素用 `-mx-4` 抵消内部的 16px，但无法覆盖 `main` 外层的 `px-6`（24px）。最终 sticky 元素左右各有 8px 漏洞，内容滚动时从两侧透出，视觉上看起来"sticky 失效"。
+
+**修复**（`src/App.tsx`）：将 padding 从 `<main>` 移入 dictionary 专用的内层 `<div>`，translate view 直接接 `<ImageTranslateView />`：
+```diff
+- <main className="px-6 py-4">
+-   {view === 'translate' ? (
+-     <ImageTranslateView />
+-   ) : (
+-     <div className="space-y-4">
++ <main>
++   {view === 'translate' ? (
++     <ImageTranslateView />
++   ) : (
++     <div className="px-6 py-4 space-y-4">
+```
+`ImageTranslateView` 自带的 `p-4` + sticky 的 `-mx-4` 恢复正确对齐，sticky 背景完整覆盖全宽。**全平台通杀**。
+
+---
+
+## 2026-05-04 — 多语言 AI 深度解析升级、Web 实时搜索集成与 SearchBar UI 优化
+
+### 1. 通用多语言 AI 深度解析 (Universal Cultural Interpretation)
+- **逻辑普适化**：将“翻译 + 文化解读”逻辑从仅限日韩扩展至所有非中英语种（法、德、俄、西等）。只要不是中/英，AI 任务重心均自动转向深度文化解析。
+- **构词拆解重构**：针对非中英语种，将“词根词缀”模块重定义为“词汇构成/来源”，提供更贴合具体语种背景的拆解说明。
+- **文化权重增强**：强制 AI 在解析所有外语时优先输出社会背景、历史渊源及亚文化（ACG、互联网梗）相关信息。
+
+### 2. Web 实时搜索集成 (Web Search Integration)
+- **Tavily 引擎接入**：在 `ai.ts` 中集成了 Tavily Search API，允许 AI 在解析前获取实时网络信息作为上下文。
+- **时效性突破**：解决了 AI 对当年最新影视作品（如《超时空辉夜姬》）、流行语等时效性内容的认知滞后问题。
+- **配置化管理**：在设置抽屉中新增了“Web 搜索”开关及 Tavily API Key 安全输入框，支持用户按需开启。
+
+### 3. SearchBar UI/UX 极致打磨
+- **常驻占位符设计**：实现了搜索框右侧按钮组的常驻显示（软灰色占位样式），解决了输入前按钮完全消失导致的视觉跳跃感，界面更加稳健。
+- **交互冲突修复**：修复了点击 AI 搜索按钮后建议词列表（SuggestList）不自动关闭的 Bug。
+- **层级架构优化**：大幅提升了搜索区域的 Z-index 层级（`z-30`），彻底解决了建议词列表被下方搜索结果卡片遮挡的顽疾。
+
+---
+
+
+## 2026-05-04 — Bug 修复：getPhrasePrompt schema 多余括号
+
+**问题**：`ai.ts` 的 `getPhrasePrompt` 函数中，`usageScenes` 数组闭合后多了一个多余的 `]`，导致发给 AI 的 JSON schema 本身语法错误。AI 对此有一定容错，但属于潜在风险。
+
+**修复**：`src/services/ai.ts` line 369，将 `}\n    ]\n  ]` 改为 `}\n  ]`，schema 语法恢复正确。
+
+**附带修复**：`src/stores/searchStore.ts` 补充了缺失的 `Language` 类型导入（TypeScript 严格模式下 build 报错）。
+
+---
+
+## 2026-05-04 — 多语言 AI 深度解析、UI 质感升级与跨语言查词
+
+### 1. 多语言 AI 深度分析引擎 (Multi-language Support)
+- **多语种智能识别**：在 `searchStore.ts` 中引入了 `detectLanguage` 助手，通过正则表达式实现对 **英语、中文、日语、韩语** 的精准分类识别。
+- **AI 提示词重构**：重写了 `ai.ts` 中的 `getPhrasePrompt` 和 `getFullLookupPrompt` 逻辑。针对非英/中语种，AI 任务重心从“语言解析”转向“翻译+文化解读”，显著提升了跨语言搜索的质量。
+- **新增「文化背景 & 趣味百科」模块**：
+    *   **业务逻辑**：在 `PhraseResult` 和 `AiFullResult` 类型中新增 `culturalLore` 字段。
+    *   **内容呈现**：AI 会自动输出包含“历史背景”、“流行原因”及“亚文化/圈层（二次元、游戏等）”背景的信息。
+    *   **UI 落地**：在 `AiFullView.tsx` 和 `PhraseView.tsx` 中新增了靛蓝色主题的百科卡片，支持展示多维度的背景知识。
+
+### 2. 搜索框 UI/UX 深度打磨 (SearchBar Redesign)
+- **内嵌式智能操作组**：
+    *   **结构优化**：废弃了原有的分离式按钮布局，将清空按钮、智能搜索（AI）与普通搜索整合进一个 P1 级的操作组容器。
+    *   **视觉细节**：使用 `bg-foreground/5` 背景色与 `w-[1px]` 的极细分割线实现视觉分区，操作组整体具备圆角溢出裁剪。
+- **图标语义升级**：
+    *   **星星图标**：将 AI 按钮图标从 Sparkle 更换为更高级的繁星样式 (`M5 3v4M3 5h4...`)。
+    *   **交互动效**：按钮点击时引入 `active:scale-95` 反馈，整体过渡更加顺滑。
+- **布局回归**：将模式切换控件 (Segmented Control) 重新放置于搜索框正下方，优化了单手操作的便利性与界面重心。
+
+### 3. 系统兼容性与细节修复 (System Fixes)
+- **Tauri/Webkit 视觉 Bug 修复**：在 `index.css` 中添加针对 `::-webkit-search-cancel-button` 等伪元素的 `appearance: none` 规则，彻底消除了 Tauri 环境下搜索框内多余的蓝色系统自带取消按钮。
+- **图标渲染修复**：解决了 SearchBar 中因 SVG 路径嵌套导致的图标重叠显示瑕疵。
+- **跨语言查词逻辑优化**：在 `db.web.ts` 的 `suggest` 函数中新增了中文检索支持，允许通过输入中文释义反向联想出英文单词建议。
+
+---
+
 
 ### Bug 1：Sticky 图片在 Tauri/PC 端失效
 

@@ -1,6 +1,6 @@
 export type Mode = 'instant' | 'ai'
-
 export type QueryType = 'word' | 'phrase' | 'sentence'
+export type Language = 'en' | 'zh' | 'ja' | 'ko' | 'other'
 
 export interface SuggestItem {
   word: string
@@ -94,6 +94,11 @@ export interface AiFullResult {
   synonyms: Synonym[]
   examples: Example[]
   mnemonic?: Mnemonic
+  culturalLore?: {
+    title?: string
+    content?: string
+    subculture?: string
+  }
 }
 
 export interface PhraseResult {
@@ -104,6 +109,11 @@ export interface PhraseResult {
   examples: Example[]
   exercises: Exercise[]
   mnemonic?: Mnemonic
+  culturalLore?: {
+    title?: string
+    content?: string
+    subculture?: string
+  }
 }
 
 export interface ChatMessage {

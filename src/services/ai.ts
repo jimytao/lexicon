@@ -1,3 +1,4 @@
+import { detectLanguage } from '../stores/searchStore'
 import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage } from '../types'
 
 interface AiConfig {
@@ -5,6 +6,8 @@ interface AiConfig {
   model: string
   apiKey: string
   modules: Array<{ id: string; enabled: boolean }>
+  webSearchEnabled: boolean
+  tavilyApiKey: string
 }
 
 function getConfig(): AiConfig {
@@ -25,6 +28,8 @@ function getConfig(): AiConfig {
         aiModel?: string
         aiApiKeys?: Record<string, string>
         modules?: Array<{ id: string; enabled: boolean }>
+        webSearchEnabled?: boolean
+        tavilyApiKey?: string
       }
     }
     const s = stored.state ?? {}
@@ -34,6 +39,8 @@ function getConfig(): AiConfig {
       model: s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
       apiKey: s.aiApiKeys?.[providerId] || import.meta.env.VITE_AI_API_KEY || '',
       modules: s.modules || defaultModules,
+      webSearchEnabled: s.webSearchEnabled ?? false,
+      tavilyApiKey: s.tavilyApiKey ?? '',
     }
   } catch {
     return {
@@ -41,6 +48,8 @@ function getConfig(): AiConfig {
       model: import.meta.env.VITE_AI_MODEL ?? 'gemini-2.0-flash',
       apiKey: import.meta.env.VITE_AI_API_KEY ?? '',
       modules: defaultModules,
+      webSearchEnabled: false,
+      tavilyApiKey: '',
     }
   }
 }
@@ -235,6 +244,32 @@ async function callApi(
   return cleaned
 }
 
+export async function performWebSearch(query: string, signal?: AbortSignal): Promise<string> {
+  const config = getConfig()
+  if (!config.webSearchEnabled || !config.tavilyApiKey) return ''
+
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: config.tavilyApiKey,
+        query,
+        search_depth: 'basic',
+        max_results: 5,
+      }),
+    })
+
+    if (!response.ok) return ''
+    const data = await response.json() as { results: Array<{ content: string; title: string }> }
+    return data.results.map(r => `[${r.title}]: ${r.content}`).join('\n\n')
+  } catch (e) {
+    console.error('Web search failed:', e)
+    return ''
+  }
+}
+
 export async function generateExercises(
   word: string,
   meanings: Array<{ zh: string; en: string }>,
@@ -291,25 +326,38 @@ export async function evaluateAnswer(
 
 // ── AI 全量查词（词库无结果时） ──
 
-function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>): string {
+function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "IPA phonetic transcription (e.g. /wɜːrd/)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition",\n      "pos": "specific part of speech for this meaning (e.g. noun)",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      }\n    }\n  ]`
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition (or original language equivalent)",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      }\n    }\n  ]`
 
+  // For foreign languages, etymology is less about roots/affixes and more about composition or origin
   if (isEnabled('etymology')) {
-    schema += `,\n  "etymology": {\n    "parts": [{ "segment": "词根或词缀或缩写来源", "meaning": "含义（来源）" }],\n    "story": "1-2句话说明来源或演变",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    const etymLabel = isForeign ? '词汇构成/来源' : '词根词缀/来源'
+    schema += `,\n  "etymology": {\n    "parts": [{ "segment": "构词成分或缩写来源", "meaning": "含义" }],\n    "story": "1-2句话说明${etymLabel}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
   }
   if (isEnabled('synonyms')) {
     schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }]`
   }
   if (isEnabled('examples')) {
-    schema += `,\n  "examples": [\n    { "en": "English example sentence", "zh": "中文翻译" }\n  ]`
+    schema += `,\n  "examples": [\n    { "en": "Example sentence in original language", "zh": "中文翻译" }\n  ]`
   }
+  
+  if (lang !== 'en' && lang !== 'zh') {
+    schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这个词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源和圈内含义"\n  }`
+  }
+
   schema += `\n}`
 
-  return `You are a professional English vocabulary analyst for Chinese native speakers.
+  const basePrompt = `You are a professional English vocabulary analyst for Chinese native speakers.`
+  const multiLangPrompt = `You are a professional multi-language translator and cultural analyst. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
 
-Given an English word that is NOT in the dictionary (could be slang, abbreviation, neologism, etc.), provide a complete analysis.
+  return `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
+
+Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} word, provide a complete analysis.
+
+${webSearchResults ? `ADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.\n` : ''}
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
@@ -317,10 +365,16 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
-- For abbreviations (e.g. RAG, OOC), explain what each letter stands for in etymology.parts
-- correctForm: if the user misspelled the word, provide the correct spelling; if correct, just echo the word back
-- Provide 1-5 meanings, 3-5 synonyms, 3-5 examples
-- Keep everything concise`
+- For abbreviations, explain what each letter stands for.
+- If the input is CHINESE: 
+  - correctForm: provide the best English word.
+  - meanings: provide 2-5 English alternatives with nuances.
+- If the input is a FOREIGN LANGUAGE (not English/Chinese):
+  - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
+  - Explain the specific historical or social context behind the word.
+  - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
+- Provide 3-5 synonyms, 3-5 examples.
+- Keep everything concise.`
 }
 
 export async function aiFullLookup(
@@ -328,9 +382,17 @@ export async function aiFullLookup(
   signal?: AbortSignal
 ): Promise<AiFullResult> {
   const config = getConfig()
+  const lang = detectLanguage(word)
+  
+  // Perform web search if enabled
+  const webResults = await performWebSearch(word, signal)
+  
+  const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
+  const langName = langNames[lang] || 'Foreign Language'
+
   const cleaned = await callApi(
-    getFullLookupPrompt(config.modules),
-    `Word: ${word}\n\nAnalyze this word and return the JSON.`,
+    getFullLookupPrompt(config.modules, lang, webResults),
+    `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
   try {
@@ -345,22 +407,32 @@ export async function aiFullLookup(
 
 // ── AI 词组/句子查询 ──
 
-function getPhrasePrompt(modules: Array<{ id: string; enabled: boolean }>): string {
+function getPhrasePrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "中文释义/翻译",\n  "usageScenes": [\n    {\n      "label": "2-4字场景标签",\n      "description": "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"\n      }\n    ]\n  ]`
+  let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "中文释义/翻译",\n  "usageScenes": [\n    {\n      "label": "2-4字场景标签",\n      "description": "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"\n    }\n  ]`
 
   if (isEnabled('examples')) {
     schema += `,\n  "examples": [\n    { "en": "Example sentence using this phrase", "zh": "中文翻译" }\n  ]`
   }
+  
+  if (lang !== 'en' && lang !== 'zh') {
+    schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这句话或词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源 and 圈内含义"\n  }`
+  }
+
   if (isEnabled('practice')) {
     schema += `,\n  "exercises": [\n    { "scenario": "中文场景描述，让学习者用这个表达造句" }\n  ]`
   }
   schema += `\n}`
 
-  return `You are a professional English language analyst for Chinese native speakers.
+  const basePrompt = `You are a professional English language analyst for Chinese native speakers.`
+  const multiLangPrompt = `You are a professional multi-language translator and cultural analyst. You specialize in "Cultural Interpretation" — explaining the social, historical, and subculture (especially ACG/Internet) context behind foreign expressions.`
 
-Given an English phrase or sentence, provide a complete analysis.
+  return `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
+
+Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} phrase or sentence, provide a complete analysis.
+
+${webSearchResults ? `ADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.\n` : ''}
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
@@ -368,11 +440,15 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
-- correctForm: if the user's phrase has errors (wrong preposition, grammar, spelling), provide the corrected standard form; if correct, echo the phrase back
-- If the input is a phrase/collocation, focus on its idiomatic meaning and correct usage
-- If it looks like the user may have the phrase slightly wrong (e.g. wrong preposition), still analyze the CORRECT form but mention the error in usageScenes
-- Provide 2-4 usage scenes, 2-4 examples, 2-3 exercises
-- Keep everything concise`
+- If input is CHINESE (targeting English):
+  - correctForm: the most natural English translation.
+  - usageScenes: explain when to use this translation vs others.
+- If input is a FOREIGN LANGUAGE (not English/Chinese):
+  - meaning: accurate and natural Chinese translation.
+  - usageScenes: explain the specific feeling or tone of the original expression.
+  - culturalLore: PRIORITY: Provide deep cultural/subculture context. Specify historical origins or social context if applicable.
+- Provide 2-4 usage scenes, 2-4 examples, 2-3 exercises.
+- Keep everything concise.`
 }
 
 export async function aiPhraseQuery(
@@ -380,9 +456,17 @@ export async function aiPhraseQuery(
   signal?: AbortSignal
 ): Promise<PhraseResult> {
   const config = getConfig()
+  const lang = detectLanguage(phrase)
+
+  // Perform web search if enabled
+  const webResults = await performWebSearch(phrase, signal)
+
+  const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
+  const langName = langNames[lang] || 'Foreign Language'
+
   const cleaned = await callApi(
-    getPhrasePrompt(config.modules),
-    `Phrase/Sentence: ${phrase}\n\nAnalyze and return the JSON.`,
+    getPhrasePrompt(config.modules, lang, webResults),
+    `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
   )
   let parsed: Omit<PhraseResult, 'phrase'>

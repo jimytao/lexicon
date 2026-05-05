@@ -115,9 +115,9 @@ interface SettingsDrawerProps {
 
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const {
-    aiProvider, aiEndpoint, aiModel, aiApiKeys, historyEnabled, darkMode, maxExercises, modules,
+    aiProvider, aiEndpoint, aiModel, aiApiKeys, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
-    setHistoryEnabled, setDarkMode, setMaxExercises, setModules,
+    setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises, setModules,
   } = useSettingsStore()
 
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
@@ -499,6 +499,38 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                   </svg>
                 </button>
               </div>
+            </div>
+
+            {/* Web Search */}
+            <div className="border-t border-border pt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-bold text-foreground">Web Search</span>
+                  <p className="text-[10px] text-foreground-muted">Enhance AI with up-to-date info</p>
+                </div>
+                <button
+                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  className={`w-11 h-6 rounded-full transition-all duration-300 relative ${webSearchEnabled ? 'bg-accent' : 'bg-foreground/10'}`}
+                >
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${webSearchEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+              
+              {webSearchEnabled && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2">Tavily API Key</label>
+                  <input
+                    type="password"
+                    value={tavilyApiKey}
+                    onChange={(e) => setTavilyApiKey(e.target.value)}
+                    placeholder="tvly-..."
+                    className="w-full text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 transition-all"
+                  />
+                  <p className="mt-2 text-[9px] text-foreground-muted">
+                    Get your key at <a href="https://tavily.com" target="_blank" rel="noreferrer" className="text-accent underline">tavily.com</a>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

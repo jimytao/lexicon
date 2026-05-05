@@ -14,7 +14,6 @@ import { ImageTranslateView } from './components/ImageTranslate'
 import { Keyboard } from '@capacitor/keyboard'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
-// ... existing code ...
   let node: HTMLElement | null = el.parentElement
   while (node && node !== document.body) {
     const { overflow, overflowY } = getComputedStyle(node)
@@ -87,6 +86,17 @@ export function App() {
       } else {
         triggerFullLookup(query)
       }
+    }
+  }
+
+  async function handleForceAi(word: string) {
+    if (!word.trim()) return
+    scrollToTop()
+    const qt = detectQueryType(word)
+    if (qt === 'phrase' || qt === 'sentence') {
+      triggerPhraseQuery(word)
+    } else {
+      triggerFullLookup(word)
     }
   }
 
@@ -187,7 +197,7 @@ export function App() {
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <div
         ref={scrollContainerRef}
-        className="mx-auto max-w-2xl w-full min-h-screen overflow-y-auto relative pb-safe selection:bg-accent/20 bg-background"
+        className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/20 bg-background"
       >
         {/* Top bar: Elegant and minimal */}
         <header className="sticky top-0 z-20 pt-safe px-6 pb-4 glass">
@@ -220,16 +230,16 @@ export function App() {
           </div>
         </header>
 
-        <main className="px-6 py-4">
+        <main>
           {view === 'translate' ? (
             <ImageTranslateView />
           ) : (
-            <div className="space-y-4">
-              <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-500">
-                <SegmentedControl mode={mode} onModeChange={setMode} />
-                <div className="w-full">
-                  <SearchBar onWordSelect={handleWordSelect} />
+            <div className="px-6 py-4 space-y-4">
+              <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-30">
+                <div className="w-full relative z-50">
+                  <SearchBar onWordSelect={handleWordSelect} onForceAi={handleForceAi} />
                 </div>
+                <SegmentedControl mode={mode} onModeChange={setMode} />
               </div>
 
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

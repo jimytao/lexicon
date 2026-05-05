@@ -71,6 +71,25 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                     <SemanticScene
                       meanings={aiFullResult.meanings.map((m) => ({ zh: m.zh, scene: m.scene }))}
                     />
+
+                    {/* 文化/背景趣味知识 (针对日语/韩语等) */}
+                    {aiFullResult.culturalLore && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                          <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{aiFullResult.culturalLore.title || '文化背景 & 趣味百科'}</h2>
+                        </div>
+                        <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
+                          <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{aiFullResult.culturalLore.content}</p>
+                          {aiFullResult.culturalLore.subculture && (
+                            <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
+                              <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
+                              <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{aiFullResult.culturalLore.subculture}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               case 'examples':
