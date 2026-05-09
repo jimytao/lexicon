@@ -113,6 +113,46 @@ interface SettingsDrawerProps {
   onClose: () => void
 }
 
+function normalizeModelQuery(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
+}
+
+function scoreModelMatch(model: string, query: string) {
+  const tokens = normalizeModelQuery(query)
+  if (tokens.length === 0) return 0
+
+  const normalizedModel = model.toLowerCase()
+  const compactModel = normalizedModel.replace(/[^a-z0-9]+/g, '')
+  let score = 0
+  let cursor = 0
+
+  for (const token of tokens) {
+    const compactToken = token.replace(/[^a-z0-9]+/g, '')
+    if (!compactToken) continue
+
+    const compactIndex = compactModel.indexOf(compactToken)
+    const tokenIndex = normalizedModel.indexOf(token)
+    if (compactIndex >= 0) {
+      score += compactIndex === 0 ? 120 : 90
+      if (compactIndex >= cursor) score += 30
+      cursor = compactIndex + compactToken.length
+    } else if (tokenIndex >= 0) {
+      score += tokenIndex === 0 ? 80 : 60
+    } else {
+      let subsequenceIndex = 0
+      for (const char of compactModel) {
+        if (char === compactToken[subsequenceIndex]) subsequenceIndex += 1
+        if (subsequenceIndex === compactToken.length) break
+      }
+      score += subsequenceIndex === compactToken.length ? 20 : -120
+    }
+  }
+
+  if (compactModel === tokens.join('')) score += 200
+  score -= Math.max(0, compactModel.length - tokens.join('').length) * 0.2
+  return score
+}
+
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const {
     aiProvider, aiEndpoint, aiModel, aiApiKeys, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
@@ -205,6 +245,14 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     if (total < 1024 * 1024) return `${(total / 1024).toFixed(1)} KB`
     return `${(total / (1024 * 1024)).toFixed(1)} MB`
   }, [aiCache, aiFullCache, phraseCache])
+
+  const sortedModels = useMemo(() => {
+    const query = aiModel.trim()
+    return fetchedModels
+      .map((model, index) => ({ model, index, score: scoreModelMatch(model, query) }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+      .map(item => item.model)
+  }, [fetchedModels, aiModel])
 
   function toggleModule(id: string) {
     setModules(modules.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m))
@@ -321,7 +369,8 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               <input
                 type="text"
                 value={aiModel}
-                onChange={(e) => setAiModel(e.target.value)}
+                onChange={(e) => { setAiModel(e.target.value); if (fetchedModels.length > 0) setShowModelList(true) }}
+                onFocus={() => { if (fetchedModels.length > 0) setShowModelList(true) }}
                 placeholder="gemini-2.0-flash"
                 className="flex-1 text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all min-w-0"
               />
@@ -348,7 +397,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                     </svg>
                   </button>
                 </div>
-                {fetchedModels.map(m => (
+                {sortedModels.map(m => (
                   <button
                     key={m}
                     onClick={() => handleModelSelect(m)}
@@ -558,7 +607,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               </div>
               <button
                 onClick={() => { if(confirm('Clear all cached AI results?')) clearCache() }}
-                disabled={Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0}
+                disabled={Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0 && Object.keys(phraseCache).length === 0}
                 className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
               >
                 Clear Cache

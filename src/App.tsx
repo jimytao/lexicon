@@ -36,7 +36,7 @@ export function App() {
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const { mode, query, setMode } = useSearchStore()
   const { darkMode } = useSettingsStore()
-  const { upgrade: upgradeHistory } = useHistoryStore()
+  const { add: addHistory, upgrade: upgradeHistory } = useHistoryStore()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -87,45 +87,59 @@ export function App() {
       setSearchSource('local')
 
       if (fromHistory) {
-        // History click: restore the exact mode that was last used
-        if (historyAiMode === 'full') {
-          const cachedFull = useResultStore.getState().getCachedAiFull(word)
+        const store = useResultStore.getState()
+        const cachedFull = store.getCachedAiFull(word)
+        const cachedPhrase = store.getCachedPhrase(word)
+        const cachedAi = store.getCachedAi(word)
+
+        if (cachedFull) {
           setSearchSource('ai-full')
           useSearchStore.getState().setMode('ai')
-          if (cachedFull) {
-            useResultStore.getState().setAiFullResult(word, cachedFull)
-          } else {
-            triggerFullLookup(word)
-          }
-        } else if (historyAiMode === 'phrase') {
-          const cachedPhrase = useResultStore.getState().getCachedPhrase(word)
+          useResultStore.getState().setAiFullResult(word, cachedFull)
+          upgradeHistory(word, 'full')
+        } else if (cachedPhrase) {
           setSearchSource('phrase')
           useSearchStore.getState().setMode('ai')
-          if (cachedPhrase) {
-            useResultStore.getState().setPhraseResult(word, cachedPhrase)
-          } else {
-            triggerPhraseQuery(word)
-          }
-        } else if (historyAiMode === 'analyze') {
-          const cachedAi = useResultStore.getState().getCachedAi(word)
+          useResultStore.getState().setPhraseResult(word, cachedPhrase)
+          upgradeHistory(word, 'phrase')
+        } else if (cachedAi) {
           useSearchStore.getState().setMode('ai')
-          if (cachedAi) {
-            useResultStore.getState().setAiAnalysis(word, cachedAi)
-          } else {
-            triggerAi(word, result.meanings)
-          }
+          useResultStore.getState().setAiAnalysis(word, cachedAi)
+          upgradeHistory(word, 'analyze')
+        } else if (historyAiMode === 'full') {
+          setSearchSource('ai-full')
+          useSearchStore.getState().setMode('ai')
+          triggerFullLookup(word)
+        } else if (historyAiMode === 'phrase') {
+          setSearchSource('phrase')
+          useSearchStore.getState().setMode('ai')
+          triggerPhraseQuery(word)
+        } else if (historyAiMode === 'analyze') {
+          useSearchStore.getState().setMode('ai')
+          triggerAi(word, result.meanings)
           upgradeHistory(word, 'analyze')
         }
         // historyAiMode === null → normal instant, no extra action
       } else {
-        // Normal search (typed + submit or suggest click):
-        // Only use AI if there is a cached AI analysis (quality-of-life, no forced mode)
-        // OR if the user is currently in AI mode
+        const store = useResultStore.getState()
         const currentMode = useSearchStore.getState().mode
-        const cachedAi = useResultStore.getState().getCachedAi(word)
-        if (cachedAi) {
-          useResultStore.getState().setAiAnalysis(word, cachedAi)
+        const cachedFull = store.getCachedAiFull(word)
+        const cachedPhrase = store.getCachedPhrase(word)
+        const cachedAi = store.getCachedAi(word)
+
+        if (cachedFull) {
+          setSearchSource('ai-full')
           useSearchStore.getState().setMode('ai')
+          useResultStore.getState().setAiFullResult(word, cachedFull)
+          upgradeHistory(word, 'full')
+        } else if (cachedPhrase) {
+          setSearchSource('phrase')
+          useSearchStore.getState().setMode('ai')
+          useResultStore.getState().setPhraseResult(word, cachedPhrase)
+          upgradeHistory(word, 'phrase')
+        } else if (cachedAi) {
+          useSearchStore.getState().setMode('ai')
+          useResultStore.getState().setAiAnalysis(word, cachedAi)
           upgradeHistory(word, 'analyze')
         } else if (currentMode === 'ai') {
           triggerAi(word, result.meanings)
@@ -172,11 +186,11 @@ export function App() {
     if (qt === 'phrase' || qt === 'sentence') {
       setSearchSource('phrase')
       triggerPhraseQuery(word)
-      upgradeHistory(word, 'phrase')
+      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase')
     } else {
       setSearchSource('ai-full')
       triggerFullLookup(word)
-      upgradeHistory(word, 'full')
+      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full')
     }
   }
 
@@ -186,6 +200,7 @@ export function App() {
     let keyboardShowSub: any;
     let keyboardHideSub: any;
     let keyboardDidShowSub: any;
+    let updateScrollFromViewport: (() => void) | null = null;
 
     const initKeyboardFix = async () => {
       const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor
@@ -198,11 +213,11 @@ export function App() {
         scrollTimeout = setTimeout(() => {
           const scrollable = getScrollableAncestor(activeEl)
           if (scrollable && !scrollable.dataset.kbPadded) {
-            // Default fallback if Capacitor listeners aren't fast enough or available
             scrollable.style.paddingBottom = '45vh'
             scrollable.dataset.kbPadded = 'true'
-            activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' })
           }
+          activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250)
         }, 300)
       }
 
@@ -227,29 +242,39 @@ export function App() {
             
             const scrollable = getScrollableAncestor(activeEl)
             if (scrollable) {
-              // Perfect centering logic:
-              // We need enough padding at the bottom so that the focused element 
-              // can be scrolled to the center of the REMAINING visible area.
               const viewportHeight = window.innerHeight
-              const visibleHeight = viewportHeight - height
-              
-              // Padding = Keyboard height + half of the visible area height
-              // This ensures the last item in a list can still reach the middle of the screen.
-              const targetPadding = height + (visibleHeight / 2)
+              const visualViewport = window.visualViewport
+              const viewportKeyboardHeight = visualViewport
+                ? Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop)
+                : 0
+              const effectiveKeyboardHeight = viewportKeyboardHeight > 0 ? viewportKeyboardHeight : height
+              const visibleHeight = Math.max(0, viewportHeight - effectiveKeyboardHeight)
+              const computedPadding = effectiveKeyboardHeight + (visibleHeight / 2)
+              const minPadding = Math.min(120, viewportHeight * 0.25)
+              const maxPadding = viewportHeight * 0.6
+              const targetPadding = Math.max(minPadding, Math.min(computedPadding, maxPadding))
               
               scrollable.style.paddingBottom = `${targetPadding}px`
               scrollable.dataset.kbPadded = 'true'
               
-              // Multiple scroll attempts for layout stability on older Android
               setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
               setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)
             }
+          }
+
+          updateScrollFromViewport = () => {
+            const visualViewport = window.visualViewport
+            if (!visualViewport) return
+            const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop)
+            if (keyboardHeight > 0) updateScroll(keyboardHeight)
           }
 
           // Use both Will and Did events for maximum compatibility across Android 8-16
           keyboardShowSub = await Keyboard.addListener('keyboardWillShow', info => updateScroll(info.keyboardHeight))
           keyboardDidShowSub = await Keyboard.addListener('keyboardDidShow', info => updateScroll(info.keyboardHeight))
           keyboardHideSub = await Keyboard.addListener('keyboardWillHide', handleFocusOut)
+          window.visualViewport?.addEventListener('resize', updateScrollFromViewport)
+          window.visualViewport?.addEventListener('scroll', updateScrollFromViewport)
 
         } catch (e) {
           console.warn('Capacitor Keyboard listeners failed, falling back to focus events', e)
@@ -262,6 +287,10 @@ export function App() {
         keyboardShowSub?.remove()
         keyboardHideSub?.remove()
         keyboardDidShowSub?.remove()
+        if (updateScrollFromViewport) {
+          window.visualViewport?.removeEventListener('resize', updateScrollFromViewport)
+          window.visualViewport?.removeEventListener('scroll', updateScrollFromViewport)
+        }
         clearTimeout(scrollTimeout)
       }
     }

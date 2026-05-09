@@ -1,5 +1,58 @@
 # CHANGELOG
 
+## 2026-05-09 — 输入框键盘遮挡补强与 AI Model 模糊排序
+
+### 概述
+
+本次更新补强移动端输入框在虚拟键盘弹出时的可见性保障，并优化设置页 AI Model 输入框在大量模型列表中的查找体验。
+
+---
+
+### 1. `App.tsx` — iOS / Android 虚拟键盘遮挡补强
+
+- **focus fallback 更稳**：输入框或文本域获得焦点后，即使 Capacitor Keyboard 事件未及时返回，也会先给最近的可滚动容器追加 `45vh` 底部 padding。
+- **强制二次滚动定位**：焦点触发后立即 `scrollIntoView({ block: 'center' })`，并在 250ms 后再次滚动，覆盖 iOS 键盘动画尚未完成导致第一次滚动位置不准的场景。
+- **监听 `visualViewport`**：在 Capacitor 环境中同时监听 `visualViewport.resize` 与 `visualViewport.scroll`，根据 `window.innerHeight - visualViewport.height - visualViewport.offsetTop` 估算键盘高度。
+- **动态 padding 计算**：键盘出现时将滚动容器底部 padding 设置为 `keyboardHeight + visibleHeight / 2`，保证页面底部输入框也能滚到剩余可视区域中间。
+- **Android 双重 resize 风险收敛**：优先采用 `visualViewport` 估算到的键盘高度，降低 Android 11+ 系统 resize 与 JS padding 叠加时过度补偿的概率。
+- **padding 上下限保护**：键盘出现时的底部 padding 被限制在合理区间内，避免部分 WebView / 机型上出现过大的底部空白，同时保留必要的滚动空间。
+- **清理逻辑补全**：键盘收起或组件卸载时移除 Keyboard listeners 与 `visualViewport` listeners，并恢复滚动容器 padding。
+
+#### Android occlusion 风险处理记录
+
+本次针对 Android 输入框遮挡风险共提出 3 个可选优化方向：
+
+1. **增加最大 padding 上限**，避免 Keyboard event 与系统 resize 叠加后产生过大底部空白。
+2. **使用 `visualViewport` 修正有效键盘高度**，优先采用实际 viewport 收缩量，降低 Android 11+ 双重 resize 风险。
+3. **增加滚动节流 / debounce**，在 `keyboardWillShow`、`keyboardDidShow`、`visualViewport.resize`、`visualViewport.scroll` 高频触发时减少轻微跳动。
+
+本次实际完成前 2 点：padding 上下限保护与 `visualViewport` 有效高度修正。第 3 点暂不加入，原因是当前多次滚动有助于覆盖 iOS / Android 键盘动画时序差异；如果后续真机测试发现 Android 或 iOS 有明显跳动，再优先尝试加入滚动节流。
+
+---
+
+### 2. `SettingsDrawer.tsx` — AI Model 模糊匹配排序
+
+- **新增模型匹配评分**：对输入内容进行 token 化与归一化（忽略大小写、空格、横线、下划线、斜杠等分隔符），为每个模型计算匹配分数。
+- **支持近似输入**：例如输入 `gemini 3.1 pro` 时，可优先匹配名称中按顺序包含 `gemini`、`3`、`1`、`pro` 的模型。
+- **只排序不隐藏**：不匹配或低相关模型仍保留在列表中，只是排到后面，避免用户因为过滤过严找不到模型。
+- **聚焦自动展开**：已拉取模型列表后，重新聚焦 Model 输入框会自动展开列表，便于继续微调输入并选择。
+- **输入时实时重排**：Model 输入内容变化时，已拉取的模型列表会按照新的匹配分数实时排序。
+
+---
+
+### 3. `App.tsx` — 历史记录 AI 缓存星标点击恢复修复
+
+- **问题确认**：历史记录星标由 `aiCache / aiFullCache / phraseCache` 任意缓存命中决定，但历史点击恢复逻辑此前主要受 `historyAiMode` 驱动；当星标来自 `aiFullCache` 或 `phraseCache`，而历史项的 `aiMode` 为 `null` 或其他类型时，可能出现“看起来有 AI 缓存星标，但点击历史记录后没有真正加载缓存”的情况。
+- **修复策略**：历史记录点击时先检查并加载实际存在的缓存，优先级为 `aiFullCache → phraseCache → aiCache`；只有完全没有缓存时，才回退到 `historyAiMode` 触发新的 AI 请求。
+- **状态同步**：成功从缓存恢复后同步 `searchSource` 与 `mode`，并通过 `upgradeHistory` 将历史项更新到实际加载的 AI 类型，避免下次点击继续依赖过期的 `aiMode`。
+- **普通输入缓存恢复规则**：输入框普通搜索时，只要该词存在任意真实 AI 缓存，就优先恢复缓存（`aiFullCache → phraseCache → aiCache`），不再要求历史记录仍然存在；这适配“删除历史记录”和“删除 AI 缓存”分离的设置设计。
+- **入口差异明确**：普通输入不会因为暗色星标或历史 `aiMode` 自动重跑历史 AI 类型；只有用户明确点击历史记录时，暗色星标才代表“按上次 AI 类型重新生成”。
+- **强制 AI 入口补齐历史写入**：点击输入框右侧 AI 按钮时，若历史记录功能开启，会用 `addHistory` 写入或更新对应 AI 类型，避免此前仅 `upgradeHistory` 导致新词没有历史项的问题。
+- **清缓存按钮修复**：设置页 `Clear Cache` 的禁用条件补充 `phraseCache`，避免只有短语 / 句子 AI 缓存时按钮被错误禁用。
+- **清缓存状态一致性**：执行 `Clear Cache` 时同步清空当前已加载的 `aiAnalysis / aiFullResult / phraseResult` 与 AI 状态，避免出现“缓存已清、星标消失，但页面仍显示旧 AI 结果”的状态错位。
+
+---
+
 ## 2026-05-08 — 搜索逻辑重构与历史记录 AI 模式记忆
 
 ### 概述

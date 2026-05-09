@@ -157,7 +157,7 @@ export const useResultStore = create<ResultStore>()(
         }
         return null
       },
-      clearCache: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {} }),
+      clearCache: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, aiStatus: 'idle', aiError: null }),
       reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, chatMessages: [], aiStatus: 'idle', aiError: null }),
     }),
     { 
