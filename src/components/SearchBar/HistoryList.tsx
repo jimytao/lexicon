@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useHistoryStore } from '../../stores/historyStore'
+import { useResultStore } from '../../stores/resultStore'
 
 interface HistoryListProps {
   onSelect: (word: string) => void
@@ -7,6 +8,7 @@ interface HistoryListProps {
 
 export function HistoryList({ onSelect }: HistoryListProps) {
   const { words, remove, clear } = useHistoryStore()
+  const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const [expandedWords, setExpandedWords] = useState<Set<string>>(() => new Set())
 
   if (words.length === 0) return null
@@ -36,9 +38,12 @@ export function HistoryList({ onSelect }: HistoryListProps) {
         </button>
       </div>
       <ul className="py-1">
-        {words.map((word) => {
+        {words.map((entry) => {
+          const word = entry.word
           const isExpanded = expandedWords.has(word)
           const canExpand = word.length > 36
+          const hasCachedAi = !!(aiCache[word] || aiFullCache[word] || phraseCache[word])
+          const hasAiIntent = entry.aiMode !== null
 
           return (
             <li key={word} className="flex items-start group min-w-0">
@@ -53,6 +58,16 @@ export function HistoryList({ onSelect }: HistoryListProps) {
                 <span className={`text-sm font-medium text-foreground min-w-0 flex-1 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>
                   {word}
                 </span>
+                {(hasCachedAi || hasAiIntent) && (
+                  <svg
+                    className={`w-3 h-3 shrink-0 mt-0.5 transition-opacity ${hasCachedAi ? 'text-amber-400 opacity-100' : 'text-amber-400 opacity-40'}`}
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <title>{hasCachedAi ? 'AI 结果已缓存' : 'AI 查询（缓存已清除）'}</title>
+                    <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                )}
               </button>
               {canExpand && (
                 <button

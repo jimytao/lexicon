@@ -36,7 +36,7 @@ export function useSearch() {
       setSuggestions([])
       setQuery(word)
       setMode('ai')
-      if (historyEnabled) addToHistory(word)
+      if (historyEnabled) addToHistory(word, 'phrase')
       return { result: null, mode: 'ai' as const, queryType }
     }
 
@@ -51,7 +51,7 @@ export function useSearch() {
         setRelatedPhrases(phrases)
         setSuggestions([])
         setQuery(word)
-        if (historyEnabled) addToHistory(word)
+        if (historyEnabled) addToHistory(word, null)
         return { result, mode, queryType }
       }
       // No db result → AI phrase query
@@ -60,7 +60,7 @@ export function useSearch() {
       setSuggestions([])
       setQuery(word)
       setMode('ai')
-      if (historyEnabled) addToHistory(word)
+      if (historyEnabled) addToHistory(word, 'phrase')
       return { result: null, mode: 'ai' as const, queryType }
     }
 
@@ -75,7 +75,7 @@ export function useSearch() {
       setRelatedPhrases(phrases)
       setSuggestions([])
       setQuery(word)
-      if (historyEnabled) addToHistory(word)
+      if (historyEnabled) addToHistory(word, null)
       return { result, mode, queryType }
     }
 
@@ -85,7 +85,7 @@ export function useSearch() {
     setSuggestions([])
     setQuery(word)
     setMode('ai')
-    if (historyEnabled) addToHistory(word)
+    if (historyEnabled) addToHistory(word, 'full')
     return { result: null, mode: 'ai' as const, queryType }
   }, [mode, historyEnabled, addToHistory, setWordResult, setRelatedPhrases, setSuggestions, setQuery, setMode])
 

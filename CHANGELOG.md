@@ -1,5 +1,112 @@
 # CHANGELOG
 
+## 2026-05-08 — 搜索逻辑重构与历史记录 AI 模式记忆
+
+### 概述
+
+本次更新分两个部分：① 重构搜索路径的优先级与分支逻辑，消除连续搜索时的状态冲突；② 为历史记录加入 AI 模式记忆，点击历史条目时自动恢复上次使用的 AI 类型。
+
+---
+
+### 1. `historyStore.ts` — 数据模型升级
+
+- **`string[]` → `HistoryEntry[]`**：历史记录从纯字符串数组升级为对象数组，每条记录包含 `word: string` 和 `aiMode: 'analyze' | 'full' | 'phrase' | null`。
+- **新增 `upgrade(word, aiMode)`**：原地更新某条历史的 aiMode，不改变排列顺序（区别于 `add` 的移顶逻辑）。
+- **`add(word, aiMode?)` 增强**：新增可选 aiMode 参数；upsert 时若已存在同词条，优先保留更高级别的 aiMode（不降级）。
+- **旧数据迁移**：通过 `onRehydrateStorage` 回调自动将 localStorage 中的旧 `string[]` 格式迁移为 `HistoryEntry[]`，无需手动清空历史。
+
+---
+
+### 2. `useSearch.ts` — 写入 aiMode
+
+- 本地词库命中 → `addToHistory(word, null)`
+- 词库未命中，走 AI full lookup → `addToHistory(word, 'full')`
+- 短语 / 句子未命中，走 AI phrase query → `addToHistory(word, 'phrase')`
+- 句子（sentence 类型）强制 phrase → `addToHistory(word, 'phrase')`
+
+---
+
+### 3. `App.tsx` — 核心逻辑重构
+
+#### 新增状态
+- **`searchSource: 'local' | 'ai-full' | 'phrase' | 'none'`**：取代原来依赖 `wordResult` 是否为 null 的隐式判断，精确驱动 `showAiFullView` / `showPhraseView` 的视图渲染。
+- **`localWordSnapshotRef`**：在触发 AI full lookup 之前保存当前本地词库结果快照，用于从 `ai-full → instant` 切换时秒速恢复，无需重新查库。
+
+#### `handleWordSelect(word, fromHistory?)` 重构
+新增 `fromHistory` 布尔参数，**区分历史点击与普通搜索两条路径**，消除此前两者混用同一逻辑导致的优先级冲突：
+
+| 路径 | `fromHistory` | 行为 |
+|---|---|---|
+| 输入框提交 / 备选词点击（DB 命中） | `false` | 有 AI 缓存 → 自动加载缓存进 AI mode；当前在 AI mode → 触发新请求；其他 → 纯 Instant，不受历史 aiMode 干扰 |
+| 历史列表点击 / 备选词中的历史-miss 项点击 | `true` | 按 historyAiMode 精确恢复：`analyze` → setAiAnalysis 或 triggerAi；`full` → 缓存秒开或 triggerFullLookup；`phrase` → 缓存秒开或 triggerPhraseQuery；`null` → 普通 Instant |
+
+#### `handleForceAi` 修复
+- 点击 AI 按钮时，**先保存本地快照**（若当前已有同词本地结果）。
+- 强制设置 `searchSource` 为 `'ai-full'` 或 `'phrase'`，再调用对应 AI 函数。
+- 调用 `upgradeHistory` 更新该词的 aiMode 记录。
+
+#### mode 切换 effect 修复
+- **`instant → ai`**：只在 `searchSource === 'local'` 时才自动触发 `analyzeWord`，不再对 ai-full / phrase 状态误触发。
+- **`ai → instant`（从 ai-full 切回）**：检测到 `searchSource === 'ai-full'` 且有本地快照时，自动还原本地结果并将 `searchSource` 置回 `'local'`。
+
+#### `handleRetry` 修复
+- 基于 `searchSource` 判断重试类型，替代原来依赖 `!wordResult` 的模糊判断。
+
+#### 视图渲染简化
+```diff
+- const showPhraseView = !wordResult && (phraseResult || ...)
+- const showAiFullView = !wordResult && !showPhraseView && (aiFullResult || ...)
++ const showPhraseView = searchSource === 'phrase'
++ const showAiFullView = searchSource === 'ai-full'
+```
+
+---
+
+### 4. `SearchBar/index.tsx` — 搜索入口分流
+
+- **新增 `onHistorySelect` prop**：历史点击与普通 DB 词点击走不同回调，`App.tsx` 通过 `fromHistory` 参数区分处理。
+- **建议词富化（enrichedSuggestions）**：在 `SuggestList` 展示前对建议词进行实时富化：
+  - 读取 `resultStore` 的 `aiCache / aiFullCache / phraseCache`，命中则标记 `hasAiCache: true`。
+  - 遍历 `historyStore.words`，将历史中存在但当前 DB 未返回的词（前缀匹配）追加为 `historyOnly: true` 条目（最多补至 20 条）。
+- **`handleSubmit` 修复**：`activeIndex` 指向 `historyOnly` 项时走 `handleHistoryItemSelect`，否则走 `handleSelect`。
+- **键盘导航**：`ArrowDown` 上限从 `suggestions.length` 改为 `enrichedSuggestions.length`，涵盖追加的历史条目。
+- **下拉显示条件统一**：`(enrichedSuggestions.length > 0 || showHistory) && isFocused`。
+
+---
+
+### 5. `SuggestList/index.tsx` — 视觉标记升级
+
+- 接受富化后的 `EnrichedSuggestItem`（含 `hasAiCache?` / `historyOnly?` 字段）。
+- **`onSelect` 签名变更**：`(word: string, isHistoryOnly: boolean) => void`，让调用方可据此分流。
+- **AI 缓存标记**：有 AI 缓存的词右侧显示 **琥珀色 ★ 图标**（`text-amber-400`）。
+- **历史-miss 标记**：仅出现在历史但 DB 未命中的词，显示灰色时钟图标 + 文字降色（`text-foreground-muted`），有 AI 缓存时时钟换为 ★。
+- `zhBrief` 仅在非 historyOnly 项时显示，historyOnly 项无翻译摘要。
+
+---
+
+### 6. `HistoryList.tsx` — AI badge 显示
+
+- 渲染改为遍历 `HistoryEntry[]` 而非 `string[]`。
+- 实时读取 `resultStore` 的 `aiCache / aiFullCache / phraseCache`：
+  - **有缓存**：★ `text-amber-400 opacity-100`
+  - **有 aiMode 记录但缓存已清**：★ `text-amber-400 opacity-40`
+  - **纯 Instant，从未用 AI**：无图标
+
+---
+
+### 优先级规则总结
+
+| 搜索动作 | 有 AI 缓存 | 无 AI 缓存 | historyAiMode |
+|---|---|---|---|
+| 普通搜索（submit） | 加载缓存 → AI mode | Instant mode | 不参考 |
+| 普通搜索（submit，当前在 AI mode） | 加载缓存 → AI mode | 触发 analyzeWord | 不参考 |
+| 历史点击（aiMode='analyze'） | 加载缓存秒开 | 触发 analyzeWord | 参考 |
+| 历史点击（aiMode='full'） | 加载缓存秒开 | 触发 fullLookup | 参考 |
+| 历史点击（aiMode='phrase'） | 加载缓存秒开 | 触发 phraseQuery | 参考 |
+| AI 按钮点击 | 忽略缓存，强制新请求 | 触发 fullLookup/phrase | 覆盖写入 |
+
+---
+
 ## 2026-05-05 — v0.6.2 发布
 
 汇总自 v0.6.1 以来的修复：

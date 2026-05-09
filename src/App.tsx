@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchStore, detectQueryType } from './stores/searchStore'
 import { useResultStore } from './stores/resultStore'
 import { useSettingsStore } from './stores/settingsStore'
+import { useHistoryStore } from './stores/historyStore'
 import { useSearch } from './hooks/useSearch'
 import { useAiLookup } from './hooks/useAiLookup'
+import type { WordResult, SuggestItem } from './types'
 import { SearchBar } from './components/SearchBar'
 import { SegmentedControl } from './components/SearchBar/SegmentedControl'
 import { ResultView } from './components/ResultView'
@@ -24,13 +26,17 @@ function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
 }
 
 type AppView = 'dictionary' | 'translate'
+type SearchSource = 'local' | 'ai-full' | 'phrase' | 'none'
 
 export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [view, setView] = useState<AppView>('dictionary')
+  const [searchSource, setSearchSource] = useState<SearchSource>('none')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const { mode, query, setMode } = useSearchStore()
   const { darkMode } = useSettingsStore()
+  const { upgrade: upgradeHistory } = useHistoryStore()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -40,11 +46,21 @@ export function App() {
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
 
-  // 切换到 AI mode 时，若已有词结果且尚未分析，自动触发
+  // 切换到 AI mode 时，若处于 local 状态且尚未分析，自动触发
   const prevModeRef = useRef(mode)
   useEffect(() => {
-    if (prevModeRef.current !== 'ai' && mode === 'ai' && wordResult && aiStatus === 'idle') {
+    if (prevModeRef.current !== 'ai' && mode === 'ai' && searchSource === 'local' && wordResult && aiStatus === 'idle') {
       triggerAi(wordResult.word, wordResult.meanings)
+      upgradeHistory(wordResult.word, 'analyze')
+    }
+    // 从 ai-full 切回 Instant：恢复本地快照
+    if (prevModeRef.current === 'ai' && mode === 'instant' && searchSource === 'ai-full') {
+      const snap = localWordSnapshotRef.current
+      if (snap) {
+        useResultStore.getState().setWordResult(snap.wordResult)
+        useResultStore.getState().setRelatedPhrases(snap.relatedPhrases)
+        setSearchSource('local')
+      }
     }
     prevModeRef.current = mode
   }, [mode])
@@ -53,23 +69,76 @@ export function App() {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function handleWordSelect(word: string) {
+  async function handleWordSelect(word: string, fromHistory = false) {
     scrollToTop()
+    localWordSnapshotRef.current = null
+
+    const historyEntry = useHistoryStore.getState().words.find((e) => e.word === word)
+    const historyAiMode = historyEntry?.aiMode ?? null
+
     const { result, queryType } = await selectWord(word)
 
     if (result) {
-      const currentMode = useSearchStore.getState().mode
-      const cachedAi = useResultStore.getState().getCachedAi(word)
-      if (cachedAi) {
-        useResultStore.getState().setAiAnalysis(word, cachedAi)
-        useSearchStore.getState().setMode('ai')
-      } else if (currentMode === 'ai') {
-        triggerAi(word, result.meanings)
+      // Save snapshot for potential AI-full → Instant restore
+      localWordSnapshotRef.current = {
+        wordResult: result,
+        relatedPhrases: useResultStore.getState().relatedPhrases,
+      }
+      setSearchSource('local')
+
+      if (fromHistory) {
+        // History click: restore the exact mode that was last used
+        if (historyAiMode === 'full') {
+          const cachedFull = useResultStore.getState().getCachedAiFull(word)
+          setSearchSource('ai-full')
+          useSearchStore.getState().setMode('ai')
+          if (cachedFull) {
+            useResultStore.getState().setAiFullResult(word, cachedFull)
+          } else {
+            triggerFullLookup(word)
+          }
+        } else if (historyAiMode === 'phrase') {
+          const cachedPhrase = useResultStore.getState().getCachedPhrase(word)
+          setSearchSource('phrase')
+          useSearchStore.getState().setMode('ai')
+          if (cachedPhrase) {
+            useResultStore.getState().setPhraseResult(word, cachedPhrase)
+          } else {
+            triggerPhraseQuery(word)
+          }
+        } else if (historyAiMode === 'analyze') {
+          const cachedAi = useResultStore.getState().getCachedAi(word)
+          useSearchStore.getState().setMode('ai')
+          if (cachedAi) {
+            useResultStore.getState().setAiAnalysis(word, cachedAi)
+          } else {
+            triggerAi(word, result.meanings)
+          }
+          upgradeHistory(word, 'analyze')
+        }
+        // historyAiMode === null → normal instant, no extra action
+      } else {
+        // Normal search (typed + submit or suggest click):
+        // Only use AI if there is a cached AI analysis (quality-of-life, no forced mode)
+        // OR if the user is currently in AI mode
+        const currentMode = useSearchStore.getState().mode
+        const cachedAi = useResultStore.getState().getCachedAi(word)
+        if (cachedAi) {
+          useResultStore.getState().setAiAnalysis(word, cachedAi)
+          useSearchStore.getState().setMode('ai')
+          upgradeHistory(word, 'analyze')
+        } else if (currentMode === 'ai') {
+          triggerAi(word, result.meanings)
+          upgradeHistory(word, 'analyze')
+        }
       }
     } else {
+      localWordSnapshotRef.current = null
       if (queryType === 'phrase' || queryType === 'sentence') {
+        setSearchSource('phrase')
         triggerPhraseQuery(word)
       } else {
+        setSearchSource('ai-full')
         triggerFullLookup(word)
       }
     }
@@ -77,26 +146,37 @@ export function App() {
 
 
   function handleRetry() {
-    if (wordResult && mode === 'ai') {
+    if (searchSource === 'local' && wordResult && mode === 'ai') {
       triggerAi(wordResult.word, wordResult.meanings)
-    } else if (!wordResult && query) {
-      const qt = detectQueryType(query)
-      if (qt === 'phrase' || qt === 'sentence') {
-        triggerPhraseQuery(query)
-      } else {
-        triggerFullLookup(query)
-      }
+    } else if (searchSource === 'phrase' && query) {
+      triggerPhraseQuery(query)
+    } else if (searchSource === 'ai-full' && query) {
+      triggerFullLookup(query)
     }
   }
 
   async function handleForceAi(word: string) {
     if (!word.trim()) return
     scrollToTop()
+    // Save local snapshot if we currently have a local result for this word
+    const currentWordResult = useResultStore.getState().wordResult
+    const currentRelatedPhrases = useResultStore.getState().relatedPhrases
+    if (currentWordResult && currentWordResult.word === word) {
+      localWordSnapshotRef.current = { wordResult: currentWordResult, relatedPhrases: currentRelatedPhrases }
+    } else {
+      localWordSnapshotRef.current = null
+    }
+    useSearchStore.getState().setQuery(word)
+    useSearchStore.getState().setMode('ai')
     const qt = detectQueryType(word)
     if (qt === 'phrase' || qt === 'sentence') {
+      setSearchSource('phrase')
       triggerPhraseQuery(word)
+      upgradeHistory(word, 'phrase')
     } else {
+      setSearchSource('ai-full')
       triggerFullLookup(word)
+      upgradeHistory(word, 'full')
     }
   }
 
@@ -190,8 +270,8 @@ export function App() {
     return () => { if ((window as any)._kbFixCleanup) (window as any)._kbFixCleanup() }
   }, [])
 
-  const showPhraseView = !wordResult && (phraseResult || (aiStatus === 'loading' && detectQueryType(query) !== 'word'))
-  const showAiFullView = !wordResult && !showPhraseView && (aiFullResult || aiStatus === 'loading' || aiStatus === 'error')
+  const showPhraseView = searchSource === 'phrase'
+  const showAiFullView = searchSource === 'ai-full'
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -237,7 +317,11 @@ export function App() {
             <div className="px-6 py-4 space-y-4">
               <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-30">
                 <div className="w-full relative z-50">
-                  <SearchBar onWordSelect={handleWordSelect} onForceAi={handleForceAi} />
+                  <SearchBar
+                  onWordSelect={handleWordSelect}
+                  onHistorySelect={(word) => handleWordSelect(word, true)}
+                  onForceAi={handleForceAi}
+                />
                 </div>
                 <SegmentedControl mode={mode} onModeChange={setMode} />
               </div>

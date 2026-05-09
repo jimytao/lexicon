@@ -1,18 +1,24 @@
 import { useRef, useState } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useHistoryStore } from '../../stores/historyStore'
+import { useResultStore } from '../../stores/resultStore'
 import { db } from '../../services/db'
 import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
+import type { SuggestItem } from '../../types'
 
 interface SearchBarProps {
   onWordSelect: (word: string) => void
+  onHistorySelect: (word: string) => void
   onForceAi?: (word: string) => void
 }
 
-export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
+export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBarProps) {
   const { query, suggestions, setQuery, setSuggestions } = useSearchStore()
   const { historyEnabled } = useSettingsStore()
+  const { words: historyWords } = useHistoryStore()
+  const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const containerRef = useRef<HTMLFormElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -21,6 +27,31 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
   const showSuggestions = suggestions.length > 0
   const showHistory = historyEnabled && isFocused && !query && !showSuggestions
 
+  // Build enriched suggest items: mark DB hits that have AI cache
+  // and append history-miss items (in history but not in DB results)
+  const enrichedSuggestions: (SuggestItem & { hasAiCache?: boolean; historyOnly?: boolean })[] = suggestions.map(item => ({
+    ...item,
+    hasAiCache: !!(aiCache[item.word] || aiFullCache[item.word] || phraseCache[item.word]),
+  }))
+
+  // Append history-miss items that match the current prefix (not already in DB results)
+  if (query.trim() && historyEnabled) {
+    const dbWords = new Set(suggestions.map(s => s.word.toLowerCase()))
+    const lq = query.trim().toLowerCase()
+    for (const entry of historyWords) {
+      const w = entry.word
+      if (w.toLowerCase().startsWith(lq) && !dbWords.has(w.toLowerCase())) {
+        enrichedSuggestions.push({
+          word: w,
+          zhBrief: '',
+          hasAiCache: !!(aiCache[w] || aiFullCache[w] || phraseCache[w]),
+          historyOnly: true,
+        })
+        if (enrichedSuggestions.length >= 20) break
+      }
+    }
+  }
+
   function handleSelect(word: string) {
     setSuggestions([])
     setActiveIndex(-1)
@@ -28,15 +59,35 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
     onWordSelect(word)
   }
 
+  function handleHistoryItemSelect(word: string) {
+    setSuggestions([])
+    setActiveIndex(-1)
+    inputRef.current?.blur()
+    onHistorySelect(word)
+  }
+
+  function handleSuggestSelect(word: string, isHistoryOnly: boolean) {
+    if (isHistoryOnly) {
+      handleHistoryItemSelect(word)
+    } else {
+      handleSelect(word)
+    }
+  }
+
   function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault()
     if (!query.trim()) return
 
-    const word = activeIndex >= 0
-      ? (suggestions[activeIndex]?.word ?? query.trim())
-      : (suggestions[0]?.word ?? query.trim())
-    
-    handleSelect(word)
+    if (activeIndex >= 0) {
+      const item = enrichedSuggestions[activeIndex]
+      if (item) {
+        item.historyOnly ? handleHistoryItemSelect(item.word) : handleSelect(item.word)
+        return
+      }
+    }
+    // No activeIndex: use first DB suggest hit, or raw query
+    const first = enrichedSuggestions.find(s => !s.historyOnly)
+    handleSelect(first?.word ?? query.trim())
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -47,7 +98,7 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIndex(i => Math.min(i + 1, suggestions.length - 1))
+      setActiveIndex(i => Math.min(i + 1, enrichedSuggestions.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIndex(i => Math.max(i - 1, -1))
@@ -154,17 +205,17 @@ export function SearchBar({ onWordSelect, onForceAi }: SearchBarProps) {
         </div>
 
         {/* Suggestion Dropdown */}
-        {(showSuggestions || showHistory) && (
+        {(enrichedSuggestions.length > 0 || showHistory) && isFocused && (
           <div className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
             <SuggestList
-              items={suggestions}
-              onSelect={handleSelect}
-              visible={showSuggestions}
+              items={enrichedSuggestions}
+              onSelect={handleSuggestSelect}
+              visible={showSuggestions || (isFocused && !!query.trim() && enrichedSuggestions.length > 0)}
               activeIndex={activeIndex}
             />
             {showHistory && (
               <div onMouseDown={(e) => e.preventDefault()}>
-                <HistoryList onSelect={handleSelect} />
+                <HistoryList onSelect={handleHistoryItemSelect} />
               </div>
             )}
           </div>
