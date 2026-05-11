@@ -623,8 +623,8 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
             <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Module Management</label>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {modules.map((m, i) => (
+            <div className="space-y-2">
+              {modules.map((m, i) => (
                     <SortableModuleItem
                       key={m.id}
                       module={m}
