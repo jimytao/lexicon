@@ -8,7 +8,7 @@ interface UpdateModalProps {
 export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
   const { status, progress, manifest, startDownload, installUpdate, error, reset } = useUpdateStore()
 
-  if (!manifest && status !== 'error') return null
+  if (!manifest) return null
 
   const isDownloading = status === 'downloading'
   const isReady = status === 'ready'

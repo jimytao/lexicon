@@ -28,6 +28,7 @@ interface UpdateState {
   error: string | null
   hasSeenBadge: boolean
   lastChecked: number
+  autoCheckDone: boolean
   
   checkUpdate: (force?: boolean) => Promise<void>
   startDownload: () => Promise<void>
@@ -45,19 +46,22 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.0', // Should match package.json
+      currentVersion: '0.7.1', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
+      autoCheckDone: false,
 
       setHasSeenBadge: (hasSeenBadge) => set({ hasSeenBadge }),
 
-      reset: () => set({ status: 'idle', progress: 0, error: null }),
+      reset: () => set({ status: 'idle', progress: 0, error: null, manifest: null }),
 
       checkUpdate: async (force = false) => {
         const now = Date.now()
-        // Limit auto-check to once every 4 hours unless forced
-        if (!force && now - get().lastChecked < 4 * 60 * 60 * 1000) return
+        if (!force) {
+          if (get().autoCheckDone) return
+          set({ autoCheckDone: true })
+        }
 
         set({ status: 'checking', error: null })
         try {
@@ -99,7 +103,19 @@ export const useUpdateStore = create<UpdateState>()(
           }
         } catch (err: any) {
           console.error('Update check failed:', err)
-          set({ status: 'error', error: err.message || 'Update check failed' })
+          if (force) {
+            set({
+              status: 'error',
+              error: err.message || 'Update check failed',
+              lastChecked: now,
+            })
+          } else {
+            set({
+              status: 'idle',
+              error: null,
+              lastChecked: now,
+            })
+          }
         }
       },
 

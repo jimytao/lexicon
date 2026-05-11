@@ -47,7 +47,7 @@ export function App() {
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
-  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge } = useUpdateStore()
+  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, error, reset } = useUpdateStore()
 
   useEffect(() => {
     // Initial check and cleanup
@@ -311,6 +311,9 @@ export function App() {
   const showPhraseView = searchSource === 'phrase'
   const showAiFullView = searchSource === 'ai-full'
 
+  const shouldShowUpdateModal = status === 'available' || status === 'downloading' || status === 'ready'
+  const showUpdateError = status === 'error' && !!error
+
   return (
     <div className={`min-h-screen bg-background text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
       {/* Background Decorative Elements */}
@@ -356,6 +359,33 @@ export function App() {
             </button>
           </div>
         </header>
+
+        {showUpdateError && (
+          <div className="px-6 mt-3">
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/5 text-red-200 px-4 py-3 flex flex-col gap-2 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs font-black uppercase tracking-widest text-red-300">Update check failed</div>
+                <div className="flex gap-2 text-[10px] font-bold uppercase tracking-tight">
+                  <button
+                    onClick={reset}
+                    className="px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    onClick={() => checkUpdate(true)}
+                    className="px-2 py-1 rounded-lg bg-red-500/30 hover:bg-red-500/40 text-white transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+              <p className="text-[11px] leading-relaxed text-red-200/80">
+                {error || '无法连接到更新服务器，请稍后再试。'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <main>
           {view === 'translate' ? (
@@ -419,8 +449,8 @@ export function App() {
       </div>
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      {status !== 'idle' && status !== 'checking' && status !== 'up-to-date' && (
-        <UpdateModal onClose={() => useUpdateStore.getState().reset()} />
+      {shouldShowUpdateModal && (
+        <UpdateModal onClose={reset} />
       )}
     </div>
   )

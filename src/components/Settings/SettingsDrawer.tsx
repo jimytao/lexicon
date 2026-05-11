@@ -329,7 +329,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     performanceMode, setPerformanceMode
   } = useSettingsStore()
 
-  const { status, manifest, checkUpdate, currentVersion } = useUpdateStore()
+  const { status, manifest, checkUpdate, currentVersion, error } = useUpdateStore()
 
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
 
@@ -818,6 +818,12 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 >
                   Update
                 </button>
+              </div>
+            )}
+            {status === 'error' && error && (
+              <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/30 text-red-100 text-[11px] leading-relaxed animate-in fade-in slide-in-from-bottom-2">
+                <div className="font-black uppercase tracking-widest text-[10px] mb-1 text-red-200">Update check failed</div>
+                {error}
               </div>
             )}
           </div>
