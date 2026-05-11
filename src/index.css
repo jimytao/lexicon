@@ -4,32 +4,37 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-ai-bg: #EEEDFE;
-  --color-ai-text: #3C3489;
-  --color-ai-dot: #7F77DD;
+  --color-ai-bg: #F5F7FF;
+  --color-ai-text: #4F46E5;
+  --color-ai-dot: #818CF8;
   
-  /* Neo-Native Palette */
+  /* Raycast-inspired Palette */
   --color-background: #FFFFFF;
   --color-background-soft: #F9FAFB;
-  --color-foreground: #111827;
-  --color-foreground-muted: #6B7280;
+  --color-foreground: #0F172A;
+  --color-foreground-muted: #64748B;
   --color-accent: #6366F1;
   --color-accent-soft: #EEF2FF;
-  --color-border: #E5E7EB;
+  --color-border: #F1F5F9;
+  --color-border-strong: #E2E8F0;
   
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2.25rem;
 }
 
-/* 强制使用 .dark 类触发深色变量，避免系统 prefers-color-scheme 干扰 */
 .dark {
-  --color-background: #030712;
-  --color-background-soft: #0F172A;
-  --color-foreground: #F9FAFB;
-  --color-foreground-muted: #9CA3AF;
+  --color-background: #000000;
+  --color-background-soft: #0A0A0A;
+  --color-foreground: #F8FAFC;
+  --color-foreground-muted: #94A3B8;
   --color-accent: #818CF8;
   --color-accent-soft: #1E1B4B;
-  --color-border: #1F2937;
+  --color-border: #141414;
+  --color-border-strong: #1F1F1F;
+  
+  --color-ai-bg: #0F111A;
+  --color-ai-text: #A5B4FC;
 }
 
 /* Base Styles */
@@ -92,46 +97,127 @@ html, body {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-foreground-muted);
-}
-
-/* Fluid Layout Utilities */
+/* Neo-Glass & Lighting Utilities */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .dark .glass {
-  background: rgba(3, 7, 18, 0.7);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(10, 10, 10, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Prevent auto-zoom on iOS */
+/* Base Styles */
+html, body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.03) 0px, transparent 50%);
+}
+
+.dark html, .dark body {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.08) 0px, transparent 50%);
+}
+
+/* Subtle Grid Background for that "Tech" feel */
+.bg-grid {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, var(--color-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse at center, black, transparent 80%);
+}
+
+.dark .bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+}
+
+/* Safe area utilities */
+.pt-safe { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+.pb-safe { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
+
+/* Premium Segmented Control */
+.segmented-control {
+  background-color: rgba(0,0,0,0.03);
+  padding: 3px;
+  border-radius: 14px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(8px);
+}
+
+.dark .segmented-control {
+  background-color: rgba(255,255,255,0.03);
+}
+
+.segmented-control-slider {
+  position: absolute;
+  left: 3px;
+  height: calc(100% - 6px);
+  background-color: var(--color-background);
+  border-radius: 11px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid var(--color-border);
+}
+
+.dark .segmented-control-slider {
+  background-color: #1A1A1A;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  border-color: rgba(255,255,255,0.05);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-foreground-muted);
+  opacity: 0.2;
+  border-radius: 10px;
+}
+
+/* Input Zoom fix */
 @supports (-webkit-touch-callout: none) {
-  input, select, textarea {
-    font-size: 16px !important;
-  }
+  input, select, textarea { font-size: 16px !important; }
 }
 
-/* Remove native clear button in search inputs (Chrome, Safari, Edge, Tauri) */
-input[type="search"]::-webkit-search-decoration,
-input[type="search"]::-webkit-search-cancel-button,
-input[type="search"]::-webkit-search-results-button,
-input[type="search"]::-webkit-search-results-decoration {
-  -webkit-appearance: none;
+/* Animation Utilities */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Performance Mode: Minimalistic UI for older devices */
+.perf-mode {
+  background-image: none !important;
+}
+.perf-mode .bg-grid {
+  display: none !important;
+}
+.perf-mode .glass {
+  background: var(--color-background) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+.perf-mode * {
+  animation-duration: 0.01s !important; /* Tiny but not 0 to avoid some JS issues */
+  transition-duration: 0.01s !important;
+  box-shadow: none !important;
+}
+.perf-mode .hover-lift:hover {
+  transform: none !important;
 }

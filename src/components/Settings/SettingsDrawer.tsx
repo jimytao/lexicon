@@ -20,6 +20,7 @@ import type { AppModule } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
+import { useUpdateStore } from '../../stores/updateStore'
 
 interface ProviderDef {
   id: string
@@ -325,7 +326,10 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
     setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises, setModules,
+    performanceMode, setPerformanceMode
   } = useSettingsStore()
+
+  const { status, manifest, checkUpdate, currentVersion } = useUpdateStore()
 
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
 
@@ -684,6 +688,20 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               </button>
             </div>
 
+            {/* Performance Mode */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">Performance Mode</span>
+                <p className="text-[10px] text-foreground-muted">Disable heavy visual effects for old devices</p>
+              </div>
+              <button
+                onClick={() => setPerformanceMode(!performanceMode)}
+                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${performanceMode ? 'bg-accent' : 'bg-foreground/10'}`}
+              >
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${performanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
             {/* Max exercises */}
             <div className="flex items-center justify-between">
               <div>
@@ -774,6 +792,34 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 Clear Cache
               </button>
             </div>
+          </div>
+
+          {/* Version Info */}
+          <div className="border-t border-border pt-8 pb-12 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">Version</span>
+                <p className="text-[10px] text-foreground-muted">Build {currentVersion}</p>
+              </div>
+              <button
+                onClick={() => checkUpdate(true)}
+                disabled={status === 'checking'}
+                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-30 transition-all uppercase tracking-wider"
+              >
+                {status === 'checking' ? 'Checking...' : 'Check Update'}
+              </button>
+            </div>
+            {status === 'available' && (
+              <div className="p-3 rounded-xl bg-accent/5 border border-accent/20 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
+                <span className="text-[10px] font-bold text-accent">New v{manifest?.version} is available!</span>
+                <button 
+                  onClick={() => checkUpdate(true)}
+                  className="text-[10px] font-black text-accent underline underline-offset-2"
+                >
+                  Update
+                </button>
+              </div>
+            )}
           </div>
 
         </div>

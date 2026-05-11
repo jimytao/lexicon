@@ -14,6 +14,8 @@ import { PhraseView } from './components/ResultView/PhraseView'
 import { SettingsDrawer } from './components/Settings/SettingsDrawer'
 import { ImageTranslateView } from './components/ImageTranslate'
 import { Keyboard } from '@capacitor/keyboard'
+import { useUpdateStore } from './stores/updateStore'
+import { UpdateModal } from './components/Settings/UpdateModal'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -35,7 +37,7 @@ export function App() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const { mode, query, setMode } = useSearchStore()
-  const { darkMode } = useSettingsStore()
+  const { darkMode, performanceMode } = useSettingsStore()
   const { add: addHistory, upgrade: upgradeHistory } = useHistoryStore()
 
   useEffect(() => {
@@ -45,6 +47,13 @@ export function App() {
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
+  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge } = useUpdateStore()
+
+  useEffect(() => {
+    // Initial check and cleanup
+    checkUpdate()
+    cleanupOldApks()
+  }, [])
 
   // 切换到 AI mode 时，若处于 local 状态且尚未分析，自动触发
   const prevModeRef = useRef(mode)
@@ -303,10 +312,13 @@ export function App() {
   const showAiFullView = searchSource === 'ai-full'
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+    <div className={`min-h-screen bg-background text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
+      {/* Background Decorative Elements */}
+      <div className="fixed inset-0 bg-grid opacity-[0.2] dark:opacity-[0.1] pointer-events-none" />
+      
       <div
         ref={scrollContainerRef}
-        className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/20 bg-background"
+        className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-background/50"
       >
         {/* Top bar: Elegant and minimal */}
         <header className="sticky top-0 z-20 pt-safe px-6 pb-4 glass">
@@ -327,14 +339,20 @@ export function App() {
             </div>
             
             <button
-              onClick={() => setSettingsOpen(true)}
-              className="p-2 -mr-2 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors"
+              onClick={() => {
+                setSettingsOpen(true)
+                setHasSeenBadge(true)
+              }}
+              className="p-2 -mr-2 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors relative"
               aria-label="Settings"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
+              {status === 'available' && !hasSeenBadge && (
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#0EA5E9] rounded-full ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
+              )}
             </button>
           </div>
         </header>
@@ -401,6 +419,9 @@ export function App() {
       </div>
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {status !== 'idle' && status !== 'checking' && status !== 'up-to-date' && (
+        <UpdateModal onClose={() => useUpdateStore.getState().reset()} />
+      )}
     </div>
   )
 }

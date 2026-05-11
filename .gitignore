@@ -9,13 +9,19 @@ dist
 
 # Tauri
 src-tauri/target
+src-tauri/*.key
+src-tauri/*.key.pub
 
-# Capacitor Android
+# Android
 android/.gradle
 android/app/build
 android/build
-android/app/src/main/assets/capacitor.config.json
-android/app/src/main/assets/public
+*.keystore
+*.jks
+
+# Release bundles
+release-artifacts/
+
 
 # Claude Code
 .claude/
