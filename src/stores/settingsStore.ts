@@ -22,6 +22,7 @@ interface SettingsStore {
   aiEndpoint: string
   aiModel: string
   aiApiKeys: Record<string, string>  // keyed by providerId
+  aiModels: Record<string, string>   // keyed by providerId
   historyEnabled: boolean
   darkMode: boolean
   webSearchEnabled: boolean
@@ -32,6 +33,7 @@ interface SettingsStore {
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
   setApiKeyForProvider: (providerId: string, key: string) => void
+  setAiModelForProvider: (providerId: string, model: string) => void
   setHistoryEnabled: (v: boolean) => void
   setDarkMode: (v: boolean) => void
   setWebSearchEnabled: (v: boolean) => void
@@ -47,17 +49,28 @@ export const useSettingsStore = create<SettingsStore>()(
       aiEndpoint: import.meta.env.VITE_AI_ENDPOINT ?? '',
       aiModel: import.meta.env.VITE_AI_MODEL ?? 'gemini-2.0-flash',
       aiApiKeys: {},
+      aiModels: {},
       historyEnabled: true,
       darkMode: false,
       webSearchEnabled: false,
       tavilyApiKey: '',
       maxExercises: 5,
       modules: DEFAULT_MODULES,
-      setAiProvider: (aiProvider) => set({ aiProvider }),
+      setAiProvider: (aiProvider) =>
+        set((state) => ({
+          aiProvider,
+          aiModel: state.aiModels[aiProvider] || state.aiModel,
+        })),
       setAiEndpoint: (aiEndpoint) => set({ aiEndpoint }),
-      setAiModel: (aiModel) => set({ aiModel }),
+      setAiModel: (aiModel) =>
+        set((state) => ({
+          aiModel,
+          aiModels: { ...state.aiModels, [state.aiProvider]: aiModel },
+        })),
       setApiKeyForProvider: (providerId, key) =>
         set((state) => ({ aiApiKeys: { ...state.aiApiKeys, [providerId]: key } })),
+      setAiModelForProvider: (providerId, model) =>
+        set((state) => ({ aiModels: { ...state.aiModels, [providerId]: model } })),
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
       setDarkMode: (darkMode) => set({ darkMode }),
       setWebSearchEnabled: (webSearchEnabled) => set({ webSearchEnabled }),

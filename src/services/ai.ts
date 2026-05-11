@@ -27,6 +27,7 @@ function getConfig(): AiConfig {
         aiEndpoint?: string
         aiModel?: string
         aiApiKeys?: Record<string, string>
+        aiModels?: Record<string, string>
         modules?: Array<{ id: string; enabled: boolean }>
         webSearchEnabled?: boolean
         tavilyApiKey?: string
@@ -36,7 +37,7 @@ function getConfig(): AiConfig {
     const providerId = s.aiProvider ?? ''
     return {
       endpoint: s.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || '',
-      model: s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
+      model: s.aiModels?.[providerId] || s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
       apiKey: s.aiApiKeys?.[providerId] || import.meta.env.VITE_AI_API_KEY || '',
       modules: s.modules || defaultModules,
       webSearchEnabled: s.webSearchEnabled ?? false,

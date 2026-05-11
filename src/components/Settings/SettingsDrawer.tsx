@@ -3,6 +3,24 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface ProviderDef {
   id: string
@@ -114,48 +132,94 @@ interface SettingsDrawerProps {
 }
 
 function normalizeModelQuery(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
+  return value.toLowerCase().replace(/[^a-z0-9.]+/g, ' ').trim().split(/\s+/).filter(Boolean)
 }
 
 function scoreModelMatch(model: string, query: string) {
-  const tokens = normalizeModelQuery(query)
-  if (tokens.length === 0) return 0
+  const qTokens = normalizeModelQuery(query)
+  if (qTokens.length === 0) return 0
 
-  const normalizedModel = model.toLowerCase()
-  const compactModel = normalizedModel.replace(/[^a-z0-9]+/g, '')
+  const mNormalized = model.toLowerCase()
+  const mCompact = mNormalized.replace(/[^a-z0-9.]+/g, '')
+  const mTokens = mNormalized.split(/[^a-z0-9.]+/).filter(Boolean)
+
   let score = 0
-  let cursor = 0
+  let matchedCount = 0
+  let lastIndex = -1
+  let inOrderCount = 0
 
-  for (const token of tokens) {
-    const compactToken = token.replace(/[^a-z0-9]+/g, '')
-    if (!compactToken) continue
+  for (const qToken of qTokens) {
+    let found = false
+    let tokenScore = 0
 
-    const compactIndex = compactModel.indexOf(compactToken)
-    const tokenIndex = normalizedModel.indexOf(token)
-    if (compactIndex >= 0) {
-      score += compactIndex === 0 ? 120 : 90
-      if (compactIndex >= cursor) score += 30
-      cursor = compactIndex + compactToken.length
-    } else if (tokenIndex >= 0) {
-      score += tokenIndex === 0 ? 80 : 60
-    } else {
-      let subsequenceIndex = 0
-      for (const char of compactModel) {
-        if (char === compactToken[subsequenceIndex]) subsequenceIndex += 1
-        if (subsequenceIndex === compactToken.length) break
+    // 1. Exact token match in the model's split tokens
+    if (mTokens.includes(qToken)) {
+      tokenScore = 100
+      found = true
+    }
+    // 2. Substring match
+    else {
+      const idx = mNormalized.indexOf(qToken)
+      if (idx !== -1) {
+        // If it's a version-like token (has digits or dots), be stricter
+        if (/[0-9.]/.test(qToken)) {
+          tokenScore = 80
+        } else {
+          tokenScore = 60
+        }
+        found = true
       }
-      score += subsequenceIndex === compactToken.length ? 20 : -120
+      // 3. Compact match
+      else if (mCompact.includes(qToken.replace(/\./g, ''))) {
+        tokenScore = 40
+        found = true
+      }
+    }
+
+    if (found) {
+      matchedCount++
+      score += tokenScore
+      
+      const firstIdx = mNormalized.indexOf(qToken)
+      if (firstIdx > lastIndex) {
+        inOrderCount++
+      }
+      lastIndex = firstIdx
+
+      // Start of word bonus
+      if (firstIdx === 0 || !/[a-z0-9]/.test(mNormalized[firstIdx - 1])) {
+        score += 20
+      }
     }
   }
 
-  if (compactModel === tokens.join('')) score += 200
-  score -= Math.max(0, compactModel.length - tokens.join('').length) * 0.2
+  if (matchedCount === 0) return -100
+
+  // Bonus for matching all tokens
+  if (matchedCount === qTokens.length) {
+    score += 200
+    // Bonus for matching all in order
+    if (inOrderCount === qTokens.length) {
+      score += 50
+    }
+  } else {
+    score += (matchedCount / qTokens.length) * 100
+  }
+
+  // Exact match bonus
+  if (mNormalized === query.toLowerCase().trim()) {
+    score += 1000
+  }
+
+  // Length penalty
+  score -= mNormalized.length * 0.1
+
   return score
 }
 
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const {
-    aiProvider, aiEndpoint, aiModel, aiApiKeys, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
+    aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
     setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises, setModules,
   } = useSettingsStore()
@@ -175,6 +239,12 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   function handleProviderSelect(p: ProviderDef) {
     setAiProvider(p.id)
     if (p.endpoint) setAiEndpoint(p.endpoint)
+    
+    // If no model is saved for this provider, and it has static models, pick the first one as default
+    if (!aiModels[p.id] && p.staticModels && p.staticModels.length > 0) {
+      setAiModel(p.staticModels[0])
+    }
+
     setFetchedModels([])
     setFetchStatus('idle')
     setShowModelList(false)
@@ -265,6 +335,113 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     const [moved] = newModules.splice(index, 1)
     newModules.splice(targetIndex, 0, moved)
     setModules(newModules)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const oldIndex = modules.findIndex(m => m.id === active.id)
+      const newIndex = modules.findIndex(m => m.id === over.id)
+      setModules(arrayMove(modules, oldIndex, newIndex))
+    }
+  }
+
+  // Sensors for dnd-kit: pointer for desktop, touch for mobile
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  // Sortable module item component
+  interface SortableModuleItemProps {
+    module: { id: string; label: string; enabled: boolean }
+    index: number
+    total: number
+    onToggle: () => void
+    onMoveUp: () => void
+    onMoveDown: () => void
+  }
+
+  function SortableModuleItem({ module, index, total, onToggle, onMoveUp, onMoveDown }: SortableModuleItemProps) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: module.id })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      zIndex: isDragging ? 10 : 'auto',
+    }
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`flex items-center justify-between p-3 rounded-xl bg-background-soft border border-border group transition-shadow ${
+          isDragging ? 'shadow-lg ring-2 ring-accent/30' : ''
+        }`}
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <button
+            onClick={onToggle}
+            className={`w-5 h-5 rounded border transition-all flex items-center justify-center shrink-0 ${
+              module.enabled ? 'bg-accent border-accent text-white' : 'border-border bg-background'
+            }`}
+          >
+            {module.enabled && (
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+          <span className={`text-sm font-medium transition-colors truncate ${module.enabled ? 'text-foreground' : 'text-foreground-muted opacity-50'}`}>
+            {module.label}
+          </span>
+        </div>
+
+        {/* Arrow buttons - left of grip, hover only (desktop) */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
+          <button
+            onClick={onMoveUp}
+            disabled={index === 0}
+            className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
+            aria-label="Move Up"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+            </svg>
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
+            aria-label="Move Down"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Drag handle (grip) - always visible */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1.5 text-foreground-muted/50 hover:text-foreground-muted active:text-accent transition-colors cursor-grab active:cursor-grabbing touch-none shrink-0"
+          aria-label="Drag to reorder"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+          </svg>
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -444,53 +621,25 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
           {/* Module Management */}
           <div className="border-t border-border pt-8 space-y-4">
             <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Module Management</label>
-            <div className="space-y-2">
-              {modules.map((m, i) => (
-                <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-background-soft border border-border group">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleModule(m.id)}
-                      className={`w-5 h-5 rounded border transition-all flex items-center justify-center ${
-                        m.enabled ? 'bg-accent border-accent text-white' : 'border-border bg-background'
-                      }`}
-                    >
-                      {m.enabled && (
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    <span className={`text-sm font-medium transition-colors ${m.enabled ? 'text-foreground' : 'text-foreground-muted opacity-50'}`}>
-                      {m.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => moveModule(i, 'up')}
-                      disabled={i === 0}
-                      className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
-                      aria-label="Move Up"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => moveModule(i, 'down')}
-                      disabled={i === modules.length - 1}
-                      className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
-                      aria-label="Move Down"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {modules.map((m, i) => (
+                    <SortableModuleItem
+                      key={m.id}
+                      module={m}
+                      index={i}
+                      total={modules.length}
+                      onToggle={() => toggleModule(m.id)}
+                      onMoveUp={() => moveModule(i, 'up')}
+                      onMoveDown={() => moveModule(i, 'down')}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
             <p className="text-[10px] text-foreground-muted px-1">
-              Drag modules to reorder. Unchecked modules will be omitted from AI requests to save tokens.
+              Drag handle to reorder. Unchecked modules will be omitted from AI requests to save tokens.
             </p>
           </div>
 
