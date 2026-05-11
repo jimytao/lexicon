@@ -44,24 +44,28 @@ html, body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+  min-height: 100vh;
+  
+  /* Enhanced Lighting Effects (Radial Gradients) */
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.06) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.dark html, .dark body {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.15) 0px, transparent 50%);
 }
 
 /* Safe area utilities — iOS Notch / Android Punch-hole */
-.pt-safe {
-  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-}
-.pb-safe {
-  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
-}
-.mt-safe {
-  margin-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-}
-.mb-safe {
-  margin-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
-}
-.top-safe {
-  top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
-}
+.pt-safe { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+.pb-safe { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
+.mt-safe { margin-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+.mb-safe { margin-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
+.top-safe { top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+
 /* Offset for elements that must stick below the app header (h-14 + pb-4 = 72px + safe-area) */
 .top-header-offset {
   top: calc(72px + env(safe-area-inset-top, 0px));
@@ -69,63 +73,50 @@ html, body {
 
 /* Premium Segmented Control Styles */
 .segmented-control {
-  background-color: var(--color-background-soft);
-  padding: 4px;
-  border-radius: 9999px;
+  background-color: rgba(0,0,0,0.04);
+  padding: 3px;
+  border-radius: 14px;
   position: relative;
   display: flex;
   align-items: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-  transition: all 0.3s ease;
+}
+
+.dark .segmented-control {
+  background-color: rgba(255,255,255,0.04);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .segmented-control-slider {
   position: absolute;
-  left: 4px;
-  height: calc(100% - 8px);
+  left: 3px;
+  height: calc(100% - 6px);
   background-color: var(--color-background);
-  border-radius: 9999px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  border: 0.5px solid var(--color-border);
+  border-radius: 11px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 1px solid var(--color-border);
 }
 
 .dark .segmented-control-slider {
-  background-color: var(--color-background-soft);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  border-color: rgba(255, 255, 255, 0.1);
+  background-color: #1A1A1A;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  border-color: rgba(255,255,255,0.08);
 }
 
 /* Neo-Glass & Lighting Utilities */
 .glass {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .dark .glass {
-  background: rgba(10, 10, 10, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-/* Base Styles */
-html, body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.03) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.03) 0px, transparent 50%);
-}
-
-.dark html, .dark body {
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.08) 0px, transparent 50%);
+  background: rgba(0, 0, 0, 0.65);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Subtle Grid Background for that "Tech" feel */
@@ -139,48 +130,12 @@ html, body {
 
 .dark .bg-grid {
   background-image:
-    linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
-}
-
-/* Safe area utilities */
-.pt-safe { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
-.pb-safe { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
-
-/* Premium Segmented Control */
-.segmented-control {
-  background-color: rgba(0,0,0,0.03);
-  padding: 3px;
-  border-radius: 14px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  backdrop-filter: blur(8px);
-}
-
-.dark .segmented-control {
-  background-color: rgba(255,255,255,0.03);
-}
-
-.segmented-control-slider {
-  position: absolute;
-  left: 3px;
-  height: calc(100% - 6px);
-  background-color: var(--color-background);
-  border-radius: 11px;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  border: 1px solid var(--color-border);
-}
-
-.dark .segmented-control-slider {
-  background-color: #1A1A1A;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  border-color: rgba(255,255,255,0.05);
+    linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-thumb {
   background: var(--color-foreground-muted);
   opacity: 0.2;
@@ -214,7 +169,7 @@ html, body {
   border-bottom: 1px solid var(--color-border) !important;
 }
 .perf-mode * {
-  animation-duration: 0.01s !important; /* Tiny but not 0 to avoid some JS issues */
+  animation-duration: 0.01s !important;
   transition-duration: 0.01s !important;
   box-shadow: none !important;
 }

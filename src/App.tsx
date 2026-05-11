@@ -315,13 +315,13 @@ export function App() {
   const showUpdateError = status === 'error' && !!error
 
   return (
-    <div className={`min-h-screen bg-background text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
+    <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
       {/* Background Decorative Elements */}
       <div className="fixed inset-0 bg-grid opacity-[0.2] dark:opacity-[0.1] pointer-events-none" />
       
       <div
         ref={scrollContainerRef}
-        className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-background/50"
+        className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-transparent"
       >
         {/* Top bar: Elegant and minimal */}
         <header className="sticky top-0 z-20 pt-safe px-6 pb-4 glass">

@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-05-11 — v0.7.2 Premium 视觉效果修复补丁
+
+### 视觉层次与背景遮挡修复 (Aesthetic Visibility Fixes)
+
+- **移除冗余实色背景**：修复了 `App.tsx` 中主容器与滚动容器使用 `bg-background` 导致底层径向渐变（Lighting）与网格背景（bg-grid）被完全遮挡的 Bug。
+- **增强光影可见度**：在 `index.css` 中调优了 `html, body` 的径向渐变透明度，浅色模式提升至 `0.06`，深色模式提升至 `0.15`，确保“光影效果”在全平台均清晰可辨。
+- **CSS 架构归一化**：清理并合并了 `index.css` 中由于多次迭代产生的重复 `.glass`、`.segmented-control` 及 `html, body` 定义，显著提升了样式的可维护性。
+- **毛玻璃效果优化**：修正了 header 的 `.glass` 材质，通过移除容器实色背景，使其能够正确模糊下方滚动的动态内容。
+
+---
+
 ## 2026-05-11 — v0.7.1 静默更新补丁
 
 ### 自动更新联网容错（Silent Graceful Checks）
