@@ -29,6 +29,10 @@ export function useSearch() {
     skipNextSuggestRef.current = true
     const queryType = detectQueryType(word)
 
+    // Optimistic history write: make latest searched word visible immediately,
+    // then branch-specific writes can upgrade aiMode when needed.
+    if (historyEnabled) addToHistory(word, null)
+
     if (queryType === 'sentence') {
       // Sentence → always AI phrase query, no db lookup
       setWordResult(null)
@@ -51,7 +55,6 @@ export function useSearch() {
         setRelatedPhrases(phrases)
         setSuggestions([])
         setQuery(word)
-        if (historyEnabled) addToHistory(word, null)
         return { result, mode, queryType }
       }
       // No db result → AI phrase query
@@ -75,7 +78,6 @@ export function useSearch() {
       setRelatedPhrases(phrases)
       setSuggestions([])
       setQuery(word)
-      if (historyEnabled) addToHistory(word, null)
       return { result, mode, queryType }
     }
 

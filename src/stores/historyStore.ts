@@ -23,22 +23,30 @@ export const useHistoryStore = create<HistoryStore>()(
     (set, get) => ({
       words: [],
       add: (word, aiMode = null) => {
-        const existing = get().words.find((e) => e.word === word)
-        const filtered = get().words.filter((e) => e.word !== word)
+        const normalized = word.trim()
+        if (!normalized) return
+        const existing = get().words.find((e) => e.word === normalized)
+        const filtered = get().words.filter((e) => e.word !== normalized)
         const newEntry: HistoryEntry = {
-          word,
+          word: normalized,
           aiMode: aiMode ?? (existing?.aiMode ?? null),
         }
         set({ words: [newEntry, ...filtered].slice(0, HISTORY_LIMIT) })
       },
       upgrade: (word, aiMode) => {
+        const normalized = word.trim()
+        if (!normalized) return
         set({
           words: get().words.map((e) =>
-            e.word === word ? { ...e, aiMode } : e
+            e.word === normalized ? { ...e, aiMode } : e
           ),
         })
       },
-      remove: (word) => set({ words: get().words.filter((e) => e.word !== word) }),
+      remove: (word) => {
+        const normalized = word.trim()
+        if (!normalized) return
+        set({ words: get().words.filter((e) => e.word !== normalized) })
+      },
       clear: () => set({ words: [] }),
     }),
     {

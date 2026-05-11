@@ -1,26 +1,25 @@
-import { useState, useRef, useMemo } from 'react'
-import { useSettingsStore } from '../../stores/settingsStore'
-import { useHistoryStore } from '../../stores/historyStore'
-import { useResultStore } from '../../stores/resultStore'
-import { testConnection } from '../../services/ai'
+import { CSS } from '@dnd-kit/utilities'
 import {
   DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
+  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
+  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { useState, useRef, useMemo } from 'react'
+import { useSettingsStore } from '../../stores/settingsStore'
+import type { AppModule } from '../../stores/settingsStore'
+import { useHistoryStore } from '../../stores/historyStore'
+import { useResultStore } from '../../stores/resultStore'
+import { testConnection } from '../../services/ai'
 
 interface ProviderDef {
   id: string
@@ -217,6 +216,110 @@ function scoreModelMatch(model: string, query: string) {
   return score
 }
 
+interface SortableModuleRowProps {
+  module: AppModule
+  index: number
+  total: number
+  hoveredId: string | null
+  onHoverChange: (id: string | null) => void
+  onToggle: (id: string) => void
+  onMove: (index: number, direction: 'up' | 'down') => void
+}
+
+function SortableModuleRow({
+  module,
+  index,
+  total,
+  hoveredId,
+  onHoverChange,
+  onToggle,
+  onMove,
+}: SortableModuleRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: module.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  const buttonsEnabled = hoveredId === module.id
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between p-3 rounded-xl bg-background-soft border border-border group ${
+        isDragging ? 'opacity-70 shadow-lg border-accent/40' : ''
+      }`}
+      onMouseEnter={() => onHoverChange(module.id)}
+      onMouseLeave={() => onHoverChange(null)}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={() => onToggle(module.id)}
+          className={`w-5 h-5 rounded border transition-all flex items-center justify-center shrink-0 ${
+            module.enabled ? 'bg-accent border-accent text-white' : 'border-border bg-background'
+          }`}
+        >
+          {module.enabled && (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+        <span className={`text-sm font-medium transition-colors truncate ${module.enabled ? 'text-foreground' : 'text-foreground-muted opacity-50'}`}>
+          {module.label}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 pl-2">
+        <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+          <button
+            onClick={() => onMove(index, 'up')}
+            disabled={!buttonsEnabled || index === 0}
+            className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+            aria-label="Move Up"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+            </svg>
+          </button>
+          <button
+            onClick={() => onMove(index, 'down')}
+            disabled={!buttonsEnabled || index === total - 1}
+            className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+            aria-label="Move Down"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`p-1.5 -mr-1 rounded-md transition-colors cursor-grab active:cursor-grabbing touch-none ${
+            isDragging
+              ? 'text-accent bg-accent/10'
+              : 'text-foreground-muted/60 hover:text-foreground active:text-accent active:bg-accent/10'
+          }`}
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8M8 12h8M8 17h8" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const {
     aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
@@ -230,6 +333,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
   const [showModelList, setShowModelList] = useState(false)
+  const [hoveredModuleId, setHoveredModuleId] = useState<string | null>(null)
 
   type TestStatus = 'idle' | 'testing' | 'success' | 'error'
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
@@ -337,111 +441,18 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     setModules(newModules)
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      const oldIndex = modules.findIndex(m => m.id === active.id)
-      const newIndex = modules.findIndex(m => m.id === over.id)
-      setModules(arrayMove(modules, oldIndex, newIndex))
-    }
-  }
-
-  // Sensors for dnd-kit: pointer for desktop, touch for mobile
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   )
 
-  // Sortable module item component
-  interface SortableModuleItemProps {
-    module: { id: string; label: string; enabled: boolean }
-    index: number
-    total: number
-    onToggle: () => void
-    onMoveUp: () => void
-    onMoveDown: () => void
-  }
-
-  function SortableModuleItem({ module, index, total, onToggle, onMoveUp, onMoveDown }: SortableModuleItemProps) {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: module.id })
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      zIndex: isDragging ? 10 : 'auto',
-    }
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className={`flex items-center justify-between p-3 rounded-xl bg-background-soft border border-border group transition-shadow ${
-          isDragging ? 'shadow-lg ring-2 ring-accent/30' : ''
-        }`}
-      >
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <button
-            onClick={onToggle}
-            className={`w-5 h-5 rounded border transition-all flex items-center justify-center shrink-0 ${
-              module.enabled ? 'bg-accent border-accent text-white' : 'border-border bg-background'
-            }`}
-          >
-            {module.enabled && (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-          <span className={`text-sm font-medium transition-colors truncate ${module.enabled ? 'text-foreground' : 'text-foreground-muted opacity-50'}`}>
-            {module.label}
-          </span>
-        </div>
-
-        {/* Arrow buttons - left of grip, hover only (desktop) */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
-          <button
-            onClick={onMoveUp}
-            disabled={index === 0}
-            className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
-            aria-label="Move Up"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            className="p-1 text-foreground-muted hover:text-accent disabled:opacity-20 transition-colors"
-            aria-label="Move Down"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Drag handle (grip) - always visible */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-1.5 text-foreground-muted/50 hover:text-foreground-muted active:text-accent transition-colors cursor-grab active:cursor-grabbing touch-none shrink-0"
-          aria-label="Drag to reorder"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
-          </svg>
-        </button>
-      </div>
-    )
+  function handleModuleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = modules.findIndex((m) => m.id === active.id)
+    const newIndex = modules.findIndex((m) => m.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    setModules(arrayMove(modules, oldIndex, newIndex))
   }
 
   return (
@@ -621,25 +632,26 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
           {/* Module Management */}
           <div className="border-t border-border pt-8 space-y-4">
             <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Module Management</label>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
-              {modules.map((m, i) => (
-                    <SortableModuleItem
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
+              <SortableContext items={modules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {modules.map((m, i) => (
+                    <SortableModuleRow
                       key={m.id}
                       module={m}
                       index={i}
                       total={modules.length}
-                      onToggle={() => toggleModule(m.id)}
-                      onMoveUp={() => moveModule(i, 'up')}
-                      onMoveDown={() => moveModule(i, 'down')}
+                      hoveredId={hoveredModuleId}
+                      onHoverChange={setHoveredModuleId}
+                      onToggle={toggleModule}
+                      onMove={moveModule}
                     />
                   ))}
                 </div>
               </SortableContext>
             </DndContext>
             <p className="text-[10px] text-foreground-muted px-1">
-              Drag handle to reorder. Unchecked modules will be omitted from AI requests to save tokens.
+              Drag modules to reorder. Unchecked modules will be omitted from AI requests to save tokens.
             </p>
           </div>
 
