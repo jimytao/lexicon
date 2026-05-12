@@ -22,6 +22,16 @@
 - **动画恢复**：修正了性能模式下强制将所有过渡时间设为极短的“一刀切”逻辑，恢复了如 Instant AI Lookup 按压、悬浮抬升等轻量且硬件加速的 UI 动效，让老设备也能保有流畅的交互反馈。
 - **精准降级**：性能模式现在明确只剔除最消耗渲染性能的背景遮罩 (`backdrop-filter`)、复杂环境光阴影 (`box-shadow`) 和繁杂光晕，实现续航保活与体验的最佳平衡。
 
+### 6. 全平台更新链路根治 (Update Pipeline Fix — Signed Artifacts)
+
+> 📌 **踩坑记录**：从 0.7.0 开始的所有版本更新，在有网络（含 VPN）的情况下仍然报错，追查后发现是以下两个被遗漏的关键环节。
+
+- **坑 1 — Windows .sig 签名文件从未生成**：构建时未设置 `TAURI_SIGNING_PRIVATE_KEY` 环境变量，导致 Tauri 打包虽然成功，但不会输出 `.sig` 文件。`version.json` 里的 `signature` 字段一直是空字符串。用户客户端检测到有新版本后，Tauri 下载完安装包尝试验签时直接抛错 —— 这才是"Update check failed"的真正原因，不是网络问题。
+- **修复**：在 PowerShell 中设置 `$env:TAURI_SIGNING_PRIVATE_KEY`（读取本地 `src-tauri/lexicon.key`，密码 `lexicon`）后，使用 `npx tauri signer sign` 对 NSIS `.exe` 和 MSI 分别签名，将生成的 `.sig` 内容填入 `version.json`，同时把 `windows-x86_64.url` 改为 GitHub Release 的直链。
+- **坑 2 — Android/iOS url 指向 HTML 页面**：`version.json` 的 `android.url` 和 `ios.url` 一直填的是 `releases/latest`（HTML 页面），Capacitor 的下载代码用 `fetch()` 直接请求该地址，拿到的是 HTML 而非 APK，写入文件后系统无法安装。
+- **修复**：将 `android.url` 与 `ios.url` 改为 GitHub Release 的直链 APK（`Lexicon_X.X.X_universal_signed.apk`）。
+- **后续每版发布标准操作**：构建 → 带私钥签名 → 把 `.sig` 内容 + 各平台直链 URL 填入 `version.json` → 推送 → 创建 Release 上传产物。
+
 ## 2026-05-11 — v0.7.2 Premium 视觉效果修复补丁
 
 ### 视觉层次与背景遮挡修复 (Aesthetic Visibility Fixes)
