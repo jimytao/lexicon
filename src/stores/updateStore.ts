@@ -171,14 +171,13 @@ export const useUpdateStore = create<UpdateState>()(
             const info = await Device.getInfo()
             if (info.platform !== 'android') {
               // iOS or other: just open URL
-              const url = manifest.platforms.ios?.url || 'https://github.com/jimytao/lexicon/releases/latest'
+              const url = `https://github.com/jimytao/lexicon/releases/tag/v${manifest.version}`
               window.open(url, '_blank')
               set({ status: 'idle' })
               return
             }
 
-            const apkUrl = manifest.platforms.android?.url
-            if (!apkUrl) throw new Error('No Android download URL found')
+            const apkUrl = `https://github.com/jimytao/lexicon/releases/download/v${manifest.version}/Lexicon_${manifest.version}_universal_signed.apk`
 
             const filename = `lexicon-${manifest.version}.apk`
             

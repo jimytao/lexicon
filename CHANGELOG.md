@@ -31,6 +31,7 @@
 - **坑 2 — Android/iOS url 指向 HTML 页面**：`version.json` 的 `android.url` 和 `ios.url` 一直填的是 `releases/latest`（HTML 页面），Capacitor 的下载代码用 `fetch()` 直接请求该地址，拿到的是 HTML 而非 APK，写入文件后系统无法安装。
 - **修复**：将 `android.url` 与 `ios.url` 改为 GitHub Release 的直链 APK（`Lexicon_X.X.X_universal_signed.apk`）。
 - **后续每版发布标准操作**：构建 → 带私钥签名 → 把 `.sig` 内容 + 各平台直链 URL 填入 `version.json` → 推送 → 创建 Release 上传产物。
+- **坑 3 — version.json 里混入了 android / ios 平台条目**：即使上面两个坑都修好，Update check failed 依然复现。根因：Tauri 官方文档明确指出"Tauri will validate the **whole file** before checking the version field"。我们的 `version.json` 里有 `android.signature = ""` 和 `ios`（无 signature 字段），Tauri 在读到 `windows-x86_64` 前就因校验整个 platforms 对象失败而 throw。移动端 URL 原本存在 `platforms.android.url` / `platforms.ios.url` 里，**修复**为从 `version.json` 中删除所有非桌面平台，移动端 APK/发版链接改为在代码里按版本号动态拼接（`Lexicon_X.X.X_universal_signed.apk`），不再依赖 JSON 字段。
 
 ### 7. 底部导航与设置界面重构 (Bottom Nav & Settings Refactor)
 - **悬浮灵动岛设计**：废弃了横跨全屏的底部导航栏，重构为居中、有左右留白的“胶囊状”悬浮磨玻璃栏 (`w-[85%] max-w-[320px]`)，极大提升了高级感，视觉体验更贴近 iOS 与现代移动规范。
