@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
@@ -21,11 +21,35 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const containerRef = useRef<HTMLFormElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const suggestRequestRef = useRef(0)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
+  const trimmedQuery = query.trim()
 
   const showSuggestions = suggestions.length > 0
-  const showHistory = historyEnabled && isFocused && !query && !showSuggestions
+  const showHistory = historyEnabled && isFocused && !trimmedQuery && !showSuggestions
+
+  useEffect(() => {
+    if (!isFocused) return
+
+    const currentRequest = ++suggestRequestRef.current
+    if (!trimmedQuery) {
+      setSuggestions([])
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      const results = await db.suggest(trimmedQuery)
+      if (cancelled) return
+      if (currentRequest !== suggestRequestRef.current) return
+      setSuggestions(results)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isFocused, trimmedQuery, setSuggestions])
 
   // Build enriched suggest items: mark DB hits that have AI cache
   // and append history-miss items (in history but not in DB results)
@@ -35,9 +59,9 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   }))
 
   // Append history-miss items that match the current prefix (not already in DB results)
-  if (query.trim() && historyEnabled) {
+  if (trimmedQuery && historyEnabled) {
     const dbWords = new Set(suggestions.map(s => s.word.toLowerCase()))
-    const lq = query.trim().toLowerCase()
+    const lq = trimmedQuery.toLowerCase()
     for (const entry of historyWords) {
       const w = entry.word
       if (w.toLowerCase().startsWith(lq) && !dbWords.has(w.toLowerCase())) {
@@ -93,6 +117,10 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
     setActiveIndex(-1)
+    if (!e.target.value.trim()) {
+      suggestRequestRef.current += 1
+      setSuggestions([])
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -134,29 +162,33 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
           
           <input
             ref={inputRef}
-            type="search"
+            type="text"
+            inputMode="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             enterKeyHint="search"
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="Search a word or phrase…"
             className="flex-1 min-w-0 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50"
-            onFocus={async (e) => {
+            onFocus={(e) => {
               setIsFocused(true)
               e.target.select()
-              if (query) {
-                const results = await db.suggest(query)
-                setSuggestions(results)
-              }
             }}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+            onBlur={() => {
+              suggestRequestRef.current += 1
+              setTimeout(() => setIsFocused(false), 200)
+            }}
           />
           
           <div className={`flex shrink-0 items-center gap-2 p-1 rounded-2xl border transition-all duration-300 ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
             {query && (
               <button 
                 type="button"
-                onClick={() => { setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }} 
+                onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }} 
                 className="p-1.5 rounded-xl hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -210,7 +242,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
             <SuggestList
               items={enrichedSuggestions}
               onSelect={handleSuggestSelect}
-              visible={showSuggestions || (isFocused && !!query.trim() && enrichedSuggestions.length > 0)}
+              visible={showSuggestions || (isFocused && !!trimmedQuery && enrichedSuggestions.length > 0)}
               activeIndex={activeIndex}
             />
             {showHistory && (

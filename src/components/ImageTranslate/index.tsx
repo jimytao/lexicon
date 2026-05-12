@@ -438,7 +438,7 @@ export function ImageTranslateView() {
               {embedMode ? (
                 /* ── 嵌字编辑模式 ── */
                 <div className="space-y-3">
-                   <div ref={stickyRef} className="sticky top-header-offset z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
+                   <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"
@@ -508,7 +508,7 @@ export function ImageTranslateView() {
               ) : (
                 /* ── 翻译列表模式 ── */
                 <div>
-                  <div ref={stickyRef} className="sticky top-header-offset z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
+                  <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"

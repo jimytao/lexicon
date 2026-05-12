@@ -33,8 +33,12 @@ type SearchSource = 'local' | 'ai-full' | 'phrase' | 'none'
 export function App() {
   const [view, setView] = useState<AppView>('dictionary')
   const [searchSource, setSearchSource] = useState<SearchSource>('none')
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(true)
+  const [isAtTop, setIsAtTop] = useState(true)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
+  const lastScrollTopRef = useRef(0)
   const { mode, query, setMode } = useSearchStore()
   const { darkMode, performanceMode } = useSettingsStore()
   const { add: addHistory, upgrade: upgradeHistory } = useHistoryStore()
@@ -53,6 +57,32 @@ export function App() {
     checkUpdate()
     cleanupOldApks()
   }, [])
+
+  useEffect(() => {
+    if (!scrollContainerRef.current) return
+
+    const sc = scrollContainerRef.current
+    const handleScroll = () => {
+      const top = sc.scrollTop
+      const atTop = top <= 16
+      const delta = top - lastScrollTopRef.current
+
+      setIsAtTop(atTop)
+      if (isKeyboardVisible) {
+        setIsBottomNavVisible(false)
+      } else if (atTop || delta < -8) {
+        setIsBottomNavVisible(true)
+      } else if (delta > 12 && top > 80) {
+        setIsBottomNavVisible(false)
+      }
+
+      lastScrollTopRef.current = top
+    }
+
+    handleScroll()
+    sc.addEventListener('scroll', handleScroll, { passive: true })
+    return () => sc.removeEventListener('scroll', handleScroll)
+  }, [isKeyboardVisible, view])
 
   // 切换到 AI mode 时，若处于 local 状态且尚未分析，自动触发
   const prevModeRef = useRef(mode)
@@ -209,6 +239,20 @@ export function App() {
     let keyboardHideSub: any;
     let keyboardDidShowSub: any;
     let updateScrollFromViewport: (() => void) | null = null;
+    let focusInHandler: ((e: FocusEvent) => void) | null = null;
+    let focusOutHandler: (() => void) | null = null;
+
+    const resetKeyboardLayout = () => {
+      document.querySelectorAll<HTMLElement>('[data-kb-padded]').forEach(el => {
+        el.style.paddingBottom = ''
+        delete el.dataset.kbPadded
+      })
+      setIsKeyboardVisible(false)
+      setIsBottomNavVisible(true)
+      if ((scrollContainerRef.current?.scrollTop ?? 0) <= 16) {
+        setIsAtTop(true)
+      }
+    }
 
     const initKeyboardFix = async () => {
       const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor
@@ -224,6 +268,8 @@ export function App() {
             scrollable.style.paddingBottom = '45vh'
             scrollable.dataset.kbPadded = 'true'
           }
+          setIsKeyboardVisible(true)
+          setIsBottomNavVisible(false)
           activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' })
           setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250)
         }, 300)
@@ -232,12 +278,12 @@ export function App() {
       const handleFocusOut = () => {
         clearTimeout(scrollTimeout)
         scrollTimeout = setTimeout(() => {
-          document.querySelectorAll<HTMLElement>('[data-kb-padded]').forEach(el => {
-            el.style.paddingBottom = ''
-            delete el.dataset.kbPadded
-          })
+          resetKeyboardLayout()
         }, 150)
       }
+
+      focusInHandler = handleFocusIn
+      focusOutHandler = handleFocusOut
 
       document.addEventListener('focusin', handleFocusIn)
       document.addEventListener('focusout', handleFocusOut)
@@ -248,6 +294,8 @@ export function App() {
             const activeEl = document.activeElement as HTMLElement
             if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
             
+            setIsKeyboardVisible(true)
+            setIsBottomNavVisible(false)
             const scrollable = getScrollableAncestor(activeEl)
             if (scrollable) {
               const viewportHeight = window.innerHeight
@@ -275,6 +323,7 @@ export function App() {
             if (!visualViewport) return
             const keyboardHeight = Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop)
             if (keyboardHeight > 0) updateScroll(keyboardHeight)
+            else resetKeyboardLayout()
           }
 
           // Use both Will and Did events for maximum compatibility across Android 8-16
@@ -290,8 +339,8 @@ export function App() {
       }
 
       ;(window as any)._kbFixCleanup = () => {
-        document.removeEventListener('focusin', handleFocusIn)
-        document.removeEventListener('focusout', handleFocusOut)
+        if (focusInHandler) document.removeEventListener('focusin', focusInHandler)
+        if (focusOutHandler) document.removeEventListener('focusout', focusOutHandler)
         keyboardShowSub?.remove()
         keyboardHideSub?.remove()
         keyboardDidShowSub?.remove()
@@ -300,6 +349,7 @@ export function App() {
           window.visualViewport?.removeEventListener('scroll', updateScrollFromViewport)
         }
         clearTimeout(scrollTimeout)
+        resetKeyboardLayout()
       }
     }
 
@@ -311,6 +361,7 @@ export function App() {
   const showAiFullView = searchSource === 'ai-full'
 
   const shouldShowUpdateModal = status === 'available' || status === 'downloading' || status === 'ready'
+  const bottomNavVisible = !isKeyboardVisible && (isBottomNavVisible || isAtTop)
 
   return (
     <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
@@ -389,7 +440,7 @@ export function App() {
       </div>
 
       {/* Bottom Navigation Bar - Floating iOS Pill style */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50">
+      <nav className={`fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-[140%] opacity-0 pointer-events-none'}`} style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))', transform: `translateX(-50%) ${bottomNavVisible ? 'translateY(0)' : 'translateY(140%)}` }}>
         <div className="flex items-center justify-between">
           
           <button 

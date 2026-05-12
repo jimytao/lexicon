@@ -5,6 +5,7 @@ import { relaunch } from '@tauri-apps/plugin-process'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { FileOpener } from '@capawesome-team/capacitor-file-opener'
 import { Device } from '@capacitor/device'
+import { isCapacitor, isTauri } from '../services/platform'
 
 interface UpdateManifest {
   version: string
@@ -44,6 +45,42 @@ const UPDATE_URLS = [
   'https://gcore.jsdelivr.net/gh/jimytao/lexicon@main/version.json'
 ]
 
+async function fetchManifestWithFallback(): Promise<UpdateManifest> {
+  let lastError: Error | null = null
+
+  for (const url of UPDATE_URLS) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 8000)
+
+    try {
+      const bust = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`
+      const response = await fetch(bust, {
+        cache: 'no-store',
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} from ${new URL(url).hostname}`)
+        continue
+      }
+
+      return await response.json()
+    } catch (e) {
+      const err = e as Error
+      lastError = err.name === 'AbortError'
+        ? new Error(`Timeout fetching version info from ${new URL(url).hostname}`)
+        : err
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }
+
+  throw new Error(`Failed to fetch version info: ${lastError?.message || 'Network error'}`)
+}
+
 export const useUpdateStore = create<UpdateState>()(
   persist(
     (set, get) => ({
@@ -69,54 +106,42 @@ export const useUpdateStore = create<UpdateState>()(
 
         set({ status: 'checking', error: null })
         try {
-          const isTauri = (window as any).__TAURI_INTERNALS__ !== undefined
-
-          if (isTauri) {
-            const update = await check()
-            if (update) {
-              set({
-                status: 'available',
-                manifest: {
-                  version: update.version,
-                  notes: update.body || '',
-                  pub_date: update.date || '',
-                  platforms: {} // Tauri handles its own urls
-                },
-                hasSeenBadge: false,
-                lastChecked: now
-              })
-            } else {
-              set({ status: 'up-to-date', lastChecked: now })
-            }
-          } else {
-            // Capacitor / Mobile
-            let data: UpdateManifest | null = null
-            let fetchErr: Error | null = null
-            
-            for (const url of UPDATE_URLS) {
-              try {
-                const response = await fetch(url)
-                if (response.ok) {
-                  data = await response.json()
-                  break
-                }
-              } catch (e) {
-                fetchErr = e as Error
+          if (isTauri()) {
+            try {
+              const update = await check()
+              if (update) {
+                set({
+                  status: 'available',
+                  manifest: {
+                    version: update.version,
+                    notes: update.body || '',
+                    pub_date: update.date || '',
+                    platforms: {}
+                  },
+                  hasSeenBadge: false,
+                  lastChecked: now
+                })
+                return
               }
-            }
-            
-            if (!data) throw new Error('Failed to fetch version info: ' + (fetchErr?.message || 'Network error'))
-            
-            if (data.version !== get().currentVersion) {
-              set({
-                status: 'available',
-                manifest: data,
-                hasSeenBadge: false,
-                lastChecked: now
-              })
-            } else {
+
               set({ status: 'up-to-date', lastChecked: now })
+              return
+            } catch (tauriErr) {
+              console.warn('Tauri updater check failed, falling back to remote manifest', tauriErr)
             }
+          }
+
+          const data = await fetchManifestWithFallback()
+
+          if (data.version !== get().currentVersion) {
+            set({
+              status: 'available',
+              manifest: data,
+              hasSeenBadge: false,
+              lastChecked: now
+            })
+          } else {
+            set({ status: 'up-to-date', lastChecked: now })
           }
         } catch (err: any) {
           console.error('Update check failed:', err)
@@ -143,8 +168,7 @@ export const useUpdateStore = create<UpdateState>()(
         set({ status: 'downloading', progress: 0 })
 
         try {
-          const isTauri = (window as any).__TAURI_INTERNALS__ !== undefined
-          if (isTauri) {
+          if (isTauri()) {
             const update = await check()
             if (update) {
               let downloaded = 0
@@ -165,6 +189,8 @@ export const useUpdateStore = create<UpdateState>()(
                     break
                 }
               })
+            } else {
+              throw new Error('Desktop updater did not return a downloadable package')
             }
           } else {
             // Android Capacitor
@@ -223,8 +249,7 @@ export const useUpdateStore = create<UpdateState>()(
       },
 
       installUpdate: async () => {
-        const isTauri = (window as any).__TAURI_INTERNALS__ !== undefined
-        if (isTauri) {
+        if (isTauri()) {
           await relaunch()
         } else {
           const { manifest } = get()
@@ -243,6 +268,8 @@ export const useUpdateStore = create<UpdateState>()(
 
       cleanupOldApks: async () => {
         try {
+          if (!isCapacitor()) return
+
           const info = await Device.getInfo()
           if (info.platform !== 'android') return
 
