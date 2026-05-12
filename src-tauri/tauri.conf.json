@@ -40,8 +40,8 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://cdn.jsdelivr.net/gh/jimytao/lexicon@main/version.json",
         "https://raw.githubusercontent.com/jimytao/lexicon/main/version.json",
+        "https://cdn.jsdelivr.net/gh/jimytao/lexicon@main/version.json",
         "https://gcore.jsdelivr.net/gh/jimytao/lexicon@main/version.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ3MDI1RDgyRDQzRjQyQ0UKUldUT1FqL1VnbDBDMXd6MDVxeEJBdHVOaDlRamtqRnUyNGd4TDUyWHZXbzl0dGVhMkRCSEFsajIK"
