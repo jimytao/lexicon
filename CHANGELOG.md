@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 2026-05-13 — v0.7.5 搜索/导航/更新检测收尾发布
+
+### 发布摘要
+- **搜索时底栏策略修正**：搜索框聚焦与输入期间不再提前收起底部导航，只有用户真正向下滑动内容时才隐藏，回到顶部或上滑时重新出现。
+- **图片 Pin 顶部体验延续修复**：翻译图片页继续保持贴近顶部的 sticky / pin 行为，减少无意义顶部留白。
+- **版本检测根因修复**：确认 GitHub 仓库实际使用 `master` 分支后，统一修正 `updateStore.ts` 与 `tauri.conf.json` 中的远端 `version.json` 地址，解决此前误写 `main` 导致所有线上更新检测地址 404 的问题。
+- **全链路验证通过**：对 Raw GitHub、jsDelivr、gcore 三条版本清单地址完成模拟验证，均可成功返回 `version.json`；当前版本号提升至 `0.7.5` 后，可作为新一轮正式发布版本。
+
+## 2026-05-13 — 最终收尾：搜索底栏策略与版本检测根因确认
+
+### 1. 搜索期间底部导航显隐策略微调 (Bottom Nav Search Behavior)
+- **搜索聚焦时不再立刻收起底栏**：调整 `App.tsx` 的底部导航显隐逻辑。现在点击输入框、弹出键盘、开始输入搜索时，底部导航会继续保持可见，不会因为键盘事件立即隐藏。
+- **仅在实际向下滑动内容时隐藏**：底部导航的收起触发点重新收敛到真实滚动行为本身。也就是说，只有用户后续开始向下滑动浏览内容时，导航栏才会收起；上滑或回到顶部时仍会重新出现。
+
+### 2. 版本检测失败根因确认 (Update Check Root Cause)
+- **不是 GitHub 没有 `version.json`**：经排查，`version.json` 确实已经存在于仓库中，并且 Git 跟踪正常。
+- **真正根因是分支名写错**：项目仓库当前实际使用的是 `master` 分支，而 `updateStore.ts` 与 `src-tauri/tauri.conf.json` 之前都把远端版本清单地址写成了 `main`，导致三个更新清单地址全部请求到 404。
+- **修复内容**：已将所有版本清单 URL 从 `main` 统一改为 `master`，包括：
+  - `https://raw.githubusercontent.com/jimytao/lexicon/master/version.json`
+  - `https://cdn.jsdelivr.net/gh/jimytao/lexicon@master/version.json`
+  - `https://gcore.jsdelivr.net/gh/jimytao/lexicon@master/version.json`
+
+### 3. 版本检测链路模拟验证通过 (Manifest Simulation Verified)
+- **线上直链验证成功**：对 Raw GitHub、jsDelivr、gcore 三条地址分别做了实际读取测试，三者均已成功返回相同的 `version.json` 内容。
+- **代码侧构建验证通过**：修复分支地址后重新执行了本地构建检查，确认当前代码可以正常编译。
+- **当前功能结论**：版本检测链路已经具备成功条件；由于线上 `version.json` 当前版本号仍是 `0.7.4`，与本地应用版本一致，所以正确表现应为“已是最新版本”，而不是发现新更新。
+
 ## 2026-05-12 — 全平台输入/导航/图片 Pin/版本检测修复补丁
 
 ### 1. 移动端键盘与底部导航回归修复 (Keyboard & Bottom Nav Recovery)

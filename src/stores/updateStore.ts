@@ -40,13 +40,14 @@ interface UpdateState {
 }
 
 const UPDATE_URLS = [
-  'https://cdn.jsdelivr.net/gh/jimytao/lexicon@main/version.json',
-  'https://raw.githubusercontent.com/jimytao/lexicon/main/version.json',
-  'https://gcore.jsdelivr.net/gh/jimytao/lexicon@main/version.json'
+  'https://cdn.jsdelivr.net/gh/jimytao/lexicon@master/version.json',
+  'https://raw.githubusercontent.com/jimytao/lexicon/master/version.json',
+  'https://gcore.jsdelivr.net/gh/jimytao/lexicon@master/version.json'
 ]
 
 async function fetchManifestWithFallback(): Promise<UpdateManifest> {
   let lastError: Error | null = null
+  let sawHttp404 = false
 
   for (const url of UPDATE_URLS) {
     const controller = new AbortController()
@@ -63,6 +64,7 @@ async function fetchManifestWithFallback(): Promise<UpdateManifest> {
       })
 
       if (!response.ok) {
+        if (response.status === 404) sawHttp404 = true
         lastError = new Error(`HTTP ${response.status} from ${new URL(url).hostname}`)
         continue
       }
@@ -78,6 +80,10 @@ async function fetchManifestWithFallback(): Promise<UpdateManifest> {
     }
   }
 
+  if (sawHttp404) {
+    throw new Error('Failed to fetch version info: release manifest unavailable')
+  }
+
   throw new Error(`Failed to fetch version info: ${lastError?.message || 'Network error'}`)
 }
 
@@ -87,7 +93,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.4', // Should match package.json
+      currentVersion: '0.7.5', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,

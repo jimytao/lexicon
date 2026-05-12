@@ -68,9 +68,7 @@ export function App() {
       const delta = top - lastScrollTopRef.current
 
       setIsAtTop(atTop)
-      if (isKeyboardVisible) {
-        setIsBottomNavVisible(false)
-      } else if (atTop || delta < -8) {
+      if (atTop || delta < -8) {
         setIsBottomNavVisible(true)
       } else if (delta > 12 && top > 80) {
         setIsBottomNavVisible(false)
@@ -248,9 +246,9 @@ export function App() {
         delete el.dataset.kbPadded
       })
       setIsKeyboardVisible(false)
-      setIsBottomNavVisible(true)
       if ((scrollContainerRef.current?.scrollTop ?? 0) <= 16) {
         setIsAtTop(true)
+        setIsBottomNavVisible(true)
       }
     }
 
@@ -269,7 +267,6 @@ export function App() {
             scrollable.dataset.kbPadded = 'true'
           }
           setIsKeyboardVisible(true)
-          setIsBottomNavVisible(false)
           activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' })
           setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250)
         }, 300)
@@ -295,7 +292,6 @@ export function App() {
             if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
             
             setIsKeyboardVisible(true)
-            setIsBottomNavVisible(false)
             const scrollable = getScrollableAncestor(activeEl)
             if (scrollable) {
               const viewportHeight = window.innerHeight
@@ -361,7 +357,9 @@ export function App() {
   const showAiFullView = searchSource === 'ai-full'
 
   const shouldShowUpdateModal = status === 'available' || status === 'downloading' || status === 'ready'
-  const bottomNavVisible = !isKeyboardVisible && (isBottomNavVisible || isAtTop)
+  const bottomNavVisible = isBottomNavVisible || isAtTop
+  const bottomNavClassName = `fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-[140%] opacity-0 pointer-events-none'}`
+  const bottomNavTransform = `translateX(-50%) ${bottomNavVisible ? 'translateY(0)' : 'translateY(140%)'}`
 
   return (
     <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
@@ -440,7 +438,7 @@ export function App() {
       </div>
 
       {/* Bottom Navigation Bar - Floating iOS Pill style */}
-      <nav className={`fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-[140%] opacity-0 pointer-events-none'}`} style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))', transform: `translateX(-50%) ${bottomNavVisible ? 'translateY(0)' : 'translateY(140%)}` }}>
+      <nav className={bottomNavClassName} style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))', transform: bottomNavTransform }}>
         <div className="flex items-center justify-between">
           
           <button 

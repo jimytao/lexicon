@@ -1,11 +1,11 @@
 ﻿{
-    "version":  "0.7.4",
-    "notes":  "悬浮胶囊导航栏、设置页独立主视图、全平台更新链路修复（签名+直链）。",
-    "pub_date":  "2026-05-12T15:00:00Z",
+    "version":  "0.7.5",
+    "notes":  "修复搜索时底栏过早收起、图片顶部 Pin 偏移与全平台版本检测分支配置错误，完善输入/导航体验。",
+    "pub_date":  "2026-05-12T16:30:00Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTkzK1M1RlRYSSsxS0FoQWNzbk1pNTdUUWNDWnBhRndVNUdyN000Y0VnL1NjK2tUNFlWYzQwc2t4aGNEV2hSS3M3VEc3US9aMDNnMEt0SXAwckFCT1FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NTk4ODk1CWZpbGU6TGV4aWNvbl8wLjcuNF94NjQtc2V0dXAuZXhlCnpjNGhCYkVhQmF6ekVJNWRXODRPcndHd3JZbE1iQ1V5VXllbGJUWXhwY2Jjdy85KzlPL2R0UGwyQmo3TFpvaGJyU3UzZFNQSVpZMSttcVhpZDNldENnPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.4/Lexicon_0.7.4_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXhuT0ZsOXJMNS9JNkpOb2ZvQ3B2bU93S05mYUttVzRla2c0WHo5OWxhQllOYVNKQWVVOHJLdEpGNVd4eXB0MEhkTFFMeXowenZkMGV0TU1oend2bVFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NjAzNzE4CWZpbGU6TGV4aWNvbl8wLjcuNV94NjQtc2V0dXAuZXhlCmRQSk81bYml6a3FwZzdsVGRVKzRrcHBhU0VSSTFOVVNuSi9GN3ZNYi8zWkdsU3pEbGFlMGtlVXJHZG5peEVZZkpwNTFuVlgrU245MFV3N3U1LzlyaENRPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.5/Lexicon_0.7.5_x64-setup.exe"
                                          }
                   }
 }
