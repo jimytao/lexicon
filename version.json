@@ -1,18 +1,18 @@
 {
-    "version":  "0.7.3",
-    "notes":  "Glassmorphism 材质深度重构，多镜像更新节点（jsDelivr）保障国内用户稳定自检，AI 追问自动滚动，性能模式精准降级。",
-    "pub_date":  "2026-05-12T14:00:00Z",
+    "version":  "0.7.4",
+    "notes":  "悬浮胶囊导航栏、设置页独立主视图、全平台更新链路修复（签名+直链）。",
+    "pub_date":  "2026-05-12T15:00:00Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBJaFFKbEhzTS9ZUXN5KzM1dFUvOXZJQ1dTWXZZUlAzVEZXcUk1cGVPTjNsVXcwVUNDdkg1cFRVWTVYSUdOYUpnM1pxWCt6Rnp1WVZuL0RadVJlNUFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NTk3MDEwCWZpbGU6TGV4aWNvbl8wLjcuM194NjQtc2V0dXAuZXhlCjNIRGV2MjdvSTM4bDMvUlQ2eDJjaysyb0wrcEhzUVZsT1lwQ0xYNHRuQ2NQMklTd3ltSjlVd3hMSG5GMktrL1NTSTM0N2NHZWxRYXlzMWV1TEQ3akJRPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.3/Lexicon_0.7.3_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTkzK1M1RlRYSSsxS0FoQWNzbk1pNTdUUWNDWnBhRndVNUdyN000Y0VnL1NjK2tUNFlWYzQwc2t4aGNEV2hSS3M3VEc3US9aMDNnMEt0SXAwckFCT1FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NTk4ODk1CWZpbGU6TGV4aWNvbl8wLjcuNF94NjQtc2V0dXAuZXhlCnpjNGhCYkVhQmF6ekVJNWRXODRPcndHd3JZbE1iQ1V5VXllbGJUWXhwY2Jjdy85KzlPL2R0UGwyQmo3TFpvaGJyU3UzZFNQSVpZMSttcVhpZDNldENnPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.4/Lexicon_0.7.4_x64-setup.exe"
                                          },
                       "android":  {
-                                      "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.3/Lexicon_0.7.3_universal_signed.apk",
+                                      "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.4/Lexicon_0.7.4_universal_signed.apk",
                                       "signature":  ""
                                   },
                       "ios":  {
-                                  "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.3/Lexicon_0.7.3_universal_signed.apk"
+                                  "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.4/Lexicon_0.7.4_universal_signed.apk"
                               }
                   }
 }

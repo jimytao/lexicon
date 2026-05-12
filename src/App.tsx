@@ -11,7 +11,7 @@ import { SegmentedControl } from './components/SearchBar/SegmentedControl'
 import { ResultView } from './components/ResultView'
 import { AiFullView } from './components/ResultView/AiFullView'
 import { PhraseView } from './components/ResultView/PhraseView'
-import { SettingsDrawer } from './components/Settings/SettingsDrawer'
+import { SettingsView } from './components/Settings/SettingsView'
 import { ImageTranslateView } from './components/ImageTranslate'
 import { Keyboard } from '@capacitor/keyboard'
 import { useUpdateStore } from './stores/updateStore'
@@ -27,11 +27,10 @@ function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   return document.documentElement
 }
 
-type AppView = 'dictionary' | 'translate'
+type AppView = 'dictionary' | 'translate' | 'settings'
 type SearchSource = 'local' | 'ai-full' | 'phrase' | 'none'
 
 export function App() {
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [view, setView] = useState<AppView>('dictionary')
   const [searchSource, setSearchSource] = useState<SearchSource>('none')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -327,6 +326,8 @@ export function App() {
         <main>
           {view === 'translate' ? (
             <ImageTranslateView />
+          ) : view === 'settings' ? (
+            <SettingsView />
           ) : (
             <div className="px-6 pb-24 space-y-4">
               <div className="sticky top-0 z-30 pt-safe pb-3 bg-background/90 backdrop-blur-xl -mx-6 px-6 shadow-[0_4px_24px_transparent] transition-all">
@@ -387,51 +388,59 @@ export function App() {
         </main>
       </div>
 
-      {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 pb-safe glass rounded-t-3xl rounded-b-none border-b-0 border-x-0 mx-auto max-w-2xl bg-background/80 backdrop-blur-2xl">
-        <div className="flex items-center justify-between px-6 h-16">
-          <div className="flex gap-2">
-            <button 
-              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold transition-all ${view === 'dictionary' ? 'bg-foreground text-background shadow-md' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
-              onClick={() => { setView('dictionary'); scrollToTop() }}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      {/* Bottom Navigation Bar - Floating iOS Pill style */}
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50">
+        <div className="flex items-center justify-between">
+          
+          <button 
+            className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
+            onClick={() => { setView('dictionary'); scrollToTop() }}
+          >
+            <div className={`p-1 rounded-xl mb-0.5 transition-colors ${view === 'dictionary' ? 'bg-accent/10' : ''}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={view === 'dictionary' ? 2.5 : 2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
               </svg>
-              Dictionary
-            </button>
-            <button 
-              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold transition-all ${view === 'translate' ? 'bg-foreground text-background shadow-md' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
-              onClick={() => setView('translate')}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            </div>
+            <span className={`text-[10px] font-bold ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted'}`}>Dict</span>
+          </button>
+
+          <button 
+            className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all ${view === 'translate' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
+            onClick={() => setView('translate')}
+          >
+            <div className={`p-1 rounded-xl mb-0.5 transition-colors ${view === 'translate' ? 'bg-accent/10' : ''}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={view === 'translate' ? 2.5 : 2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Image
-            </button>
-          </div>
+            </div>
+            <span className={`text-[10px] font-bold ${view === 'translate' ? 'text-accent' : 'text-foreground-muted'}`}>Image</span>
+          </button>
           
           <button
             onClick={() => {
-              setSettingsOpen(true)
+              setView('settings')
+              scrollToTop()
               setHasSeenBadge(true)
             }}
-            className="p-2 rounded-2xl hover:bg-foreground/10 text-foreground-muted hover:text-foreground transition-all relative"
+            className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all relative ${view === 'settings' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
             aria-label="Settings"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {status === 'available' && !hasSeenBadge && (
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#0EA5E9] rounded-full ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
-            )}
+            <div className={`p-1 rounded-xl mb-0.5 relative transition-colors ${view === 'settings' ? 'bg-accent/10' : ''}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {status === 'available' && !hasSeenBadge && (
+                <span className="absolute top-0 right-0 w-2 h-2 bg-[#0EA5E9] rounded-full ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
+              )}
+            </div>
+            <span className={`text-[10px] font-bold ${view === 'settings' ? 'text-accent' : 'text-foreground-muted'}`}>Settings</span>
           </button>
         </div>
       </nav>
 
-      <SettingsDrawer open={settingsOpen} onClose={() => { setSettingsOpen(false); reset() }} />
+
       {shouldShowUpdateModal && (
         <UpdateModal onClose={reset} />
       )}

@@ -32,6 +32,11 @@
 - **修复**：将 `android.url` 与 `ios.url` 改为 GitHub Release 的直链 APK（`Lexicon_X.X.X_universal_signed.apk`）。
 - **后续每版发布标准操作**：构建 → 带私钥签名 → 把 `.sig` 内容 + 各平台直链 URL 填入 `version.json` → 推送 → 创建 Release 上传产物。
 
+### 7. 底部导航与设置界面重构 (Bottom Nav & Settings Refactor)
+- **悬浮灵动岛设计**：废弃了横跨全屏的底部导航栏，重构为居中、有左右留白的“胶囊状”悬浮磨玻璃栏 (`w-[85%] max-w-[320px]`)，极大提升了高级感，视觉体验更贴近 iOS 与现代移动规范。
+- **图标与排版优化**：导航栏内的元素重新等分 (`flex-1`) 实现了绝对对称。按钮采用了 YouTube 风格的“上图标、下小文字”纵向堆叠布局（如 Dictionary 缩写为 `Dict`），完美解决了此前横向排版导致的拥挤感。
+- **设置页升格为独立主视图**：移除了之前的 `SettingsDrawer` 右侧滑出遮罩设计。现在 `SettingsView` 作为一个平级的独立视图，和 Dictionary、Image Translate 一样直接在主内容区域渲染，所有核心功能间实现了平滑的同层级切换，沉浸感更强且消除了侧边栏带来的多余 DOM 开销。
+
 ## 2026-05-11 — v0.7.2 Premium 视觉效果修复补丁
 
 ### 视觉层次与背景遮挡修复 (Aesthetic Visibility Fixes)

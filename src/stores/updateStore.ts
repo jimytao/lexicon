@@ -50,7 +50,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.3', // Should match package.json
+      currentVersion: '0.7.4', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
