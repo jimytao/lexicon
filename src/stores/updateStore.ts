@@ -38,7 +38,11 @@ interface UpdateState {
   cleanupOldApks: () => Promise<void>
 }
 
-const UPDATE_URL = 'https://raw.githubusercontent.com/jimytao/lexicon/main/version.json'
+const UPDATE_URLS = [
+  'https://cdn.jsdelivr.net/gh/jimytao/lexicon@main/version.json',
+  'https://raw.githubusercontent.com/jimytao/lexicon/main/version.json',
+  'https://gcore.jsdelivr.net/gh/jimytao/lexicon@main/version.json'
+]
 
 export const useUpdateStore = create<UpdateState>()(
   persist(
@@ -46,7 +50,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.2', // Should match package.json
+      currentVersion: '0.7.3', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -86,9 +90,22 @@ export const useUpdateStore = create<UpdateState>()(
             }
           } else {
             // Capacitor / Mobile
-            const response = await fetch(UPDATE_URL)
-            if (!response.ok) throw new Error('Failed to fetch version info')
-            const data: UpdateManifest = await response.json()
+            let data: UpdateManifest | null = null
+            let fetchErr: Error | null = null
+            
+            for (const url of UPDATE_URLS) {
+              try {
+                const response = await fetch(url)
+                if (response.ok) {
+                  data = await response.json()
+                  break
+                }
+              } catch (e) {
+                fetchErr = e as Error
+              }
+            }
+            
+            if (!data) throw new Error('Failed to fetch version info: ' + (fetchErr?.message || 'Network error'))
             
             if (data.version !== get().currentVersion) {
               set({

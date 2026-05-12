@@ -24,7 +24,7 @@
 }
 
 .dark {
-  --color-background: #000000;
+  --color-background: #050505;
   --color-background-soft: #0A0A0A;
   --color-foreground: #F8FAFC;
   --color-foreground-muted: #94A3B8;
@@ -45,18 +45,10 @@ html, body {
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
   min-height: 100vh;
-  
-  /* Enhanced Lighting Effects (Radial Gradients) */
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.06) 0px, transparent 50%);
-  background-attachment: fixed;
 }
 
 .dark html, .dark body {
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.15) 0px, transparent 50%);
+  background-color: var(--color-background);
 }
 
 /* Safe area utilities — iOS Notch / Android Punch-hole */
@@ -106,17 +98,24 @@ html, body {
   border-color: rgba(255,255,255,0.08);
 }
 
-/* Neo-Glass & Lighting Utilities */
+/* Neo-Glass & Lighting Utilities - Major Revamp */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.5) 100%);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
+  box-shadow: 
+    0 12px 40px -12px rgba(31, 38, 135, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .dark .glass {
-  background: rgba(0, 0, 0, 0.65);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(20, 20, 24, 0.8) 0%, rgba(20, 20, 24, 0.4) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 12px 40px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
 }
 
 /* Subtle Grid Background for that "Tech" feel */
@@ -167,12 +166,11 @@ html, body {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-bottom: 1px solid var(--color-border) !important;
-}
-.perf-mode * {
-  animation-duration: 0.01s !important;
-  transition-duration: 0.01s !important;
   box-shadow: none !important;
 }
-.perf-mode .hover-lift:hover {
-  transform: none !important;
+/* We globally remove box-shadows as they cause heavy repaint on older devices, 
+   but we DO NOT remove animations and transitions (like transforms and opacity changes), 
+   which are hardware-accelerated and improve UX. */
+.perf-mode * {
+  box-shadow: none !important;
 }

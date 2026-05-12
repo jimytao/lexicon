@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2026-05-12 — Premium 视觉重置与体验优化补丁
+
+### 1. Premium 视觉与光影深度重构 (Aesthetic Overhaul)
+- **Glassmorphism 材质大改**：摒弃了之前较为平淡的毛玻璃效果，全新引入斜向线性渐变、高饱和度模糊 (`saturate(200%) blur(28px)`) 以及更为立体的阴影 (`box-shadow`) 与高光内边框 (`inset 0 1px 1px`)，让 UI 具有更强烈的物理通透感与层次感。
+- **环境光渲染增强**：在 `index.css` 中大幅提升了背景径向渐变（Radial Gradients）的色彩强度与可见度，加入粉色辅助光晕，整体界面更显流光溢彩。
+
+### 2. 更新检测机制稳健性修复 (Update Robustness)
+- **CDN 节点回落与轮询**：修复了原更新检测接口直接请求 `raw.githubusercontent.com` 导致在部分网络环境（国内）全线报错的致命问题。
+- **多链路配置**：在 `updateStore.ts` 以及 Tauri 的 `tauri.conf.json` 中加入了基于 jsDelivr 的多路镜像节点 (`cdn.jsdelivr.net` 与 `gcore.jsdelivr.net`) 作为降级备用，确保设备在主链路不通时依然能成功拉取更新清单。
+
+### 3. AI 问答区交互优化 (AI Chat UX)
+- **追问自动滚动**：在 `AiChatBox.tsx` 增加了滚动锚点。在用户发送第二次及之后的追问问题时，界面会自动平滑滚动到底部，以便立刻看到自己新发出的问题和 AI 的思考状态。
+- **阅读流保持**：保留了 AI 流式输出时不强制拉取滚动条的设定，方便用户停留在需要的地方阅读长篇回复，免受屏幕自动跳跃的干扰。
+
+### 4. 更新失败提示收敛 (Update Error UX)
+- **移除主界面错误横条**：彻底删除 `App.tsx` 中的更新失败 banner。无论是自动检查失败还是手动检查失败，主界面不再出现任何红色提示，不影响主流程体验。
+- **错误仅在设置页可见**：手动点击"Check Update"失败后，错误信息仅在设置抽屉内部展示，关闭抽屉后自动 `reset()`，干净不残留。
+
+### 5. 性能模式微调 (Performance Mode Refinement)
+- **动画恢复**：修正了性能模式下强制将所有过渡时间设为极短的“一刀切”逻辑，恢复了如 Instant AI Lookup 按压、悬浮抬升等轻量且硬件加速的 UI 动效，让老设备也能保有流畅的交互反馈。
+- **精准降级**：性能模式现在明确只剔除最消耗渲染性能的背景遮罩 (`backdrop-filter`)、复杂环境光阴影 (`box-shadow`) 和繁杂光晕，实现续航保活与体验的最佳平衡。
+
 ## 2026-05-11 — v0.7.2 Premium 视觉效果修复补丁
 
 ### 视觉层次与背景遮挡修复 (Aesthetic Visibility Fixes)

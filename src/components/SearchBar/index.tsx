@@ -119,7 +119,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         onSubmit={handleSubmit}
         className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
-        <div className={`flex items-center gap-3 px-4 py-3.5 rounded-3xl border transition-all duration-300 shadow-sm overflow-hidden
+        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-3xl border transition-all duration-300 shadow-sm overflow-hidden
           ${isFocused 
             ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg' 
             : 'bg-background-soft border-border hover:border-foreground-muted/30'

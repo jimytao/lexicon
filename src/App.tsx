@@ -47,7 +47,7 @@ export function App() {
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
-  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, error, reset } = useUpdateStore()
+  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, reset } = useUpdateStore()
 
   useEffect(() => {
     // Initial check and cleanup
@@ -312,7 +312,6 @@ export function App() {
   const showAiFullView = searchSource === 'ai-full'
 
   const shouldShowUpdateModal = status === 'available' || status === 'downloading' || status === 'ready'
-  const showUpdateError = status === 'error' && !!error
 
   return (
     <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
@@ -323,84 +322,24 @@ export function App() {
         ref={scrollContainerRef}
         className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-transparent"
       >
-        {/* Top bar: Elegant and minimal */}
-        <header className="sticky top-0 z-20 pt-safe px-6 pb-4 glass">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex bg-foreground/5 p-1 rounded-2xl">
-              <button 
-                className={`px-4 py-1.5 rounded-xl text-sm font-bold transition-all ${view === 'dictionary' ? 'bg-background text-foreground shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
-                onClick={() => setView('dictionary')}
-              >
-                Dictionary
-              </button>
-              <button 
-                className={`px-4 py-1.5 rounded-xl text-sm font-bold transition-all ${view === 'translate' ? 'bg-background text-foreground shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
-                onClick={() => setView('translate')}
-              >
-                Image
-              </button>
-            </div>
-            
-            <button
-              onClick={() => {
-                setSettingsOpen(true)
-                setHasSeenBadge(true)
-              }}
-              className="p-2 -mr-2 rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors relative"
-              aria-label="Settings"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {status === 'available' && !hasSeenBadge && (
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#0EA5E9] rounded-full ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
-              )}
-            </button>
-          </div>
-        </header>
 
-        {showUpdateError && (
-          <div className="px-6 mt-3">
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/5 text-red-200 px-4 py-3 flex flex-col gap-2 animate-in fade-in duration-300">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs font-black uppercase tracking-widest text-red-300">Update check failed</div>
-                <div className="flex gap-2 text-[10px] font-bold uppercase tracking-tight">
-                  <button
-                    onClick={reset}
-                    className="px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    Dismiss
-                  </button>
-                  <button
-                    onClick={() => checkUpdate(true)}
-                    className="px-2 py-1 rounded-lg bg-red-500/30 hover:bg-red-500/40 text-white transition-colors"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-              <p className="text-[11px] leading-relaxed text-red-200/80">
-                {error || '无法连接到更新服务器，请稍后再试。'}
-              </p>
-            </div>
-          </div>
-        )}
 
         <main>
           {view === 'translate' ? (
             <ImageTranslateView />
           ) : (
-            <div className="px-6 py-4 space-y-4">
-              <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-30">
-                <div className="w-full relative z-50">
-                  <SearchBar
-                  onWordSelect={handleWordSelect}
-                  onHistorySelect={(word) => handleWordSelect(word, true)}
-                  onForceAi={handleForceAi}
-                />
+            <div className="px-6 pb-24 space-y-4">
+              <div className="sticky top-0 z-30 pt-safe pb-3 bg-background/90 backdrop-blur-xl -mx-6 px-6 shadow-[0_4px_24px_transparent] transition-all">
+                <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 mt-4 relative z-30">
+                  <div className="w-full relative z-50">
+                    <SearchBar
+                      onWordSelect={handleWordSelect}
+                      onHistorySelect={(word) => handleWordSelect(word, true)}
+                      onForceAi={handleForceAi}
+                    />
+                  </div>
+                  <SegmentedControl mode={mode} onModeChange={setMode} />
                 </div>
-                <SegmentedControl mode={mode} onModeChange={setMode} />
               </div>
 
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -448,7 +387,51 @@ export function App() {
         </main>
       </div>
 
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {/* Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 pb-safe glass rounded-t-3xl rounded-b-none border-b-0 border-x-0 mx-auto max-w-2xl bg-background/80 backdrop-blur-2xl">
+        <div className="flex items-center justify-between px-6 h-16">
+          <div className="flex gap-2">
+            <button 
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold transition-all ${view === 'dictionary' ? 'bg-foreground text-background shadow-md' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
+              onClick={() => { setView('dictionary'); scrollToTop() }}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+              Dictionary
+            </button>
+            <button 
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold transition-all ${view === 'translate' ? 'bg-foreground text-background shadow-md' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
+              onClick={() => setView('translate')}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Image
+            </button>
+          </div>
+          
+          <button
+            onClick={() => {
+              setSettingsOpen(true)
+              setHasSeenBadge(true)
+            }}
+            className="p-2 rounded-2xl hover:bg-foreground/10 text-foreground-muted hover:text-foreground transition-all relative"
+            aria-label="Settings"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {status === 'available' && !hasSeenBadge && (
+              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#0EA5E9] rounded-full ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
+            )}
+          </button>
+        </div>
+      </nav>
+
+      <SettingsDrawer open={settingsOpen} onClose={() => { setSettingsOpen(false); reset() }} />
       {shouldShowUpdateModal && (
         <UpdateModal onClose={reset} />
       )}

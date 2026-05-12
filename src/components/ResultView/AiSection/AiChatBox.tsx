@@ -13,6 +13,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const contextRef = useRef(context)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   contextRef.current = context
 
   async function handleSend() {
@@ -27,6 +28,11 @@ export function AiChatBox({ context }: AiChatBoxProps) {
     addChatMessage(userMsg)
     setInput('')
     setLoading(true)
+
+    // Scroll down to show the new question and the loading state
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 100)
 
     try {
       const allMessages = [...chatMessages, userMsg]
@@ -83,6 +89,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       )}
 
