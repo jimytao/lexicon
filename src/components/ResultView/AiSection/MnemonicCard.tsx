@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { generateMnemonic, generateMnemonicForType, generatePhraseMnemonic } from '../../../services/ai'
+import { generateMnemonic, generatePhraseMnemonic } from '../../../services/ai'
 import type { Mnemonic } from '../../../types'
 
 type MnemonicType = 'philology' | 'story' | 'smart'
@@ -31,22 +31,16 @@ interface MnemonicCardProps {
 
 export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic }: MnemonicCardProps) {
   const [mnemonic, setMnemonic] = useState<Mnemonic | undefined>(initialMnemonic)
+  const [activeType, setActiveType] = useState<MnemonicType | undefined>(initialMnemonic?.bestType)
   const [loading, setLoading] = useState(false)
-  const [loadingType, setLoadingType] = useState<MnemonicType | null>(null)
-  const [switchError, setSwitchError] = useState<string | null>(null)
-  // Lock in the initial allScores as the reference so tab scores don't jump on each switch
-  const referenceScores = useRef<Mnemonic['allScores'] | undefined>(undefined)
-  // Per-type content cache
-  const typeCache = useRef<Partial<Record<MnemonicType, Mnemonic>>>({})
+  const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     setMnemonic(initialMnemonic)
+    setActiveType(initialMnemonic?.bestType)
     setLoading(false)
-    setLoadingType(null)
-    setSwitchError(null)
-    typeCache.current = initialMnemonic ? { [initialMnemonic.type]: initialMnemonic } : {}
-    referenceScores.current = initialMnemonic?.allScores
+    setError(null)
   }, [initialMnemonic, word])
 
   const handleGenerate = async () => {
@@ -55,81 +49,36 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
     abortControllerRef.current = controller
 
     setLoading(true)
-    setSwitchError(null)
+    setError(null)
     try {
       const res = isPhrase
         ? await generatePhraseMnemonic(word, controller.signal)
         : await generateMnemonic(word, controller.signal)
 
-      typeCache.current = { [res.type]: res }
-      referenceScores.current = res.allScores
       setMnemonic(res)
+      setActiveType(res.bestType)
       onUpdateMnemonic?.(res)
     } catch (err: unknown) {
       if ((err as Error).name === 'AbortError') return
-      setSwitchError('生成失败，请重试')
+      setError('生成失败，请重试')
     } finally {
       if (abortControllerRef.current === controller) setLoading(false)
     }
   }
 
-  const handleSelectType = async (type: MnemonicType) => {
-    if (mnemonic?.type === type && !loadingType) return
-
-    const cached = typeCache.current[type]
-    if (cached) {
-      setMnemonic(cached)
-      setSwitchError(null)
-      onUpdateMnemonic?.(cached)
-      return
-    }
-
-    abortControllerRef.current?.abort()
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    setLoadingType(type)
-    setSwitchError(null)
-    try {
-      const res = await generateMnemonicForType(word, type, controller.signal)
-      typeCache.current[type] = res
-      setMnemonic(res)
-      onUpdateMnemonic?.(res)
-    } catch (err: unknown) {
-      if ((err as Error).name === 'AbortError') return
-      setSwitchError(`生成${TYPE_LABELS[type]}失败，请重试`)
-    } finally {
-      if (abortControllerRef.current === controller) setLoadingType(null)
-    }
+  const handleSelectType = (type: MnemonicType) => {
+    setActiveType(type)
   }
 
   const handleRegeneratePhrase = async () => {
-    abortControllerRef.current?.abort()
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    setLoading(true)
-    setSwitchError(null)
-    try {
-      const res = await generatePhraseMnemonic(word, controller.signal)
-      typeCache.current = { [res.type]: res }
-      referenceScores.current = res.allScores
-      setMnemonic(res)
-      onUpdateMnemonic?.(res)
-    } catch (err: unknown) {
-      if ((err as Error).name === 'AbortError') return
-      setSwitchError('生成失败，请重试')
-    } finally {
-      if (abortControllerRef.current === controller) setLoading(false)
-    }
+    handleGenerate()
   }
 
   useEffect(() => {
     return () => { abortControllerRef.current?.abort() }
   }, [])
 
-  const activeType = mnemonic?.type
-  const scores = referenceScores.current
+  const activeItem = mnemonic && activeType ? mnemonic[activeType] : undefined
 
   return (
     <div className="mt-6 mb-8 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
@@ -158,9 +107,9 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
       )}
 
       {/* Initial generation error (no mnemonic yet) */}
-      {switchError && !mnemonic && (
+      {error && !mnemonic && (
         <div className="rounded-2xl border border-red-200 dark:border-red-900/30 p-4 bg-red-50 dark:bg-red-900/10 text-center">
-          <p className="text-xs text-red-500 mb-2">{switchError}</p>
+          <p className="text-xs text-red-500 mb-2">{error}</p>
           <button type="button" onClick={handleGenerate} className="text-[10px] font-bold text-red-600 dark:text-red-400 underline">重试</button>
         </div>
       )}
@@ -171,28 +120,22 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
           {!isPhrase && (
             <div className="flex gap-1.5 mb-3">
               {(['philology', 'story', 'smart'] as MnemonicType[]).map((type) => {
-                const isActive = activeType === type && !loadingType
-                const isLoading = loadingType === type
-                const score = scores?.[type]
+                const isActive = activeType === type
+                const item = mnemonic[type]
                 return (
                   <button
                     key={type}
                     type="button"
                     onClick={() => handleSelectType(type)}
-                    disabled={!!loadingType}
                     className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl border transition-all duration-200 text-[10px] font-bold ${
                       isActive
                         ? `${TYPE_COLORS[type]} border-transparent shadow-sm`
                         : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/40 disabled:opacity-50'
                     }`}
                   >
-                    {isLoading ? (
-                      <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span>{TYPE_LABELS[type]}</span>
-                    )}
-                    {score !== undefined && (
-                      <span className={`text-[8px] font-medium ${isActive ? 'opacity-80' : 'opacity-50'}`}>{score}</span>
+                    <span>{TYPE_LABELS[type]}</span>
+                    {item && (
+                      <span className={`text-[8px] font-medium ${isActive ? 'opacity-80' : 'opacity-50'}`}>{item.score}</span>
                     )}
                   </button>
                 )
@@ -200,13 +143,13 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
             </div>
           )}
 
-          {/* Tab-switch or phrase-regen error (mnemonic still visible) */}
-          {switchError && !loadingType && !loading && (
-            <p className="text-[10px] text-red-400 dark:text-red-500 mb-2 text-center">{switchError}</p>
+          {/* error (mnemonic still visible) */}
+          {error && !loading && (
+            <p className="text-[10px] text-red-400 dark:text-red-500 mb-2 text-center">{error}</p>
           )}
 
           {/* Mnemonic content card */}
-          {!loadingType && !loading && (
+          {activeItem && !loading && (
             <div className="group relative rounded-2xl p-5 bg-accent-soft border border-accent/10 hover:border-accent/20 transition-all duration-300">
               <div className="flex gap-3">
                 <div className="mt-1 shrink-0">
@@ -227,8 +170,8 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                   </div>
                 </div>
                 <div className="flex-1">
-                  <p className="text-[11px] text-accent/70 italic mb-1 font-medium">推荐理由: {mnemonic.reason}</p>
-                  <p className="text-sm text-foreground leading-relaxed font-semibold">{mnemonic.content}</p>
+                  <p className="text-[11px] text-accent/70 italic mb-1 font-medium">推荐理由: {activeItem.reason}</p>
+                  <p className="text-sm text-foreground leading-relaxed font-semibold">{activeItem.content}</p>
                 </div>
               </div>
 
@@ -245,12 +188,12 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
             </div>
           )}
 
-          {/* Type-switch / phrase-regen loading spinner */}
-          {(loadingType || (loading && mnemonic)) && (
+          {/* phrase-regen loading spinner */}
+          {loading && mnemonic && (
             <div className="rounded-2xl border border-dashed border-accent/20 p-5 flex items-center justify-center gap-3 bg-accent-soft/30">
               <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
               <p className="text-[11px] font-medium text-accent/60">
-                {loadingType ? `生成${TYPE_LABELS[loadingType]}助记...` : 'AI 正在疯狂联想中...'}
+                AI 正在疯狂联想中...
               </p>
             </div>
           )}

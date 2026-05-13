@@ -778,21 +778,24 @@ export function SettingsView() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-sm font-bold text-foreground">Version</span>
-                <p className="text-[10px] text-foreground-muted">Build {currentVersion}</p>
+                <p className="text-[10px] text-foreground-muted">
+                  Build {currentVersion}
+                  {status === 'higher-version' && ' (Higher than cloud)'}
+                </p>
               </div>
               <button
-                onClick={() => checkUpdate(true)}
+                onClick={() => status === 'available' ? useUpdateStore.getState().openModal() : checkUpdate(true)}
                 disabled={status === 'checking'}
                 className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-30 transition-all uppercase tracking-wider"
               >
-                {status === 'checking' ? 'Checking...' : 'Check Update'}
+                {status === 'checking' ? 'Checking...' : (status === 'available' ? 'View Details' : 'Check Update')}
               </button>
             </div>
             {status === 'available' && (
               <div className="p-3 rounded-xl bg-accent/5 border border-accent/20 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
                 <span className="text-[10px] font-bold text-accent">New v{manifest?.version} is available!</span>
                 <button 
-                  onClick={() => checkUpdate(true)}
+                  onClick={() => useUpdateStore.getState().openModal()}
                   className="text-[10px] font-black text-accent underline underline-offset-2"
                 >
                   Update

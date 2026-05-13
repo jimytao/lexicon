@@ -50,13 +50,22 @@ export function App() {
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
-  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, reset } = useUpdateStore()
+  const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
 
   useEffect(() => {
     // Initial check and cleanup
     checkUpdate()
     cleanupOldApks()
   }, [])
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        clearToast()
+      }, 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [toastMessage, clearToast])
 
   useEffect(() => {
     if (!scrollContainerRef.current) return
@@ -356,7 +365,6 @@ export function App() {
   const showPhraseView = searchSource === 'phrase'
   const showAiFullView = searchSource === 'ai-full'
 
-  const shouldShowUpdateModal = status === 'available' || status === 'downloading' || status === 'ready'
   const bottomNavVisible = isBottomNavVisible || isAtTop
   const bottomNavClassName = `fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-[140%] opacity-0 pointer-events-none'}`
   const bottomNavTransform = `translateX(-50%) ${bottomNavVisible ? 'translateY(0)' : 'translateY(140%)'}`
@@ -490,8 +498,23 @@ export function App() {
       </nav>
 
 
-      {shouldShowUpdateModal && (
-        <UpdateModal onClose={reset} />
+      {toastMessage && (
+        <div 
+          className="fixed left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto cursor-pointer"
+          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
+          onClick={() => { if (status === 'available') { openModal(); clearToast(); } }}
+        >
+          <div className="bg-foreground text-background px-4 py-2 rounded-2xl text-xs font-bold shadow-lg shadow-black/20 flex items-center gap-2">
+            <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {toastMessage}
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <UpdateModal />
       )}
     </div>
   )

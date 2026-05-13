@@ -531,9 +531,9 @@ Keep answers concise and practical.`
 }
 
 // ── AI 助记生成 ──
-const MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your goal is to evaluate and provide the most effective memory aid for a given word.
+const MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your goal is to evaluate and provide the most effective memory aids for a given word.
 
-Evaluate THREE main approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
+Generate mnemonics for ALL THREE approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
 
 1. PHILOLOGY (词源逻辑):
    - Symbolic letter shapes (A=sharp, V=valley).
@@ -552,48 +552,70 @@ Evaluate THREE main approaches and score each (0-100) based on its "potential to
 
 JSON Output Schema:
 {
-  "type": "philology" | "story" | "smart",
-  "content": "The actual mnemonic text in Chinese.",
-  "score": 85,
-  "allScores": {
-    "philology": 90,
-    "story": 30,
-    "smart": 60
+  "philology": {
+    "content": "Mnemonic text in Chinese.",
+    "score": 90,
+    "reason": "Brief explanation of why this method works well or poorly."
   },
-  "reason": "Brief explanation in Chinese why this method was chosen as the best."
+  "story": {
+    "content": "Mnemonic text in Chinese.",
+    "score": 30,
+    "reason": "Brief explanation."
+  },
+  "smart": {
+    "content": "Mnemonic text in Chinese.",
+    "score": 60,
+    "reason": "Brief explanation."
+  },
+  "bestType": "philology" | "story" | "smart"
 }
 
 Rules:
-- Content should be 1-3 sentences.
-- Priority: Philology > Story > Smart (if scores are close).
+- Content for each type should be 1-3 sentences.
+- bestType must indicate the approach with the highest score. If scores are close, prioritize: Philology > Story > Smart.
 - Scores must be honest. If a word is extremely hard to remember, scores should reflect that.
 - Return ONLY the JSON object.`
 
 // ── AI 词组助记生成 ──
 const PHRASE_MNEMONIC_SYSTEM_PROMPT = `You are an English phrasal verb and idiom expert. Your goal is to help students understand the "why" behind phrases, especially those involving prepositions.
 
-Explain phrases from a NATIVE SPEAKER'S perspective using these approaches:
+Explain phrases from a NATIVE SPEAKER'S perspective, providing mnemonics for these approaches:
 
-1. CORE IMAGE (核心意象 - Preferred for prepositions):
+1. CORE IMAGE (核心意象 - mapped to "philology"):
    - Explain the root image of the preposition (e.g., 'in' is entering a space, 'up' is completeness/arrival, 'off' is detachment).
    - Use vivid metaphors (e.g., "pop in" is like a quick head-pop into a room through a window).
    - Show how the combination creates a logical "mental movie".
 
-2. STORY (趣味故事 - For idioms):
+2. STORY (趣味故事 - mapped to "story"):
    - Use the historical origin or a modern humorous scenario to link the words.
+
+3. SMART (智能联想 - mapped to "smart"):
+   - Other intuitive ways to remember the phrase, or practical usage cues.
 
 JSON Output Schema:
 {
-  "type": "philology" | "story" | "smart",
-  "content": "The actual mnemonic text in Chinese, explaining the native logic.",
-  "score": 85,
-  "allScores": { "philology": 90, "story": 30, "smart": 60 },
-  "reason": "Brief explanation in Chinese."
+  "philology": {
+    "content": "Core image explanation in Chinese.",
+    "score": 90,
+    "reason": "Why this core image makes sense."
+  },
+  "story": {
+    "content": "Story or origin explanation in Chinese.",
+    "score": 30,
+    "reason": "Why this story helps."
+  },
+  "smart": {
+    "content": "Smart association in Chinese.",
+    "score": 60,
+    "reason": "Why this association is useful."
+  },
+  "bestType": "philology" | "story" | "smart"
 }
 
 Rules:
 - Focus on the "Native Thinking" (母语者思维).
 - Explain the logic of prepositions clearly.
+- bestType must be the highest scoring one.
 - Never output anything outside the JSON object.`
 
 export async function generatePhraseMnemonic(
@@ -618,29 +640,7 @@ export async function generatePhraseMnemonic(
   throw new Error('AI returned invalid JSON for phrase mnemonic')
 }
 
-export async function generateMnemonicForType(
-  word: string,
-  type: 'philology' | 'story' | 'smart',
-  signal?: AbortSignal
-): Promise<import('../types').Mnemonic> {
-  const typeLabel = type === 'philology' ? 'PHILOLOGY (词源逻辑)' : type === 'story' ? 'STORY (趣味故事)' : 'SMART (智能联想)'
-  const cleaned = await callApi(
-    MNEMONIC_SYSTEM_PROMPT,
-    `Word: ${word}\n\nYou MUST use the ${typeLabel} approach. Set type="${type}" in the JSON output. Generate a mnemonic and return the JSON.`,
-    signal
-  )
-  try {
-    return JSON.parse(cleaned) as import('../types').Mnemonic
-  } catch {
-    const objMatch = cleaned.match(/\{[\s\S]*\}/)
-    if (objMatch) {
-      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
-        throw new Error('AI returned invalid JSON for mnemonic')
-      }
-    }
-  }
-  throw new Error('AI returned invalid JSON for mnemonic')
-}
+
 
 export async function generateMnemonic(
   word: string,

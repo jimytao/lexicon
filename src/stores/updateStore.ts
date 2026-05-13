@@ -7,10 +7,24 @@ import { FileOpener } from '@capawesome-team/capacitor-file-opener'
 import { Device } from '@capacitor/device'
 import { isCapacitor, isTauri } from '../services/platform'
 
+function compareVersions(v1: string, v2: string): number {
+  const parts1 = v1.split('.').map(Number)
+  const parts2 = v2.split('.').map(Number)
+  const len = Math.max(parts1.length, parts2.length)
+  for (let i = 0; i < len; i++) {
+    const n1 = parts1[i] || 0
+    const n2 = parts2[i] || 0
+    if (n1 > n2) return 1
+    if (n1 < n2) return -1
+  }
+  return 0
+}
+
 interface UpdateManifest {
   version: string
   notes: string
   pub_date: string
+  is_major?: boolean
   platforms: {
     [key: string]: {
       url: string
@@ -19,7 +33,7 @@ interface UpdateManifest {
   }
 }
 
-type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error' | 'up-to-date'
+type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error' | 'up-to-date' | 'higher-version'
 
 interface UpdateState {
   status: UpdateStatus
@@ -31,12 +45,22 @@ interface UpdateState {
   lastChecked: number
   autoCheckDone: boolean
   
+  ignoredVersions: string[]
+  lastToastedVersion: string | null
+  toastMessage: string | null
+  isModalOpen: boolean
+  
   checkUpdate: (force?: boolean) => Promise<void>
   startDownload: () => Promise<void>
   installUpdate: () => Promise<void>
   setHasSeenBadge: (v: boolean) => void
   reset: () => void
   cleanupOldApks: () => Promise<void>
+  
+  ignoreVersion: (version: string) => void
+  openModal: () => void
+  closeModal: () => void
+  clearToast: () => void
 }
 
 const UPDATE_URLS = [
@@ -93,15 +117,25 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.5', // Should match package.json
+      currentVersion: '0.7.6', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
       autoCheckDone: false,
 
+      ignoredVersions: [],
+      lastToastedVersion: null,
+      toastMessage: null,
+      isModalOpen: false,
+
       setHasSeenBadge: (hasSeenBadge) => set({ hasSeenBadge }),
 
-      reset: () => set({ status: 'idle', progress: 0, error: null, manifest: null }),
+      ignoreVersion: (version: string) => set({ ignoredVersions: [...new Set([...get().ignoredVersions, version])] }),
+      openModal: () => set({ isModalOpen: true }),
+      closeModal: () => set({ isModalOpen: false }),
+      clearToast: () => set({ toastMessage: null }),
+
+      reset: () => set({ status: 'idle', progress: 0, error: null, manifest: null, isModalOpen: false }),
 
       checkUpdate: async (force = false) => {
         const now = Date.now()
@@ -110,27 +144,43 @@ export const useUpdateStore = create<UpdateState>()(
           set({ autoCheckDone: true })
         }
 
-        set({ status: 'checking', error: null })
+        set({ status: 'checking', error: null, toastMessage: null })
         try {
           if (isTauri()) {
             try {
               const update = await check()
               if (update) {
-                set({
-                  status: 'available',
-                  manifest: {
-                    version: update.version,
-                    notes: update.body || '',
-                    pub_date: update.date || '',
-                    platforms: {}
-                  },
-                  hasSeenBadge: false,
-                  lastChecked: now
-                })
-                return
+                const comp = compareVersions(update.version, get().currentVersion)
+                if (comp > 0) {
+                  const shouldToast = !force && update.version !== get().lastToastedVersion
+                  if (shouldToast) {
+                    set({ lastToastedVersion: update.version })
+                  }
+
+                  set({
+                    status: 'available',
+                    manifest: {
+                      version: update.version,
+                      notes: update.body || '',
+                      pub_date: update.date || '',
+                      platforms: {}
+                    },
+                    hasSeenBadge: false,
+                    lastChecked: now,
+                    toastMessage: force ? null : (shouldToast ? `发现新版本 v${update.version}` : null),
+                    isModalOpen: force
+                  })
+                  return
+                } else if (comp === 0) {
+                  set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
+                  return
+                } else {
+                  set({ status: 'higher-version', lastChecked: now, toastMessage: force ? '当前版本高于云端' : '当前版本高于云端' })
+                  return
+                }
               }
 
-              set({ status: 'up-to-date', lastChecked: now })
+              set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
               return
             } catch (tauriErr) {
               console.warn('Tauri updater check failed, falling back to remote manifest', tauriErr)
@@ -138,16 +188,28 @@ export const useUpdateStore = create<UpdateState>()(
           }
 
           const data = await fetchManifestWithFallback()
+          const comp = compareVersions(data.version, get().currentVersion)
 
-          if (data.version !== get().currentVersion) {
+          if (comp > 0) {
+            const shouldAutoShow = !force && data.is_major && !get().ignoredVersions.includes(data.version)
+            const shouldToast = !force && !shouldAutoShow && data.version !== get().lastToastedVersion
+            
+            if (shouldToast) {
+              set({ lastToastedVersion: data.version })
+            }
+
             set({
               status: 'available',
               manifest: data,
               hasSeenBadge: false,
-              lastChecked: now
+              lastChecked: now,
+              isModalOpen: force || shouldAutoShow,
+              toastMessage: force ? null : (shouldToast ? `发现新版本 v${data.version}` : null)
             })
+          } else if (comp === 0) {
+            set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
           } else {
-            set({ status: 'up-to-date', lastChecked: now })
+            set({ status: 'higher-version', lastChecked: now, toastMessage: force ? '当前版本高于云端' : '当前版本高于云端' })
           }
         } catch (err: any) {
           console.error('Update check failed:', err)
@@ -156,6 +218,7 @@ export const useUpdateStore = create<UpdateState>()(
               status: 'error',
               error: err.message || 'Update check failed',
               lastChecked: now,
+              toastMessage: `更新检查失败: ${err.message}`
             })
           } else {
             set({
@@ -301,7 +364,9 @@ export const useUpdateStore = create<UpdateState>()(
       name: 'lexicon-update',
       partialize: (state) => ({ 
         hasSeenBadge: state.hasSeenBadge,
-        lastChecked: state.lastChecked
+        lastChecked: state.lastChecked,
+        ignoredVersions: state.ignoredVersions,
+        lastToastedVersion: state.lastToastedVersion
       })
     }
   )

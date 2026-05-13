@@ -1,12 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useUpdateStore } from '../../stores/updateStore'
 
 interface UpdateModalProps {
-  onClose: () => void
+  onClose?: () => void
 }
 
 export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
-  const { status, progress, manifest, startDownload, installUpdate, error, reset } = useUpdateStore()
+  const { status, progress, manifest, startDownload, installUpdate, error, reset, closeModal, ignoreVersion } = useUpdateStore()
+  const [isIgnored, setIsIgnored] = useState(false)
 
   if (!manifest) return null
 
@@ -14,9 +15,17 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
   const isReady = status === 'ready'
   const isError = status === 'error'
 
+  const handleDismiss = () => {
+    if (isIgnored && manifest) {
+      ignoreVersion(manifest.version)
+    }
+    closeModal()
+    if (onClose) onClose()
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-500">
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={handleDismiss} />
       
       <div className="relative w-full max-w-md bg-background/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300">
         <div className="p-10 space-y-8">
@@ -74,11 +83,24 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
           )}
 
           {/* Actions */}
-          <div className="flex gap-4 pt-4">
+          <div className="flex flex-col gap-4 pt-4">
+            {!isDownloading && !isReady && !isError && (
+              <label className="flex items-center gap-2 text-xs text-foreground-muted cursor-pointer hover:text-foreground transition-colors self-start mb-2 px-2">
+                <input 
+                  type="checkbox" 
+                  checked={isIgnored} 
+                  onChange={(e) => setIsIgnored(e.target.checked)}
+                  className="w-4 h-4 rounded border-border bg-foreground/5 text-accent focus:ring-accent/50"
+                />
+                Skip this version
+              </label>
+            )}
+            
+            <div className="flex gap-4">
             {!isDownloading && !isReady ? (
               <>
                 <button
-                  onClick={onClose}
+                  onClick={handleDismiss}
                   className="flex-1 h-14 rounded-2xl font-bold text-xs uppercase tracking-widest text-foreground-muted hover:bg-foreground/5 transition-all"
                 >
                   Dismiss
@@ -113,6 +135,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>

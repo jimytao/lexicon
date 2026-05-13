@@ -40,16 +40,17 @@ export interface Exercise {
   scenario: string
 }
 
-export interface Mnemonic {
-  type: 'story' | 'philology' | 'smart'
+export interface MnemonicItem {
   content: string
   score: number
-  allScores: {
-    philology: number
-    story: number
-    smart: number
-  }
   reason: string
+}
+
+export interface Mnemonic {
+  philology: MnemonicItem
+  story: MnemonicItem
+  smart: MnemonicItem
+  bestType: 'philology' | 'story' | 'smart'
 }
 
 export interface EvaluationResult {

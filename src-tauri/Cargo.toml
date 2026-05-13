@@ -1,6 +1,6 @@
 [package]
 name = "lexicon"
-version = "0.7.5"
+version = "0.7.6"
 description = "Lexicon — English learning tool for Chinese speakers"
 authors = ["Julian"]
 edition = "2021"
@@ -21,6 +21,7 @@ tauri-plugin-process = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
+
 
 
 
