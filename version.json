@@ -4,7 +4,7 @@
     "pub_date":  "2026-05-13T05:51:32Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  null,
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTZ0bDNZcnhqT3ZEZXBYQ1MxdXVvTkUxZzF0VFZFQlc3WGhtSlU4cW1qd0dmUWptWERyN3Q4aVdaV2hITjczQWE0QjV3STJ0K2NtcTVMWUIrcDVyQ0FRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NjUxODc0CWZpbGU6TGV4aWNvbl8wLjcuNl94NjQtc2V0dXAuZXhlCjFKaVRzVkVjMktBbmZvZEsvSHlCclZEQVducE9EbG5XcmFsQzE1eExmcmNidkVxOGpsRGorT1dNdW5aMlFIbTVJeFBSKzFOUXUrVWNTcktaeHNzT0JBPT0K",
                                              "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.6/Lexicon_0.7.6_x64-setup.exe"
                                          }
                   }
