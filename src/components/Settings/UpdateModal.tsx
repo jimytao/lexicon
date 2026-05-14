@@ -44,7 +44,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="px-4 py-1.5 rounded-full bg-accent text-white text-[10px] font-black uppercase tracking-wider">
-                v{manifest?.version}
+                v{manifest?.version?.replace(/^v/i, '')}
               </span>
               <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest">
                 {manifest?.pub_date ? new Date(manifest.pub_date).toLocaleDateString() : 'Recent Release'}

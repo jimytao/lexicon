@@ -43,3 +43,12 @@ Thumbs.db
 
 # Temp
 app-icon.png
+
+# Local Secrets
+.env.release
+
+# Release Binaries
+*.apk
+*.exe
+*.msi
+*.sig

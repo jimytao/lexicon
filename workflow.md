@@ -24,9 +24,17 @@
 **Windows PC (Tauri)**
 在根目录执行打包命令：
 ```bash
+# 确保设置了签名环境变量（请从本地 .env.release 中获取）
+$env:TAURI_SIGNING_PRIVATE_KEY = "src-tauri/lexicon.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $YOUR_SECRET_PASSWORD
 npm run tauri:build
 ```
-这将会在 `src-tauri/target/release/bundle/` 下生成 Windows 的 `.exe` 和 `.msi` 安装包及对应的签名 `.sig` 文件。
+> [!IMPORTANT]
+> **私钥信息**：
+> - **位置**：`src-tauri/lexicon.key`
+> - **密码**：请查询本地 `.env.release` 文件中的 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 字段。
+> - **手动签名**：
+>   `npx tauri signer sign -f src-tauri/lexicon.key -p <PASSWORD> <EXE_PATH>`
 
 **Android (Capacitor / Gradle)**
 构建前确保前端产物已同步，然后进入 `android` 目录执行 Gradle 任务：
@@ -45,7 +53,7 @@ iOS 端无须本地编译！本仓库配置了 GitHub Actions (`.github/workflow
 ## 4. 签名与更新检测文件同步 (Signing & Version Manifest)
 **Windows 签名同步**：Tauri 在打包时会自动使用本地环境变量（如 `TAURI_PRIVATE_KEY`）生成 `.sig` 签名文件。请**务必**读取生成的最新签名文件（例如 `src-tauri/target/release/bundle/nsis/Lexicon_X.X.X_x64-setup.exe.sig`）的文本内容，并将该长字符串更新到根目录 `version.json` 中的 `platforms["windows-x86_64"].signature` 字段。
 
-**Android APK 签名**：确保 APK 已经通过 `apksigner` 与本地 Release Keystore 完成签名（通常 `./gradlew assembleRelease` 配置了 `signingConfigs` 即可自动完成 V1+V2 签名）。建议将最终准备上传的 Universal 包重命名为代码中设定的格式，例如 `Lexicon_X.X.X_universal_signed.apk` 以匹配 `updateStore.ts` 的下载逻辑。
+**Android APK 签名**：确保 APK 已经通过 `apksigner` 与本地 Release Keystore 完成签名。密码请查阅本地 `.env.release`。
 
 ## 5. 代码提交与推送 (Git Commit & Push)
 确保所有版本文件（包含更新后的 `version.json`，确保包含最新的签名信息）已保存。

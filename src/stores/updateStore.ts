@@ -119,7 +119,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.7', // Should match package.json
+      currentVersion: '0.7.8', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -186,9 +186,10 @@ export const useUpdateStore = create<UpdateState>()(
           }
 
           if (hasUpdate && updateInfo) {
-            const isIgnored = get().ignoredVersions.includes(updateInfo.version)
+            const rawInfoVersion = updateInfo.version.replace(/^v/i, '')
+            const isIgnored = get().ignoredVersions.some(v => v.replace(/^v/i, '') === rawInfoVersion)
             const shouldAutoShow = !force && updateInfo.is_major && !isIgnored
-            const shouldToast = !force && !shouldAutoShow && !isIgnored && updateInfo.version !== get().lastToastedVersion
+            const shouldToast = !force && !shouldAutoShow && !isIgnored && rawInfoVersion !== get().lastToastedVersion?.replace(/^v/i, '')
             
             if (shouldToast) {
               set({ lastToastedVersion: updateInfo.version })
@@ -267,7 +268,8 @@ export const useUpdateStore = create<UpdateState>()(
             const info = await Device.getInfo()
             if (info.platform !== 'android') {
               // iOS or other: just open URL
-              const url = `https://github.com/jimytao/lexicon/releases/tag/v${manifest.version}`
+              const rawVersion = manifest.version.replace(/^v/i, '')
+              const url = `https://github.com/jimytao/lexicon/releases/tag/v${rawVersion}`
               window.open(url, '_blank')
               set({ status: 'idle' })
               return
@@ -326,7 +328,8 @@ export const useUpdateStore = create<UpdateState>()(
         } else {
           const { manifest } = get()
           if (!manifest) return
-          const filename = `lexicon-${manifest.version}.apk`
+          const rawVersion = manifest.version.replace(/^v/i, '')
+          const filename = `lexicon-${rawVersion}.apk`
           const file = await Filesystem.getUri({
             path: filename,
             directory: Directory.Cache
