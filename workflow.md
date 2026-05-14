@@ -63,16 +63,30 @@ git commit -m "Release vX.X.X"
 git push origin master
 ```
 
-## 6. 创建 GitHub Release 并上传本地产物
-使用 GitHub CLI 自动创建 Release 附带更新日志，并上传本地编译完成的 PC 和安卓端产物。
-```bash
-# 创建 Release 标签和说明（此操作会自动创建并推送 vX.X.X 标签，从而触发 iOS 的云端构建）
-gh release create vX.X.X -t "Lexicon vX.X.X" -n "<这里填入 CHANGELOG.md 中的中文说明>"
+## 6. 创建 GitHub Release 并上传全架构产物
+使用 GitHub CLI 自动创建 Release 附带更新日志，并上传本地编译完成的所有 PC 和安卓端产物。
 
-# 上传各平台的本地编译产物
-gh release upload vX.X.X src-tauri/target/release/bundle/nsis/Lexicon_X.X.X_x64-setup.exe android/app/build/outputs/apk/release/Lexicon_X.X.X_universal_signed.apk
+**上传前准备 (安卓重命名)**：
+为了文件名整齐，请将 `android/app/build/outputs/apk/release/` 下的各架构包重命名/拷贝为：
+- `Lexicon_X.X.X_universal_signed.apk` (通用包)
+- `Lexicon_X.X.X_arm64-v8a_signed.apk`
+- `Lexicon_X.X.X_armeabi-v7a_signed.apk`
+- `Lexicon_X.X.X_x86_signed.apk`
+- `Lexicon_X.X.X_x86_64_signed.apk`
+
+**执行上传命令**：
+```bash
+# 1. 创建 Release 标签和说明
+gh release create vX.X.X -t "Lexicon vX.X.X" -F release_notes.txt
+
+# 2. 上传 Windows 产物 (exe 和 msi)
+gh release upload vX.X.X src-tauri/target/release/bundle/nsis/Lexicon_X.X.X_x64-setup.exe
+gh release upload vX.X.X src-tauri/target/release/bundle/msi/Lexicon_X.X.X_x64_en-US.msi
+
+# 3. 上传 Android 全架构产物 (5个文件)
+gh release upload vX.X.X Lexicon_X.X.X_universal_signed.apk Lexicon_X.X.X_arm64-v8a_signed.apk Lexicon_X.X.X_armeabi-v7a_signed.apk Lexicon_X.X.X_x86_signed.apk Lexicon_X.X.X_x86_64_signed.apk
 ```
-*(注意：请根据当前版本号 X.X.X 动态调整上述命令中的文件路径及名称)*
+*(注意：请根据当前版本号 X.X.X 动态调整文件名)*
 
 ## 7. 最终核验 (Final Verification)
 - 检查 `version.json` 中的 `version` 是否正确。
