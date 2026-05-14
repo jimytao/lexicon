@@ -1,11 +1,11 @@
 {
-    "version":  "0.7.8",
-    "notes":  "修复安卓安装路径不一致、版本号比对全量归一化处理、iOS 跳转链接双 v 前缀错误及 UI 版本显示优化。",
-    "pub_date": "2026-05-14T15:15:00Z",
+    "version": "0.7.9",
+    "notes": "修复公钥配置错误导致的 Tauri 自动更新校验失败问题，并在设置页新增了 GitHub 仓库直连入口。",
+    "pub_date": "2026-05-14T15:40:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTg2VnJKREFRNE1oNk5rVTBaSllyUmhWaWY2SEEwUUsxTDl2dlF3Wk9FRlFOSUU0UThkelhhenorSHB2Nkd1cVFuTlJlWUkxMVNKOVlsT01nTkdQWkFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NzcxNzM2CWZpbGU6TGV4aWNvbl8wLjcuOF94NjQtc2V0dXAuZXhlCnFyUVN2TllNOE9uckZCbFVxVFB5bWhKc1N0elJ5em8xQVlFVWxoTlJ0MWVvN1ltL1dNK1p2UGk3WGUxdnQzN2ozTW0xaDdUOEoxZkRHRVUyOGtkL0RnPT0K",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.8/Lexicon_0.7.8_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTRTeks4VERvalNLQnhDV1VDanVncVlwd213SUl5SVliRFF1Mmd4RDJIWGdpT3diYWZyWVFGN090ZnhuclN2aGRJNUlBQ1JIZjhkN0dTOFJRSHBoT2dNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NzczMDA2CWZpbGU6TGV4aWNvbl8wLjcuOV94NjQtc2V0dXAuZXhlCkRLMm1TaFVmWG9ybEhneG1YczFTNXdoWmtiOG0rWXhFUGxvd3YvRzc1UlRrYUpFcjZzaTZaVkJtUUpNM1VRVFFxdDZPaXJ4Zy9iSXdlKzZWaG1KNERnPT0K",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.9/Lexicon_0.7.9_x64-setup.exe"
         }
     }
 }
