@@ -11,10 +11,12 @@
 - **Android端**：修改 `android/app/build.gradle`，自增 `versionCode` 并更新 `versionName` 为新的 "X.X.X"。
 - **iOS端**：无须手动操作，iOS 的打包配置已托管于 GitHub Actions，通过推送 Release 标签 (Tag) 自动触发。
 
-## 2. 提取更新日志 (Changelog Extraction)
+## 2. 提取更新日志与重大版本判定 (Changelog & Major Flag)
 打开根目录下的 `CHANGELOG.md`，读取最顶部（即刚刚由人类或 AI 更新的最新一条）的中文更新说明。
 将提取出的中文说明填入 `version.json` 的 `"notes"` 字段中。
-*注意：如果用户在提示词中特意强调这是重大更新，请在 `version.json` 中添加 `"is_major": true` 属性，否则保持默认或彻底移除该属性。*
+**重大版本判定逻辑**：
+- **默认行为**：如果你没有收到“这是重大更新”或类似的明确指令，请**务必确保** `version.json` 中的 `"is_major"` 为 `false` 或将其彻底移除。即使上一个版本是重大版本，当前版本也应默认为小版本。
+- **特殊指令**：只有当用户明确强调“这是重大版本”或要求“弹出大窗口提醒”时，才在 `version.json` 中设置 `"is_major": true`。
 
 ## 3. 本地编译构建 (Local Compilation)
 执行以下命令来编译各平台软件：

@@ -1,11 +1,11 @@
 ﻿{
-    "version":  "0.7.6",
-    "notes":  "语义化版本比对修复、静默检测与 Toast 交互、跳过此版本功能、重大更新强制提醒、发布工作流 SOP、Settings 状态智能感应。",
-    "pub_date":  "2026-05-13T05:51:32Z",
+    "version":  "0.7.7",
+    "notes":  "更新提示 UI 重构、Premium 玻璃态适配、一版一次提示逻辑、大版本持续提醒策略、版本比对算法加固、更新检测容错增强、下载链路灵活化、检测优先级调整、发版工作流程 SOP 演进。",
+    "pub_date":  "2026-05-14T14:39:35Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTZ0bDNZcnhqT3ZEZXBYQ1MxdXVvTkUxZzF0VFZFQlc3WGhtSlU4cW1qd0dmUWptWERyN3Q4aVdaV2hITjczQWE0QjV3STJ0K2NtcTVMWUIrcDVyQ0FRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NjUxODc0CWZpbGU6TGV4aWNvbl8wLjcuNl94NjQtc2V0dXAuZXhlCjFKaVRzVkVjMktBbmZvZEsvSHlCclZEQVducE9EbG5XcmFsQzE1eExmcmNidkVxOGpsRGorT1dNdW5aMlFIbTVJeFBSKzFOUXUrVWNTcktaeHNzT0JBPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.6/Lexicon_0.7.6_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXdIRmduS1BEYnd4cWNZaFY0d2hBZXN1Rit2NHlzRjd5cWNCTTdzSnRjOFlqVktVWDF3RXdJVEljMmxxQkdYUjlsUnV1ZW93RHVtWmNMY3VDb0oxOUFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NzY5NzA2CWZpbGU6TGV4aWNvbl8wLjcuN194NjQtc2V0dXAuZXhlCkIrN0FjSE81MkZ2WGhreGpSZk1pM20vd1pvQ2FuSGVleHNUKzRwYVQ0cFlhZW5FRTUyTjBIRDliZ3VETjFQWUV3TENnZk0rUnRvRFcrb2p5bGR6NUJnPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.7/Lexicon_0.7.7_x64-setup.exe"
                                          }
                   }
 }

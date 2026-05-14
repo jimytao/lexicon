@@ -8,8 +8,9 @@ import { Device } from '@capacitor/device'
 import { isCapacitor, isTauri } from '../services/platform'
 
 function compareVersions(v1: string, v2: string): number {
-  const parts1 = v1.split('.').map(Number)
-  const parts2 = v2.split('.').map(Number)
+  const sanitize = (v: string) => v.replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0)
+  const parts1 = sanitize(v1)
+  const parts2 = sanitize(v2)
   const len = Math.max(parts1.length, parts2.length)
   for (let i = 0; i < len; i++) {
     const n1 = parts1[i] || 0
@@ -64,52 +65,53 @@ interface UpdateState {
 }
 
 const UPDATE_URLS = [
-  'https://cdn.jsdelivr.net/gh/jimytao/lexicon@master/version.json',
   'https://raw.githubusercontent.com/jimytao/lexicon/master/version.json',
+  'https://cdn.jsdelivr.net/gh/jimytao/lexicon@master/version.json',
   'https://gcore.jsdelivr.net/gh/jimytao/lexicon@master/version.json'
 ]
 
 async function fetchManifestWithFallback(): Promise<UpdateManifest> {
-  let lastError: Error | null = null
-  let sawHttp404 = false
+  const results = await Promise.allSettled(
+    UPDATE_URLS.map(async (url) => {
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 8000)
+      try {
+        const bust = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`
+        const response = await fetch(bust, {
+          cache: 'no-store',
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        })
 
-  for (const url of UPDATE_URLS) {
-    const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), 8000)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} from ${new URL(url).hostname}`)
+        }
 
-    try {
-      const bust = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`
-      const response = await fetch(bust, {
-        cache: 'no-store',
-        signal: controller.signal,
-        headers: {
-          Accept: 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 404) sawHttp404 = true
-        lastError = new Error(`HTTP ${response.status} from ${new URL(url).hostname}`)
-        continue
+        const data = await response.json() as UpdateManifest
+        return data
+      } finally {
+        window.clearTimeout(timeout)
       }
+    })
+  )
 
-      return await response.json()
-    } catch (e) {
-      const err = e as Error
-      lastError = err.name === 'AbortError'
-        ? new Error(`Timeout fetching version info from ${new URL(url).hostname}`)
-        : err
-    } finally {
-      window.clearTimeout(timeout)
-    }
+  const successfulManifests = results
+    .filter((r): r is PromiseFulfilledResult<UpdateManifest> => r.status === 'fulfilled')
+    .map(r => r.value)
+
+  if (successfulManifests.length === 0) {
+    const errors = results
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map(r => r.reason?.message || r.reason)
+    throw new Error(`Failed to fetch version info: ${errors.join(', ') || 'Network error'}`)
   }
 
-  if (sawHttp404) {
-    throw new Error('Failed to fetch version info: release manifest unavailable')
-  }
+  // Sort by version (highest first)
+  successfulManifests.sort((a, b) => compareVersions(b.version, a.version))
 
-  throw new Error(`Failed to fetch version info: ${lastError?.message || 'Network error'}`)
+  return successfulManifests[0]
 }
+
 
 export const useUpdateStore = create<UpdateState>()(
   persist(
@@ -117,7 +119,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.6', // Should match package.json
+      currentVersion: '0.7.7', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -146,70 +148,69 @@ export const useUpdateStore = create<UpdateState>()(
 
         set({ status: 'checking', error: null, toastMessage: null })
         try {
+          // 1. Try to fetch manifest, but don't let failure kill everything
+          let data: UpdateManifest | null = null
+          try {
+            data = await fetchManifestWithFallback()
+          } catch (e) {
+            console.warn('Manifest fetch failed, will rely on platform-specific checks', e)
+          }
+
+          let hasUpdate = false
+          let updateInfo: UpdateManifest | null = data
+
+          if (data) {
+            const comp = compareVersions(data.version, get().currentVersion)
+            if (comp > 0) hasUpdate = true
+          }
+
+          // 2. If on Tauri, check native updater
           if (isTauri()) {
             try {
-              const update = await check()
-              if (update) {
-                const comp = compareVersions(update.version, get().currentVersion)
-                if (comp > 0) {
-                  const shouldToast = !force && update.version !== get().lastToastedVersion
-                  if (shouldToast) {
-                    set({ lastToastedVersion: update.version })
+              const tauriUpdate = await check()
+              if (tauriUpdate) {
+                const tauriComp = compareVersions(tauriUpdate.version, get().currentVersion)
+                if (tauriComp > 0) {
+                  hasUpdate = true
+                  // Merge tauri data into updateInfo, preferring manifest for is_major
+                  updateInfo = {
+                    ...(updateInfo || { version: tauriUpdate.version, notes: '', pub_date: '', platforms: {} }),
+                    version: tauriUpdate.version,
+                    notes: tauriUpdate.body || (updateInfo?.notes || ''),
                   }
-
-                  set({
-                    status: 'available',
-                    manifest: {
-                      version: update.version,
-                      notes: update.body || '',
-                      pub_date: update.date || '',
-                      platforms: {}
-                    },
-                    hasSeenBadge: false,
-                    lastChecked: now,
-                    toastMessage: force ? null : (shouldToast ? `发现新版本 v${update.version}` : null),
-                    isModalOpen: force
-                  })
-                  return
-                } else if (comp === 0) {
-                  set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
-                  return
-                } else {
-                  set({ status: 'higher-version', lastChecked: now, toastMessage: force ? '当前版本高于云端' : '当前版本高于云端' })
-                  return
                 }
               }
-
-              set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
-              return
             } catch (tauriErr) {
-              console.warn('Tauri updater check failed, falling back to remote manifest', tauriErr)
+              console.warn('Tauri updater check failed', tauriErr)
             }
           }
 
-          const data = await fetchManifestWithFallback()
-          const comp = compareVersions(data.version, get().currentVersion)
-
-          if (comp > 0) {
-            const shouldAutoShow = !force && data.is_major && !get().ignoredVersions.includes(data.version)
-            const shouldToast = !force && !shouldAutoShow && data.version !== get().lastToastedVersion
+          if (hasUpdate && updateInfo) {
+            const isIgnored = get().ignoredVersions.includes(updateInfo.version)
+            const shouldAutoShow = !force && updateInfo.is_major && !isIgnored
+            const shouldToast = !force && !shouldAutoShow && !isIgnored && updateInfo.version !== get().lastToastedVersion
             
             if (shouldToast) {
-              set({ lastToastedVersion: data.version })
+              set({ lastToastedVersion: updateInfo.version })
             }
+
+            const displayVersion = updateInfo.version.startsWith('v') ? updateInfo.version : `v${updateInfo.version}`
 
             set({
               status: 'available',
-              manifest: data,
+              manifest: updateInfo,
               hasSeenBadge: false,
               lastChecked: now,
               isModalOpen: force || shouldAutoShow,
-              toastMessage: force ? null : (shouldToast ? `发现新版本 v${data.version}` : null)
+              toastMessage: force ? null : (shouldToast ? `发现新版本 ${displayVersion}` : null)
             })
-          } else if (comp === 0) {
+          } else if (updateInfo && compareVersions(updateInfo.version, get().currentVersion) === 0) {
             set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
+          } else if (hasUpdate === false && !data) {
+            // If we couldn't even fetch manifest and tauri found nothing
+            throw new Error('无法连接到更新服务器')
           } else {
-            set({ status: 'higher-version', lastChecked: now, toastMessage: force ? '当前版本高于云端' : '当前版本高于云端' })
+            set({ status: 'higher-version', lastChecked: now, toastMessage: force ? '当前版本高于云端' : null })
           }
         } catch (err: any) {
           console.error('Update check failed:', err)
@@ -272,9 +273,11 @@ export const useUpdateStore = create<UpdateState>()(
               return
             }
 
-            const apkUrl = `https://github.com/jimytao/lexicon/releases/download/v${manifest.version}/Lexicon_${manifest.version}_universal_signed.apk`
+            const manifestUrl = manifest.platforms?.android?.url
+            const rawVersion = manifest.version.replace(/^v/i, '')
+            const apkUrl = manifestUrl || `https://github.com/jimytao/lexicon/releases/download/v${rawVersion}/Lexicon_${rawVersion}_universal_signed.apk`
 
-            const filename = `lexicon-${manifest.version}.apk`
+            const filename = `lexicon-${rawVersion}.apk`
             
             // Standard fetch to get progress
             const response = await fetch(apkUrl)
