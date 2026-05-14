@@ -764,7 +764,12 @@ export function SettingsView() {
                 <p className="text-[10px] text-foreground-muted">Occupying {cacheSize} locally</p>
               </div>
               <button
-                onClick={() => { if(confirm('Clear all cached AI results?')) clearCache() }}
+                onClick={() => { 
+                  if(confirm('Clear all cached results and download files?')) {
+                    clearCache();
+                    useUpdateStore.getState().cleanupOldApks();
+                  }
+                }}
                 disabled={Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0 && Object.keys(phraseCache).length === 0}
                 className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
               >

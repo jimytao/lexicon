@@ -1,11 +1,11 @@
 {
-    "version": "0.7.9",
-    "notes": "修复公钥配置错误导致的 Tauri 自动更新校验失败问题，并在设置页新增了 GitHub 仓库直连入口。",
-    "pub_date": "2026-05-14T15:40:00Z",
+    "version": "0.7.10",
+    "notes": "修复安卓端点击“安装并重启”无反应的问题，并优化了安装包清理机制，新增设置页手动清理功能。",
+    "pub_date": "2026-05-14T15:50:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTRTeks4VERvalNLQnhDV1VDanVncVlwd213SUl5SVliRFF1Mmd4RDJIWGdpT3diYWZyWVFGN090ZnhuclN2aGRJNUlBQ1JIZjhkN0dTOFJRSHBoT2dNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NzczMDA2CWZpbGU6TGV4aWNvbl8wLjcuOV94NjQtc2V0dXAuZXhlCkRLMm1TaFVmWG9ybEhneG1YczFTNXdoWmtiOG0rWXhFUGxvd3YvRzc1UlRrYUpFcjZzaTZaVkJtUUpNM1VRVFFxdDZPaXJ4Zy9iSXdlKzZWaG1KNERnPT0K",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.9/Lexicon_0.7.9_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTFSWFdqT3AxaTdWYnFBVUtqeFdiMVhkZXhPMXhaTWxPVGdnRDJydUptbHU5LzlEVFNsMy96Ti9jamszbEJ6ay8wejRvQTVLdzRZa0pMS0VUSFdaS1EwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NzczNTgyCWZpbGU6TGV4aWNvbl8wLjcuMTBfeDY0LXNldHVwLmV4ZQp1bFVlVmo3cUJJMWcwY0hGZHZjcTFqODNFd1ZjNFZ4VTJSWkdGbjJIbkFoL0dnUWE4YjBtTmxuOWZmcUZqQ3puZDFhNmpranpNVklzYWk5ZEpVWGRBQT09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.10/Lexicon_0.7.10_x64-setup.exe"
         }
     }
 }

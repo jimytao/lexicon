@@ -323,21 +323,27 @@ export const useUpdateStore = create<UpdateState>()(
       },
 
       installUpdate: async () => {
-        if (isTauri()) {
-          await relaunch()
-        } else {
-          const { manifest } = get()
-          if (!manifest) return
-          const rawVersion = manifest.version.replace(/^v/i, '')
-          const filename = `lexicon-${rawVersion}.apk`
-          const file = await Filesystem.getUri({
-            path: filename,
-            directory: Directory.Cache
-          })
+        try {
+          if (isTauri()) {
+            await relaunch()
+          } else {
+            const { manifest } = get()
+            if (!manifest) return
+            const rawVersion = manifest.version.replace(/^v/i, '')
+            const filename = `lexicon-${rawVersion}.apk`
+            const file = await Filesystem.getUri({
+              path: filename,
+              directory: Directory.Cache
+            })
 
-          await FileOpener.openFile({
-            path: file.uri,
-          })
+            await FileOpener.openFile({
+              path: file.uri,
+              mimeType: 'application/vnd.android.package-archive'
+            })
+          }
+        } catch (err: any) {
+          console.error('Installation failed:', err)
+          set({ status: 'error', error: `安装失败: ${err.message || '请手动在文件管理器中安装'}` })
         }
       },
 
@@ -353,12 +359,15 @@ export const useUpdateStore = create<UpdateState>()(
             directory: Directory.Cache
           })
 
-          for (const file of result.files) {
-            if (file.name.endsWith('.apk')) {
-              await Filesystem.deleteFile({
-                path: file.name,
-                directory: Directory.Cache
-              })
+          if (result.files && result.files.length > 0) {
+            for (const file of result.files) {
+              const fileName = typeof file === 'string' ? file : file.name
+              if (fileName.endsWith('.apk')) {
+                await Filesystem.deleteFile({
+                  path: fileName,
+                  directory: Directory.Cache
+                }).catch(() => {}) // Ignore errors if already deleted
+              }
             }
           }
         } catch (e) {
