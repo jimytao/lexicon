@@ -107,3 +107,10 @@ gh release upload vX.X.X Lexicon_X.X.X_universal_signed.apk Lexicon_X.X.X_arm64-
 - 检查 GitHub Release 是否创建成功，并且包含了本地上传的 `.exe` 和 `.apk` 文件。
 - 检查 GitHub Actions 是否已成功触发并正在构建 iOS `.ipa`。
 - 一切无误后，发版流程结束，向人类用户汇报成功。
+
+## 8. 清理本地构建产物 (Cleanup)
+在确认 GitHub Release 已成功发布且所有平台产物（Windows EXE/MSI, Android APKs）已完整上传后，**务必**执行清理操作以释放本地空间：
+
+- **删除所有发布产物**：删除根目录下以及各编译目录（如 `src-tauri/target/release/bundle/` 和 `android/app/build/outputs/apk/release/`）中生成的所有 `.exe`, `.msi`, `.apk` 及 `.sig` 文件。
+- **清理编译缓存**：执行 `cd android && ./gradlew clean` 以清理安卓编译产物，并建议清理 `src-tauri/target` 目录以彻底释放空间。
+- **保持环境整洁**：确保工作区内没有任何已发布的二进制安装包残留，仅保留源码。

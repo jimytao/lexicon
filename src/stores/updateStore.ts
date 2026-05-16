@@ -119,7 +119,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.12', // Should match package.json
+      currentVersion: '0.7.13', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -280,40 +280,70 @@ export const useUpdateStore = create<UpdateState>()(
             const apkUrl = manifestUrl || `https://github.com/jimytao/lexicon/releases/download/v${rawVersion}/Lexicon_${rawVersion}_universal_signed.apk`
 
             const filename = `lexicon-${rawVersion}.apk`
-            
-            // Standard fetch to get progress
+
+            // Fetch with streaming progress tracking
             const response = await fetch(apkUrl)
-            if (!response.ok) throw new Error('Download failed')
-            
+            if (!response.ok) throw new Error(`下载失败 (HTTP ${response.status})`)
+
             const contentLength = +(response.headers.get('Content-Length') || 0)
             const reader = response.body?.getReader()
-            if (!reader) throw new Error('Failed to start download')
+            if (!reader) throw new Error('无法读取下载流')
 
+            // Delete any previous partial download first
+            await Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {})
+
+            // --- Chunked write to avoid base64 OOM on large APKs (20-50MB) ---
+            // Converting entire APK to base64 in WebView memory would require ~70MB RAM
+            // and crash on Android 9 low-memory devices. Instead we accumulate 1MB
+            // chunks and appendFile progressively so memory stays bounded.
+            const CHUNK_SIZE = 1 * 1024 * 1024 // 1 MB
             let receivedLength = 0
-            const chunks = []
-            while(true) {
-              const {done, value} = await reader.read()
-              if (done) break
-              chunks.push(value)
-              receivedLength += value.length
-              if (contentLength > 0) {
-                set({ progress: Math.round((receivedLength / contentLength) * 100) })
+            let pendingBytes: Uint8Array[] = []
+            let pendingSize = 0
+            let isFirstChunk = true
+
+            const flushChunk = async (bytes: Uint8Array[]) => {
+              const blob = new Blob(bytes)
+              const base64chunk = await new Promise<string>((resolve, reject) => {
+                const fr = new FileReader()
+                fr.onloadend = () => {
+                  const result = fr.result as string
+                  // Strip the data:...;base64, prefix
+                  resolve(result.substring(result.indexOf(',') + 1))
+                }
+                fr.onerror = () => reject(fr.error)
+                fr.readAsDataURL(blob)
+              })
+              if (isFirstChunk) {
+                await Filesystem.writeFile({ path: filename, data: base64chunk, directory: Directory.Cache })
+                isFirstChunk = false
+              } else {
+                await Filesystem.appendFile({ path: filename, data: base64chunk, directory: Directory.Cache })
               }
             }
 
-            const blob = new Blob(chunks)
-            const base64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader()
-              reader.onloadend = () => resolve(reader.result as string)
-              reader.readAsDataURL(blob)
-            })
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+              pendingBytes.push(value)
+              pendingSize += value.length
+              receivedLength += value.length
 
-            // Save to filesystem
-            await Filesystem.writeFile({
-              path: filename,
-              data: base64,
-              directory: Directory.Cache
-            })
+              if (contentLength > 0) {
+                set({ progress: Math.round((receivedLength / contentLength) * 100) })
+              }
+
+              if (pendingSize >= CHUNK_SIZE) {
+                await flushChunk(pendingBytes)
+                pendingBytes = []
+                pendingSize = 0
+              }
+            }
+
+            // Flush remaining bytes
+            if (pendingBytes.length > 0) {
+              await flushChunk(pendingBytes)
+            }
 
             set({ status: 'ready', progress: 100 })
           }
@@ -331,15 +361,46 @@ export const useUpdateStore = create<UpdateState>()(
             if (!manifest) return
             const rawVersion = manifest.version.replace(/^v/i, '')
             const filename = `lexicon-${rawVersion}.apk`
-            const file = await Filesystem.getUri({
-              path: filename,
-              directory: Directory.Cache
-            })
 
-            await FileOpener.openFile({
-              path: file.uri,
-              mimeType: 'application/vnd.android.package-archive'
-            })
+            // Pre-flight: ensure the APK still exists in cache.
+            // The OS may have cleared the cache between download and install
+            // (especially on Android 11+ with aggressive storage management).
+            let fileUri: string
+            try {
+              const file = await Filesystem.getUri({ path: filename, directory: Directory.Cache })
+              fileUri = file.uri
+              console.log('[Update] APK URI:', fileUri)
+            } catch {
+              // File missing — reset to 'available' so user can re-download
+              set({
+                status: 'available',
+                progress: 0,
+                error: 'APK 文件已被系统清理，请重新下载。'
+              })
+              return
+            }
+
+            try {
+              await FileOpener.openFile({
+                path: fileUri,
+                mimeType: 'application/vnd.android.package-archive'
+              })
+              // FileOpener resolved — the system install dialog should now be visible.
+              // On Android 8+ the user still needs to grant "Install unknown apps" in
+              // the dialog itself; we cannot do that programmatically.
+            } catch (openErr: any) {
+              // FileOpener threw — most common cause on Android 8+ is that the
+              // "Install unknown apps" per-app permission has not been granted.
+              // Fall back to opening the direct APK download URL in the browser
+              // so the user can install via their browser or file manager instead.
+              console.warn('[Update] FileOpener failed:', openErr?.message || openErr)
+              const releaseUrl = `https://github.com/jimytao/lexicon/releases/download/v${rawVersion}/Lexicon_${rawVersion}_universal_signed.apk`
+              window.open(releaseUrl, '_blank')
+              set({
+                status: 'error',
+                error: '请在「设置 → 应用 → 特殊权限 → 安装未知应用」中为 Lexicon 开启权限，或通过已打开的浏览器页面手动安装。'
+              })
+            }
           }
         } catch (err: any) {
           console.error('Installation failed:', err)

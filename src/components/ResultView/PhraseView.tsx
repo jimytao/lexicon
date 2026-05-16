@@ -135,13 +135,10 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }:
                 return null
             }
           })}
-        </div>
-      )}
-
-      {/* Global AI Chat (even if not success) */}
-      {modules.find(m => m.id === 'chat')?.enabled && (
-        <div className={aiStatus === 'success' ? '' : 'mt-8'}>
-          <AiChatBox context={phrase} />
+          {/* Global AI Chat */}
+          {modules.find(m => m.id === 'chat')?.enabled && (
+            <AiChatBox context={phrase} />
+          )}
         </div>
       )}
     </div>

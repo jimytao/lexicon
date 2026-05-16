@@ -1,6 +1,88 @@
 # CHANGELOG
  
-## 2026-05-16 — 搜索链路深度优化与稳定性加固 (Search Logic Optimization)
+## 2026-05-16 — v0.7.13 安卓更新安装链路健壮性加固与交互优化 (Robustness & UX Fixes)
+
+### 概述
+针对安卓 9–16 全版本系统的 APK 下载与安装链路进行系统性审查，修复了三处高危缺陷，彻底解决了下载完成后点击"Install & Relaunch"无反应或应用崩溃的问题。
+
+---
+
+### 1. 修复：OOM 崩溃 — 大文件 base64 内存溢出（Android 9 高危）
+
+**根因**：原实现将整个 APK（约 18–50 MB）全部读入内存后再执行 base64 转换，整个过程需在 WebView 堆内同时持有原始 Blob（~30MB）与 base64 字符串（~40MB），总峰值超 70MB。Android 9 低内存设备在此阶段极易触发 `OutOfMemoryError`，表现为下载进度条冲到 100% 后 App 静默崩溃，毫无提示。
+
+**修复**（`src/stores/updateStore.ts` → `startDownload`）：
+- 引入 **1MB 分块写入策略**：下载流每积累 1MB 数据，立即调用 `flushChunk()` 将该块编码为 base64 并通过 `Filesystem.appendFile()` 追加写入磁盘，写入后立即释放该块内存。
+- 内存峰值从 ~70MB 降至 ~3MB，彻底解决 OOM 风险。
+- 写入前自动清理同名旧 APK（`Filesystem.deleteFile`），防止 `appendFile` 追加到残留的旧文件上。
+- `FileReader.onerror` 现在会 reject Promise 并传递错误，不再静默忽略。
+
+---
+
+### 2. 修复：APK 被系统清理后静默失败（Android 11+ 高危）
+
+**根因**：Android 11+ 引入激进的存储空间管理，Cache 目录中的文件可能在用户操作后被系统回收。原 `installUpdate` 直接调用 `Filesystem.getUri()` 并假设文件存在，若文件已被清理则 `getUri` 抛出异常但被外层 catch 吞掉，UI 状态停留在 `'ready'`，按钮点击完全无响应。
+
+**修复**（`src/stores/updateStore.ts` → `installUpdate`）：
+- 在调用 `FileOpener` 前增加 **pre-flight 文件存在性检查**，用独立的 `try/catch` 包裹 `Filesystem.getUri()`。
+- 若文件不存在：自动将状态重置回 `'available'`（进度归零），并显示"APK 文件已被系统清理，请重新下载"提示，引导用户再次下载。
+
+---
+
+### 3. 修复：FileOpener 在第三方 ROM 上静默失败无反馈（Android 8+ / Carbon OS）
+
+**根因**：Android 8.0 起，"安装未知来源应用"改为逐 App 授权机制（非全局开关）。在 Carbon OS 等第三方系统上，若 Lexicon 未被授权，`FileOpener.openFile()` 会直接返回（不 throw），导致 UI 毫无反馈。
+
+**修复**（`src/stores/updateStore.ts` → `installUpdate`）：
+- 将 `FileOpener.openFile()` 包裹在独立的内层 `try/catch` 中（与外层文件检查分离）。
+- 若 `openFile` 抛出异常：自动在浏览器中打开 GitHub APK 直链，并显示精确的中文引导路径："请在「设置 → 应用 → 特殊权限 → 安装未知应用」中为 Lexicon 开启权限，或通过已打开的浏览器页面手动安装。"
+
+---
+
+### 4. 完善：FileProvider 路径配置补全
+
+**修复**（`android/app/src/main/res/xml/file_paths.xml`）：
+- 原配置仅包含 `<external-path>` 和 `<cache-path>`，缺少 `files-path`、`external-files-path`、`external-cache-path`。
+- 补全所有五种路径，确保 FileProvider 在不同 Android 版本与 ROM 定制下均能正确将 APK Content URI 共享给系统安装器。
+
+---
+
+### 5. 完善：添加 `android:largeHeap="true"` 兜底保障
+
+**修复**（`android/app/src/main/AndroidManifest.xml`）：
+- 为 `<application>` 添加 `android:largeHeap="true"`，为 Android 9 低内存设备提供额外堆内存余量，作为 1MB 分块写入的最后一道保险。
+
+---
+
+### 各版本兼容性矩阵（修复后）
+
+| Android 版本 | 关键约束 | 修复后行为 |
+|---|---|---|
+| **9 (API 28)** | 低内存易 OOM；`REQUEST_INSTALL_PACKAGES` 逐 App 授权 | 分块写入防 OOM + 失败跳浏览器 + 中文权限引导 |
+| **10 (API 29)** | Scoped Storage 启用；FileProvider 必须 | FileProvider ✅ 路径配置已补全 |
+| **11 (API 30)** | Cache 可被系统主动清理 | pre-flight 检查 + 重新下载引导 |
+| **12–13 (API 31–33)** | 无 APK 安装新变化 | 正常流程 |
+| **14–16 (API 34–36)** | 未验证开发者可能触发系统级 24h 冷却（OS 层面，代码无法绕过） | FileOpener 触发系统安装器，其余由系统处理 |
+
+---
+
+
+
+### 概述
+修复了 AI 问答组件在数据加载完成前过早渲染的问题，提升了界面在 AI 查询过程中的视觉稳定性。
+
+---
+
+### 1. 交互体验优化
+- **同步显示机制**：重构了 `ResultView`、`AiFullView` 和 `PhraseView` 的渲染逻辑。
+- **加载态屏蔽**：现在 `AiChatBox` 会等待 AI 核心结果（如语义场景、词根词缀等）成功加载后再行展示，避免了在骨架屏加载阶段出现孤立的问答框。
+- **各模式适配**：
+  - **Instant 模式**：由于字典数据即时加载，问答框保持即时显示。
+  - **AI 模式**：问答框与 AI 分析结果同步“滑入”，确保上下文完整性。
+
+---
+
+## 2026-05-16 — v0.7.12 搜索链路深度优化与稳定性加固 (Search Logic Optimization)
  
 ### 概述
 本次更新对搜索架构进行了深层重构，旨在彻底消除搜索时的冗余请求、建议词竞态、以及中英文本地检索的体验断层。

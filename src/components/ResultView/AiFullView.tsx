@@ -129,13 +129,10 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return null
             }
           })}
-        </div>
-      )}
-
-      {/* Global AI Chat (even if not success) */}
-      {modules.find(m => m.id === 'chat')?.enabled && (
-        <div className={aiStatus === 'success' ? '' : 'mt-8'}>
-          <AiChatBox context={word} />
+          {/* Global AI Chat */}
+          {modules.find(m => m.id === 'chat')?.enabled && (
+            <AiChatBox context={word} />
+          )}
         </div>
       )}
     </div>

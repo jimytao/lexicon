@@ -1,11 +1,11 @@
 {
-    "version": "0.7.12",
-    "notes": "本次更新对搜索架构进行了深层重构。主要包含：AI 查询分级 (Lite/Full)、全局 AI 问答、多语种三语对照例句、配置化启动模式、生成逻辑按需化等性能与功能增强。",
-    "pub_date": "2026-05-16T13:18:00Z",
+    "version": "0.7.13",
+    "notes": "针对安卓全版本系统的 APK 下载与安装链路进行健壮性加固，修复了分块写入 OOM、文件丢失检查、以及 FileOpener 权限引导等关键问题；同时优化了 AI 问答组件的渲染稳定性。",
+    "pub_date": "2026-05-16T16:20:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTRNMGVWeDNXRWQxWEJFeHV4dHBJeDIrdWZhd21kR09od1lNMVhQVnBOU0xLWHI3TWhTK1pYbGtQS2ZoMEJyOUxXb2hka1RuZFdxL1RrNWh4ZnFsaUE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTM3ODI5CWZpbGU6TGV4aWNvbl8wLjcuMTJfeDY0LXNldHVwLmV4ZQpyMU9IRlQ2Tkh6S3F0TGs4dVFJT3VHZXJBaUNXczRGeDBySHk3Q2VmdHJuNmhjSkpCU0M5bUEzUStvN29GNVhoTzBkKzFKM0J0WlAzMHJ5Nm1XY2hEZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.12/Lexicon_0.7.12_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXlkZEk0ajNsaDh3c2twYXYrQ2xzdFk1cmprbGpJNWxTdzBCUEt3MGpDZzg2TGdPTVZ4NS9jSzNVY1A3NWpNN3hZWGxreVpsVm5seVplanFNRUpXYXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTQ4NTgxCWZpbGU6TGV4aWNvbl8wLjcuMTNfeDY0LXNldHVwLmV4ZQpJWHM4ZTZzRjYxdDAyRmtGbHRaR283Yjd2SHRSRzJOY3N2VzVCb1hTcnVrVlhZNEozanZDNkJBNGo1WS9JQmVUbUU5WTdQQWVjb3NWRVlBUU1DKy9Bdz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.13/Lexicon_0.7.13_x64-setup.exe"
         }
     }
 }
