@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
-import { db } from '../../services/db'
 import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
 import type { SuggestItem } from '../../types'
+import { normalizeQuery } from '../../utils/text'
 
 interface SearchBarProps {
   onWordSelect: (word: string) => void
@@ -29,27 +29,8 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   const showSuggestions = suggestions.length > 0
   const showHistory = historyEnabled && isFocused && !trimmedQuery && !showSuggestions
 
-  useEffect(() => {
-    if (!isFocused) return
-
-    const currentRequest = ++suggestRequestRef.current
-    if (!trimmedQuery) {
-      setSuggestions([])
-      return
-    }
-
-    let cancelled = false
-    ;(async () => {
-      const results = await db.suggest(trimmedQuery)
-      if (cancelled) return
-      if (currentRequest !== suggestRequestRef.current) return
-      setSuggestions(results)
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [isFocused, trimmedQuery, setSuggestions])
+  // The suggestion triggering is now centralized in useSearch hook
+  // to avoid redundant DB calls and race conditions.
 
   // Build enriched suggest items: mark DB hits that have AI cache
   // and append history-miss items (in history but not in DB results)
@@ -60,11 +41,12 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
 
   // Append history-miss items that match the current prefix (not already in DB results)
   if (trimmedQuery && historyEnabled) {
-    const dbWords = new Set(suggestions.map(s => s.word.toLowerCase()))
-    const lq = trimmedQuery.toLowerCase()
+    const dbWords = new Set(suggestions.map(s => normalizeQuery(s.word)))
+    const lq = normalizeQuery(trimmedQuery)
     for (const entry of historyWords) {
       const w = entry.word
-      if (w.toLowerCase().startsWith(lq) && !dbWords.has(w.toLowerCase())) {
+      const nw = normalizeQuery(w)
+      if (nw.startsWith(lq) && !dbWords.has(nw)) {
         enrichedSuggestions.push({
           word: w,
           zhBrief: '',
@@ -100,7 +82,8 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
 
   function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault()
-    if (!query.trim()) return
+    const finalQuery = query.trim()
+    if (!finalQuery) return
 
     if (activeIndex >= 0) {
       const item = enrichedSuggestions[activeIndex]
@@ -109,9 +92,9 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         return
       }
     }
-    // No activeIndex: use first DB suggest hit, or raw query
-    const first = enrichedSuggestions.find(s => !s.historyOnly)
-    handleSelect(first?.word ?? query.trim())
+    
+    // Use raw query as primary target to preserve user intent (especially for AI analysis)
+    handleSelect(finalQuery)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {

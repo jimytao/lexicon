@@ -3,7 +3,7 @@ import type { AiStatus } from '../../stores/resultStore'
 import { ExampleList } from './InstantSection/ExampleList'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
 import { AiChatBox } from './AiSection/AiChatBox'
-import { PhraseExercises } from './PhraseExercises'
+import { PracticeSection } from './AiSection/PracticeSection'
 import { MnemonicCard } from './AiSection/MnemonicCard'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -125,20 +125,23 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }:
                 )
               case 'practice':
                 return (
-                  <div key={module.id}>
-                    {phraseResult.exercises.length > 0 && (
-                      <PhraseExercises phrase={phraseResult.correctForm || phrase} exercises={phraseResult.exercises} />
-                    )}
-                  </div>
-                )
-              case 'chat':
-                return (
-                  <AiChatBox key={module.id} context={phrase} />
+                  <PracticeSection
+                    key={module.id}
+                    word={phraseResult.correctForm || phrase}
+                    meanings={[{ zh: phraseResult.meaning, en: '' }]}
+                  />
                 )
               default:
                 return null
             }
           })}
+        </div>
+      )}
+
+      {/* Global AI Chat (even if not success) */}
+      {modules.find(m => m.id === 'chat')?.enabled && (
+        <div className={aiStatus === 'success' ? '' : 'mt-8'}>
+          <AiChatBox context={phrase} />
         </div>
       )}
     </div>

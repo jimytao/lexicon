@@ -7,8 +7,6 @@ export interface DBService {
   lookup(word: string): Promise<WordResult | null>
   /** 查以 word 开头的词组短语，用于结果页展示 */
   getRelatedPhrases(word: string, limit?: number): Promise<SuggestItem[]>
-  addHistory(word: string): Promise<void>
-  getHistory(limit?: number): Promise<string[]>
 }
 
 import { webDB } from './db.web'

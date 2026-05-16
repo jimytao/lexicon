@@ -2,6 +2,7 @@ import initSqlJs from 'sql.js'
 import type { Database } from 'sql.js'
 import type { DBService } from './db'
 import type { Meaning, Example } from '../types'
+import { normalizeQuery } from '../utils/text'
 
 let _db: Database | null = null
 
@@ -21,7 +22,7 @@ async function getDb(): Promise<Database> {
 
 export const webDB: DBService = {
   async suggest(prefix, limit = 20) {
-    const lp = prefix.toLowerCase()
+    const lp = normalizeQuery(prefix)
     if (!lp) return []
     const hasSpace = lp.includes(' ')
     try {
@@ -92,56 +93,88 @@ export const webDB: DBService = {
   },
 
   async lookup(word) {
+    const lw = normalizeQuery(word)
     try {
       const db = await getDb()
-      const entryRes = db.exec(
-        `SELECT id, phonetic, pos FROM entries WHERE word_lower = ?`,
-        [word.toLowerCase()]
-      )
-      if (!entryRes[0] || entryRes[0].values.length === 0) return null
 
-      const allMeanings: Meaning[] = []
-      const allExamples: Example[] = []
-      const posSet = new Set<string>()
-      let phonetic = ''
-
-      for (const [id, ph, pos] of entryRes[0].values) {
-        if (ph && !phonetic) phonetic = ph as string
-        if (pos) posSet.add(pos as string)
-
-        const meaningRes = db.exec(
-          `SELECT zh, en FROM meanings WHERE entry_id = ? ORDER BY seq`,
-          [id]
+      const performLookup = (searchWord: string) => {
+        const entryRes = db.exec(
+          `SELECT id, phonetic, pos FROM entries WHERE word_lower = ?`,
+          [searchWord.toLowerCase()]
         )
-        const meanings = (meaningRes[0]?.values ?? []).map(([zh, en]) => ({
-          zh: zh as string,
-          en: en as string,
-          pos: pos as string,
-        }))
-        allMeanings.push(...meanings)
+        if (!entryRes[0] || entryRes[0].values.length === 0) return null
 
-        const exampleRes = db.exec(
-          `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 3`,
-          [id]
-        )
-        const examples = (exampleRes[0]?.values ?? []).map(([en, zh]) => ({
-          en: en as string,
-          zh: zh as string,
-        }))
-        allExamples.push(...examples)
+        const allMeanings: Meaning[] = []
+        const allExamples: Example[] = []
+        const posSet = new Set<string>()
+        let phonetic = ''
+
+        for (const [id, ph, pos] of entryRes[0].values) {
+          if (ph && !phonetic) phonetic = ph as string
+          if (pos) posSet.add(pos as string)
+
+          const meaningRes = db.exec(
+            `SELECT zh, en FROM meanings WHERE entry_id = ? ORDER BY seq`,
+            [id]
+          )
+          const meanings = (meaningRes[0]?.values ?? []).map(([zh, en]) => ({
+            zh: zh as string,
+            en: en as string,
+            pos: pos as string,
+          }))
+          allMeanings.push(...meanings)
+
+          const exampleRes = db.exec(
+            `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 3`,
+            [id]
+          )
+          const examples = (exampleRes[0]?.values ?? []).map(([en, zh]) => ({
+            en: en as string,
+            zh: zh as string,
+          }))
+          allExamples.push(...examples)
+        }
+
+        const finalPos = Array.from(posSet).join('/')
+
+        return {
+          word: searchWord,
+          phonetic,
+          pos: finalPos,
+          meanings: allMeanings,
+          examples: allExamples.slice(0, 6)
+        }
       }
 
-      const finalPos = Array.from(posSet).join('/')
+      // 1. Direct match
+      let result = performLookup(lw)
+      if (result) return result
 
-      return {
-        word,
-        phonetic,
-        pos: finalPos,
-        meanings: allMeanings,
-        examples: allExamples.slice(0, 6)
+      // 2. Trailing punctuation fallback (e.g., "apple?" -> "apple")
+      const stripped = lw.replace(/[.?!,;:]+$/, '')
+      if (stripped !== lw) {
+        result = performLookup(stripped)
+        if (result) return result
       }
+
+      // 3. Chinese reverse lookup
+      const isChinese = /[\u4e00-\u9fa5]/.test(lw)
+      if (isChinese) {
+        const reverseRes = db.exec(
+          `SELECT word FROM suggest WHERE zh_brief LIKE ? LIMIT 1`,
+          [`%${lw}%`]
+        )
+        if (reverseRes[0]?.values?.[0]?.[0]) {
+          const mappedWord = reverseRes[0].values[0][0] as string
+          result = performLookup(mappedWord)
+          if (result) return result
+        }
+      }
+
+      return null
     } catch {
-      if (word !== 'satisfaction') return null
+      // Mock data for development/error cases
+      if (lw !== 'satisfaction') return null
       return {
         word: 'satisfaction',
         phonetic: '/ˌsæt.ɪsˈfæk.ʃən/',
@@ -158,9 +191,9 @@ export const webDB: DBService = {
   },
 
   async getRelatedPhrases(word, limit = 30) {
+    const lw = normalizeQuery(word)
     try {
       const db = await getDb()
-      const lw = word.toLowerCase()
       // 查以该词开头的短语（含空格的条目）
       const results = db.exec(
         `SELECT word, zh_brief FROM suggest
@@ -178,23 +211,5 @@ export const webDB: DBService = {
     }
   },
 
-  async addHistory(word) {
-    try {
-      const db = await getDb()
-      db.run(`INSERT INTO history(word, looked_up_at) VALUES(?, ?)`, [word, Date.now()])
-    } catch { /* 词库未就绪 */ }
-  },
 
-  async getHistory(limit = 20) {
-    try {
-      const db = await getDb()
-      const res = db.exec(
-        `SELECT DISTINCT word FROM history ORDER BY looked_up_at DESC LIMIT ?`,
-        [limit]
-      )
-      return (res[0]?.values ?? []).map(([w]) => w as string)
-    } catch {
-      return []
-    }
-  },
 }

@@ -108,7 +108,6 @@ export interface PhraseResult {
   meaning: string
   usageScenes: Array<{ label: string; description: string }>
   examples: Example[]
-  exercises: Exercise[]
   mnemonic?: Mnemonic
   culturalLore?: {
     title?: string

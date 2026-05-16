@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSettingsStore } from '../../../stores/settingsStore'
+import { detectLanguage } from '../../../stores/searchStore'
 import { generateExercises, evaluateAnswer } from '../../../services/ai'
 import type { Exercise } from '../../../types'
 
@@ -117,7 +118,7 @@ export function PracticeSection({ word, meanings }: PracticeSectionProps) {
                   rows={2}
                   value={st.answer}
                   onChange={(e) => updateExState(i, { answer: e.target.value, status: 'idle', feedback: '', correction: '' })}
-                  placeholder="用英文表达…"
+                  placeholder={`用${detectLanguage(word) === 'en' ? '英文' : '目标语言'}表达…`}
                   disabled={st.status === 'evaluating'}
                   className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 resize-none disabled:opacity-60"
                 />

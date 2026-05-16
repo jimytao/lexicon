@@ -36,6 +36,19 @@ export function detectQueryType(input: string): QueryType {
   return 'word'
 }
 
+function getInitialMode(): Mode {
+  try {
+    const stored = localStorage.getItem('lexicon-settings')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.state?.defaultSearchMode || 'instant'
+    }
+  } catch (e) {
+    console.error('Failed to parse initial mode:', e)
+  }
+  return 'instant'
+}
+
 interface SearchStore {
   query: string
   queryType: QueryType
@@ -52,7 +65,7 @@ export const useSearchStore = create<SearchStore>((set) => ({
   query: '',
   queryType: 'word',
   suggestions: [],
-  mode: 'instant',
+  mode: getInitialMode(),
   setQuery: (query) => set({ query, queryType: detectQueryType(query) }),
   setQueryType: (queryType) => set({ queryType }),
   setMode: (mode) => set({ mode }),

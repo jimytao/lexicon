@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { normalizeQuery } from '../utils/text'
 
 const HISTORY_LIMIT = 100
 
@@ -23,10 +24,10 @@ export const useHistoryStore = create<HistoryStore>()(
     (set, get) => ({
       words: [],
       add: (word, aiMode = null) => {
-        const normalized = word.trim()
+        const normalized = normalizeQuery(word)
         if (!normalized) return
-        const existing = get().words.find((e) => e.word === normalized)
-        const filtered = get().words.filter((e) => e.word !== normalized)
+        const existing = get().words.find((e) => normalizeQuery(e.word) === normalized)
+        const filtered = get().words.filter((e) => normalizeQuery(e.word) !== normalized)
         const newEntry: HistoryEntry = {
           word: normalized,
           aiMode: aiMode ?? (existing?.aiMode ?? null),
@@ -34,18 +35,18 @@ export const useHistoryStore = create<HistoryStore>()(
         set({ words: [newEntry, ...filtered].slice(0, HISTORY_LIMIT) })
       },
       upgrade: (word, aiMode) => {
-        const normalized = word.trim()
+        const normalized = normalizeQuery(word)
         if (!normalized) return
         set({
           words: get().words.map((e) =>
-            e.word === normalized ? { ...e, aiMode } : e
+            normalizeQuery(e.word) === normalized ? { ...e, aiMode } : e
           ),
         })
       },
       remove: (word) => {
-        const normalized = word.trim()
+        const normalized = normalizeQuery(word)
         if (!normalized) return
-        set({ words: get().words.filter((e) => e.word !== normalized) })
+        set({ words: get().words.filter((e) => normalizeQuery(e.word) !== normalized) })
       },
       clear: () => set({ words: [] }),
     }),

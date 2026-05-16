@@ -4,6 +4,7 @@ import { useResultStore } from '../stores/resultStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useHistoryStore } from '../stores/historyStore'
 import { db } from '../services/db'
+import { normalizeQuery } from '../utils/text'
 
 export function useSearch() {
   const { query, setQuery, setSuggestions, mode, setMode } = useSearchStore()
@@ -11,17 +12,28 @@ export function useSearch() {
   const { historyEnabled } = useSettingsStore()
   const { add: addToHistory } = useHistoryStore()
   const skipNextSuggestRef = useRef(false)
+  const suggestRequestIdRef = useRef(0)
 
   useEffect(() => {
+    const currentQuery = normalizeQuery(query)
+    if (currentQuery.length < 1) {
+      setSuggestions([])
+      return
+    }
+
+    if (skipNextSuggestRef.current) {
+      skipNextSuggestRef.current = false
+      return
+    }
+
+    const requestId = ++suggestRequestIdRef.current
     const timer = setTimeout(async () => {
-      if (query.length < 1) { setSuggestions([]); return }
-      if (skipNextSuggestRef.current) {
-        skipNextSuggestRef.current = false
-        return
+      const results = await db.suggest(currentQuery)
+      if (requestId === suggestRequestIdRef.current) {
+        setSuggestions(results)
       }
-      const results = await db.suggest(query)
-      setSuggestions(results)
     }, 300)
+
     return () => clearTimeout(timer)
   }, [query, setSuggestions])
 
@@ -39,7 +51,6 @@ export function useSearch() {
       setRelatedPhrases([])
       setSuggestions([])
       setQuery(word)
-      setMode('ai')
       if (historyEnabled) addToHistory(word, 'phrase')
       return { result: null, mode: 'ai' as const, queryType }
     }
@@ -62,7 +73,6 @@ export function useSearch() {
       setRelatedPhrases([])
       setSuggestions([])
       setQuery(word)
-      setMode('ai')
       if (historyEnabled) addToHistory(word, 'phrase')
       return { result: null, mode: 'ai' as const, queryType }
     }
@@ -86,7 +96,6 @@ export function useSearch() {
     setRelatedPhrases([])
     setSuggestions([])
     setQuery(word)
-    setMode('ai')
     if (historyEnabled) addToHistory(word, 'full')
     return { result: null, mode: 'ai' as const, queryType }
   }, [mode, historyEnabled, addToHistory, setWordResult, setRelatedPhrases, setSuggestions, setQuery, setMode])

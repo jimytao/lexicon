@@ -319,10 +319,13 @@ function SortableModuleRow({
 
 export function SettingsView() {
   const {
-    aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises, modules,
+    aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
-    setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises, setModules,
-    performanceMode, setPerformanceMode
+    setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises,
+    performanceMode, setPerformanceMode,
+    defaultSearchMode, setDefaultSearchMode,
+    triLingualExamples, setTriLingualExamples,
+    modules, setModules,
   } = useSettingsStore()
 
   const { status, manifest, checkUpdate, currentVersion, error } = useUpdateStore()
@@ -678,6 +681,46 @@ export function SettingsView() {
                 className={`w-11 h-6 rounded-full transition-all duration-300 relative ${performanceMode ? 'bg-accent' : 'bg-foreground/10'}`}
               >
                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${performanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* Default Search Mode */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">Default Mode</span>
+                <p className="text-[10px] text-foreground-muted">Initial search mode when app starts</p>
+              </div>
+              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border">
+                <button
+                  onClick={() => setDefaultSearchMode('instant')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                    defaultSearchMode === 'instant' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
+                  }`}
+                >
+                  Instant
+                </button>
+                <button
+                  onClick={() => setDefaultSearchMode('ai')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                    defaultSearchMode === 'ai' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
+                  }`}
+                >
+                  AI
+                </button>
+              </div>
+            </div>
+
+            {/* Trilingual Examples */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">Trilingual Examples</span>
+                <p className="text-[10px] text-foreground-muted">Show Target + English + Chinese (for non-English)</p>
+              </div>
+              <button
+                onClick={() => setTriLingualExamples(!triLingualExamples)}
+                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${triLingualExamples ? 'bg-accent' : 'bg-foreground/10'}`}
+              >
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${triLingualExamples ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
 

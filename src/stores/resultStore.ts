@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, ChatMessage, Mnemonic } from '../types'
+import { normalizeQuery } from '../utils/text'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -17,7 +18,7 @@ interface ResultStore {
   aiFullCache: Record<string, AiFullResult>
   phraseCache: Record<string, PhraseResult>
 
-  setWordResult: (r: WordResult | null) => void
+  setWordResult: (r: WordResult | null, clearAi?: boolean) => void
   setRelatedPhrases: (phrases: SuggestItem[]) => void
   setAiStatus: (s: AiStatus) => void
   setAiAnalysis: (word: string, a: AiAnalysis) => void
@@ -53,13 +54,29 @@ export const useResultStore = create<ResultStore>()(
       aiFullCache: {},
       phraseCache: {},
 
-      setWordResult: (wordResult) => set({ wordResult, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, chatMessages: [], aiStatus: 'idle', aiError: null }),
+      setWordResult: (wordResult, clearAi = true) => {
+        if (clearAi) {
+          set({ 
+            wordResult, 
+            relatedPhrases: [], 
+            aiAnalysis: null, 
+            aiFullResult: null, 
+            phraseResult: null, 
+            chatMessages: [], 
+            aiStatus: 'idle', 
+            aiError: null 
+          })
+        } else {
+          set({ wordResult })
+        }
+      },
       setRelatedPhrases: (relatedPhrases) => set({ relatedPhrases }),
       setAiStatus: (aiStatus) => set({ aiStatus }),
       setAiAnalysis: (word, aiAnalysis) => {
+        const normalized = normalizeQuery(word)
         const cache = { ...get().aiCache }
-        delete cache[word] // Move to end
-        cache[word] = aiAnalysis
+        delete cache[normalized] // Move to end
+        cache[normalized] = aiAnalysis
         
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) {
@@ -68,39 +85,43 @@ export const useResultStore = create<ResultStore>()(
         set({ aiCache: cache, aiAnalysis, aiStatus: 'success' })
       },
       updateMnemonic: (word, mnemonic) => {
+        const normalized = normalizeQuery(word)
         const current = get().aiAnalysis
         if (current) {
           const updated = { ...current, mnemonic }
           const cache = { ...get().aiCache }
-          delete cache[word]
-          cache[word] = updated
+          delete cache[normalized]
+          cache[normalized] = updated
           set({ aiCache: cache, aiAnalysis: updated })
         }
       },
       updateFullMnemonic: (word, mnemonic) => {
+        const normalized = normalizeQuery(word)
         const current = get().aiFullResult
         if (current) {
           const updated = { ...current, mnemonic }
           const cache = { ...get().aiFullCache }
-          delete cache[word]
-          cache[word] = updated
+          delete cache[normalized]
+          cache[normalized] = updated
           set({ aiFullCache: cache, aiFullResult: updated })
         }
       },
       updatePhraseMnemonic: (key, mnemonic) => {
+        const normalized = normalizeQuery(key)
         const current = get().phraseResult
         if (current) {
           const updated = { ...current, mnemonic }
           const cache = { ...get().phraseCache }
-          delete cache[key]
-          cache[key] = updated
+          delete cache[normalized]
+          cache[normalized] = updated
           set({ phraseCache: cache, phraseResult: updated })
         }
       },
       setAiFullResult: (word, aiFullResult) => {
+        const normalized = normalizeQuery(word)
         const cache = { ...get().aiFullCache }
-        delete cache[word]
-        cache[word] = aiFullResult
+        delete cache[normalized]
+        cache[normalized] = aiFullResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) {
           delete cache[keys[0]]
@@ -108,9 +129,10 @@ export const useResultStore = create<ResultStore>()(
         set({ aiFullCache: cache, aiFullResult, aiStatus: 'success' })
       },
       setPhraseResult: (key, phraseResult) => {
+        const normalized = normalizeQuery(key)
         const cache = { ...get().phraseCache }
-        delete cache[key]
-        cache[key] = phraseResult
+        delete cache[normalized]
+        cache[normalized] = phraseResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) {
           delete cache[keys[0]]
@@ -121,37 +143,40 @@ export const useResultStore = create<ResultStore>()(
       addChatMessage: (msg) => set({ chatMessages: [...get().chatMessages, msg] }),
       setAiError: (aiError) => set({ aiError, aiStatus: 'error' }),
       getCachedAi: (word) => {
+        const normalized = normalizeQuery(word)
         const cache = get().aiCache
-        if (cache[word]) {
+        if (cache[normalized]) {
           // Touch: move to end
           const updated = { ...cache }
-          const val = updated[word]
-          delete updated[word]
-          updated[word] = val
+          const val = updated[normalized]
+          delete updated[normalized]
+          updated[normalized] = val
           set({ aiCache: updated })
           return val
         }
         return null
       },
       getCachedAiFull: (word) => {
+        const normalized = normalizeQuery(word)
         const cache = get().aiFullCache
-        if (cache[word]) {
+        if (cache[normalized]) {
           const updated = { ...cache }
-          const val = updated[word]
-          delete updated[word]
-          updated[word] = val
+          const val = updated[normalized]
+          delete updated[normalized]
+          updated[normalized] = val
           set({ aiFullCache: updated })
           return val
         }
         return null
       },
       getCachedPhrase: (key) => {
+        const normalized = normalizeQuery(key)
         const cache = get().phraseCache
-        if (cache[key]) {
+        if (cache[normalized]) {
           const updated = { ...cache }
-          const val = updated[key]
-          delete updated[key]
-          updated[key] = val
+          const val = updated[normalized]
+          delete updated[normalized]
+          updated[normalized] = val
           set({ phraseCache: updated })
           return val
         }

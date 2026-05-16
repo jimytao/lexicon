@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { useResultStore } from '../stores/resultStore'
+import { useSearchStore } from '../stores/searchStore'
 import { analyzeWord, aiFullLookup, aiPhraseQuery } from '../services/ai'
 import type { Meaning } from '../types'
 
@@ -48,7 +49,8 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const result = await aiFullLookup(word, combined)
+      const mode = useSearchStore.getState().mode
+      const result = await aiFullLookup(word, mode === 'ai', combined)
       setAiFullResult(word, result)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
@@ -70,7 +72,8 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const result = await aiPhraseQuery(phrase, abortRef.current.signal)
+      const mode = useSearchStore.getState().mode
+      const result = await aiPhraseQuery(phrase, mode === 'ai', abortRef.current.signal)
       setPhraseResult(phrase, result)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return

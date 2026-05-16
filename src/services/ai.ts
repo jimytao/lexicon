@@ -8,6 +8,7 @@ interface AiConfig {
   modules: Array<{ id: string; enabled: boolean }>
   webSearchEnabled: boolean
   tavilyApiKey: string
+  triLingualExamples: boolean
 }
 
 function getConfig(): AiConfig {
@@ -31,6 +32,7 @@ function getConfig(): AiConfig {
         modules?: Array<{ id: string; enabled: boolean }>
         webSearchEnabled?: boolean
         tavilyApiKey?: string
+        triLingualExamples?: boolean
       }
     }
     const s = stored.state ?? {}
@@ -42,6 +44,7 @@ function getConfig(): AiConfig {
       modules: s.modules || defaultModules,
       webSearchEnabled: s.webSearchEnabled ?? false,
       tavilyApiKey: s.tavilyApiKey ?? '',
+      triLingualExamples: s.triLingualExamples ?? false,
     }
   } catch {
     return {
@@ -51,6 +54,7 @@ function getConfig(): AiConfig {
       modules: defaultModules,
       webSearchEnabled: false,
       tavilyApiKey: '',
+      triLingualExamples: false,
     }
   }
 }
@@ -89,9 +93,9 @@ ${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest t
 - Never output anything outside the JSON object`
 }
 
-const EXERCISES_SYSTEM_PROMPT = `You are an English practice exercise designer for Chinese learners.
+const EXERCISES_SYSTEM_PROMPT = `You are a language practice exercise designer for Chinese learners.
 
-Given an English word and its meanings, generate practice scenarios.
+Given a word/phrase in a specific language and its meanings, generate practice scenarios.
 
 Return ONLY a valid JSON array. No markdown. No explanation.
 
@@ -100,15 +104,13 @@ Return ONLY a valid JSON array. No markdown. No explanation.
 ]
 
 Rules:
-- Each scenario must be a concrete, everyday Chinese-language situation
-- Prioritize the most COMMON and PRACTICAL meanings/usages of the word (not rare or academic ones)
-- Scenarios should require the learner to use the target word or one of its common forms
-- Vary scenarios across different meanings if the word has multiple meanings
+- The learner should be expected to use the target word/phrase in its original language.
+- Prioritize the most COMMON and PRACTICAL meanings/usages.
 - Never output anything outside the JSON array`
 
-const EVAL_SYSTEM_PROMPT = `You are an English writing coach for Chinese learners.
+const EVAL_SYSTEM_PROMPT = `You are a language writing coach for Chinese learners.
 
-Evaluate whether the student's English sentence correctly uses the given word in the given scenario.
+Evaluate whether the student's sentence correctly uses the given word/phrase in the given scenario.
 
 Return ONLY a valid JSON object. No markdown. No explanation.
 
@@ -119,14 +121,11 @@ Return ONLY a valid JSON object. No markdown. No explanation.
 }
 
 Rules:
-- Mark correct ONLY if BOTH the meaning AND grammar are right
-- Grammar errors (wrong verb form, wrong preposition, wrong sentence structure) must be marked incorrect — do not overlook them
-- The word must appear in a grammatically correct construction, not just be present in the sentence
-- Acceptable to ignore: minor typos in other words, capitalization, punctuation
-- NOT acceptable to ignore: wrong verb pattern (e.g. "dangerous playing" instead of "dangerous to play"), wrong tense, subject-verb agreement errors, missing articles when they change meaning, unnatural or incorrect sentence structure
-- feedback must be in Chinese, explain the specific grammar rule that was violated
-- correction must be a natural, corrected version of the student's sentence
-- Never output anything outside the JSON object`
+- Mark correct ONLY if BOTH the meaning AND grammar are right.
+- Grammar errors in the target language must be marked incorrect.
+- feedback must be in Chinese, explain the specific rule that was violated.
+- correction must be a natural, corrected version of the student's sentence.
+- Never output anything outside the JSON object.`
 
 function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>): string {
   const meaningsText = meanings
@@ -281,7 +280,11 @@ export async function generateExercises(
     .map((m, i) => `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
     .join('\n')
 
-  const userPrompt = `Word: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios.`
+  const lang = detectLanguage(word)
+  const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
+  const langName = langNames[lang] || 'the target language'
+
+  const userPrompt = `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios for learning this ${langName} expression.`
   const cleaned = await callApi(EXERCISES_SYSTEM_PROMPT, userPrompt, signal)
 
   // Primary parse
@@ -327,25 +330,30 @@ export async function evaluateAnswer(
 
 // ── AI 全量查词（词库无结果时） ──
 
-function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string): string {
+function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string, isFull: boolean = true, triLingual: boolean = false): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
   let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition (or original language equivalent)",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      }\n    }\n  ]`
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
-  if (isEnabled('etymology')) {
+  if (isFull && isEnabled('etymology')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     const etymLabel = isForeign ? '词汇构成/来源' : '词根词缀/来源'
     schema += `,\n  "etymology": {\n    "parts": [{ "segment": "构词成分或缩写来源", "meaning": "含义" }],\n    "story": "1-2句话说明${etymLabel}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
   }
-  if (isEnabled('synonyms')) {
+  if (isFull && isEnabled('synonyms')) {
     schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }]`
   }
   if (isEnabled('examples')) {
-    schema += `,\n  "examples": [\n    { "en": "Example sentence in original language", "zh": "中文翻译" }\n  ]`
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    if (isForeign && triLingual) {
+      schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "中文翻译" }\n  ]`
+    } else {
+      schema += `,\n  "examples": [\n    { "en": "Example sentence in original language (or target language)", "zh": "中文翻译" }\n  ]`
+    }
   }
   
-  if (lang !== 'en' && lang !== 'zh') {
+  if (isFull && lang !== 'en' && lang !== 'zh') {
     schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这个词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源和圈内含义"\n  }`
   }
 
@@ -374,12 +382,13 @@ Rules:
   - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
   - Explain the specific historical or social context behind the word.
   - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
-- Provide 3-5 synonyms, 3-5 examples.
+- Provide 3-5 ${isFull ? 'synonyms and 3-5 examples' : 'examples'}.
 - Keep everything concise.`
 }
 
 export async function aiFullLookup(
   word: string,
+  isFull: boolean = true,
   signal?: AbortSignal
 ): Promise<AiFullResult> {
   const config = getConfig()
@@ -392,7 +401,7 @@ export async function aiFullLookup(
   const langName = langNames[lang] || 'Foreign Language'
 
   const cleaned = await callApi(
-    getFullLookupPrompt(config.modules, lang, webResults),
+    getFullLookupPrompt(config.modules, lang, webResults, isFull, config.triLingualExamples),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -408,22 +417,24 @@ export async function aiFullLookup(
 
 // ── AI 词组/句子查询 ──
 
-function getPhrasePrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string): string {
+function getPhrasePrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string, isFull: boolean = true, triLingual: boolean = false): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
   let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "中文释义/翻译",\n  "usageScenes": [\n    {\n      "label": "2-4字场景标签",\n      "description": "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"\n    }\n  ]`
 
   if (isEnabled('examples')) {
-    schema += `,\n  "examples": [\n    { "en": "Example sentence using this phrase", "zh": "中文翻译" }\n  ]`
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    if (isForeign && triLingual) {
+      schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "中文翻译" }\n  ]`
+    } else {
+      schema += `,\n  "examples": [\n    { "en": "Example sentence using this phrase", "zh": "中文翻译" }\n  ]`
+    }
   }
   
-  if (lang !== 'en' && lang !== 'zh') {
+  if (isFull && lang !== 'en' && lang !== 'zh') {
     schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这句话或词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源 and 圈内含义"\n  }`
   }
 
-  if (isEnabled('practice')) {
-    schema += `,\n  "exercises": [\n    { "scenario": "中文场景描述，让学习者用这个表达造句" }\n  ]`
-  }
   schema += `\n}`
 
   const basePrompt = `You are a professional English language analyst for Chinese native speakers.`
@@ -448,12 +459,13 @@ Rules:
   - meaning: accurate and natural Chinese translation.
   - usageScenes: explain the specific feeling or tone of the original expression.
   - culturalLore: PRIORITY: Provide deep cultural/subculture context. Specify historical origins or social context if applicable.
-- Provide 2-4 usage scenes, 2-4 examples, 2-3 exercises.
+- Provide 2-4 usage scenes, 2-4 examples.
 - Keep everything concise.`
 }
 
 export async function aiPhraseQuery(
   phrase: string,
+  isFull: boolean = true,
   signal?: AbortSignal
 ): Promise<PhraseResult> {
   const config = getConfig()
@@ -466,7 +478,7 @@ export async function aiPhraseQuery(
   const langName = langNames[lang] || 'Foreign Language'
 
   const cleaned = await callApi(
-    getPhrasePrompt(config.modules, lang, webResults),
+    getPhrasePrompt(config.modules, lang, webResults, isFull, config.triLingualExamples),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
   )

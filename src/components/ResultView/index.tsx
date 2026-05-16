@@ -103,7 +103,7 @@ export function ResultView({
                 <PracticeSection key={module.id} word={wordResult.word} meanings={wordResult.meanings} />
               )
             case 'chat':
-              return mode === 'ai' && aiStatus === 'success' && (
+              return (
                 <AiChatBox key={module.id} context={wordResult.word} />
               )
             default:

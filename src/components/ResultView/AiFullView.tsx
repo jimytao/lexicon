@@ -125,14 +125,17 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                     meanings={aiFullResult.meanings.map((m) => ({ zh: m.zh, en: m.en }))}
                   />
                 )
-              case 'chat':
-                return (
-                  <AiChatBox key={module.id} context={word} />
-                )
               default:
                 return null
             }
           })}
+        </div>
+      )}
+
+      {/* Global AI Chat (even if not success) */}
+      {modules.find(m => m.id === 'chat')?.enabled && (
+        <div className={aiStatus === 'success' ? '' : 'mt-8'}>
+          <AiChatBox context={word} />
         </div>
       )}
     </div>

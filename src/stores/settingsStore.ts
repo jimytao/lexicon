@@ -29,6 +29,8 @@ interface SettingsStore {
   tavilyApiKey: string
   maxExercises: number
   performanceMode: boolean
+  defaultSearchMode: 'instant' | 'ai'
+  triLingualExamples: boolean
   modules: AppModule[]
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
@@ -41,6 +43,8 @@ interface SettingsStore {
   setTavilyApiKey: (v: string) => void
   setMaxExercises: (v: number) => void
   setPerformanceMode: (v: boolean) => void
+  setDefaultSearchMode: (v: 'instant' | 'ai') => void
+  setTriLingualExamples: (v: boolean) => void
   setModules: (v: AppModule[]) => void
 }
 
@@ -58,6 +62,8 @@ export const useSettingsStore = create<SettingsStore>()(
       tavilyApiKey: '',
       maxExercises: 5,
       performanceMode: false,
+      defaultSearchMode: 'instant',
+      triLingualExamples: false,
       modules: DEFAULT_MODULES,
       setAiProvider: (aiProvider) =>
         set((state) => ({
@@ -80,6 +86,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setTavilyApiKey: (tavilyApiKey) => set({ tavilyApiKey }),
       setMaxExercises: (maxExercises) => set({ maxExercises }),
       setPerformanceMode: (performanceMode) => set({ performanceMode }),
+      setDefaultSearchMode: (defaultSearchMode) => set({ defaultSearchMode }),
+      setTriLingualExamples: (triLingualExamples) => set({ triLingualExamples }),
       setModules: (modules) => set({ modules }),
     }),
     { name: 'lexicon-settings' }

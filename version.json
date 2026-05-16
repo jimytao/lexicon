@@ -1,11 +1,11 @@
 {
-    "version": "0.7.11",
-    "notes": "修复 iOS 端 Image 页面在异形屏设备上的顶部与底部安全区适配问题，并统一词典页、设置页在 iOS 与 Android 全面屏设备上的底部悬浮导航避让策略。",
-    "pub_date": "2026-05-16T09:10:00Z",
+    "version": "0.7.12",
+    "notes": "本次更新对搜索架构进行了深层重构。主要包含：AI 查询分级 (Lite/Full)、全局 AI 问答、多语种三语对照例句、配置化启动模式、生成逻辑按需化等性能与功能增强。",
+    "pub_date": "2026-05-16T13:18:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXpBTEtJRFNMMm1WcDdUSFlmKzIrVHRnWWIzWEpldjIxbWRodE5vTVBrK0M3MVJmZUJxNkh1MzQxMitWeWltNzlBTmhZOWd4R0FIMk44ZHlocFh0QlF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTIyODQwCWZpbGU6TGV4aWNvbl8wLjcuMTFfeDY0LXNldHVwLmV4ZQp6RE03VHhNUVltNFhhYXl3engyNDhjSXhMcGhYdU9mcGMydmVaT0lQRnpaWHJkL1BDckhTa0IwZWxhMXk5ME5CZWkxMHRtZGlwblNhOHk4VEErVU1Ddz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.11/Lexicon_0.7.11_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTRNMGVWeDNXRWQxWEJFeHV4dHBJeDIrdWZhd21kR09od1lNMVhQVnBOU0xLWHI3TWhTK1pYbGtQS2ZoMEJyOUxXb2hka1RuZFdxL1RrNWh4ZnFsaUE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTM3ODI5CWZpbGU6TGV4aWNvbl8wLjcuMTJfeDY0LXNldHVwLmV4ZQpyMU9IRlQ2Tkh6S3F0TGs4dVFJT3VHZXJBaUNXczRGeDBySHk3Q2VmdHJuNmhjSkpCU0M5bUEzUStvN29GNVhoTzBkKzFKM0J0WlAzMHJ5Nm1XY2hEZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.12/Lexicon_0.7.12_x64-setup.exe"
         }
     }
 }

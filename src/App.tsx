@@ -16,6 +16,7 @@ import { ImageTranslateView } from './components/ImageTranslate'
 import { Keyboard } from '@capacitor/keyboard'
 import { useUpdateStore } from './stores/updateStore'
 import { UpdateModal } from './components/Settings/UpdateModal'
+import { normalizeQuery } from './utils/text'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -102,7 +103,7 @@ export function App() {
     if (prevModeRef.current === 'ai' && mode === 'instant' && searchSource === 'ai-full') {
       const snap = localWordSnapshotRef.current
       if (snap) {
-        useResultStore.getState().setWordResult(snap.wordResult)
+        useResultStore.getState().setWordResult(snap.wordResult, false)
         useResultStore.getState().setRelatedPhrases(snap.relatedPhrases)
         setSearchSource('local')
       }
@@ -117,8 +118,9 @@ export function App() {
   async function handleWordSelect(word: string, fromHistory = false) {
     scrollToTop()
     localWordSnapshotRef.current = null
+    const nw = normalizeQuery(word)
 
-    const historyEntry = useHistoryStore.getState().words.find((e) => e.word === word)
+    const historyEntry = useHistoryStore.getState().words.find((e) => normalizeQuery(e.word) === nw)
     const historyAiMode = historyEntry?.aiMode ?? null
 
     const { result, queryType } = await selectWord(word)
@@ -215,18 +217,18 @@ export function App() {
   }
 
   async function handleForceAi(word: string) {
-    if (!word.trim()) return
+    const nw = normalizeQuery(word)
+    if (!nw) return
     scrollToTop()
     // Save local snapshot if we currently have a local result for this word
     const currentWordResult = useResultStore.getState().wordResult
     const currentRelatedPhrases = useResultStore.getState().relatedPhrases
-    if (currentWordResult && currentWordResult.word === word) {
+    if (currentWordResult && normalizeQuery(currentWordResult.word) === nw) {
       localWordSnapshotRef.current = { wordResult: currentWordResult, relatedPhrases: currentRelatedPhrases }
     } else {
       localWordSnapshotRef.current = null
     }
     useSearchStore.getState().setQuery(word)
-    useSearchStore.getState().setMode('ai')
     const qt = detectQueryType(word)
     if (qt === 'phrase' || qt === 'sentence') {
       setSearchSource('phrase')
