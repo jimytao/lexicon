@@ -12,6 +12,19 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         WebView.setWebContentsDebuggingEnabled(true);
         
+        // Enable edge-to-edge layout to allow CSS env(safe-area-insets) to work
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            );
+        }
+        getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+
         // Fix for Android 10 and below: use adjustPan to avoid the black block bug.
         // Android 11+ handles adjustResize properly with edge-to-edge layouts.
         if (Build.VERSION.SDK_INT <= 29) {

@@ -243,9 +243,9 @@ export function ImageTranslateView() {
   const multiImage = images.length > 1
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="px-4 pt-safe pb-nav-safe space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Language + font selectors */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 pt-4">
         <select
           aria-label="源语言"
           value={sourceLang}

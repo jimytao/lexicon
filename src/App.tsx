@@ -386,7 +386,7 @@ export function App() {
           ) : view === 'settings' ? (
             <SettingsView />
           ) : (
-            <div className="px-6 pb-24 space-y-4">
+            <div className="px-6 pb-nav-safe space-y-4">
               <div className="sticky top-0 z-30 pt-safe pb-3 bg-background/90 backdrop-blur-xl -mx-6 px-6 shadow-[0_4px_24px_transparent] transition-all">
                 <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 mt-4 relative z-30">
                   <div className="w-full relative z-50">

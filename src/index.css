@@ -57,6 +57,7 @@ html, body {
 .mt-safe { margin-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
 .mb-safe { margin-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
 .top-safe { top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
+.pb-nav-safe { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
 
 /* Offset for elements that must stick below the app header (h-14 + pb-4 = 72px + safe-area) */
 .top-header-offset {

@@ -5,11 +5,24 @@
 ## 1. 自动滚动版本号 (Version Bumping)
 除非用户明确指定了目标版本，否则默认进行**小版本号（Patch）滚动**（例如从 `0.7.5` 升级到 `0.7.6`）。
 你需要跨平台同步修改以下所有文档中的版本号，确保没有任何遗漏：
-- **Web/核心**：`package.json` (`"version": "X.X.X"`)
-- **桌面端 (Tauri)**：`src-tauri/tauri.conf.json` (`"version": "X.X.X"`)
-- **更新检测**：`version.json` (`"version": "X.X.X"`)
-- **Android端**：修改 `android/app/build.gradle`，自增 `versionCode` 并更新 `versionName` 为新的 "X.X.X"。
-- **iOS端**：无须手动操作，iOS 的打包配置已托管于 GitHub Actions，通过推送 Release 标签 (Tag) 自动触发。
+
+### 核心与 Web (Frontend)
+- **`package.json`**: `"version": "X.X.X"`
+- **`src/stores/updateStore.ts`**: `currentVersion: 'X.X.X'` (**非常关键**，决定了 App 内部显示的构建版本)
+
+### 桌面端 (Tauri)
+- **`src-tauri/tauri.conf.json`**: `"version": "X.X.X"`
+- **`src-tauri/Cargo.toml`**: `version = "X.X.X"`
+
+### 更新检测 (Manifest)
+- **`version.json`**: `"version": "X.X.X"`
+
+### 移动端 (Mobile)
+- **Android**: 修改 `android/app/build.gradle`，自增 `versionCode` 并更新 `versionName` 为新的 "X.X.X"。
+- **iOS**: 修改 `ios/App/App.xcodeproj/project.pbxproj` 中的 `MARKETING_VERSION` 为 "X.X.X"，并同步自增 `CURRENT_PROJECT_VERSION` (建议与 Android 的 `versionCode` 保持一致)。
+
+> [!IMPORTANT]
+> **修改顺序**：必须先完成上述所有文件的版本修改，然后再执行后续的 `npm run build` 或打包流程。否则，打包出的二进制文件内部仍可能显示旧版本号。
 
 ## 2. 提取更新日志与重大版本判定 (Changelog & Major Flag)
 打开根目录下的 `CHANGELOG.md`，读取最顶部（即刚刚由人类或 AI 更新的最新一条）的中文更新说明。

@@ -24,7 +24,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-500">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-6 animate-in fade-in duration-500" style={{ paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={handleDismiss} />
       
       <div className="relative w-full max-w-md bg-background/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300">

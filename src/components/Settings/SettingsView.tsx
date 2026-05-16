@@ -456,7 +456,7 @@ export function SettingsView() {
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-nav-safe">
       <div className="flex items-center justify-between px-6 pt-safe pb-4 shrink-0">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Settings</h2>
       </div>

@@ -1,11 +1,11 @@
 {
-    "version": "0.7.10",
-    "notes": "修复安卓端点击“安装并重启”无反应的问题，并优化了安装包清理机制，新增设置页手动清理功能。",
-    "pub_date": "2026-05-14T15:50:00Z",
+    "version": "0.7.11",
+    "notes": "修复 iOS 端 Image 页面在异形屏设备上的顶部与底部安全区适配问题，并统一词典页、设置页在 iOS 与 Android 全面屏设备上的底部悬浮导航避让策略。",
+    "pub_date": "2026-05-16T09:10:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTFSWFdqT3AxaTdWYnFBVUtqeFdiMVhkZXhPMXhaTWxPVGdnRDJydUptbHU5LzlEVFNsMy96Ti9jamszbEJ6ay8wejRvQTVLdzRZa0pMS0VUSFdaS1EwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NzczNTgyCWZpbGU6TGV4aWNvbl8wLjcuMTBfeDY0LXNldHVwLmV4ZQp1bFVlVmo3cUJJMWcwY0hGZHZjcTFqODNFd1ZjNFZ4VTJSWkdGbjJIbkFoL0dnUWE4YjBtTmxuOWZmcUZqQ3puZDFhNmpranpNVklzYWk5ZEpVWGRBQT09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.10/Lexicon_0.7.10_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXpBTEtJRFNMMm1WcDdUSFlmKzIrVHRnWWIzWEpldjIxbWRodE5vTVBrK0M3MVJmZUJxNkh1MzQxMitWeWltNzlBTmhZOWd4R0FIMk44ZHlocFh0QlF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTIyODQwCWZpbGU6TGV4aWNvbl8wLjcuMTFfeDY0LXNldHVwLmV4ZQp6RE03VHhNUVltNFhhYXl3engyNDhjSXhMcGhYdU9mcGMydmVaT0lQRnpaWHJkL1BDckhTa0IwZWxhMXk5ME5CZWkxMHRtZGlwblNhOHk4VEErVU1Ddz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.11/Lexicon_0.7.11_x64-setup.exe"
         }
     }
 }
