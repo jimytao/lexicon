@@ -473,7 +473,7 @@ export function SettingsView() {
                 <button
                   key={p.id}
                   onClick={() => handleProviderSelect(p)}
-                  className={`text-xs px-3 py-2.5 rounded-xl border transition-all text-left truncate font-medium ${
+                  className={`text-xs px-3 py-3.5 rounded-xl border transition-all text-left truncate font-medium ${
                     aiProvider === p.id
                       ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
                       : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
@@ -650,9 +650,12 @@ export function SettingsView() {
               </div>
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${darkMode ? 'bg-accent' : 'bg-foreground/10'}`}
+                className="flex items-center h-11 px-2 -mr-2 group"
+                aria-label="Toggle Dark Mode"
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${darkMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${darkMode ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${darkMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </button>
             </div>
 
@@ -664,9 +667,12 @@ export function SettingsView() {
               </div>
               <button
                 onClick={() => setHistoryEnabled(!historyEnabled)}
-                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${historyEnabled ? 'bg-accent' : 'bg-foreground/10'}`}
+                className="flex items-center h-11 px-2 -mr-2 group"
+                aria-label="Toggle History Tracking"
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${historyEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${historyEnabled ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${historyEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </button>
             </div>
 
@@ -678,9 +684,12 @@ export function SettingsView() {
               </div>
               <button
                 onClick={() => setPerformanceMode(!performanceMode)}
-                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${performanceMode ? 'bg-accent' : 'bg-foreground/10'}`}
+                className="flex items-center h-11 px-2 -mr-2 group"
+                aria-label="Toggle Performance Mode"
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${performanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${performanceMode ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${performanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </button>
             </div>
 
@@ -718,9 +727,12 @@ export function SettingsView() {
               </div>
               <button
                 onClick={() => setTriLingualExamples(!triLingualExamples)}
-                className={`w-11 h-6 rounded-full transition-all duration-300 relative ${triLingualExamples ? 'bg-accent' : 'bg-foreground/10'}`}
+                className="flex items-center h-11 px-2 -mr-2 group"
+                aria-label="Toggle Trilingual Examples"
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${triLingualExamples ? 'translate-x-5' : 'translate-x-0'}`} />
+                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${triLingualExamples ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${triLingualExamples ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
               </button>
             </div>
 
@@ -733,7 +745,8 @@ export function SettingsView() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setMaxExercises(Math.max(1, maxExercises - 1))}
-                  className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 transition-all"
+                  className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 active:bg-foreground/10 transition-all"
+                  aria-label="Decrease exercise count"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
@@ -742,7 +755,8 @@ export function SettingsView() {
                 <span className="text-sm font-bold tabular-nums text-foreground w-4 text-center">{maxExercises}</span>
                 <button
                   onClick={() => setMaxExercises(Math.min(10, maxExercises + 1))}
-                  className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 transition-all"
+                  className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 active:bg-foreground/10 transition-all"
+                  aria-label="Increase exercise count"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -758,12 +772,15 @@ export function SettingsView() {
                   <span className="text-sm font-bold text-foreground">Web Search</span>
                   <p className="text-[10px] text-foreground-muted">Enhance AI with up-to-date info</p>
                 </div>
-                <button
-                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  className={`w-11 h-6 rounded-full transition-all duration-300 relative ${webSearchEnabled ? 'bg-accent' : 'bg-foreground/10'}`}
-                >
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${webSearchEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
+                  <button
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    className="flex items-center h-11 px-2 -mr-2 group"
+                    aria-label="Toggle Web Search"
+                  >
+                    <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${webSearchEnabled ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${webSearchEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
               </div>
               
               {webSearchEnabled && (

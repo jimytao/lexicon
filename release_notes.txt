@@ -1,1 +1,38 @@
-针对安卓全版本系统的 APK 下载与安装链路进行健壮性加固，修复了分块写入 OOM、文件丢失检查、以及 FileOpener 权限引导等关键问题；同时优化了 AI 问答组件的渲染稳定性。
+﻿## 2026-05-17 — v0.7.14 布局标准化与移动端触控优化 (Layout Standardization & UX)
+
+### 概述
+根据《Lexicon 布局与 UI/UX 适配全指南》对全库进行了系统性审计与标准化重构。补全了多平台安全区（Safe Area）兼容性，规范了全局 Z-Index 层级，并系统性提升了移动端交互元素的点击触控体验。
+
+---
+
+### 1. 补全：安全区回退机制 (Safe Area Robustness)
+- **CSS 增强**：在 `index.css` 中为所有安全区工具类（如 `.pb-nav-safe`, `.top-header-offset`）补全了 `--safe-area-inset-*` 变量回退。
+- **Android 兼容**：确保在旧版 Android (8-10) 或部分国产 ROM 无法正确报告 `env()` 的情况下，依然能通过 `App.tsx` 注入的 28px 补丁维持布局正常。
+- **模态框适配**：`UpdateModal.tsx` 的行内安全区样式同步更新，彻底解决刘海屏设备上的内容遮挡问题。
+
+### 2. 规范：全局 Z-Index 梯度 (Z-Index Standardization)
+- **底层装饰**：将背景网格（`.bg-grid`）移入 CSS 控制并统一设定为 `z-0`。
+- **图片翻译层级**：修正了 `ImageTranslateView` 中 sticky header 的层级，从 `z-10` 提升至 `z-20`，使其与 Dictionary 首页的 Header 保持一致，避免滚动时的视觉穿透。
+
+### 3. 极致优化：44x44px 移动端触控标准 (Touch Target Optimization)
+为满足 Apple/Google 的人机交互规范，对全库小型交互元素进行了“隐形扩张”或视觉放大：
+- **导航与搜索**：
+    - 底部导航栏按钮垂直 Padding 增加，单项点击高度提升至 44px+。
+    - 搜索栏清除按钮、AI 按钮、提交按钮统一扩充为 `11x11 (44x44px)` 规格。
+    - 分段选择器（SegmentedControl）垂直 Padding 增加，提升切换灵敏度。
+- **设置与交互**：
+    - 练习题数量调节按钮从 `28x28px` 放大至 `44x44px`。
+    - **开关切换 (Toggle)**：为所有 Toggle 开关包装了 `44px` 高度的透明点击热区，彻底告别“点不中”的问题。
+    - AI Provider 列表项高度增加，适配大拇指操作。
+- **内容交互**：
+    - 词典结果页中“展开义项/收起”按钮增加 Padding。
+    - 相关词组（Phrases）列表项垂直 Padding 增加，单行点击目标符合 44px 规范。
+    - 图片翻译页的左右导航切换箭头显著放大。
+- **回归修复 (Bug Fixes)**：
+    - **Z-Index 遮挡修复**：修复了 SearchBar 下拉列表被下方 `Instant/AI` 切换按钮遮挡的问题，通过提升 SearchBar 容器的堆叠上下文（Stacking Context）确保下拉面板始终在最前方。
+    - **触控可见性修复**：修复了历史记录删除按钮（x）在移动端因依赖 `hover` 而不可见的问题。现在在移动端保持常态显示，且点击热区已扩充。
+    - **文档同步**：更新了 `LAYOUT_ADAPTATION_GUIDE.md`，正式确立了“移动端禁止依赖悬浮（Hover）触发可见性”的 UI 准则。
+
+---
+ 
+

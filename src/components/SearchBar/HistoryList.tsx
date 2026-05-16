@@ -85,7 +85,7 @@ export function HistoryList({ onSelect }: HistoryListProps) {
               <button
                 type="button"
                 onClick={() => remove(word)}
-                className="shrink-0 py-3 pr-5 pl-2 text-foreground-muted/30 hover:text-foreground-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                className="shrink-0 py-3 pr-5 pl-2 text-foreground-muted/30 hover:text-foreground-muted opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 aria-label="Delete"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

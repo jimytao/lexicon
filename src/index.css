@@ -57,11 +57,11 @@ html, body {
 .mt-safe { margin-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
 .mb-safe { margin-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
 .top-safe { top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
-.pb-nav-safe { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
+.pb-nav-safe { padding-bottom: calc(6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
 
 /* Offset for elements that must stick below the app header (h-14 + pb-4 = 72px + safe-area) */
 .top-header-offset {
-  top: calc(72px + env(safe-area-inset-top, 0px));
+  top: calc(72px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
 }
 
 /* Premium Segmented Control Styles */
@@ -121,11 +121,15 @@ html, body {
 
 /* Subtle Grid Background for that "Tech" feel */
 .bg-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   background-size: 40px 40px;
   background-image:
     linear-gradient(to right, var(--color-border) 1px, transparent 1px),
     linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
   mask-image: radial-gradient(ellipse at center, black, transparent 80%);
+  pointer-events: none;
 }
 
 .dark .bg-grid {

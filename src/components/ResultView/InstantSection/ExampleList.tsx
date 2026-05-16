@@ -30,7 +30,7 @@ export function ExampleList({ examples }: ExampleListProps) {
       {needsCollapse && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-3 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="mt-3 flex items-center gap-1.5 text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors py-2 px-1"
         >
           <svg
             className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`}

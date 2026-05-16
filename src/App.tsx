@@ -14,6 +14,7 @@ import { PhraseView } from './components/ResultView/PhraseView'
 import { SettingsView } from './components/Settings/SettingsView'
 import { ImageTranslateView } from './components/ImageTranslate'
 import { Keyboard } from '@capacitor/keyboard'
+import { Device } from '@capacitor/device'
 import { useUpdateStore } from './stores/updateStore'
 import { UpdateModal } from './components/Settings/UpdateModal'
 import { normalizeQuery } from './utils/text'
@@ -57,6 +58,30 @@ export function App() {
     // Initial check and cleanup
     checkUpdate()
     cleanupOldApks()
+
+    // Legacy Android safe area fix (Android 8-10 often report 0 for env(safe-area-inset-top))
+    const initSafeArea = async () => {
+      const isCap = typeof window !== 'undefined' && (window as any).Capacitor
+      if (isCap) {
+        const info = await Device.getInfo()
+        if (info.platform === 'android') {
+          // If env() is supported but returns 0, it usually means the WebView isn't reporting it.
+          // For Android 9/10, we provide a reasonable default if it looks like it's missing.
+          const testDiv = document.createElement('div')
+          testDiv.style.paddingTop = 'env(safe-area-inset-top, 0px)'
+          document.body.appendChild(testDiv)
+          const computed = window.getComputedStyle(testDiv).paddingTop
+          document.body.removeChild(testDiv)
+
+          if (computed === '0px') {
+            // Android 9-10 status bar is typically ~24-28dp. We use a safe default of 28px.
+            // On high-DPI devices, it might be more, but 24-28px is a common baseline.
+            document.documentElement.style.setProperty('--safe-area-inset-top', '28px')
+          }
+        }
+      }
+    }
+    initSafeArea()
   }, [])
 
   useEffect(() => {
@@ -265,6 +290,12 @@ export function App() {
 
     const initKeyboardFix = async () => {
       const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor
+      let deviceInfo: any = null
+      if (isCapacitor) deviceInfo = await Device.getInfo()
+
+      const isLegacyAndroid = isCapacitor && deviceInfo?.platform === 'android' && parseInt(deviceInfo?.osVersion) <= 10
+      const isModernAndroid = isCapacitor && deviceInfo?.platform === 'android' && parseInt(deviceInfo?.osVersion) > 10
+      const isIos = isCapacitor && deviceInfo?.platform === 'ios'
       
       const handleFocusIn = (e: FocusEvent) => {
         const activeEl = e.target as HTMLElement
@@ -274,6 +305,8 @@ export function App() {
         scrollTimeout = setTimeout(() => {
           const scrollable = getScrollableAncestor(activeEl)
           if (scrollable && !scrollable.dataset.kbPadded) {
+            // Legacy Android uses adjustPan, so we need a large padding to allow scrolling.
+            // This padding is hidden behind the keyboard and prevents the "black block" bug.
             scrollable.style.paddingBottom = '45vh'
             scrollable.dataset.kbPadded = 'true'
           }
@@ -293,12 +326,22 @@ export function App() {
       focusInHandler = handleFocusIn
       focusOutHandler = handleFocusOut
 
-      document.addEventListener('focusin', handleFocusIn)
-      document.addEventListener('focusout', handleFocusOut)
+      // Only use the focus-based fallback on legacy Android or non-Capacitor mobile environments (if any)
+      if (isLegacyAndroid || !isCapacitor) {
+        document.addEventListener('focusin', handleFocusIn)
+        document.addEventListener('focusout', handleFocusOut)
+      }
 
       if (isCapacitor) {
         try {
           const updateScroll = (height: number) => {
+            // Modern Android (11+) handles adjustResize natively, often NO JS needed.
+            // However, we keep visualViewport logic for iOS and as a safety for modern Android.
+            if (isModernAndroid) {
+              setIsKeyboardVisible(true)
+              return
+            }
+
             const activeEl = document.activeElement as HTMLElement
             if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
             
@@ -337,8 +380,11 @@ export function App() {
           keyboardShowSub = await Keyboard.addListener('keyboardWillShow', info => updateScroll(info.keyboardHeight))
           keyboardDidShowSub = await Keyboard.addListener('keyboardDidShow', info => updateScroll(info.keyboardHeight))
           keyboardHideSub = await Keyboard.addListener('keyboardWillHide', handleFocusOut)
-          window.visualViewport?.addEventListener('resize', updateScrollFromViewport)
-          window.visualViewport?.addEventListener('scroll', updateScrollFromViewport)
+          
+          if (isIos || isModernAndroid) {
+            window.visualViewport?.addEventListener('resize', updateScrollFromViewport)
+            window.visualViewport?.addEventListener('scroll', updateScrollFromViewport)
+          }
 
         } catch (e) {
           console.warn('Capacitor Keyboard listeners failed, falling back to focus events', e)
@@ -374,7 +420,7 @@ export function App() {
   return (
     <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
       {/* Background Decorative Elements */}
-      <div className="fixed inset-0 bg-grid opacity-[0.2] dark:opacity-[0.1] pointer-events-none" />
+      <div className="bg-grid opacity-[0.2] dark:opacity-[0.1]" />
       
       <div
         ref={scrollContainerRef}
@@ -391,7 +437,7 @@ export function App() {
             <div className="px-6 pb-nav-safe space-y-4">
               <div className="sticky top-0 z-30 pt-safe pb-3 bg-background/90 backdrop-blur-xl -mx-6 px-6 shadow-[0_4px_24px_transparent] transition-all">
                 <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 mt-4 relative z-30">
-                  <div className="w-full relative z-50">
+                  <div className="w-full relative z-20">
                     <SearchBar
                       onWordSelect={handleWordSelect}
                       onHistorySelect={(word) => handleWordSelect(word, true)}
@@ -448,11 +494,11 @@ export function App() {
       </div>
 
       {/* Bottom Navigation Bar - Floating iOS Pill style */}
-      <nav className={bottomNavClassName} style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))', transform: bottomNavTransform }}>
+      <nav className={bottomNavClassName} style={{ bottom: 'calc(1.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))', transform: bottomNavTransform }}>
         <div className="flex items-center justify-between">
           
           <button 
-            className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
+            className={`flex flex-col items-center justify-center flex-1 py-2.5 rounded-2xl transition-all ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
             onClick={() => { setView('dictionary'); scrollToTop() }}
           >
             <div className={`p-1 rounded-xl mb-0.5 transition-colors ${view === 'dictionary' ? 'bg-accent/10' : ''}`}>
@@ -503,7 +549,7 @@ export function App() {
       {toastMessage && (
         <div 
           className="fixed left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto cursor-pointer"
-          style={{ bottom: 'calc(7.5rem + env(safe-area-inset-bottom, 0px))' }}
+          style={{ bottom: 'calc(7.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
           onClick={() => { if (status === 'available') { openModal(); clearToast(); } }}
         >
           <div className="glass px-5 py-2.5 rounded-full text-xs font-black shadow-2xl flex items-center gap-3 border border-accent/20">

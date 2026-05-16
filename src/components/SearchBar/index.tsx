@@ -172,9 +172,10 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               <button 
                 type="button"
                 onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }} 
-                className="p-1.5 rounded-xl hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
+                aria-label="Clear search"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -188,12 +189,13 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                   onForceAi?.(query.trim())
                 }}
                 disabled={!query.trim()}
-                className={`p-2 rounded-xl transition-all duration-300 ${
+                className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
                   query.trim() 
                     ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100' 
                     : 'text-foreground-muted/20 opacity-40 cursor-default'
                 }`}
                 title="Force AI Search"
+                aria-label="AI Search"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -205,11 +207,12 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               <button
                 type="submit"
                 disabled={!query.trim()}
-                className={`p-2 rounded-xl transition-all duration-500 ${
+                className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-500 ${
                   query.trim() 
                     ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95 translate-x-0 opacity-100' 
                     : 'bg-foreground/5 text-foreground-muted/20 translate-x-0 opacity-40 cursor-default'
                 }`}
+                aria-label="Search"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />

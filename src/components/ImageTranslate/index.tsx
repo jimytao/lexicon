@@ -303,7 +303,7 @@ export function ImageTranslateView() {
               type="button"
               onClick={handleTranslate}
               disabled={status === 'loading'}
-              className="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-500 hover:bg-blue-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
             >
               {images.some(img => img.status === 'loading')
               ? '翻译中...'
@@ -315,8 +315,9 @@ export function ImageTranslateView() {
             <button
               type="button"
               onClick={() => addFileInputRef.current?.click()}
-              className="px-3 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-xl text-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 transition-colors"
               title="添加更多图片"
+              aria-label="添加更多图片"
             >
               +
             </button>
@@ -332,7 +333,7 @@ export function ImageTranslateView() {
             <button
               type="button"
               onClick={() => { removeCurrentImage(); setSelectedIndex(null); setEmbedMode(false) }}
-              className="px-3 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 transition-colors"
               title="删除此图"
             >
               删除
@@ -341,7 +342,7 @@ export function ImageTranslateView() {
               <button
                 type="button"
                 onClick={() => { clearAll(); setSelectedIndex(null); setEmbedMode(false) }}
-                className="px-3 py-2 rounded-lg text-sm border border-red-200 dark:border-red-800 text-red-400 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-red-200 dark:border-red-800 text-red-400 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 transition-colors"
                 title="清空所有图片"
               >
                 清空
@@ -400,27 +401,27 @@ export function ImageTranslateView() {
               {blocks.length > 0 && (
                 <>
                 <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setEmbedMode(false)}
-                    className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      !embedMode
-                        ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400'
-                    }`}
-                  >
-                    翻译列表
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleEnterEmbed}
-                    disabled={embedLoading}
-                    className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-60 ${
-                      embedMode
-                        ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400'
-                    }`}
-                  >
+                    <button
+                      type="button"
+                      onClick={() => setEmbedMode(false)}
+                      className={`flex-1 px-3 py-2.5 text-xs font-bold rounded-md transition-colors ${
+                        !embedMode
+                          ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      翻译列表
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleEnterEmbed}
+                      disabled={embedLoading}
+                      className={`flex-1 px-3 py-2.5 text-xs font-bold rounded-md transition-colors disabled:opacity-60 ${
+                        embedMode
+                          ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
                     {embedLoading 
                       ? `AI 定位中...`
                       : '嵌字此图'}
@@ -438,7 +439,7 @@ export function ImageTranslateView() {
               {embedMode ? (
                 /* ── 嵌字编辑模式 ── */
                 <div className="space-y-3">
-                   <div ref={stickyRef} className="sticky top-safe z-10 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
+                   <div ref={stickyRef} className="sticky top-safe z-20 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
                     {imageCollapsed ? (
                       <button
                         type="button"
@@ -532,25 +533,25 @@ export function ImageTranslateView() {
                         {/* Navigation arrows */}
                         {multiImage && (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => handleSwitchImage(currentIndex - 1)}
-                              disabled={currentIndex === 0}
-                              className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              title="上一张"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                              </svg>
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSwitchImage(currentIndex - 1)}
+                                disabled={currentIndex === 0}
+                                className="absolute left-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                title="上一张"
+                              >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                </svg>
+                              </button>
                             <button
                               type="button"
                               onClick={() => handleSwitchImage(currentIndex + 1)}
                               disabled={currentIndex === images.length - 1}
-                              className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                               title="下一张"
                             >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                               </svg>
                             </button>

@@ -26,7 +26,7 @@ export function SegmentedControl({ mode, onModeChange }: SegmentedControlProps) 
         <button
           key={option.id}
           onClick={() => onModeChange(option.id as Mode)}
-          className={`relative z-10 flex-1 py-1 px-4 text-xs font-bold transition-colors duration-300 whitespace-nowrap ${
+          className={`relative z-10 flex-1 py-3 px-4 text-xs font-bold transition-colors duration-300 whitespace-nowrap ${
             mode === option.id 
               ? 'text-accent' 
               : 'text-foreground-muted hover:text-foreground'

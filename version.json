@@ -1,11 +1,11 @@
 {
-    "version": "0.7.13",
-    "notes": "针对安卓全版本系统的 APK 下载与安装链路进行健壮性加固，修复了分块写入 OOM、文件丢失检查、以及 FileOpener 权限引导等关键问题；同时优化了 AI 问答组件的渲染稳定性。",
-    "pub_date": "2026-05-16T16:20:00Z",
+    "version": "0.7.14",
+    "notes": "根据《Lexicon 布局与 UI/UX 适配全指南》对全库进行了系统性审计与标准化重构。补全了多平台安全区兼容性，规范了全局 Z-Index 层级，并系统性提升了移动端交互元素的点击触控体验。",
+    "pub_date": "2026-05-17T01:15:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXlkZEk0ajNsaDh3c2twYXYrQ2xzdFk1cmprbGpJNWxTdzBCUEt3MGpDZzg2TGdPTVZ4NS9jSzNVY1A3NWpNN3hZWGxreVpsVm5seVplanFNRUpXYXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTQ4NTgxCWZpbGU6TGV4aWNvbl8wLjcuMTNfeDY0LXNldHVwLmV4ZQpJWHM4ZTZzRjYxdDAyRmtGbHRaR283Yjd2SHRSRzJOY3N2VzVCb1hTcnVrVlhZNEozanZDNkJBNGo1WS9JQmVUbUU5WTdQQWVjb3NWRVlBUU1DKy9Bdz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.13/Lexicon_0.7.13_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXdZb3FpUERvSmllSUFoaWFESUdYY1dEOHBYdEtuaVVvMzl0UW1TY29EWkxwc2gyUlo5WlQyUE95ZmdDTytzUXZlN3ZwVkMyOFB1MVIzYTNhakZCVndjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTUyODMwCWZpbGU6TGV4aWNvbl8wLjcuMTRfeDY0LXNldHVwLmV4ZQpkZzFWQjdKSTBaaUJCMTJsR0MzTFp4Y0ZGeC9aMFNVdG84YW5Bak1nQ1E4ai84c3FQdEVDTUlRZzNKWlQ4QlYrSGJORVVkRm4vYlZEbnRJbEE0Q2dDZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.14/Lexicon_0.7.14_x64-setup.exe"
         }
     }
 }
