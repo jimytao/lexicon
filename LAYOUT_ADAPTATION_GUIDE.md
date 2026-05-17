@@ -1,6 +1,6 @@
 # Lexicon 布局与 UI/UX 适配全指南 (Layout & UI/UX Adaptation Guide)
 
-> **版本：** 2.0 (2026-05-17)  
+> **版本：** 2.1 (2026-05-17)  
 > **适用平台：** PC (Tauri), iOS (Capacitor), Android 8–16 (Capacitor)  
 > **核心原则：** 极致美学、全面屏沉浸、零重叠、流畅交互
 
@@ -70,20 +70,26 @@
 ## 4. 交互逻辑与反馈规范
 
 ### 4.1 触控目标 (Touch Targets)
-- **最小尺寸**：所有移动端点击目标（按钮、链接、开关）必须满足最小 **44x44px** 的物理点击区域。对于视觉上较小的图标，应通过增加 `padding` 或透明包裹层来实现。
+- **最小尺寸**：所有移动端点击目标（按钮、开关、链接）必须满足最小 **44x44px** 的物理点击区域。
+- **透明包裹层与伪元素拓展法（推荐）**：对于尺寸小巧的精致胶囊按钮（如 30px 高的 `SegmentedControl` 切换滑块），为避免内边距（`padding`）过大导致组件视觉上变方、变丑，**必须**使用 CSS 伪元素 `::after` 拓展点击热区（例如使用 `position: relative` 搭配 `::after { content: ''; position: absolute; inset: -6px 0; }`），在不改变任何精致视觉外形的前提下将点击热区完美拓展至 44px+。
 - **反馈动效**：点击时应有明显的视觉反馈（如 `active:scale-95` 或背景色轻微变化）。
 
 ### 4.2 悬浮与可见性 (Hover vs. Touch Visibility)
 - **非侵入式悬浮**：在桌面端 (PC) 推荐使用 `group-hover:opacity-100` 来保持界面简洁。
 - **移动端常态化**：**严禁**在移动端 (iOS/Android) 依赖 `hover` 触发关键操作按钮（如删除、展开）的可见性。在 `md` 断点以下， these 按钮必须保持常态可见（建议 `opacity-60` 以上），确保触屏用户可感知。
 
+### 4.3 全局几何圆角一致性规范 (Global Corner Radius Consistency)
+- **同心圆几何逻辑**：界面内嵌套的圆角必须符合“内圆角半径 = 外圆角半径 - 间距 (Padding/Margin)”的同心几何逻辑，以避免视觉上产生畸变。
+- **胶囊 Pill 统合原则**：所有全局核心浮动与控制层级（如顶部的搜索栏 `SearchBar`、中部的模式切换器 `SegmentedControl`、底部的悬浮底栏 `Bottom Navigation Bar`）必须统一采用**完美胶囊 Pill 形状（Tailwind `rounded-full` 或圆角半径 $\ge$ 高度的一半）**。严禁在胶囊统合系统中混用半方半圆的折中圆角（如 `rounded-3xl` 或 `rounded-2xl`），以保证全局高档几何美学的一致性。
+
 ---
 
 ## 5. UI 变更审查 Checklist
-
+ 
 - [ ] **Viewport 适配**：是否确认 `index.html` 包含 `viewport-fit=cover` 和 `interactive-widget=resizes-content`？
 - [ ] **吸顶冲突**：使用 `sticky top-0` 时，是否嵌套了 `pt-safe` 或使用了 `.top-safe`？
-- [ ] **点击区域**：移动端点击目标是否满足最小 44x44px 的规范？
+- [ ] **点击区域**：移动端点击目标是否满足最小 44x44px 的规范？精致紧凑组件（如 30px 高的滑块）是否使用伪元素 `::after` 进行了无感热区扩充？
+- [ ] **圆角一致性**：核心浮动层/控制层（SearchBar、SegmentedControl、Bottom Nav）圆角是否统一采用完美胶囊 Pill 形状 (`rounded-full`)？嵌套圆角是否符合同轴同心几何逻辑？
 - [ ] **悬浮兼容**：是否存在仅靠 hover 才能点中的按钮？移动端是否已设为常态可见？
 - [ ] **虚拟键盘**：在 Android 9/10 环境下，点击 Input 是否会触发内容遮挡？
 - [ ] **Android 15+ 验证**：确认 edge-to-edge 强制生效后内容仍正确避让。

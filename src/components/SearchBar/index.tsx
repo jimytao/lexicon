@@ -92,7 +92,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         return
       }
     }
-    
+
     // Use raw query as primary target to preserve user intent (especially for AI analysis)
     handleSelect(finalQuery)
   }
@@ -125,24 +125,24 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
 
   return (
     <div className="relative group">
-      <form 
-        ref={containerRef} 
+      <form
+        ref={containerRef}
         onSubmit={handleSubmit}
         className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
-        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-3xl border transition-all duration-300 shadow-sm overflow-hidden
-          ${isFocused 
-            ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg' 
+        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-full border transition-all duration-300 shadow-sm overflow-hidden
+          ${isFocused
+            ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg'
             : 'bg-background-soft border-border hover:border-foreground-muted/30'
           }`}
         >
-          <svg 
-            className={`w-5 h-5 shrink-0 transition-colors ${isFocused ? 'text-accent' : 'text-foreground-muted'}`} 
+          <svg
+            className={`w-5 h-5 shrink-0 transition-colors ${isFocused ? 'text-accent' : 'text-foreground-muted'}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
-          
+
           <input
             ref={inputRef}
             type="text"
@@ -166,13 +166,13 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               setTimeout(() => setIsFocused(false), 200)
             }}
           />
-          
-          <div className={`flex shrink-0 items-center gap-2 p-1 rounded-2xl border transition-all duration-300 ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
+
+          <div className={`flex shrink-0 items-center gap-2 p-1 rounded-full border transition-all duration-300 ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
             {query && (
-              <button 
+              <button
                 type="button"
-                onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }} 
-                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
+                onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
                 aria-label="Clear search"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -189,11 +189,10 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                   onForceAi?.(query.trim())
                 }}
                 disabled={!query.trim()}
-                className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-300 ${
-                  query.trim() 
-                    ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100' 
+                className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 ${query.trim()
+                    ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100'
                     : 'text-foreground-muted/20 opacity-40 cursor-default'
-                }`}
+                  }`}
                 title="Force AI Search"
                 aria-label="AI Search"
               >
@@ -207,11 +206,10 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               <button
                 type="submit"
                 disabled={!query.trim()}
-                className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-500 ${
-                  query.trim() 
-                    ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95 translate-x-0 opacity-100' 
+                className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-500 ${query.trim()
+                    ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95 translate-x-0 opacity-100'
                     : 'bg-foreground/5 text-foreground-muted/20 translate-x-0 opacity-40 cursor-default'
-                }`}
+                  }`}
                 aria-label="Search"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

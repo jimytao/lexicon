@@ -296,11 +296,11 @@ export function App() {
       const isLegacyAndroid = isCapacitor && deviceInfo?.platform === 'android' && parseInt(deviceInfo?.osVersion) <= 10
       const isModernAndroid = isCapacitor && deviceInfo?.platform === 'android' && parseInt(deviceInfo?.osVersion) > 10
       const isIos = isCapacitor && deviceInfo?.platform === 'ios'
-      
+
       const handleFocusIn = (e: FocusEvent) => {
         const activeEl = e.target as HTMLElement
         if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
-        
+
         clearTimeout(scrollTimeout)
         scrollTimeout = setTimeout(() => {
           const scrollable = getScrollableAncestor(activeEl)
@@ -344,7 +344,7 @@ export function App() {
 
             const activeEl = document.activeElement as HTMLElement
             if (!activeEl || (activeEl.tagName !== 'INPUT' && activeEl.tagName !== 'TEXTAREA')) return
-            
+
             setIsKeyboardVisible(true)
             const scrollable = getScrollableAncestor(activeEl)
             if (scrollable) {
@@ -359,10 +359,10 @@ export function App() {
               const minPadding = Math.min(120, viewportHeight * 0.25)
               const maxPadding = viewportHeight * 0.6
               const targetPadding = Math.max(minPadding, Math.min(computedPadding, maxPadding))
-              
+
               scrollable.style.paddingBottom = `${targetPadding}px`
               scrollable.dataset.kbPadded = 'true'
-              
+
               setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
               setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)
             }
@@ -380,7 +380,7 @@ export function App() {
           keyboardShowSub = await Keyboard.addListener('keyboardWillShow', info => updateScroll(info.keyboardHeight))
           keyboardDidShowSub = await Keyboard.addListener('keyboardDidShow', info => updateScroll(info.keyboardHeight))
           keyboardHideSub = await Keyboard.addListener('keyboardWillHide', handleFocusOut)
-          
+
           if (isIos || isModernAndroid) {
             window.visualViewport?.addEventListener('resize', updateScrollFromViewport)
             window.visualViewport?.addEventListener('scroll', updateScrollFromViewport)
@@ -391,7 +391,7 @@ export function App() {
         }
       }
 
-      ;(window as any)._kbFixCleanup = () => {
+      ; (window as any)._kbFixCleanup = () => {
         if (focusInHandler) document.removeEventListener('focusin', focusInHandler)
         if (focusOutHandler) document.removeEventListener('focusout', focusOutHandler)
         keyboardShowSub?.remove()
@@ -421,7 +421,7 @@ export function App() {
     <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
       {/* Background Decorative Elements */}
       <div className="bg-grid opacity-[0.2] dark:opacity-[0.1]" />
-      
+
       <div
         ref={scrollContainerRef}
         className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-transparent"
@@ -496,8 +496,8 @@ export function App() {
       {/* Bottom Navigation Bar - Floating iOS Pill style */}
       <nav className={bottomNavClassName} style={{ bottom: 'calc(1.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))', transform: bottomNavTransform }}>
         <div className="flex items-center justify-between">
-          
-          <button 
+
+          <button
             className={`flex flex-col items-center justify-center flex-1 py-2.5 rounded-2xl transition-all ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
             onClick={() => { setView('dictionary'); scrollToTop() }}
           >
@@ -509,7 +509,7 @@ export function App() {
             <span className={`text-[10px] font-bold ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted'}`}>Dict</span>
           </button>
 
-          <button 
+          <button
             className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all ${view === 'translate' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
             onClick={() => setView('translate')}
           >
@@ -521,7 +521,7 @@ export function App() {
             </div>
             <span className={`text-[10px] font-bold ${view === 'translate' ? 'text-accent' : 'text-foreground-muted'}`}>Image</span>
           </button>
-          
+
           <button
             onClick={() => {
               setView('settings')
@@ -547,7 +547,7 @@ export function App() {
 
 
       {toastMessage && (
-        <div 
+        <div
           className="fixed left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-auto cursor-pointer"
           style={{ bottom: 'calc(7.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}
           onClick={() => { if (status === 'available') { openModal(); clearToast(); } }}

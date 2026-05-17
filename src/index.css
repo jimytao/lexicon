@@ -7,7 +7,7 @@
   --color-ai-bg: #F5F7FF;
   --color-ai-text: #4F46E5;
   --color-ai-dot: #818CF8;
-  
+
   /* Raycast-inspired Palette */
   --color-background: #FFFFFF;
   --color-background-soft: #F9FAFB;
@@ -17,7 +17,7 @@
   --color-accent-soft: #EEF2FF;
   --color-border: #F1F5F9;
   --color-border-strong: #E2E8F0;
-  
+
   --radius-xl: 1.25rem;
   --radius-2xl: 1.75rem;
   --radius-3xl: 2.25rem;
@@ -32,13 +32,14 @@
   --color-accent-soft: #1E1B4B;
   --color-border: #141414;
   --color-border-strong: #1F1F1F;
-  
+
   --color-ai-bg: #0F111A;
   --color-ai-text: #A5B4FC;
 }
 
 /* Base Styles */
-html, body {
+html,
+body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -47,17 +48,35 @@ html, body {
   min-height: 100vh;
 }
 
-.dark html, .dark body {
+.dark html,
+.dark body {
   background-color: var(--color-background);
 }
 
 /* Safe area utilities — iOS Notch / Android Punch-hole */
-.pt-safe { padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
-.pb-safe { padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
-.mt-safe { margin-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
-.mb-safe { margin-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)); }
-.top-safe { top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)); }
-.pb-nav-safe { padding-bottom: calc(6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+.pt-safe {
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.mt-safe {
+  margin-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+}
+
+.mb-safe {
+  margin-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.top-safe {
+  top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+}
+
+.pb-nav-safe {
+  padding-bottom: calc(6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
 
 /* Offset for elements that must stick below the app header (h-14 + pb-4 = 72px + safe-area) */
 .top-header-offset {
@@ -66,20 +85,20 @@ html, body {
 
 /* Premium Segmented Control Styles */
 .segmented-control {
-  background-color: rgba(0,0,0,0.04);
+  background-color: rgba(0, 0, 0, 0.035);
   padding: 3px;
-  border-radius: 14px;
+  border-radius: 16px; /* Perfect capsule rounding for slim pills */
   position: relative;
   display: flex;
   align-items: center;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--color-border);
 }
 
 .dark .segmented-control {
-  background-color: rgba(255,255,255,0.04);
-  border-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.03);
 }
 
 .segmented-control-slider {
@@ -87,16 +106,26 @@ html, body {
   left: 3px;
   height: calc(100% - 6px);
   background-color: var(--color-background);
-  border-radius: 11px;
+  border-radius: 13px; /* Concentric outer rounding alignment */
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--color-border);
 }
 
 .dark .segmented-control-slider {
   background-color: #1A1A1A;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  border-color: rgba(255,255,255,0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Invisible Touch-Target Expansion (Accessibility Compliance) */
+.segmented-control button {
+  position: relative;
+}
+.segmented-control button::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0; /* Vertically expands the clickable region to 44px+ */
 }
 
 /* Neo-Glass & Lighting Utilities - Major Revamp */
@@ -106,7 +135,7 @@ html, body {
   -webkit-backdrop-filter: blur(28px) saturate(200%);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: var(--radius-2xl);
-  box-shadow: 
+  box-shadow:
     0 12px 40px -12px rgba(31, 38, 135, 0.15),
     inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
@@ -114,7 +143,7 @@ html, body {
 .dark .glass {
   background: linear-gradient(135deg, rgba(20, 20, 24, 0.8) 0%, rgba(20, 20, 24, 0.4) 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
+  box-shadow:
     0 12px 40px -12px rgba(0, 0, 0, 0.6),
     inset 0 1px 1px rgba(255, 255, 255, 0.08);
 }
@@ -134,12 +163,16 @@ html, body {
 
 .dark .bg-grid {
   background-image:
-    linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-foreground-muted);
   opacity: 0.2;
@@ -148,13 +181,19 @@ html, body {
 
 /* Input Zoom fix */
 @supports (-webkit-touch-callout: none) {
-  input, select, textarea { font-size: 16px !important; }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Animation Utilities */
 .hover-lift {
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
 }
+
 .hover-lift:hover {
   transform: translateY(-2px);
 }
@@ -163,9 +202,11 @@ html, body {
 .perf-mode {
   background-image: none !important;
 }
+
 .perf-mode .bg-grid {
   display: none !important;
 }
+
 .perf-mode .glass {
   background: var(--color-background) !important;
   backdrop-filter: none !important;
@@ -173,6 +214,7 @@ html, body {
   border-bottom: 1px solid var(--color-border) !important;
   box-shadow: none !important;
 }
+
 /* We globally remove box-shadows as they cause heavy repaint on older devices, 
    but we DO NOT remove animations and transitions (like transforms and opacity changes), 
    which are hardware-accelerated and improve UX. */
