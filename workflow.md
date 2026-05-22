@@ -49,6 +49,15 @@ npm run tauri:build
 > - **手动签名**：
 >   `npx tauri signer sign -f src-tauri/lexicon.key -p <PASSWORD> <EXE_PATH>`
 
+> [!WARNING]
+> **`TAURI_SIGNING_PRIVATE_KEY` 的值必须是私钥文件的完整内容（base64 字符串），而不是文件路径字符串。**
+> 如果你把它设置为文件路径（如 `"src-tauri/lexicon.key"`），Tauri 会将路径字符串本身当作 base64 私钥来解析，导致签名静默失败、不生成 `.sig` 文件。
+> 正确做法是先读取文件内容：
+> ```powershell
+> $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "src-tauri/lexicon.key" -Raw
+> ```
+> 如果 `npm run tauri:build` 完成后在 `src-tauri/target/release/bundle/nsis/` 目录下**没有生成 `.sig` 文件**，说明签名失败，需要用上方的手动签名命令补签。
+
 **Android (Capacitor / Gradle)**
 构建前确保前端产物已同步，然后进入 `android` 目录执行 Gradle 任务：
 ```bash
@@ -65,6 +74,21 @@ iOS 端无须本地编译！本仓库配置了 GitHub Actions (`.github/workflow
 
 ## 4. 签名与更新检测文件同步 (Signing & Version Manifest)
 **Windows 签名同步**：Tauri 在打包时会自动使用本地环境变量（如 `TAURI_PRIVATE_KEY`）生成 `.sig` 签名文件。请**务必**读取生成的最新签名文件（例如 `src-tauri/target/release/bundle/nsis/Lexicon_X.X.X_x64-setup.exe.sig`）的文本内容，并将该长字符串更新到根目录 `version.json` 中的 `platforms["windows-x86_64"].signature` 字段。
+
+> [!WARNING]
+> **写入 `version.json` 时必须使用无 BOM 的 UTF-8 编码。**
+> PowerShell 的 `[System.IO.File]::WriteAllText(path, content, [System.Text.Encoding]::UTF8)` 以及 `Set-Content -Encoding UTF8` **默认会添加 UTF-8 BOM（EF BB BF）**。
+> Tauri 更新器使用 Rust 的 `serde_json` 解析 `version.json`，该解析器**严格不接受 BOM**，会静默失败导致 `check()` 返回 `null`，最终用户看到"下载错误"。
+> 正确写法（PowerShell）：
+> ```powershell
+> $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+> [System.IO.File]::WriteAllText("version.json", $content, $utf8NoBom)
+> ```
+> 写入后可用以下命令验证：
+> ```powershell
+> $b = [System.IO.File]::ReadAllBytes("version.json")
+> if ($b[0] -eq 0xEF) { Write-Error "BOM detected! Fix before pushing." }
+> ```
 
 **Android APK 签名**：确保 APK 已经通过 `apksigner` 与本地 Release Keystore 完成签名。密码请查阅本地 `.env.release`。
 
