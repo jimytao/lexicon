@@ -1,11 +1,11 @@
-{
-    "version": "0.7.15",
-    "notes": "本次更新彻底重构了全局圆角层级，落地了完全一致的 Pill 胶囊几何体系；同时更新了官方布局指南，确立了触控热区扩充的最佳实践。",
-    "pub_date": "2026-05-17T04:00:00Z",
+﻿{
+    "version": "0.7.16",
+    "notes": "AI 模式下发现输入错误并自动纠正时，「你输入的是」一行由整句打删除线升级为细粒度差异视图，精确展示哪些词被删改、哪些词为新增，大幅提升可读性。",
+    "pub_date": "2026-05-22T15:18:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTZrQStsZTBWS3Ryc0gvSE45VUxYUlZwZkZHUEpJZmFDSGxQU3BwMlRrMHRlWWhGUlRJNUVVbU9lMUVIbWpHUG1kSGJzOUxvdTI0VXBRWGJ5VjhKNndjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4OTkwMzg0CWZpbGU6TGV4aWNvbl8wLjcuMTVfeDY0LXNldHVwLmV4ZQoySmppUUFsU0ROMzRlcUYyYTg3ZmZSWXNvRUp4aUhkczRVOE05WTNpVU5GaHFFZ0JmS25KdXhvS0xhNWNnRU1VSjBKYUlKSGZ6RkJJSmlhZ1gwUGRBdz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.15/Lexicon_0.7.15_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXg2Q2NLdlFpMEg5cEVGaDU3dW9HWXJra3Q0a0x2WUJVR1pIY2V3TFF4OUpHQnM4bEhqUFRuVmExV01RaEkxcWpLUDZmMmdUTHdPT1pGVDlEMGZXQmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NDYzNjA2CWZpbGU6TGV4aWNvbl8wLjcuMTZfeDY0LXNldHVwLmV4ZQpHY056Z3NwTG1SQVI3VUcrbFJQcXhUeFdER0F3ZmtEK2wwN09ueS9odWMzMENMWTNPKzdKWkxPS2hTRUtFK1lYaGh6U25URElDdENJRUEyaXUvNGlCQT09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.16/Lexicon_0.7.16_x64-setup.exe"
         }
     }
 }
