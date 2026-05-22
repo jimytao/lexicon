@@ -10,6 +10,7 @@ import { SynonymList } from './AiSection/SynonymList'
 import { PracticeSection } from './AiSection/PracticeSection'
 import { MnemonicCard } from './AiSection/MnemonicCard'
 import { AiChatBox } from './AiSection/AiChatBox'
+import { DiffText } from './DiffText'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 
@@ -53,7 +54,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
           <WordHeader word={aiFullResult.correctForm || word} phonetic={aiFullResult.phonetic} pos={aiFullResult.pos} />
           {aiFullResult.correctForm && aiFullResult.correctForm.toLowerCase() !== word.toLowerCase() && (
             <p className="text-xs text-gray-400 dark:text-gray-500 -mt-3 mb-3">
-              你输入的是 <span className="line-through text-red-400 dark:text-red-500">{word}</span>
+              你输入的是 <DiffText original={word} corrected={aiFullResult.correctForm} />
             </p>
           )}
 

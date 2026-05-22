@@ -1,5 +1,6 @@
 import type { PhraseResult } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
+import { DiffText } from './DiffText'
 import { ExampleList } from './InstantSection/ExampleList'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
 import { AiChatBox } from './AiSection/AiChatBox'
@@ -33,7 +34,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }:
         <>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-snug">{phraseResult.correctForm}</h1>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-            你输入的是 <span className="line-through text-red-400 dark:text-red-500">{phrase}</span>
+            你输入的是 <DiffText original={phrase} corrected={phraseResult.correctForm} />
           </p>
         </>
       ) : (

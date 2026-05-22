@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-05-21 — v0.7.16 AI 纠错差异高亮 (Granular Diff Highlight)
+
+### 概述
+AI 模式下发现输入错误并自动纠正时，"你输入的是"一行由整句打删除线升级为细粒度差异视图，精确展示哪些词被删改、哪些词为新增，大幅提升可读性。
+
+---
+
+### 1. 新增：`DiffText` 差异渲染组件 (`src/components/ResultView/DiffText.tsx`)
+- **LCS 差异算法**：基于最长公共子序列（LCS）对 `original` 与 `corrected` 进行 token 级对比，输出 `equal` / `delete` / `insert` 三类片段。
+- **智能分词**：含空格的文本按词粒度切分（保留空白符），无空格文本（中文等）自动降级为字符粒度。
+- **差异着色**：
+  - 删除/被替换部分 → 红色删除线 (`line-through text-red-400`)
+  - 新增/替换后部分 → 绿色字体 (`text-green-500`)
+  - 保持不变部分 → 普通样式
+
+### 2. 修复：词组/句子视图 (`PhraseView.tsx`)
+- 原"你输入的是"行整句红色删除线替换为 `<DiffText>` 组件，精准标注出变更位置。
+
+### 3. 修复：单词视图 (`AiFullView.tsx`)
+- 同步替换整词删除线为 `<DiffText>` 组件，拼写错误时逐字符高亮差异。
+
+---
+
 ## 2026-05-17 — v0.7.15 全局圆角美化与胶囊化设计规范落地 (Capsule Aesthetics & Guidelines)
 
 ### 概述
