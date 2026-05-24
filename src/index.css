@@ -21,6 +21,8 @@
   --radius-xl: 1.25rem;
   --radius-2xl: 1.75rem;
   --radius-3xl: 2.25rem;
+
+  --breakpoint-3xl: 1920px;
 }
 
 .dark {
@@ -35,6 +37,11 @@
 
   --color-ai-bg: #0F111A;
   --color-ai-text: #A5B4FC;
+}
+
+.mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 /* Base Styles */

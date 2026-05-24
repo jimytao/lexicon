@@ -1,17 +1,18 @@
 import type { TextBlock } from '../../types'
+import { BlockStylePanel } from './BlockStylePanel'
 
 interface Props {
   blocks: TextBlock[]
   onUpdateTranslation: (index: number, translation: string) => void
   onUpdateBlock?: (index: number, partial: Partial<TextBlock>) => void
   selectedIndex?: number
-  onSelect?: (index: number) => void
+  onSelect?: (index: number, source?: 'canvas' | 'list') => void
   onDeselect?: () => void
   onDrawL1?: (index: number) => void
 }
 
 export function TranslationList({
-  blocks, onUpdateTranslation,
+  blocks, onUpdateTranslation, onUpdateBlock,
   selectedIndex, onSelect, onDrawL1,
 }: Props) {
   if (blocks.length === 0) {
@@ -28,7 +29,7 @@ export function TranslationList({
           <div
             key={i}
             id={`block-item-${i}`}
-            onClick={(e) => { e.stopPropagation(); onSelect?.(i) }}
+            onClick={(e) => { e.stopPropagation(); onSelect?.(i, 'list') }}
             className={`rounded-lg border p-3 cursor-pointer transition-colors ${
               isSelected
                 ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
@@ -86,6 +87,13 @@ export function TranslationList({
               placeholder="输入译文"
               className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none overflow-hidden"
             />
+
+            {isSelected && onUpdateBlock && (
+              <BlockStylePanel
+                block={block}
+                onChange={(partial) => onUpdateBlock(i, partial)}
+              />
+            )}
 
           </div>
         )

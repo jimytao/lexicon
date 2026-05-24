@@ -69,7 +69,7 @@ function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>): stri
   }
   
   if (isEnabled('synonyms')) {
-    schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "1句话，说明与主词的情感色彩、使用场景或强度差异"\n    }\n  ]`
+    schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "1句话，说明与主词的情感色彩、使用场景或强度差异"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "反义词",\n      "distinction": "1句话，说明与主词的对比含义、使用场景或词义强弱差异"\n    }\n  ]`
   }
   
   schema += `\n}`
@@ -87,7 +87,7 @@ Rules:
 - meanings array length must match the number of meanings provided in the user message
 - scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style
 ${isEnabled('etymology') ? '- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)\n- etymology.story: 1-2 sentences max\n- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)' : ''}
-${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest to most distant in meaning\n- synonyms distinction: 1 sentence each' : ''}
+${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest to most distant in meaning\n- synonyms distinction: 1 sentence each\n- antonyms: provide 3-5 words, ordered from most direct contrast to weaker contrast\n- antonyms distinction: 1 sentence each' : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
 - Never output anything outside the JSON object`
@@ -190,6 +190,18 @@ export async function analyzeWord(
   throw new Error(`AI returned invalid JSON: ${cleaned.slice(0, 200)}`)
 }
 
+function combineSignals(userSignal?: AbortSignal, timeoutMs: number = 60000): AbortSignal {
+  const ctrl = new AbortController()
+  const tid = setTimeout(() => ctrl.abort(new DOMException('TimeoutError', 'TimeoutError')), timeoutMs)
+  if (userSignal) {
+    userSignal.addEventListener('abort', () => {
+      clearTimeout(tid)
+      ctrl.abort(userSignal.reason)
+    }, { once: true })
+  }
+  return ctrl.signal
+}
+
 async function callApi(
   systemPrompt: string,
   userPrompt: string,
@@ -200,8 +212,7 @@ async function callApi(
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   // 60s hard cap so requests never hang indefinitely
-  const timeout = AbortSignal.timeout(60000)
-  const merged = signal ? AbortSignal.any([signal, timeout]) : timeout
+  const merged = combineSignals(signal, 60000)
 
   const response = await fetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
@@ -342,7 +353,7 @@ function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, l
     schema += `,\n  "etymology": {\n    "parts": [{ "segment": "构词成分或缩写来源", "meaning": "含义" }],\n    "story": "1-2句话说明${etymLabel}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
-    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }]`
+    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }],\n  "antonyms": [{ "word": "反义词", "distinction": "与主词的对比差异" }]`
   }
   if (isEnabled('examples')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
@@ -382,7 +393,7 @@ Rules:
   - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
   - Explain the specific historical or social context behind the word.
   - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
-- Provide 3-5 ${isFull ? 'synonyms and 3-5 examples' : 'examples'}.
+- Provide 3-5 ${isFull ? 'synonyms, 3-5 antonyms, and 3-5 examples' : 'examples'}.
 - Keep everything concise.`
 }
 
@@ -721,8 +732,19 @@ CRITICAL RULES FOR ACCURATE POSITIONING:
    - Identify its grid position (e.g., "top-left area", "center-right area")
    - Read ONLY the text visible at that exact location
    - Verify: "The text at [grid position] is [text]" before proceeding
-3. Never assign one region's text to another region's coordinates
-4. For polygon shapes: trace ONLY the inner smooth boundary, ignore decorative spikes
+   - Bounding boxes (detectedBbox) MUST tightly enclose ONLY the dialogue bubble or text block, leaving no excessive outer margins.
+3. Recommend the optimal 'detectedMaskShape' based on these rules:
+   - 'ellipse': Best for standard round, oval, or elliptical speech bubbles. This is the default.
+   - 'circle': Best for perfectly round or circular bubbles.
+   - 'capsule': Best for narrow, vertically elongated, or horizontally elongated capsules.
+   - 'rect': Best for sharp rectangular signs, notes, or square bubbles.
+   - 'rounded-rect': Best for captions, narration boxes, or cards with rounded corners.
+   - 'diamond': Best for diamond-shaped background patterns or special bubbles.
+   - 'burst': Best for highly expressive starbursts, explosions, or action exclamation bubbles.
+   - 'none': MUST be chosen for Sound Effects (SFX), graffiti, or text overlays drawn directly over complex artwork/illustrations to avoid erasing and destroying the underlying background illustration.
+   - 'polygon': If the bubble has a complex non-geometric outline, recommend 'polygon' and provide clockwise vertices in 'detectedPolygon'.
+4. Never assign one region's text to another region's coordinates
+5. For polygon shapes: trace ONLY the inner smooth boundary, ignore decorative spikes
 
 Return ONLY a valid JSON object. No markdown, no explanation, no extra text.
 
@@ -736,6 +758,7 @@ Return ONLY a valid JSON object. No markdown, no explanation, no extra text.
       "direction": "vertical",
       "detectedBbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.18 },
       "detectedPolygon": [{"x": 0.11, "y": 0.09}, {"x": 0.18, "y": 0.05}, {"x": 0.30, "y": 0.05}, {"x": 0.37, "y": 0.10}, {"x": 0.35, "y": 0.20}, {"x": 0.18, "y": 0.23}],
+      "detectedMaskShape": "ellipse",
       "visualReference": "top-left speech bubble with spiky tail"
     }
   ]
@@ -747,6 +770,7 @@ Field rules:
 - direction: "vertical" | "horizontal"
 - detectedBbox: normalized 0-1 coordinates of where text is actually located
 - detectedPolygon: clockwise vertices of inner boundary for bubble/caption only
+- detectedMaskShape: "ellipse" | "rect" | "rounded-rect" | "circle" | "capsule" | "diamond" | "burst" | "polygon" | "none"
 - visualReference: brief description using grid position for verification
 - Order regions top-to-bottom, then left-to-right
 - If no text found: {"regions": []}
@@ -819,6 +843,7 @@ async function callImageTranslateAPI(
       direction: region.direction,
       bbox: region.detectedBbox,
       polygon: region.detectedPolygon,
+      maskShape: region.detectedMaskShape,
       // Default values for L1/L2 properties
       l1ColorHue: 0,
       l1ColorSaturation: 1,

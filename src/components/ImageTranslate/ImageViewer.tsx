@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, ReactNode } from 'react'
+import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, ReactNode, useState } from 'react'
 
 interface Props {
   children: ReactNode
@@ -18,6 +18,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
 
   const scaleRef = useRef(1)
   const offsetRef = useRef({ x: 0, y: 0 })
+  const [currentScale, setCurrentScale] = useState(1)
 
   // Panning state
   const isPanningRef = useRef(false)
@@ -31,6 +32,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
     const { x, y } = offsetRef.current
     const s = scaleRef.current
     innerRef.current.style.transform = `translate(${x}px, ${y}px) scale(${s})`
+    setCurrentScale(s)
     onScaleChange?.(s)
   }
 
@@ -46,8 +48,19 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
     let scale = 1
     if (naturalH > containerH && containerH > 0) scale = containerH / naturalH
     if (naturalW * scale > containerW && containerW > 0) scale = containerW / naturalW
+    
+    // Calculate centered offsets when scaled dimensions are smaller than container dimensions
+    let ox = 0
+    let oy = 0
+    if (naturalW * scale < containerW && containerW > 0) {
+      ox = (containerW - (naturalW * scale)) / 2
+    }
+    if (naturalH * scale < containerH && containerH > 0) {
+      oy = (containerH - (naturalH * scale)) / 2
+    }
+    
     scaleRef.current = scale
-    offsetRef.current = { x: 0, y: 0 }
+    offsetRef.current = { x: ox, y: oy }
     applyTransform()
   }
 
@@ -56,28 +69,41 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
     getScale: () => scaleRef.current,
   }))
 
-  // ── Ctrl+Wheel zoom (also catches touchpad pinch which browsers send as ctrlKey+wheel) ──
+  // ── Scroll Wheel Pan & Zoom (No keys required for panning, Ctrl+Wheel to Zoom) ──
   const handleWheel = useCallback((e: WheelEvent) => {
-    if (!e.ctrlKey && !e.metaKey) return  // plain scroll → let browser handle normally
-    e.preventDefault()
     const container = containerRef.current
     if (!container) return
 
-    const rect = container.getBoundingClientRect()
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      const rect = container.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
 
-    const factor = e.deltaY > 0 ? 0.88 : 1.14
-    const newScale = Math.max(0.5, Math.min(6, scaleRef.current * factor))
-    const ratio = newScale / scaleRef.current
+      const factor = e.deltaY > 0 ? 0.88 : 1.14
+      const newScale = Math.max(0.2, Math.min(8, scaleRef.current * factor))
+      const ratio = newScale / scaleRef.current
 
-    offsetRef.current = {
-      x: mx - (mx - offsetRef.current.x) * ratio,
-      y: my - (my - offsetRef.current.y) * ratio,
+      offsetRef.current = {
+        x: mx - (mx - offsetRef.current.x) * ratio,
+        y: my - (my - offsetRef.current.y) * ratio,
+      }
+      scaleRef.current = newScale
+      applyTransform()
+    } else {
+      // In compact (list view) mode, let the page handle scrolling naturally
+      if (compact) return
+      // Regular scroll: perform natural vertical or horizontal panning
+      e.preventDefault()
+      if (e.shiftKey) {
+        offsetRef.current.x -= e.deltaY
+      } else {
+        offsetRef.current.y -= e.deltaY
+        offsetRef.current.x -= e.deltaX
+      }
+      applyTransform()
     }
-    scaleRef.current = newScale
-    applyTransform()
-  }, [])
+  }, [compact])
 
   // ── Ctrl + drag pan (PC) ──
   const handleMouseDown = useCallback((e: MouseEvent) => {
@@ -182,6 +208,41 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
     }
   }, [handleWheel, handleMouseDown, handleMouseMove, handleMouseUp, handleTouchStart, handleTouchMove, handleTouchEnd])
 
+  // Auto-fit on mount, layout changes, or browser window resizing
+  useEffect(() => {
+    const handleResize = () => {
+      resetTransform()
+    }
+    const timer = setTimeout(handleResize, 150)
+    window.addEventListener('resize', handleResize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [children])
+
+
+  // Immersive floating control actions
+  const zoomIn = () => {
+    scaleRef.current = Math.min(6, scaleRef.current * 1.25)
+    applyTransform()
+  }
+
+  const zoomOut = () => {
+    scaleRef.current = Math.max(0.15, scaleRef.current / 1.25)
+    applyTransform()
+  }
+
+  const zoomActual = () => {
+    scaleRef.current = 1
+    offsetRef.current = { x: 0, y: 0 }
+    applyTransform()
+  }
+
+  const zoomFit = () => {
+    resetTransform()
+  }
+
   return (
     <div
       ref={containerRef}
@@ -190,15 +251,57 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
     >
       <div
         ref={innerRef}
-        style={{ transformOrigin: '0 0', position: 'relative', display: 'inline-block', width: '100%' }}
+        style={{ transformOrigin: '0 0', position: 'relative', display: 'inline-block' }}
       >
         {children}
       </div>
 
+      {/* Floating Glassmorphic Zoom Controls for Novice Users */}
+      {!compact && (
+        <div className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-2xl shadow-lg border border-gray-200/50 dark:border-gray-800/50">
+          <button
+            type="button"
+            onClick={zoomOut}
+            className="w-7 h-7 flex items-center justify-center rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 active:scale-95 transition-all font-bold text-base"
+            title="缩小"
+          >
+            －
+          </button>
+          <span className="text-[11px] font-mono font-bold text-gray-600 dark:text-gray-300 min-w-[42px] text-center">
+            {Math.round(currentScale * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={zoomIn}
+            className="w-7 h-7 flex items-center justify-center rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 active:scale-95 transition-all font-bold text-base"
+            title="放大"
+          >
+            ＋
+          </button>
+          <div className="w-[1px] h-4 bg-gray-200 dark:bg-gray-700 mx-1.5" />
+          <button
+            type="button"
+            onClick={zoomActual}
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 active:scale-95 transition-all"
+            title="1:1 原始分辨率"
+          >
+            1:1
+          </button>
+          <button
+            type="button"
+            onClick={zoomFit}
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95 transition-all"
+            title="自适应画布大小"
+          >
+            自适应
+          </button>
+        </div>
+      )}
+
       {/* Zoom hint */}
       {!compact && (
-        <div className="absolute bottom-2 right-2 text-[10px] text-gray-400 dark:text-gray-500 pointer-events-none select-none bg-white/70 dark:bg-gray-900/70 px-1.5 py-0.5 rounded">
-          Ctrl+滚轮/双指捏合缩放 · Ctrl+拖拽平移
+        <div className="absolute bottom-3 right-3 text-[10px] text-gray-400 dark:text-gray-500 pointer-events-none select-none bg-white/70 dark:bg-gray-900/70 px-2 py-1 rounded-md">
+          鼠标滚轮平移 · Ctrl+滚轮缩放 · 双指触控捏合
         </div>
       )}
     </div>

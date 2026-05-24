@@ -1,11 +1,11 @@
 {
-    "version": "0.7.16",
-    "notes": "AI 模式下发现输入错误并自动纠正时，「你输入的是」一行由整句打删除线升级为细粒度差异视图，精确展示哪些词被删改、哪些词为新增，大幅提升可读性。",
-    "pub_date": "2026-05-22T15:18:00Z",
-    "platforms": {
-        "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXg2Q2NLdlFpMEg5cEVGaDU3dW9HWXJra3Q0a0x2WUJVR1pIY2V3TFF4OUpHQnM4bEhqUFRuVmExV01RaEkxcWpLUDZmMmdUTHdPT1pGVDlEMGZXQmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NDYzNjA2CWZpbGU6TGV4aWNvbl8wLjcuMTZfeDY0LXNldHVwLmV4ZQpHY056Z3NwTG1SQVI3VUcrbFJQcXhUeFdER0F3ZmtEK2wwN09ueS9odWMzMENMWTNPKzdKWkxPS2hTRUtFK1lYaGh6U25URElDdENJRUEyaXUvNGlCQT09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.16/Lexicon_0.7.16_x64-setup.exe"
-        }
-    }
+    "version":  "0.7.17",
+    "notes":  "代码审查修复 7 处 Bug：注册 3xl 断点使超宽屏 1800px 布局上限生效；修复魔棒模式拦截多边形绘制点击的事件优先级冲突；修复 Compact 列表视图滚轮被拦截导致翻译列表无法滚动；清理底部导航被行内样式覆盖的死代码；修复手动添加气泡时字体下拉 ID 全相同的 a11y 冲突；修复进入嵌字模式不重置手机画布 Tab；导出按钮新增 loading 防重与旋转指示器。",
+    "pub_date":  "2026-05-24T06:14:00Z",
+    "platforms":  {
+                      "windows-x86_64":  {
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTczbXYySmJUQlhhYjQ0SW5tZmYxL1d6NzdKbi9CRXRqRlplUS91V3FycmdETFJXemJuQ1ZWNjliZytRdU1zSGIraUFOeFpEYjhTNnlOa25QMGx2UmdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NjAzNTM4CWZpbGU6TGV4aWNvbl8wLjcuMTdfeDY0LXNldHVwLmV4ZQpmbFdBMFFWczVWakVjOFYyTXUwSlJQTGQ5Skc4SkNmQnlZZDhMcVpLSGJTT3JvS1hvL1Z4MVMycEdEQlBZUDk1NUtZbDg0dU11SnpnUkxWYkFYK2dDdz09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.17/Lexicon_0.7.17_x64-setup.exe"
+                                         }
+                  }
 }

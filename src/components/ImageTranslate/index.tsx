@@ -4,8 +4,8 @@ import { aiImageTranslateFast, aiImageTranslateFull } from '../../services/ai'
 import { TranslationList } from './TranslationList'
 import { ImageEditor, type ImageEditorHandle } from './ImageEditor'
 import { ImageViewer, type ImageViewerHandle } from './ImageViewer'
-import { BlockOverlay } from './BlockOverlay'
 import { ExportButton } from './ExportButton'
+import { BlockStylePanel } from './BlockStylePanel'
 
 import type { TextBlock } from '../../types'
 
@@ -89,6 +89,7 @@ export function ImageTranslateView() {
   const [embedLoading, setEmbedLoading] = useState(false)
   const [imageCollapsed, setImageCollapsed] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [mobileTab, setMobileTab] = useState<'editor' | 'list'>('editor')
 
   const abortRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -189,6 +190,7 @@ export function ImageTranslateView() {
   const handleEnterEmbed = useCallback(async () => {
     if (bboxReady) {
       setEmbedMode(true)
+      setMobileTab('editor')
       scrollStickyToPinned()
       return
     }
@@ -203,6 +205,7 @@ export function ImageTranslateView() {
       const merged = mergePhase1Translations(p2Blocks, blocks)
       setBlocks(merged, true)
       setEmbedMode(true)
+      setMobileTab('editor')
       viewerRef.current?.resetTransform()
       scrollStickyToPinned(100)
     } catch (err) {
@@ -212,28 +215,14 @@ export function ImageTranslateView() {
     }
   }, [bboxReady, storedBase64, sourceLang, targetLang, blocks, setBlocks, scrollStickyToPinned])
 
-  const handleSelect = useCallback((index: number | null) => {
+  const handleSelect = useCallback((index: number | null, source?: 'canvas' | 'list') => {
     setSelectedIndex(index)
     if (index === null || !listRef.current) return
+    if (source === 'list') return // Prevents erratic scroll jumping when user clicks the list item directly
     const elId = `block-item-${index}`
     const el = listRef.current.querySelector(`#${elId}`)
     if (!el) return
-    const sc = scrollContainerRef.current ?? findScrollContainer(el.parentElement)
-    if (!sc) return
-    scrollContainerRef.current = sc
-    // Show the full photo first, then position item just below its bottom edge
-    sc.scrollTo({ top: 0, behavior: 'instant' })
-    requestAnimationFrame(() => {
-      const scRect = sc.getBoundingClientRect()
-      const elRect = el.getBoundingClientRect()
-      const elTopRelative = sc.scrollTop + elRect.top - scRect.top
-      const stickyEl = stickyRef.current
-      const photoBottom = stickyEl
-        ? stickyEl.getBoundingClientRect().bottom - scRect.top
-        : 80  // fallback: approximate header height
-      const target = elTopRelative - photoBottom
-      sc.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
-    })
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [])
 
   const [drawPolygonForIndex, setDrawPolygonForIndex] = useState<number | null>(null)
@@ -243,7 +232,7 @@ export function ImageTranslateView() {
   const multiImage = images.length > 1
 
   return (
-    <div className="px-4 pt-safe pb-nav-safe space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 pt-safe pb-nav-safe space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Language + font selectors */}
       <div className="flex flex-wrap items-center gap-2 pt-4">
         <select
@@ -437,74 +426,168 @@ export function ImageTranslateView() {
               )}
 
               {embedMode ? (
-                /* ── 嵌字编辑模式 ── */
-                <div className="space-y-3">
-                   <div ref={stickyRef} className="sticky top-safe z-20 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 shadow-sm">
-                    {imageCollapsed ? (
-                      <button
-                        type="button"
-                        onClick={() => setImageCollapsed(false)}
-                        className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-b border-gray-100 dark:border-gray-800"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                        展开原图
-                      </button>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between pt-2 pb-1">
-                          <p className="text-xs text-gray-400 dark:text-gray-500">
-                            拖拽色框调整位置 · 拖拽控制点缩放 · 空白处画框新增 · 选中后点 × 删除
-                          </p>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            <button
-                              type="button"
-                              onClick={() => viewerRef.current?.resetTransform()}
-                              className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                              title="重置图片缩放和位置"
-                            >
-                              重置视图
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setImageCollapsed(true)}
-                              className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              收起
-                            </button>
+                /* ── 嵌字编辑模式 (响应式桌面两栏分立 + 移动端自适应分栏标签页切换) ── */
+                <div className="flex flex-col lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:h-[calc(100vh-140px)] lg:overflow-hidden lg:items-start lg:mt-2">
+                  
+                  {/* Segmented Tab Bar for Mobile Users */}
+                  <div className="flex p-0.5 rounded-xl bg-gray-100/60 dark:bg-gray-800/60 border border-gray-200/30 dark:border-gray-700/30 mb-3 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab('editor')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                        mobileTab === 'editor'
+                          ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      🎨 画布编辑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab('list')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                        mobileTab === 'list'
+                          ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      📝 译文与导出 ({blocks.length})
+                    </button>
+                  </div>
+
+                  {/* Left Column: Gorgeous Full-Height Canvas Editor */}
+                  <div className={`lg:flex lg:flex-col lg:h-full lg:overflow-hidden lg:bg-gray-50/40 lg:dark:bg-gray-900/10 lg:p-4 lg:rounded-2xl lg:border lg:border-gray-200/50 lg:dark:border-gray-800/40 w-full ${
+                    mobileTab === 'editor' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col'
+                  }`}>
+                    <div ref={stickyRef} className="sticky top-safe z-20 -mx-4 px-4 pb-2 bg-white dark:bg-gray-900 lg:relative lg:top-auto lg:z-auto lg:mx-0 lg:px-0 lg:pb-0 lg:bg-transparent lg:h-full lg:flex lg:flex-col lg:overflow-hidden w-full">
+                      {imageCollapsed ? (
+                        <button
+                          type="button"
+                          onClick={() => setImageCollapsed(false)}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-b border-gray-100 dark:border-gray-800 lg:hidden"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                          展开画布
+                        </button>
+                      ) : (
+                        <div className="lg:h-full lg:flex lg:flex-col lg:overflow-hidden flex flex-col">
+                          <div className="flex items-center justify-between pt-2 pb-1.5 lg:pt-0 lg:pb-2.5">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[70%]">
+                              双指拖拽/滚轮缩放 · 空白处画框新增 · 选中框后可修改样式或删除
+                            </p>
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                              <button
+                                type="button"
+                                onClick={() => viewerRef.current?.resetTransform()}
+                                className="text-[11px] px-2.5 py-1 rounded-md bg-gray-100 hover:bg-gray-200/80 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors font-bold shadow-sm"
+                                title="重置图片缩放和位置"
+                              >
+                                重置视图
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setImageCollapsed(true)}
+                                className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors lg:hidden"
+                              >
+                                收起
+                              </button>
+                            </div>
                           </div>
+                          
+                          <ImageViewer ref={viewerRef} className="h-[62vh] lg:max-h-none lg:flex-1 lg:h-full">
+                            <ImageEditor
+                              ref={editorRef}
+                              imageUrl={imageUrl!}
+                              blocks={blocks}
+                              fontFamily={fontFamily}
+                              selectedIndex={selectedIndex}
+                              onSelect={handleSelect}
+                              onUpdateBlock={(i, partial) => updateBlock(i, partial)}
+                              onDeleteBlock={deleteBlock}
+                              onAddBlock={addBlock}
+                              drawPolygonForIndex={drawPolygonForIndex}
+                              onPolygonDrawn={() => setDrawPolygonForIndex(null)}
+                            />
+                          </ImageViewer>
+
+                          {/* Floating Glassmorphic Editing Sheet for Mobile Canvas Selection */}
+                          {selectedIndex !== null && blocks[selectedIndex] && (
+                            <div className="mt-3 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200/60 dark:border-gray-800/60 rounded-xl shadow-xl space-y-2.5 animate-in slide-in-from-bottom-3 duration-300 lg:hidden z-30 max-h-[35vh] overflow-y-auto">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    编辑气泡 #{selectedIndex + 1}
+                                  </span>
+                                  {blocks[selectedIndex].original && (
+                                    <span className="text-[10px] text-gray-400 max-w-[120px] truncate" title={blocks[selectedIndex].original}>
+                                      ({blocks[selectedIndex].original})
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setDrawPolygonForIndex(selectedIndex)
+                                    }}
+                                    className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 transition-colors"
+                                  >
+                                    重绘遮罩
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedIndex(null)}
+                                    className="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 font-bold px-1.5"
+                                  >
+                                    关闭
+                                  </button>
+                                </div>
+                              </div>
+
+                              <textarea
+                                value={blocks[selectedIndex].translation}
+                                rows={2}
+                                onChange={(e) => updateBlock(selectedIndex, { translation: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+                                placeholder="输入译文..."
+                                className="w-full text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+
+                              <BlockStylePanel
+                                block={blocks[selectedIndex]}
+                                onChange={(partial: Partial<TextBlock>) => updateBlock(selectedIndex, partial)}
+                              />
+                            </div>
+                          )}
+
                         </div>
-                        <ImageViewer ref={viewerRef} className="max-h-[50vh]">
-                          <ImageEditor ref={editorRef} imageUrl={imageUrl!} blocks={blocks} fontFamily={fontFamily} />
-                          <BlockOverlay
-                            blocks={blocks}
-                            selectedIndex={selectedIndex}
-                            onSelect={handleSelect}
-                            onUpdateBlock={(i, partial) => updateBlock(i, partial)}
-                            onDeleteBlock={deleteBlock}
-                            onAddBlock={addBlock}
-                            drawPolygonForIndex={drawPolygonForIndex}
-                            onPolygonDrawn={() => setDrawPolygonForIndex(null)}
-                          />
-                        </ImageViewer>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
-                  <div className="pt-2 pb-1">
-                    <ExportButton editorRef={editorRef} />
+
+                  {/* Right Sidebar Column: Scrollable List & Advanced Style Tuning panel */}
+                  <div className={`mt-0 lg:flex lg:flex-col lg:h-full lg:overflow-y-auto lg:pr-1.5 space-y-4 w-full ${
+                    mobileTab === 'list' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col'
+                  }`}>
+                    <div className="bg-white dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-200/50 dark:border-gray-800/40 shadow-md">
+                      <ExportButton editorRef={editorRef} />
+                    </div>
+                    <div ref={listRef} className="flex-1">
+                      <TranslationList
+                        blocks={blocks}
+                        onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
+                        onUpdateBlock={updateBlock}
+                        selectedIndex={selectedIndex ?? undefined}
+                        onSelect={handleSelect}
+                        onDeselect={() => setSelectedIndex(null)}
+                        onDrawL1={handleDrawL1}
+                      />
+                    </div>
                   </div>
-                  <div ref={listRef}>
-                    <TranslationList
-                      blocks={blocks}
-                      onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
-                      onUpdateBlock={updateBlock}
-                      selectedIndex={selectedIndex ?? undefined}
-                      onSelect={handleSelect}
-                      onDeselect={() => setSelectedIndex(null)}
-                      onDrawL1={handleDrawL1}
-                    />
-                  </div>
+
                 </div>
               ) : (
                 /* ── 翻译列表模式 ── */

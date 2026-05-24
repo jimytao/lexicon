@@ -38,6 +38,7 @@ export function App() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true)
   const [isAtTop, setIsAtTop] = useState(true)
+  const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const lastScrollTopRef = useRef(0)
@@ -92,6 +93,14 @@ export function App() {
       return () => clearTimeout(timer)
     }
   }, [toastMessage, clearToast])
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     if (!scrollContainerRef.current) return
@@ -414,17 +423,17 @@ export function App() {
   const showAiFullView = searchSource === 'ai-full'
 
   const bottomNavVisible = isBottomNavVisible || isAtTop
-  const bottomNavClassName = `fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-transform duration-300 ease-out ${bottomNavVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-[140%] opacity-0 pointer-events-none'}`
-  const bottomNavTransform = `translateX(-50%) ${bottomNavVisible ? 'translateY(0)' : 'translateY(140%)'}`
+  const bottomNavClassName = `fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-all duration-300 ease-out ${bottomNavVisible || isLargeScreen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`
+  const bottomNavTransform = `translateX(-50%) ${bottomNavVisible || isLargeScreen ? 'translateY(0)' : 'translateY(140%)'}`
 
   return (
-    <div className={`min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
+    <div className={`min-h-screen bg-background text-foreground transition-colors duration-300 relative overflow-hidden ${performanceMode ? 'perf-mode' : ''}`}>
       {/* Background Decorative Elements */}
       <div className="bg-grid opacity-[0.2] dark:opacity-[0.1]" />
 
       <div
         ref={scrollContainerRef}
-        className="mx-auto max-w-2xl w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-transparent"
+        className={`mx-auto w-full h-screen overflow-y-auto relative pb-safe selection:bg-accent/10 bg-transparent ${view === 'translate' ? 'max-w-[92vw] lg:max-w-[90vw] xl:max-w-[85vw] 3xl:max-w-[1800px]' : 'max-w-2xl lg:max-w-3xl'}`}
       >
 
 
@@ -456,6 +465,7 @@ export function App() {
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}
+                    onGoToSettings={() => setView('settings')}
                   />
                 ) : showAiFullView ? (
                   <AiFullView
@@ -465,6 +475,7 @@ export function App() {
                     aiError={aiError}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
+                    onGoToSettings={() => setView('settings')}
                   />
                 ) : wordResult ? (
                   <ResultView
@@ -476,6 +487,7 @@ export function App() {
                     mode={mode}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
+                    onGoToSettings={() => setView('settings')}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center pt-32 text-foreground-muted">

@@ -28,24 +28,94 @@ interface AiStatusBarProps {
   status: AiStatus
   error: string | null
   onRetry: () => void
+  word?: string
+  onGoToSettings?: () => void
 }
 
-export function AiStatusBar({ status, error, onRetry }: AiStatusBarProps) {
+export function AiStatusBar({ status, error, onRetry, word, onGoToSettings }: AiStatusBarProps) {
   if (status === 'loading') {
     return (
-      <div className="flex items-center gap-2 mb-3 text-xs text-indigo-400 dark:text-indigo-400">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-        AI 解析中…
+      <div className="flex items-center gap-2 mb-3 text-xs text-indigo-500 dark:text-indigo-400 font-semibold animate-pulse">
+        <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400" />
+        AI 深度解析中，正在调遣语言模型…
       </div>
     )
   }
+
   if (status === 'error') {
+    const isConfigError = error?.toLowerCase().includes('config') || error?.toLowerCase().includes('api key') || error?.toLowerCase().includes('endpoint')
+
+    if (isConfigError) {
+      return (
+        <div className="my-4 rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-amber-600/10 p-6 backdrop-blur-xl shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+            <div className="space-y-1 flex-1">
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300">AI 服务配置未就绪</h3>
+              <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-400/80 mt-1">
+                当前尚未配置有效的 AI 密钥或接口地址。请前往设置页面配置您的 API 密钥，即可开启单词/词组「{word || '生僻词'}」的 AI 全量深度解析、助记词与情景会话。
+              </p>
+              <div className="flex items-center gap-3 pt-3">
+                {onGoToSettings && (
+                  <button
+                    onClick={onGoToSettings}
+                    className="text-xs font-bold px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                  >
+                    前往配置 (Settings)
+                  </button>
+                )}
+                <button
+                  onClick={onRetry}
+                  className="text-xs font-bold px-4 py-2 rounded-full border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/5 active:scale-95 transition-all cursor-pointer"
+                >
+                  重试 (Retry)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
-      <div className="flex items-center gap-2 mb-3 text-xs text-red-500">
-        <span>AI 解析失败：{error}</span>
-        <button onClick={onRetry} className="underline">重试</button>
+      <div className="my-4 rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/5 to-rose-600/10 p-6 backdrop-blur-xl shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="space-y-1 flex-1">
+            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-300">AI 解析「{word || '生僻词'}」遇到阻碍</h3>
+            <p className="text-xs leading-relaxed text-rose-800/80 dark:text-rose-400/80 font-mono select-all mt-1">
+              {error || '未知网络或接口错误'}
+            </p>
+            <div className="flex items-center gap-3 pt-3">
+              <button
+                onClick={onRetry}
+                className="text-xs font-bold px-4 py-2 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-95 text-white shadow-md shadow-rose-500/20 transition-all cursor-pointer"
+              >
+                再次尝试 (Retry)
+              </button>
+              {onGoToSettings && (
+                <button
+                  onClick={onGoToSettings}
+                  className="text-xs font-bold px-4 py-2 rounded-full border border-rose-500/30 text-rose-700 dark:text-rose-300 hover:bg-rose-500/5 active:scale-95 transition-all cursor-pointer"
+                >
+                  检查配置 (Check Settings)
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
+
   return null
 }
+

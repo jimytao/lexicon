@@ -15,9 +15,10 @@ interface PhraseViewProps {
   aiStatus: AiStatus
   aiError: string | null
   onRetry: () => void
+  onGoToSettings?: () => void
 }
 
-export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }: PhraseViewProps) {
+export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings }: PhraseViewProps) {
   const { modules } = useSettingsStore()
   const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
 
@@ -41,7 +42,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry }:
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 leading-snug">{phraseResult?.correctForm || phrase}</h1>
       )}
 
-      <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} />
+      <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={phrase} />
 
       {aiStatus === 'loading' && (
         <div className="space-y-4">

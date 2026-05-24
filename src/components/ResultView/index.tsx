@@ -22,6 +22,7 @@ interface ResultViewProps {
   mode: 'instant' | 'ai'
   onRetry: () => void
   onWordClick: (word: string) => void
+  onGoToSettings?: () => void
 }
 
 export function ResultView({
@@ -33,6 +34,7 @@ export function ResultView({
   mode,
   onRetry,
   onWordClick,
+  onGoToSettings,
 }: ResultViewProps) {
   const { modules } = useSettingsStore()
   const updateMnemonic = useResultStore(state => state.updateMnemonic)
@@ -45,7 +47,7 @@ export function ResultView({
       {/* AI Status & Loading state for AI mode */}
       {mode === 'ai' && (
         <div className="mb-4">
-          <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} />
+          <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={wordResult.word} />
           {aiStatus === 'loading' && (
             <div className="space-y-4">
               <SkeletonBlock lines={3} variant="card" />
@@ -82,8 +84,13 @@ export function ResultView({
                 </div>
               )
             case 'synonyms':
-              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.synonyms && (
-                <SynonymList key={module.id} synonyms={aiAnalysis.synonyms} onSynonymClick={onWordClick} />
+              return mode === 'ai' && aiStatus === 'success' && (aiAnalysis?.synonyms || aiAnalysis?.antonyms) && (
+                <SynonymList
+                  key={module.id}
+                  synonyms={aiAnalysis.synonyms}
+                  antonyms={aiAnalysis.antonyms}
+                  onSynonymClick={onWordClick}
+                />
               )
             case 'etymology':
               return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.etymology && (

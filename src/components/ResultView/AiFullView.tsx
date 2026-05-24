@@ -21,9 +21,10 @@ interface AiFullViewProps {
   aiError: string | null
   onRetry: () => void
   onWordClick: (word: string) => void
+  onGoToSettings?: () => void
 }
 
-export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick }: AiFullViewProps) {
+export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick, onGoToSettings }: AiFullViewProps) {
   const { modules } = useSettingsStore()
   const updateFullMnemonic = useResultStore(state => state.updateFullMnemonic)
 
@@ -36,13 +37,17 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
         </span>
       </div>
 
-      <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} />
+      {/* Word Header for Non-Success States (loading, error, idle) */}
+      {aiStatus !== 'success' && (
+        <div className="mb-4">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{word}</h1>
+        </div>
+      )}
+
+      <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={word} />
 
       {aiStatus === 'loading' && (
         <div className="space-y-4">
-          <div className="mb-4">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{word}</h1>
-          </div>
           <SkeletonBlock lines={3} variant="card" />
           <SkeletonBlock lines={4} variant="pill" />
           <SkeletonBlock lines={4} variant="pill" />
@@ -102,8 +107,13 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   </div>
                 )
               case 'synonyms':
-                return (
-                  <SynonymList key={module.id} synonyms={aiFullResult.synonyms} onSynonymClick={onWordClick} />
+                return (aiFullResult.synonyms || aiFullResult.antonyms) && (
+                  <SynonymList
+                    key={module.id}
+                    synonyms={aiFullResult.synonyms}
+                    antonyms={aiFullResult.antonyms}
+                    onSynonymClick={onWordClick}
+                  />
                 )
               case 'etymology':
                 return (
