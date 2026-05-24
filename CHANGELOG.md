@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## 2026-05-24 — 依赖维护：Node.js 24 升级 & 安全漏洞修复 (Node.js 24 Upgrade & Security Fixes)
+
+### 概述
+将 iOS CI 工作流从 Node.js 22 升级到 Node.js 24，提前适配 GitHub Actions 即将于 2026-06-02 强制切换的 Node.js 24 runtime；同时修复 3 个传递依赖安全漏洞，更新 `tsx` patch 版本。
+
+---
+
+### 1. GitHub Actions iOS 工作流升级到 Node.js 24
+- **文件**：`.github/workflows/ios-build.yml`
+- **变更**：`node-version: '22'` → `node-version: '24'`，并在 Setup Node 步骤添加 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` 环境变量，使 action runner 本身（checkout、setup-node、upload-artifact 等）也提前切换到 Node.js 24 runtime，消除即将到来的强制迁移警告。
+
+---
+
+### 2. 本地依赖更新
+- **`tsx`**：`^4.22.1` → `^4.22.3`（patch 安全更新）
+
+---
+
+### 3. 安全漏洞修复（`npm audit fix`）
+修复 3 个传递依赖中的安全漏洞（全部 `npm audit fix` 可解决，无需升级直接依赖）：
+- **`@xmldom/xmldom` ≤0.8.12**（高危）：XML 序列化中的不受控递归 DoS + XML 注入漏洞（4 个 CVE）
+- **`brace-expansion` 5.0.2–5.0.5**（中危）：大数字范围绕过 `max` 防护导致 DoS
+- **`postcss` <8.5.10**（中危）：CSS Stringify 输出中 `</style>` 未转义引发 XSS
+
+---
+
+### 备注：待决策的大版本升级
+以下依赖有可用的大版本更新，但涉及破坏性变更，**未在本次自动更新**，需单独评估后手动升级：
+| 包 | 当前 | 最新 | 备注 |
+|----|------|------|------|
+| `react` / `react-dom` | 18.3.1 | 19.2.6 | React 19 破坏性变更 |
+| `react-konva` | 18.2.16 | 19.2.4 | 需配合 React 19 |
+| `@types/react` / `@types/react-dom` | 18.x | 19.x | 需配合 React 19 |
+| `@vitejs/plugin-react` | 4.7.0 | 6.0.2 | 需配合 Vite 8 |
+| `vite` | 6.4.2 | 8.0.14 | Vite 8 破坏性变更 |
+| `typescript` | 5.6.3 | 6.0.3 | TS 6 破坏性变更 |
+
+---
+
 ## 2026-05-24 — 代码审查与 Bug 修复 (Post-Refactor Code Review & Bug Fixes)
 
 ### 概述
