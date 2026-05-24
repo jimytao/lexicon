@@ -695,7 +695,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
                 rotation={block.rotation ?? 0}
                 offsetX={w / 2}
                 offsetY={h / 2}
-                ref={(node) => {
+                ref={(node: Konva.Group | null) => {
                   if (isSelected) {
                     selectedNodeRef.current = node
                   }
@@ -704,7 +704,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
                 onMouseDown={() => !isDrawingPoly && onSelect?.(i, 'canvas')}
                 onTouchStart={() => !isDrawingPoly && onSelect?.(i, 'canvas')}
                 onDragStart={() => !isDrawingPoly && onSelect?.(i, 'canvas')}
-                onDragEnd={(e) => {
+                onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
                   const node = e.target
                   // Convert center coordinates back to relative x,y (top-left bounding box)
                   const newX = (node.x() - node.width() / 2) / dimensions.width
@@ -718,7 +718,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
                     },
                   })
                 }}
-                onTransformEnd={(e) => {
+                onTransformEnd={(e: Konva.KonvaEventObject<Event>) => {
                   const node = e.target
                   const scaleX = node.scaleX()
                   const scaleY = node.scaleY()
@@ -951,7 +951,7 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
           {!isDrawingPoly && (
             <Transformer
               ref={transformerRef}
-              boundBoxFunc={(oldBox, newBox) => {
+              boundBoxFunc={(oldBox: { x: number; y: number; width: number; height: number; rotation: number }, newBox: { x: number; y: number; width: number; height: number; rotation: number }) => {
                 // Enforce minimum box dimensions during resize
                 if (newBox.width < 10 || newBox.height < 10) {
                   return oldBox
