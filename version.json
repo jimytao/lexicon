@@ -1,11 +1,11 @@
 {
-    "version":  "0.7.17",
-    "notes":  "代码审查修复 7 处 Bug：注册 3xl 断点使超宽屏 1800px 布局上限生效；修复魔棒模式拦截多边形绘制点击的事件优先级冲突；修复 Compact 列表视图滚轮被拦截导致翻译列表无法滚动；清理底部导航被行内样式覆盖的死代码；修复手动添加气泡时字体下拉 ID 全相同的 a11y 冲突；修复进入嵌字模式不重置手机画布 Tab；导出按钮新增 loading 防重与旋转指示器。",
-    "pub_date":  "2026-05-24T06:14:00Z",
+    "version":  "0.7.18",
+    "notes":  "图片翻译大幅重构：修复目标语言被忽略（新增语言名称映射与强制语言 prompt）；移除嵌字功能；新增 AI 智能阅读顺序判断（日漫右到左，其余从上到下左到右）。修复 AI 全量查词黑屏（加入 null 防护 + ErrorBoundary 兜底）。词根词缀卡新增记忆锚点字段（sourceForm/anchor/anchorNote）；助记重构为叙事段落。修复 AI 问答模块排序在 AiFullView/PhraseView 不生效。修复搜索黑屏竞态（合并状态更新消除中间帧）；候选词新增 entries 表降级兜底。Node.js 24 升级及 3 个安全漏洞修复。",
+    "pub_date":  "2026-05-25T07:10:00Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTczbXYySmJUQlhhYjQ0SW5tZmYxL1d6NzdKbi9CRXRqRlplUS91V3FycmdETFJXemJuQ1ZWNjliZytRdU1zSGIraUFOeFpEYjhTNnlOa25QMGx2UmdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NjAzNTM4CWZpbGU6TGV4aWNvbl8wLjcuMTdfeDY0LXNldHVwLmV4ZQpmbFdBMFFWczVWakVjOFYyTXUwSlJQTGQ5Skc4SkNmQnlZZDhMcVpLSGJTT3JvS1hvL1Z4MVMycEdEQlBZUDk1NUtZbDg0dU11SnpnUkxWYkFYK2dDdz09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.17/Lexicon_0.7.17_x64-setup.exe"
+                                             "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTI5Yk1zYmxqeGVEdVlaZUhReFdyNDBnME9BQm9Vd0ZKeHlRSEZzbUFaZmlxWTZ5NXFEL3dZdTJ4Y3J3cDNZbUI1ZlhtajJFcnhaajk1dXlFQ2JZM1FjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NjkzMjMzCWZpbGU6TGV4aWNvbl8wLjcuMThfeDY0LXNldHVwLmV4ZQplQzdZTlVnUUlwOXpTdUxidy91TWp1bEJCVzVLMUpJNVh1a1A3SXlXbUc2Ym5BaEo3WDlKRnVlNDBJMC9JNzBBUmdRcnBydHNWUFFmb2dobWpkQVNCUT09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.18/Lexicon_0.7.18_x64-setup.exe"
                                          }
                   }
 }
