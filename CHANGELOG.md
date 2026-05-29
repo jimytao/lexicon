@@ -30,10 +30,10 @@
 
 ---
 
-### 2. 修复：嵌字模式可手动画框（已不适用，功能整体移除）
+### ~~2. 修复：嵌字模式可手动画框~~ *(已随嵌字功能整体移除)*
 
-- **文件**：`src/components/ImageTranslate/ImageEditor.tsx`
-- **修复**：为 `handleStageMouseDown` 中的画框逻辑增加 `onAddBlock` 存在性守卫，嵌字模式不传递 `onAddBlock` 则禁止手动新增文字框。
+~~- **文件**：`src/components/ImageTranslate/ImageEditor.tsx`~~
+~~- **修复**：为 `handleStageMouseDown` 中的画框逻辑增加 `onAddBlock` 存在性守卫，嵌字模式不传递 `onAddBlock` 则禁止手动新增文字框。~~
 
 ---
 
@@ -45,23 +45,23 @@
 
 ---
 
-### 4. 修复：嵌字模式文字框与翻译列表数量不一致
+### ~~4. 修复：嵌字模式文字框与翻译列表数量不一致~~ *(已随嵌字功能整体移除)*
 
-- **文件**：`src/components/ImageTranslate/index.tsx`
-- **根因**：`mergePhase1Translations` 合并时，Phase 2 未匹配到的 Phase 1 条目被丢弃。
-- **修复**：合并后追加所有未匹配的 Phase 1 块，配备兜底错开位置，保证条数一致。
+~~- **文件**：`src/components/ImageTranslate/index.tsx`~~
+~~- **根因**：`mergePhase1Translations` 合并时，Phase 2 未匹配到的 Phase 1 条目被丢弃。~~
+~~- **修复**：合并后追加所有未匹配的 Phase 1 块，配备兜底错开位置，保证条数一致。~~
 
 ---
 
-### 5. 架构重塑：嵌字流水线解耦（翻译与定位完全分离）
+### ~~5. 架构重塑：嵌字流水线解耦（翻译与定位完全分离）~~ *(已随嵌字功能整体移除)*
 
-- **文件**：`src/services/ai.ts`、`src/components/ImageTranslate/index.tsx`
-- **背景**：原 Phase 2 一次 AI 调用同时承担"重新翻译 + 定位气泡位置"，导致漏块、错位、用户编辑的译文被覆盖等问题。
-- **新增**：`aiImageLocateBubbles(imageBase64, blocks)` — 专职定位函数。以已知文字原文为锚点，让 AI 只回答"这段文字的气泡在哪里"，不再重新翻译。
-- **重写**：`handleEnterEmbed` 改为两阶段独立流水线：
-  - Phase A：若尚未翻译，先调用 `aiImageTranslateFast` 获取译文
-  - Phase B：以 Phase A 译文为锚，调用 `aiImageLocateBubbles` 纯定位
-- **移除**：`mergePhase1Translations`（不再需要模糊匹配合并）
+~~- **文件**：`src/services/ai.ts`、`src/components/ImageTranslate/index.tsx`~~
+~~- **背景**：原 Phase 2 一次 AI 调用同时承担"重新翻译 + 定位气泡位置"，导致漏块、错位、用户编辑的译文被覆盖等问题。~~
+~~- **新增**：`aiImageLocateBubbles(imageBase64, blocks)` — 专职定位函数。以已知文字原文为锚点，让 AI 只回答"这段文字的气泡在哪里"，不再重新翻译。~~
+~~- **重写**：`handleEnterEmbed` 改为两阶段独立流水线：~~
+  ~~- Phase A：若尚未翻译，先调用 `aiImageTranslateFast` 获取译文~~
+  ~~- Phase B：以 Phase A 译文为锚，调用 `aiImageLocateBubbles` 纯定位~~
+~~- **移除**：`mergePhase1Translations`（不再需要模糊匹配合并）~~
 
 ---
 
@@ -275,10 +275,10 @@ AI 返回的 JSON 虽然能被 `JSON.parse` 解析成功（触发 `aiStatus = 's
 
 ---
 
-### 2. ⛔ 修复：魔棒模式拦截多边形绘制点击事件（逻辑优先级冲突）
-- **文件**：`src/components/ImageTranslate/ImageEditor.tsx`
-- **问题**：`handleStageMouseDown` 中，魔棒 BFS 触发检测位于 `isDrawingPoly` 判断之前。当用户正在绘制多边形遮罩（`drawPolygonForIndex != null`），若当前选中块恰好是 `magic-wand`，点击会被魔棒逻辑捕获并 `return`，多边形顶点永远无法添加，绘制被无声中断。
-- **修复**：将 `isDrawingPoly` 判断移至函数最顶部，多边形绘制模式具有最高事件优先级；魔棒检测仅在非多边形绘制状态下执行。
+### ~~2. ⛔ 修复：魔棒模式拦截多边形绘制点击事件（逻辑优先级冲突）~~ *(已随嵌字功能移除)*
+~~- **文件**：`src/components/ImageTranslate/ImageEditor.tsx`~~
+~~- **问题**：`handleStageMouseDown` 中，魔棒 BFS 触发检测位于 `isDrawingPoly` 判断之前。当用户正在绘制多边形遮罩（`drawPolygonForIndex != null`），若当前选中块恰好是 `magic-wand`，点击会被魔棒逻辑捕获并 `return`，多边形顶点永远无法添加，绘制被无声中断。~~
+~~- **修复**：将 `isDrawingPoly` 判断移至函数最顶部，多边形绘制模式具有最高事件优先级；魔棒检测仅在非多边形绘制状态下执行。~~
 
 ---
 
@@ -296,28 +296,28 @@ AI 返回的 JSON 虽然能被 `JSON.parse` 解析成功（触发 `aiStatus = 's
 
 ---
 
-### 5. 🟡 修复：`BlockStylePanel` 中字体下拉框 id 在手动添加气泡时全部相同（a11y 冲突）
-- **文件**：`src/components/ImageTranslate/BlockStylePanel.tsx`
-- **问题**：`<label>` 和 `<select>` 的 `htmlFor`/`id` 均使用 `block.original.substring(0, 5)` 生成。手动添加的气泡 `original` 为空字符串，导致所有手动气泡的 id 都是 `"font-family-"`，多个 label 指向同一个元素，无障碍访问（a11y）完全失效。
-- **修复**：id 改用 `(block.original || block.translation).substring(0, 8)` 生成，有原文用原文，无原文 fallback 到译文，确保唯一性。
+### ~~5. 🟡 修复：`BlockStylePanel` 中字体下拉框 id 在手动添加气泡时全部相同（a11y 冲突）~~ *(已随嵌字功能移除)*
+~~- **文件**：`src/components/ImageTranslate/BlockStylePanel.tsx`~~
+~~- **问题**：`<label>` 和 `<select>` 的 `htmlFor`/`id` 均使用 `block.original.substring(0, 5)` 生成。手动添加的气泡 `original` 为空字符串，导致所有手动气泡的 id 都是 `"font-family-"`，多个 label 指向同一个元素，无障碍访问（a11y）完全失效。~~
+~~- **修复**：id 改用 `(block.original || block.translation).substring(0, 8)` 生成，有原文用原文，无原文 fallback 到译文，确保唯一性。~~
 
 ---
 
-### 6. 🟡 修复：进入嵌字模式时 `mobileTab` 不重置，移动端用户看不到画布
-- **文件**：`src/components/ImageTranslate/index.tsx`
-- **问题**：`handleEnterEmbed` 调用 `setEmbedMode(true)` 但从不重置 `mobileTab`。若用户上次离开嵌字模式时停留在"译文与导出"Tab，再次进入嵌字模式会直接显示列表，画布完全不可见，需手动切换 Tab 才能开始编辑。
-- **修复**：`handleEnterEmbed` 的两条执行路径（`bboxReady` 快速路径 & AI 检测路径）均在 `setEmbedMode(true)` 之后调用 `setMobileTab('editor')`。
+### ~~6. 🟡 修复：进入嵌字模式时 `mobileTab` 不重置，移动端用户看不到画布~~ *(已随嵌字功能移除)*
+~~- **文件**：`src/components/ImageTranslate/index.tsx`~~
+~~- **问题**：`handleEnterEmbed` 调用 `setEmbedMode(true)` 但从不重置 `mobileTab`。若用户上次离开嵌字模式时停留在"译文与导出"Tab，再次进入嵌字模式会直接显示列表，画布完全不可见，需手动切换 Tab 才能开始编辑。~~
+~~- **修复**：`handleEnterEmbed` 的两条执行路径（`bboxReady` 快速路径 & AI 检测路径）均在 `setEmbedMode(true)` 之后调用 `setMobileTab('editor')`。~~
 
 ---
 
-### 7. 🟡 修复：`ExportButton` 无 loading 防重，快速双击触发重复下载
-- **文件**：`src/components/ImageTranslate/ExportButton.tsx`
-- **问题**：导出过程是异步 Canvas 渲染，期间按钮无任何禁用或反馈，用户点击后无响应感知，容易重复点击触发多次 `exportBlob`。另有 `URL.revokeObjectURL` 在 `a.click()` 同步后立即调用，部分浏览器下载尚未开始 URL 已失效的风险。
-- **修复**：引入 `useState(false)` loading 状态，导出期间按钮 `disabled`，显示旋转 spinner 和"导出中…"文案；`revokeObjectURL` 延迟 1000ms 执行以保证下载触发。
+### ~~7. 🟡 修复：`ExportButton` 无 loading 防重，快速双击触发重复下载~~ *(已随嵌字功能移除)*
+~~- **文件**：`src/components/ImageTranslate/ExportButton.tsx`~~
+~~- **问题**：导出过程是异步 Canvas 渲染，期间按钮无任何禁用或反馈，用户点击后无响应感知，容易重复点击触发多次 `exportBlob`。另有 `URL.revokeObjectURL` 在 `a.click()` 同步后立即调用，部分浏览器下载尚未开始 URL 已失效的风险。~~
+~~- **修复**：引入 `useState(false)` loading 状态，导出期间按钮 `disabled`，显示旋转 spinner 和"导出中…"文案；`revokeObjectURL` 延迟 1000ms 执行以保证下载触发。~~
 
 ---
 
-## 2026-05-24 — 嵌字自适应重构、PC 窗口拉伸与 Photoshop 级魔棒抠图系统 (Responsive Canvas Centering, PC Viewport Adaptation & PS-Style Magic Wand Masking)
+## ~~2026-05-24 — 嵌字自适应重构、PC 窗口拉伸与 Photoshop 级魔棒抠图系统~~ *(嵌字功能已于 2026-05-25 整体下线，以下仅供存档)*
 
 ### 概述
 针对 PC 端浏览器窗口随意拖动调整、特宽/超宽屏（带鱼屏）下的视觉观赏性与操作实用性冲突，进行了深度布局重构与绝对对称性校验；同时，颠覆性地引入了 Photoshop 级的“魔棒选区” (Contiguous BFS Flood Fill) 气泡抠图机制，大幅降低了新手抠图门槛。
@@ -440,7 +440,7 @@ AI 返回的 JSON 虽然能被 `JSON.parse` 解析成功（触发 `aiStatus = 's
 
 ---
 
-## 2026-05-22 — 漫画高精 Canvas 嵌字重构与自适应排版 (Advanced Canvas Typesetting Refactoring)
+## ~~2026-05-22 — 漫画高精 Canvas 嵌字重构与自适应排版~~ *(嵌字功能已于 2026-05-25 整体下线，以下仅供存档)*
 
 ### 概述
 对漫画翻译与嵌字（Typesetting）模块进行了革命性的底层重构。全面弃用原有计算繁琐且极易出错的传统 HTML 坐标计算方案，改用高性能的 HTML5 Canvas (react-konva) 渲染引擎。统一并在 `master` 分支直接落地，修复了所有 TypeScript 静态类型编译与打包细节，实现了 100% 成功交付。
