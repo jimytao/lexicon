@@ -47,7 +47,9 @@ export function useSearch() {
 
     if (queryType === 'sentence') {
       // Sentence → always AI phrase query, no db lookup
-      setWordResult(null)
+      // Note: setWordResult(null) is intentionally NOT called here.
+      // It is called in handleWordSelect (App.tsx) in the same synchronous
+      // block as setSearchSource to avoid an intermediate blank render.
       setRelatedPhrases([])
       setSuggestions([])
       setQuery(word)
@@ -69,7 +71,7 @@ export function useSearch() {
         return { result, mode, queryType }
       }
       // No db result → AI phrase query
-      setWordResult(null)
+      // Note: setWordResult(null) moved to App.tsx handleWordSelect for batching.
       setRelatedPhrases([])
       setSuggestions([])
       setQuery(word)
@@ -92,7 +94,7 @@ export function useSearch() {
     }
 
     // Word not in db → AI full lookup
-    setWordResult(null)
+    // Note: setWordResult(null) moved to App.tsx handleWordSelect for batching.
     setRelatedPhrases([])
     setSuggestions([])
     setQuery(word)

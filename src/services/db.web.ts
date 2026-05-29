@@ -52,10 +52,23 @@ export const webDB: DBService = {
            ORDER BY length(word), word LIMIT ?`,
           [`${lp}%`, limit]
         )
-        if (!results[0]) return []
-        return results[0].values.map(([word, zhBrief]) => ({
+        if (results[0] && results[0].values.length > 0) {
+          return results[0].values.map(([word, zhBrief]) => ({
+            word: word as string,
+            zhBrief: zhBrief as string,
+          }))
+        }
+        // Fallback: suggest table missing entries → query entries table directly
+        const fallback = db.exec(
+          `SELECT DISTINCT word_lower as word FROM entries
+           WHERE word_lower LIKE ? AND word_lower NOT LIKE '% %'
+           ORDER BY length(word_lower), word_lower LIMIT ?`,
+          [`${lp}%`, limit]
+        )
+        if (!fallback[0]) return []
+        return fallback[0].values.map(([word]) => ({
           word: word as string,
-          zhBrief: zhBrief as string,
+          zhBrief: '',
         }))
       } else {
         // 词组模式：前缀匹配 + 模糊匹配，合并去重

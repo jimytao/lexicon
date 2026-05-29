@@ -1,11 +1,11 @@
 {
-    "version":  "0.7.18",
-    "notes":  "图片翻译大幅重构：修复目标语言被忽略（新增语言名称映射与强制语言 prompt）；移除嵌字功能；新增 AI 智能阅读顺序判断（日漫右到左，其余从上到下左到右）。修复 AI 全量查词黑屏（加入 null 防护 + ErrorBoundary 兜底）。词根词缀卡新增记忆锚点字段（sourceForm/anchor/anchorNote）；助记重构为叙事段落。修复 AI 问答模块排序在 AiFullView/PhraseView 不生效。修复搜索黑屏竞态（合并状态更新消除中间帧）；候选词新增 entries 表降级兜底。Node.js 24 升级及 3 个安全漏洞修复。",
-    "pub_date":  "2026-05-25T07:10:00Z",
+    "version":  "0.7.19",
+    "notes":  "图片翻译阅读顺序修复：新增 CHAT/MESSAGING 图像分类，修复日语聊天截图（瀑布流对话）被误判为漫画阅读顺序的问题。现在聊天界面截图将严格按垂直位置从上到下排序，左右气泡交替输出，还原真实对话顺序。",
+    "pub_date":  "2026-05-29T06:00:00Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTI5Yk1zYmxqeGVEdVlaZUhReFdyNDBnME9BQm9Vd0ZKeHlRSEZzbUFaZmlxWTZ5NXFEL3dZdTJ4Y3J3cDNZbUI1ZlhtajJFcnhaajk1dXlFQ2JZM1FjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NjkzMjMzCWZpbGU6TGV4aWNvbl8wLjcuMThfeDY0LXNldHVwLmV4ZQplQzdZTlVnUUlwOXpTdUxidy91TWp1bEJCVzVLMUpJNVh1a1A3SXlXbUc2Ym5BaEo3WDlKRnVlNDBJMC9JNzBBUmdRcnBydHNWUFFmb2dobWpkQVNCUT09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.18/Lexicon_0.7.18_x64-setup.exe"
+                                             "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS9qU0Ezem5mZVlXRnd5UEJXWUp5OFFRdDdMS2hVZlZQa21vTStHcVlsZ25nQXo3aHVzRVVrWDBEbHNJYXFBSVMwcFlHKzI5M2pDTFVha3Vtb21McWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMDMzNTkyCWZpbGU6TGV4aWNvbl8wLjcuMTlfeDY0LXNldHVwLmV4ZQpxYmcvRFlaeW8vaDhVZFMvbDB6N2Q1K2RmSng4bHo1STY0VlJDMzArQlgrNVVVUEJmY0pKYVA2WlVUcXMvNDRwY2xuVk14VnJlQkRDdkhkWG1EMWlCdz09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.19/Lexicon_0.7.19_x64-setup.exe"
                                          }
                   }
 }

@@ -22,6 +22,9 @@ export interface Meaning {
 export interface EtymologyPart {
   segment: string
   meaning: string
+  sourceForm?: string    // original Latin/Greek root form, e.g. "legere (拉丁语)"
+  anchor?: string        // a common familiar word sharing this root, e.g. "select"
+  anchorNote?: string    // 1 Chinese sentence: how anchor demonstrates this root's meaning
 }
 
 export interface DerivedWord {

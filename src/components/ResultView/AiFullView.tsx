@@ -71,11 +71,11 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return (
                   <div key={module.id}>
                     <MeaningList
-                      meanings={aiFullResult.meanings.map((m) => ({ zh: m.zh, en: m.en }))}
-                      scenes={aiFullResult.meanings.map((m) => m.scene)}
+                      meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en }))}
+                      scenes={(aiFullResult.meanings ?? []).map((m) => m.scene)}
                     />
                     <SemanticScene
-                      meanings={aiFullResult.meanings.map((m) => ({ zh: m.zh, scene: m.scene }))}
+                      meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, scene: m.scene }))}
                     />
 
                     {/* 文化/背景趣味知识 (针对日语/韩语等) */}
@@ -101,7 +101,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
               case 'examples':
                 return (
                   <div key={module.id}>
-                    {aiFullResult.examples.length > 0 && (
+                    {(aiFullResult.examples?.length ?? 0) > 0 && (
                       <ExampleList examples={aiFullResult.examples} />
                     )}
                   </div>
@@ -116,6 +116,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   />
                 )
               case 'etymology':
+                if (!aiFullResult.etymology) return null
                 return (
                   <EtymologyCard key={module.id} etymology={aiFullResult.etymology} />
                 )
@@ -133,17 +134,15 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   <PracticeSection
                     key={module.id}
                     word={word}
-                    meanings={aiFullResult.meanings.map((m) => ({ zh: m.zh, en: m.en }))}
+                    meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en }))}
                   />
                 )
+              case 'chat':
+                return <AiChatBox key={module.id} context={word} />
               default:
                 return null
             }
           })}
-          {/* Global AI Chat */}
-          {modules.find(m => m.id === 'chat')?.enabled && (
-            <AiChatBox context={word} />
-          )}
         </div>
       )}
     </div>

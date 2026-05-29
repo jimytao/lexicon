@@ -18,6 +18,7 @@ import { Device } from '@capacitor/device'
 import { useUpdateStore } from './stores/updateStore'
 import { UpdateModal } from './components/Settings/UpdateModal'
 import { normalizeQuery } from './utils/text'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -229,6 +230,9 @@ export function App() {
       }
     } else {
       localWordSnapshotRef.current = null
+      // Clear word result in the same sync block as setSearchSource so React 18 batches
+      // them into a single render, preventing the intermediate blank/black screen flash.
+      useResultStore.getState().setWordResult(null)
       if (queryType === 'phrase' || queryType === 'sentence') {
         setSearchSource('phrase')
         triggerPhraseQuery(word)
@@ -458,6 +462,7 @@ export function App() {
               </div>
 
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <ErrorBoundary>
                 {showPhraseView ? (
                   <PhraseView
                     phrase={query}
@@ -499,6 +504,7 @@ export function App() {
                     <p className="text-sm font-medium">Type a word to start exploring</p>
                   </div>
                 )}
+                </ErrorBoundary>
               </div>
             </div>
           )}

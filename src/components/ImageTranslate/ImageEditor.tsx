@@ -482,6 +482,9 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
       onSelect?.(null)
       setNewBlockForm(null)
 
+      // Only allow drawing new blocks when the parent explicitly supports it
+      if (!onAddBlock) return
+
       // Start drawing a rectangle
       const stage = stageRef.current
       if (!stage) return
@@ -656,12 +659,19 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
             const strokeWidth = block.strokeWidth ?? 3
 
 
+            // Shape-aware inset: curved/irregular masks need a tighter text area to avoid overflow
+            const shapeInset = (
+              activeShape === 'ellipse' || activeShape === 'circle' ||
+              activeShape === 'polygon' || activeShape === 'diamond' || activeShape === 'burst'
+            ) ? 0.62 : 0.85
+            const insetMargin = (1 - shapeInset) / 2
+
             // Calculate font size
             let computedFontSize = 16
             if (block.fontSizeMode === 'custom' && block.fontSizeCustom) {
               computedFontSize = block.fontSizeCustom
             } else {
-              const baseFit = fitFontSize(block.translation, w * 0.85, h * 0.85, blockFontFamily, dir, isBold)
+              const baseFit = fitFontSize(block.translation, w * shapeInset, h * shapeInset, blockFontFamily, dir, isBold)
               computedFontSize = Math.max(8, baseFit * (block.fontSizeMultiplier ?? 1))
             }
 
@@ -842,23 +852,23 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
                 {block.translation && (
                   isVertical ? (
                     (() => {
-                      const columns = getVerticalColumns(block.translation, computedFontSize, h * 0.85)
+                      const columns = getVerticalColumns(block.translation, computedFontSize, h * shapeInset)
                       const colW = computedFontSize
                       const colSpacing = computedFontSize * 0.35
                       const totalColsW = columns.length * colW + (columns.length - 1) * colSpacing
-                      const startX = (w * 0.85 - totalColsW) / 2
+                      const startX = (w * shapeInset - totalColsW) / 2
 
                       return (
                         <>
                           {columns.map((colText, colIdx) => {
-                            const colX = w * 0.075 + startX + (columns.length - 1 - colIdx) * (colW + colSpacing)
+                            const colX = w * insetMargin + startX + (columns.length - 1 - colIdx) * (colW + colSpacing)
                             return (
                               <Text
                                 key={colIdx}
                                 x={colX}
-                                y={h * 0.075}
+                                y={h * insetMargin}
                                 width={colW}
-                                height={h * 0.85}
+                                height={h * shapeInset}
                                 text={colText}
                                 fontSize={computedFontSize}
                                 fontFamily={blockFontFamily.replace(/"/g, '')}
@@ -879,10 +889,10 @@ export const ImageEditor = forwardRef<ImageEditorHandle, Props>(({
                     })()
                   ) : (
                     <Text
-                      x={w * 0.075}
-                      y={h * 0.075}
-                      width={w * 0.85}
-                      height={h * 0.85}
+                      x={w * insetMargin}
+                      y={h * insetMargin}
+                      width={w * shapeInset}
+                      height={h * shapeInset}
                       text={textToDraw}
                       fontSize={computedFontSize}
                       fontFamily={blockFontFamily.replace(/"/g, '')}

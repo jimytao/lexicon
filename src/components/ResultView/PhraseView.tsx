@@ -133,14 +133,12 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                     meanings={[{ zh: phraseResult.meaning, en: '' }]}
                   />
                 )
+              case 'chat':
+                return <AiChatBox key={module.id} context={phrase} />
               default:
                 return null
             }
           })}
-          {/* Global AI Chat */}
-          {modules.find(m => m.id === 'chat')?.enabled && (
-            <AiChatBox context={phrase} />
-          )}
         </div>
       )}
     </div>

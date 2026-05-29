@@ -1,5 +1,227 @@
 # CHANGELOG
 
+## 2026-05-29 — 图片翻译：聊天截图阅读顺序修复
+
+### 1. 修复：日语聊天截图被误判为漫画阅读顺序
+
+- **文件**：`src/services/ai.ts`
+- **根因**：`IMAGE_TRANSLATE_FAST_PROMPT` 与 `IMAGE_TRANSLATE_FULL_PROMPT` 的阅读顺序逻辑中，只有 MANGA 和 OTHER 两类，没有为聊天/对话界面单独设类。AI 对瀑布流对话截图（左右交替气泡）未能识别为对话界面，可能将左右气泡分列处理，导致对话顺序错乱（先翻完左侧所有消息，再翻右侧，而非按时间线交替输出）。
+- **修复**：
+  - 新增 `CHAT/MESSAGING` 图像类型，关键识别指标：界面 UI chrome、头像图标、时间戳、无艺术尾巴的圆角气泡。
+  - 明确该类型**优先级高于 MANGA**，即使源语言为日语也不例外。
+  - 对应规则：严格按垂直位置（从上到下）排序，左右气泡按实际出现顺序交替输出，还原真实对话流。
+  - 在规则层补充 `regardless of source language (including Japanese)` 双重保障。
+  - `Key insight` 从"日语推文"更新为"日语聊天截图不是漫画"，更贴近实际场景。
+
+---
+
+## 2026-05-25 — 图片翻译功能重构（Image Translation Overhaul）
+
+### 概述
+对图片翻译模块进行了大规模重构与简化：修复多项翻译质量问题，彻底移除难以落地的嵌字功能，重塑翻译流水线架构，并引入 AI 智能阅读顺序判断。
+
+---
+
+### 1. 修复：目标语言被忽略
+
+- **文件**：`src/services/ai.ts`
+- **根因**：`callImageTranslateAPI` 用户消息中直接拼入中文语言名（如"中文"），部分模型无法识别，默认回退到英语输出。
+- **修复**：新增 `LANG_DISPLAY` 映射表，将中文语言名转换为完整英文名称（如 `'中文' → 'Chinese (Simplified)'`）；在 system prompt 头部注入 `CRITICAL LANGUAGE REQUIREMENT` 强制要求目标语言。
+
+---
+
+### 2. 修复：嵌字模式可手动画框（已不适用，功能整体移除）
+
+- **文件**：`src/components/ImageTranslate/ImageEditor.tsx`
+- **修复**：为 `handleStageMouseDown` 中的画框逻辑增加 `onAddBlock` 存在性守卫，嵌字模式不传递 `onAddBlock` 则禁止手动新增文字框。
+
+---
+
+### 3. 修复：文字溢出多边形/椭圆遮罩
+
+- **文件**：`src/components/ImageTranslate/ImageEditor.tsx`
+- **根因**：`fitFontSize` 以完整 bbox 面积计算字号，未考虑椭圆/多边形内切面积更小。
+- **修复**：引入 `shapeInset` 系数（椭圆/圆形/多边形取 0.62，矩形取 0.85），文字区域和字号计算均基于内缩后的有效面积。
+
+---
+
+### 4. 修复：嵌字模式文字框与翻译列表数量不一致
+
+- **文件**：`src/components/ImageTranslate/index.tsx`
+- **根因**：`mergePhase1Translations` 合并时，Phase 2 未匹配到的 Phase 1 条目被丢弃。
+- **修复**：合并后追加所有未匹配的 Phase 1 块，配备兜底错开位置，保证条数一致。
+
+---
+
+### 5. 架构重塑：嵌字流水线解耦（翻译与定位完全分离）
+
+- **文件**：`src/services/ai.ts`、`src/components/ImageTranslate/index.tsx`
+- **背景**：原 Phase 2 一次 AI 调用同时承担"重新翻译 + 定位气泡位置"，导致漏块、错位、用户编辑的译文被覆盖等问题。
+- **新增**：`aiImageLocateBubbles(imageBase64, blocks)` — 专职定位函数。以已知文字原文为锚点，让 AI 只回答"这段文字的气泡在哪里"，不再重新翻译。
+- **重写**：`handleEnterEmbed` 改为两阶段独立流水线：
+  - Phase A：若尚未翻译，先调用 `aiImageTranslateFast` 获取译文
+  - Phase B：以 Phase A 译文为锚，调用 `aiImageLocateBubbles` 纯定位
+- **移除**：`mergePhase1Translations`（不再需要模糊匹配合并）
+
+---
+
+### 6. 移除嵌字功能（嵌字模块整体下线）
+
+- **文件**：`src/components/ImageTranslate/index.tsx`
+- **原因**：嵌字体验差、维护成本高、计划作为独立软件另行开发。
+- **移除内容**：`ImageEditor`、`ExportButton`、`BlockStylePanel`、两栏布局、移动端标签页切换、所有 embed 相关状态（`embedMode`、`embedLoading`、`embedError`、`imageCollapsed`、`mobileTab`、`drawPolygonForIndex`、`selectedIndex`）、字体选择器、`scrollStickyToPinned` 粘性滚动逻辑。
+- **保留内容**：语言选择、图片上传与多图导航、翻译按钮、粘性图片预览、翻译列表（支持编辑译文）。
+
+---
+
+### 7. 新增：AI 智能阅读顺序判断
+
+- **文件**：`src/services/ai.ts`（`IMAGE_TRANSLATE_FAST_PROMPT`）
+- **逻辑**：在 prompt 中要求 AI 先对图片分类，再选择阅读顺序规则：
+  - **MANGA**（有明显分格、带箭头气泡、插画风格）× 日语源 → **右到左列、上到下行**（日漫标准）
+  - **其他所有内容**（推文截图、照片、韩漫、西方漫画、标牌等）→ **上到下、左到右**
+- **说明**：右到左排序仅适用于日漫分格网格。日语推文、日语照片均使用正常从左到右顺序。韩漫（manhwa）为从左到右，不在 RTL 范畴内。
+
+---
+
+## 2026-05-25 — AI 全量查词黑屏 Bug 修复 & ErrorBoundary (AiFullView Black Screen Fix)
+
+### 概述
+修复在 web 模式下查询生僻词（如 misanthropy）时，页面完全黑屏且无任何错误提示的问题。
+
+### 根因
+AI 返回的 JSON 虽然能被 `JSON.parse` 解析成功（触发 `aiStatus = 'success'`），但部分字段（如 `etymology`、`examples`、`meanings`）可能为 `null` 或被 AI 省略。渲染 `AiFullView` 时对这些字段进行了无防护的属性访问，导致 TypeError 抛出。由于整个应用缺少 React Error Boundary，React 静默卸载整个组件树，页面变为黑屏且无任何报错 UI。
+
+---
+
+### 1. AiFullView：防御性 null 检查
+
+- **文件**：`src/components/ResultView/AiFullView.tsx`
+- **变更**：
+  - `aiFullResult.meanings.map(...)` → `(aiFullResult.meanings ?? []).map(...)`（dictionary、practice 两处）
+  - `aiFullResult.examples.length > 0` → `(aiFullResult.examples?.length ?? 0) > 0`
+  - etymology 模块 case 新增前置守卫：`if (!aiFullResult.etymology) return null`
+
+---
+
+### 2. EtymologyCard：空值守卫
+
+- **文件**：`src/components/ResultView/AiSection/EtymologyCard.tsx`
+- **变更**：函数体首行加入 `if (!etymology?.parts) return null`，避免在 `etymology` 为 `null`/`undefined` 或 `parts` 缺失时崩溃
+
+---
+
+### 3. 新增 ErrorBoundary 组件
+
+- **文件**：`src/components/ErrorBoundary.tsx`（新建）
+- **功能**：React class 组件，捕获子树内任何渲染阶段的异常，展示"页面渲染出错"提示及重试按钮，同时在 console 输出完整堆栈
+- **接入**：`src/App.tsx` 中用 `<ErrorBoundary>` 包裹整个结果展示区（PhraseView / AiFullView / ResultView），即使未来出现新的渲染异常也不会再黑屏
+
+---
+
+## 2026-05-24 — 词根词缀锚点强化 & 助记叙事化 (Etymology Anchor Fields & Narrative Mnemonic)
+
+### 概述
+强化 AI 词根词缀解析的记忆辅助能力，并解决词源逻辑助记与词根词缀卡内容高度重叠、差异不大的问题。
+
+---
+
+### 1. 词根词缀卡新增"记忆锚点"字段
+
+- **文件**：`src/types/index.ts`
+- **变更**：`EtymologyPart` 接口新增三个可选字段：
+  - `sourceForm?`：原始拉丁/希腊语词根形式（如 `legere`），显示在 pill 内词义后
+  - `anchor?`：含同一词根的简单常见词（如 `select`），作为记忆桥梁
+  - `anchorNote?`：1 句话中文，说明锚点词如何体现词根含义，帮助联想记忆
+
+---
+
+### 2. AI Prompt 强化：词根锚点 & 演变路径
+
+- **文件**：`src/services/ai.ts`
+- **`getSystemPrompt()`**（词库有结果时的增量解析）：
+  - etymology schema 中每个 part 对象扩展为包含 `sourceForm`、`anchor`、`anchorNote` 的完整结构
+  - rules 明确区分：**词根**需填写三个字段；纯前缀/后缀（如 `in-`、`-tion`）省略三字段
+- **`getFullLookupPrompt()`**（词库无结果时的全量生成）：
+  - 同步扩展 etymology schema，并在 rules 段加入相同约束
+- **文档**：`lexicon-docs/04-ai-schema.md` 同步更新 EtymologyPart schema 示例
+
+---
+
+### 3. EtymologyCard UI：展示 sourceForm 与记忆锚点区块
+
+- **文件**：`src/components/ResultView/AiSection/EtymologyCard.tsx`
+- **变更**：
+  - 词根 pill 内新增 `· legere` 灰色斜体（`sourceForm`）
+  - story 段下方新增琥珀色**"记忆锚点"**卡片区块：`[anchor词] ← [segment]  [anchorNote]`，仅在至少一个词根含 `anchor` 字段时显示
+
+---
+
+### 4. 助记叙事化：philology 助记与词根词缀卡明确分工
+
+- **文件**：`src/services/ai.ts` — `MNEMONIC_SYSTEM_PROMPT`
+- **根因**：AI 在"词源逻辑"助记中倾向于重新罗列词源事实，本质上是词根词缀卡的复述，与已有解析差异不大。
+- **修复**：重写 PHILOLOGY 部分的生成目标与写法指导：
+  - **明确禁止** fact-dump / bullet list 形式
+  - **要求**：以学习者已知的锚点词（如 `select`）开头作桥梁，构建一个有具体场景或比喻的**叙事段落**（2–4 句），以画面结尾呼应目标词含义
+  - schema 注释更新为 `"Mnemonic narrative in Chinese, 2-4 sentences."`
+  - rules 新增：`philology.content MUST be a narrative paragraph, NOT a bullet list or etymology fact-dump.`
+
+| | 词根词缀卡 | philology 助记（改后）|
+|---|---|---|
+| 形式 | 结构化分析 | 叙事段落（2–4 句）|
+| 目的 | 知道词从哪来 | 形成可在脑中重播的画面 |
+| 写法 | pills + 锚点卡 | "你已经知道 select…想象一个罗马学者…" |
+
+---
+
+## 2026-05-24 — 模组管理排序修复：AI 问答位置变更即时生效 (Module Order Fix: Chat Position Now Respected)
+
+### 概述
+修复 `AiFullView`（AI 全量查询视图）与 `PhraseView`（词组/句子视图）中 AI 问答模块（`chat`）排序不生效的 Bug。
+
+---
+
+### 修复：`chat` 模块在 AiFullView / PhraseView 中忽略用户自定义排序
+
+- **文件**：`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/PhraseView.tsx`
+- **根因**：两个文件的 `modules.map()` 循环内的 `switch` 语句均缺少 `case 'chat':`，导致 `chat` 走 `default: return null`，被完全忽略。`AiChatBox` 改以硬编码方式渲染在 `map` 循环之外的最底部，无论用户在 Module Management 中如何调整 `AI 问答` 的顺序，位置始终固定在末尾。
+- **修复**：在两个文件的 `switch` 语句中分别添加 `case 'chat':` 分支，并删除底部的硬编码渲染，与 `ResultView/index.tsx` 行为对齐。模组顺序变更现在在三个查询视图中均即时生效。
+
+---
+
+## 2026-05-24 — 搜索黑屏竞态修复与候选词补全降级 (Search Black Screen Race Fix & Suggest Fallback)
+
+### 概述
+修复两个相互独立但可能叠加出现的 Bug：① 搜索本地词典未收录单词时，状态更新跨越两个 React 渲染批次导致中间帧出现空白/黑屏闪烁；② `suggest` 表数据不完整导致大量词典已有词条在搜索框输入时无备选项弹出。
+
+---
+
+### 1. ⛔ 修复：搜索黑屏竞态（React 渲染批次间的中间帧）
+
+- **文件**：`src/hooks/useSearch.ts`、`src/App.tsx`
+- **根因**：`selectWord`（`useSearch.ts`）在 DB 查询返回"未找到"结果后，会在同一微任务（Microtask A）内调用 `setWordResult(null)`，该调用立即触发一次 React 渲染。此时 `wordResult = null`，但 `App.tsx` 中的 `searchSource` 仍为上一次的旧值（如 `'local'`）。由于 `setSearchSource('ai-full')` 须等到 `await selectWord(word)` 的 Promise 解决后才在下一个微任务（Microtask B）中执行，React 18 的自动批处理无法跨越这两个微任务边界合并更新，导致中间帧同时满足 `showAiFullView = false` 且 `wordResult = null` 的条件，渲染出无内容的空白/黑屏。
+- **修复**：
+  - **`useSearch.ts`**：从 `selectWord` 的三条"未找到"路径（`sentence`、`phrase` 未命中、`word` 未命中）中移除 `setWordResult(null)` 调用，保留 `setRelatedPhrases([])`、`setSuggestions([])`、`setQuery()` 等无视觉影响的更新。
+  - **`App.tsx`** `handleWordSelect`：在 `result === null` 的 `else` 分支中，于 `setSearchSource` 之前调用 `useResultStore.getState().setWordResult(null)`，使以下三个状态更新在**同一同步块**内完成：
+    1. `useResultStore.getState().setWordResult(null)` — 清空 wordResult 及 AI 状态
+    2. `setSearchSource('ai-full')` — 切换视图
+    3. `triggerFullLookup(word)` / `triggerPhraseQuery(word)` — 同步调用 `setAiStatus('loading')` 后挂起
+  - React 18 将上述三次更新合并为**一次渲染**，UI 直接从"旧结果可见"过渡到"AiFullView + loading 骨架屏"，消除黑屏中间帧。
+
+---
+
+### 2. 🟠 修复：`suggest` 表收录不完整导致大量词条无候选项
+
+- **文件**：`src/services/db.web.ts`
+- **根因**：`suggest()` 函数的单词前缀匹配分支仅查询 `suggest` 表，而 `suggest` 表收录词条数量少于 `entries` 表。当用户输入的前缀在 `suggest` 表中无命中时，候选词下拉为空，但词条实际存在于词典中（`entries` 表），导致用户误以为该词不在词典内，体验断层。
+- **修复**：将原先的 `if (!results[0]) return []` 短路逻辑改为：
+  - 若 `suggest` 表返回至少 1 条结果，直接返回（带中文简义）；
+  - 若 `suggest` 表返回 0 条结果，**降级查询 `entries` 表**：`SELECT DISTINCT word_lower FROM entries WHERE word_lower LIKE ? AND word_lower NOT LIKE '% %' ORDER BY length(word_lower), word_lower LIMIT ?`，以纯小写词形兜底返回候选项（`zhBrief` 为空字符串）。
+  - 与已有的 `sentence` / `phrase` 模式无交叉，仅影响单词前缀匹配路径。
+
+---
+
 ## 2026-05-24 — 依赖维护：Node.js 24 升级 & 安全漏洞修复 (Node.js 24 Upgrade & Security Fixes)
 
 ### 概述

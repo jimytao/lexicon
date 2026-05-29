@@ -44,7 +44,13 @@ The JSON must follow this exact schema:
   ],
   "etymology": {
     "parts": [
-      { "segment": "词根或词缀", "meaning": "中文含义（来源语言）" }
+      {
+        "segment": "词根或词缀（对应原词中的实际字母片段）",
+        "meaning": "中文含义（来源语言）",
+        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",
+        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",
+        "anchorNote": "（仅词根）1句话中文：此锚点词如何体现词根含义，帮助联想记忆"
+      }
     ],
     "story": "1-2句话，说明字面意义如何演变成现在的含义",
     "derivedWords": [

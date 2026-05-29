@@ -65,7 +65,7 @@ function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>): stri
   let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)",\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      }\n    }\n  ]`
   
   if (isEnabled('etymology')) {
-    schema += `,\n  "etymology": {\n    "parts": [\n      { "segment": "词根或词缀", "meaning": "中文含义（来源语言）" }\n    ],\n    "story": "1-2句话，说明字面意义如何演变成现在的含义",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }\n    ]\n  }`
+    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "中文含义（来源语言）",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）1句话中文：此锚点词如何体现词根含义，帮助联想记忆"\n      }\n    ],\n    "story": "1-2句话，说明字面意义如何演变成现在的含义",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }\n    ]\n  }`
   }
   
   if (isEnabled('synonyms')) {
@@ -86,7 +86,7 @@ ${schema}
 Rules:
 - meanings array length must match the number of meanings provided in the user message
 - scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style
-${isEnabled('etymology') ? '- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)\n- etymology.story: 1-2 sentences max\n- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)' : ''}
+${isEnabled('etymology') ? '- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)\n- For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 Chinese sentence: how the anchor word embodies the root meaning)\n- For pure prefixes/suffixes (e.g. in-, -tion, -ual): omit sourceForm, anchor, anchorNote\n- etymology.story: 1-2 sentences max\n- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)' : ''}
 ${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest to most distant in meaning\n- synonyms distinction: 1 sentence each\n- antonyms: provide 3-5 words, ordered from most direct contrast to weaker contrast\n- antonyms distinction: 1 sentence each' : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
@@ -350,7 +350,7 @@ function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, l
   if (isFull && isEnabled('etymology')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     const etymLabel = isForeign ? '词汇构成/来源' : '词根词缀/来源'
-    schema += `,\n  "etymology": {\n    "parts": [{ "segment": "构词成分或缩写来源", "meaning": "含义" }],\n    "story": "1-2句话说明${etymLabel}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
+    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "含义",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）1句话中文：此词如何体现词根，帮助联想"\n      }\n    ],\n    "story": "1-2句话说明${etymLabel}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
     schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }],\n  "antonyms": [{ "word": "反义词", "distinction": "与主词的对比差异" }]`
@@ -393,6 +393,7 @@ Rules:
   - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
   - Explain the specific historical or social context behind the word.
   - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
+${isFull && isEnabled('etymology') ? '- etymology.parts: each segment must correspond to the actual letters in the target word\n- For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 Chinese sentence connecting anchor → root meaning)\n- For pure prefixes/suffixes: omit sourceForm, anchor, anchorNote' : ''}
 - Provide 3-5 ${isFull ? 'synonyms, 3-5 antonyms, and 3-5 examples' : 'examples'}.
 - Keep everything concise.`
 }
@@ -559,10 +560,13 @@ const MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your
 Generate mnemonics for ALL THREE approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
 
 1. PHILOLOGY (词源逻辑):
-   - Symbolic letter shapes (A=sharp, V=valley).
-   - Root evolution and letter interchanges (d/t, ac/acg).
-   - Variations of common words.
-   - High score if the word has a clear, deep logical connection.
+   GOAL: Write a vivid, flowing NARRATIVE — NOT a factual etymology list. The learner already sees a structured breakdown of roots/affixes elsewhere; here you must turn that knowledge into a durable mental image.
+   HOW:
+   - Open with an anchor word the learner likely already knows that shares the same root (e.g. "你已经知道 select / collect"), then use it as a bridge: show HOW the shared root connects to the target word's meaning.
+   - Describe a concrete scene, metaphor, or action that makes the root meaning visceral and memorable (e.g. a Roman scholar picking books, a river flowing through/splitting).
+   - End by snapping back to the target word — why the image *is* the word's meaning.
+   - Symbolic letter shapes (A=sharp top, V=valley) and letter interchanges (d↔t, v↔b) can be woven in if they add insight.
+   - High score if the root connection is clear and the scene is vivid enough to replay in memory.
 
 2. STORY (趣味故事):
    - Chinese homophones (scorpion -> 死抠屁眼, pest -> 拍死它).
@@ -576,7 +580,7 @@ Generate mnemonics for ALL THREE approaches and score each (0-100) based on its 
 JSON Output Schema:
 {
   "philology": {
-    "content": "Mnemonic text in Chinese.",
+    "content": "Mnemonic narrative in Chinese, 2-4 sentences.",
     "score": 90,
     "reason": "Brief explanation of why this method works well or poorly."
   },
@@ -594,7 +598,8 @@ JSON Output Schema:
 }
 
 Rules:
-- Content for each type should be 1-3 sentences.
+- philology.content MUST be a narrative paragraph, NOT a bullet list or etymology fact-dump. It should read like a mini story or vivid metaphor, 2-4 sentences.
+- story.content and smart.content: 1-3 sentences each.
 - bestType must indicate the approach with the highest score. If scores are close, prioritize: Philology > Story > Smart.
 - Scores must be honest. If a word is extremely hard to remember, scores should reflect that.
 - Return ONLY the JSON object.`
@@ -714,7 +719,20 @@ Rules:
 - Detect ALL visible text
 - Keep translations natural, preserve tone and style
 - For sfx: provide short description (e.g. "ゴゴゴ" → "隆隆隆")
-- Order blocks top-to-bottom, left-to-right
+- READING ORDER: First classify the image type, then choose the ordering rule.
+  Step 1 — Classify the image:
+    • MANGA: clear panel grid, speech bubbles with tails, illustrated artwork, comic-style layout
+    • CHAT/MESSAGING: conversation interface where messages alternate between left and right sides (e.g. messaging apps, LINE, WeChat, iMessage, chat software screenshots). Key indicators: clean UI chrome, avatar icons, timestamps, plain rounded chat bubbles WITHOUT artistic tails/pointers. This takes priority over MANGA even if the source language is Japanese.
+    • OTHER: tweet/social media screenshot, photo, sign, document, novel page, mixed real-world content
+  Step 2 — Apply the rule:
+    • MANGA with Japanese source → RIGHT-TO-LEFT panel columns, TOP-TO-BOTTOM rows.
+      The rightmost column of panels is read first, leftmost last.
+      Within each panel, follow the natural bubble sequence (top to bottom).
+    • CHAT/MESSAGING → Order STRICTLY by vertical position (top-to-bottom) regardless of left/right placement and regardless of source language (including Japanese).
+      Left/right alignment indicates only who sent the message, NOT reading order.
+      Interleave left and right bubbles in the exact order they appear vertically, like a real conversation.
+    • EVERYTHING ELSE (including Japanese tweets, photos, signs, Korean manhwa, Western comics) → TOP-TO-BOTTOM, LEFT-TO-RIGHT.
+  Key insight: RTL ordering applies ONLY to the Japanese manga panel grid. A Japanese chat app screenshot is NOT manga — use CHAT/MESSAGING rule instead.
 - If no text found, return {"blocks": []}
 - Never output anything outside the JSON object`
 
@@ -772,9 +790,20 @@ Field rules:
 - detectedPolygon: clockwise vertices of inner boundary for bubble/caption only
 - detectedMaskShape: "ellipse" | "rect" | "rounded-rect" | "circle" | "capsule" | "diamond" | "burst" | "polygon" | "none"
 - visualReference: brief description using grid position for verification
-- Order regions top-to-bottom, then left-to-right
+- Order regions by natural reading order based on image type:
+  • MANGA (Japanese): right-to-left panel columns, top-to-bottom rows
+  • CHAT/MESSAGING (alternating left/right bubbles): strictly top-to-bottom by vertical position, interleaving left and right bubbles as they appear
+  • ALL OTHER: top-to-bottom, then left-to-right
 - If no text found: {"regions": []}
 - Never output anything outside of JSON object`
+
+const LANG_DISPLAY: Record<string, string> = {
+  '中文': 'Chinese (Simplified)',
+  '英语': 'English',
+  '日语': 'Japanese',
+  '韩语': 'Korean',
+  '法语': 'French',
+}
 
 async function callImageTranslateAPI(
   imageBase64: string,
@@ -787,10 +816,13 @@ async function callImageTranslateAPI(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const langHint = sourceLang === 'auto' ? '' : ` The source language is ${sourceLang}.`
+  const targetDisplay = LANG_DISPLAY[targetLang] ?? targetLang
+  const sourceDisplay = LANG_DISPLAY[sourceLang] ?? sourceLang
+  const langHint = sourceLang === 'auto' ? '' : ` The source language is ${sourceDisplay}.`
+  const enrichedPrompt = `CRITICAL LANGUAGE REQUIREMENT: Every "translation" field MUST be in ${targetDisplay}. Never translate to any other language.\n\n${prompt}`
   const userContent = [
     { type: 'image_url' as const, image_url: { url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}` } },
-    { type: 'text' as const, text: `Detect all text in this image and translate to ${targetLang}.${langHint} Return the JSON.` },
+    { type: 'text' as const, text: `Detect all text in this image and translate everything to ${targetDisplay}.${langHint} Return the JSON.` },
   ]
 
   const response = await fetch(`${config.endpoint}/chat/completions`, {
@@ -804,7 +836,7 @@ async function callImageTranslateAPI(
       model: config.model,
       temperature: 0.2,
       messages: [
-        { role: 'system', content: prompt },
+        { role: 'system', content: enrichedPrompt },
         { role: 'user', content: userContent },
       ],
     }),
@@ -889,6 +921,118 @@ export async function aiImageTranslate(
   signal?: AbortSignal,
 ): Promise<import('../types').TextBlock[]> {
   return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FULL_PROMPT, signal)
+}
+
+// ── Locate prompt: given known texts, find their bubble positions only ──
+const IMAGE_LOCATE_PROMPT = `You are a manga/comic layout analyst. Your ONLY task is to locate speech bubbles and text regions.
+
+You will receive a numbered list of text snippets already known to exist in this image. For EACH snippet, find the containing speech bubble or text region and return its bounding box and shape.
+
+DO NOT translate. DO NOT detect new text. ONLY locate bubbles for the provided list.
+
+Return ONLY a valid JSON object. No markdown, no explanation.
+
+{
+  "regions": [
+    {
+      "index": 1,
+      "bbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.18 },
+      "maskShape": "ellipse",
+      "polygon": null
+    }
+  ]
+}
+
+Rules:
+- index: 1-based, matches the number in the provided text list
+- bbox: normalized 0-1, covers the ENTIRE visible balloon or caption box (wider than just the text)
+- maskShape — choose the best fit:
+  - "ellipse": round/oval speech bubbles (default)
+  - "circle": perfectly circular bubbles
+  - "capsule": tall or wide elongated capsules
+  - "rect": sharp rectangular boxes or signs
+  - "rounded-rect": captions or narration boxes with rounded corners
+  - "diamond": diamond-shaped bubbles
+  - "burst": spiky/explosive action bubbles
+  - "polygon": complex non-geometric shapes (must include polygon array)
+  - "none": text drawn directly over artwork with no bubble background (SFX, graffiti)
+- polygon: clockwise [{x,y}] vertices ONLY when maskShape is "polygon", otherwise null
+- Omit entries you cannot locate (do not guess positions)
+- Never output anything outside the JSON object`
+
+/** Phase 2 embed: given known translated blocks, locate their bubble bboxes in the image.
+ *  Decouples translation (Phase 1) from positional detection (Phase 2).
+ *  Falls back to staggered positions for any blocks that could not be located. */
+export async function aiImageLocateBubbles(
+  imageBase64: string,
+  blocks: import('../types').TextBlock[],
+  signal?: AbortSignal,
+): Promise<import('../types').TextBlock[]> {
+  const config = getConfig()
+  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.endpoint) throw new Error('AI endpoint not configured')
+
+  const textList = blocks
+    .map((b, i) => `[${i + 1}] ${b.original || b.translation || '(unknown)'}`)
+    .join('\n')
+
+  const userContent = [
+    { type: 'image_url' as const, image_url: { url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}` } },
+    { type: 'text' as const, text: `Locate the speech bubble or caption region for each of the following ${blocks.length} text snippet(s):\n\n${textList}\n\nReturn the JSON.` },
+  ]
+
+  const response = await fetch(`${config.endpoint}/chat/completions`, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
+    body: JSON.stringify({
+      model: config.model,
+      temperature: 0.1,
+      messages: [
+        { role: 'system', content: IMAGE_LOCATE_PROMPT },
+        { role: 'user', content: userContent },
+      ],
+    }),
+  })
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`AI API error ${response.status}: ${err}`)
+  }
+
+  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
+  const raw = data.choices?.[0]?.message?.content ?? ''
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  const cleaned = fenceMatch ? fenceMatch[1].trim() : raw.trim()
+
+  type LocateRegion = { index: number; bbox: import('../types').TextBlock['bbox']; maskShape: string; polygon?: Array<{ x: number; y: number }> | null }
+  let parsed: { regions?: LocateRegion[] } = { regions: [] }
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    try { parsed = JSON.parse(objMatch?.[0] ?? '{}') } catch { /* fall through to fallback */ }
+  }
+
+  const regionMap = new Map<number, LocateRegion>()
+  for (const r of parsed.regions ?? []) regionMap.set(r.index, r)
+
+  let fallbackIdx = 0
+  return blocks.map((block, i) => {
+    const region = regionMap.get(i + 1)
+    if (region?.bbox?.w) {
+      return {
+        ...block,
+        bbox: region.bbox,
+        maskShape: region.maskShape as import('../types').TextBlock['maskShape'],
+        polygon: region.polygon ?? undefined,
+      }
+    }
+    // Fallback: staggered position so the block is still visible
+    const fb = { x: 0.05, y: 0.05 + fallbackIdx * 0.09, w: 0.42, h: 0.07 }
+    fallbackIdx++
+    return { ...block, bbox: fb, maskShape: block.maskShape ?? 'ellipse' as const }
+  })
 }
 
 export async function testConnection(signal?: AbortSignal): Promise<string> {
