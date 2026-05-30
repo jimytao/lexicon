@@ -14,11 +14,14 @@ interface AiConfig {
 function getConfig(): AiConfig {
   const defaultModules = [
     { id: 'dictionary', enabled: true },
+    { id: 'semantic', enabled: true },
     { id: 'synonyms', enabled: true },
     { id: 'etymology', enabled: true },
     { id: 'mnemonic', enabled: true },
     { id: 'examples', enabled: true },
+    { id: 'related', enabled: true },
     { id: 'practice', enabled: true },
+    { id: 'culture', enabled: true },
     { id: 'chat', enabled: true },
   ]
   try {
@@ -59,10 +62,13 @@ function getConfig(): AiConfig {
   }
 }
 
-function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>): string {
+function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>, includeExamples: boolean = false): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)",\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      }\n    }\n  ]`
+  const includeSemantic = isEnabled('semantic')
+  const includeExampleSchema = includeExamples && isEnabled('examples')
+
+  let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      }` : ''}\n    }\n  ]`
   
   if (isEnabled('etymology')) {
     schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "中文含义（来源语言）",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）1句话中文：此锚点词如何体现词根含义，帮助联想记忆"\n      }\n    ],\n    "story": "1-2句话，说明字面意义如何演变成现在的含义",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }\n    ]\n  }`
@@ -70,6 +76,9 @@ function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>): stri
   
   if (isEnabled('synonyms')) {
     schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "1句话，说明与主词的情感色彩、使用场景或强度差异"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "反义词",\n      "distinction": "1句话，说明与主词的对比含义、使用场景或词义强弱差异"\n    }\n  ]`
+  }
+  if (includeExampleSchema) {
+    schema += `,\n  "examples": [\n    { "en": "Example sentence using this word", "zh": "中文翻译" }\n  ]`
   }
   
   schema += `\n}`
@@ -85,9 +94,10 @@ ${schema}
 
 Rules:
 - meanings array length must match the number of meanings provided in the user message
-- scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style
+${includeSemantic ? '- scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style' : ''}
 ${isEnabled('etymology') ? '- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)\n- For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 Chinese sentence: how the anchor word embodies the root meaning)\n- For pure prefixes/suffixes (e.g. in-, -tion, -ual): omit sourceForm, anchor, anchorNote\n- etymology.story: 1-2 sentences max\n- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)' : ''}
 ${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest to most distant in meaning\n- synonyms distinction: 1 sentence each\n- antonyms: provide 3-5 words, ordered from most direct contrast to weaker contrast\n- antonyms distinction: 1 sentence each' : ''}
+${includeExampleSchema ? '- examples: provide 3-5 natural, common, learner-friendly sentences' : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
 - Never output anything outside the JSON object`
@@ -127,17 +137,18 @@ Rules:
 - correction must be a natural, corrected version of the student's sentence.
 - Never output anything outside the JSON object.`
 
-function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>): string {
+function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>, includeExamples: boolean = false): string {
   const meaningsText = meanings
     .map((m, i) => `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
     .join('\n')
 
-  return `Word: ${word}\n\nMeanings from dictionary:\n${meaningsText}\n\nAnalyze this word and return the JSON.`
+  return `Word: ${word}\n\nMeanings from dictionary:\n${meaningsText}${includeExamples ? '\n\nThe dictionary has no example sentences for this word. Generate examples in the JSON.' : ''}\n\nAnalyze this word and return the JSON.`
 }
 
 export async function analyzeWord(
   word: string,
   meanings: Array<{ zh: string; en: string }>,
+  includeExamples: boolean = false,
   signal?: AbortSignal
 ): Promise<AiAnalysis> {
   const config = getConfig()
@@ -145,7 +156,7 @@ export async function analyzeWord(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const userPrompt = buildUserPrompt(word, meanings)
+  const userPrompt = buildUserPrompt(word, meanings, includeExamples)
 
   const response = await fetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
@@ -158,7 +169,7 @@ export async function analyzeWord(
       model: config.model,
       temperature: 0.3,
       messages: [
-        { role: 'system', content: getSystemPrompt(config.modules) },
+        { role: 'system', content: getSystemPrompt(config.modules, includeExamples) },
         { role: 'user', content: userPrompt },
       ],
     }),

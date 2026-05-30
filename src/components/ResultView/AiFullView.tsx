@@ -14,6 +14,26 @@ import { DiffText } from './DiffText'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 
+function CulturalLoreCard({ lore }: { lore: NonNullable<AiFullResult['culturalLore']> }) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+        <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{lore.title || '文化背景 & 趣味百科'}</h2>
+      </div>
+      <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
+        <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{lore.content}</p>
+        {lore.subculture && (
+          <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
+            <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
+            <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{lore.subculture}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface AiFullViewProps {
   word: string
   aiFullResult: AiFullResult | null
@@ -27,6 +47,9 @@ interface AiFullViewProps {
 export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick, onGoToSettings }: AiFullViewProps) {
   const { modules } = useSettingsStore()
   const updateFullMnemonic = useResultStore(state => state.updateFullMnemonic)
+  const semanticMeanings = aiFullResult?.meanings
+    .filter((m): m is typeof m & { scene: NonNullable<typeof m.scene> } => Boolean(m.scene))
+    .map((m) => ({ zh: m.zh, scene: m.scene }))
 
   return (
     <div className="px-4 py-4">
@@ -72,32 +95,13 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   <div key={module.id}>
                     <MeaningList
                       meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en }))}
-                      scenes={(aiFullResult.meanings ?? []).map((m) => m.scene)}
                     />
-                    <SemanticScene
-                      meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, scene: m.scene }))}
-                    />
-
-                    {/* 文化/背景趣味知识 (针对日语/韩语等) */}
-                    {aiFullResult.culturalLore && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                          <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{aiFullResult.culturalLore.title || '文化背景 & 趣味百科'}</h2>
-                        </div>
-                        <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
-                          <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{aiFullResult.culturalLore.content}</p>
-                          {aiFullResult.culturalLore.subculture && (
-                            <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
-                              <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
-                              <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{aiFullResult.culturalLore.subculture}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )
+              case 'semantic':
+                return semanticMeanings?.length ? (
+                  <SemanticScene key={module.id} meanings={semanticMeanings} />
+                ) : null
               case 'examples':
                 return (
                   <div key={module.id}>
@@ -137,6 +141,10 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                     meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en }))}
                   />
                 )
+              case 'culture':
+                return aiFullResult.culturalLore ? (
+                  <CulturalLoreCard key={module.id} lore={aiFullResult.culturalLore} />
+                ) : null
               case 'chat':
                 return <AiChatBox key={module.id} context={word} />
               default:

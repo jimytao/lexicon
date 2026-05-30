@@ -6,6 +6,7 @@ import { useResultStore } from '../../stores/resultStore'
 import { MeaningList } from './InstantSection/MeaningList'
 import { ExampleList } from './InstantSection/ExampleList'
 import { PhrasesSection } from './InstantSection/PhrasesSection'
+import { SemanticScene } from './AiSection/SemanticScene'
 import { SynonymList } from './AiSection/SynonymList'
 import { EtymologyCard } from './AiSection/EtymologyCard'
 import { MnemonicCard } from './AiSection/MnemonicCard'
@@ -38,7 +39,10 @@ export function ResultView({
 }: ResultViewProps) {
   const { modules } = useSettingsStore()
   const updateMnemonic = useResultStore(state => state.updateMnemonic)
-  const scenes = aiAnalysis?.meanings.map((m) => m.scene)
+  const semanticMeanings = aiAnalysis?.meanings
+    .filter((m): m is typeof m & { scene: NonNullable<typeof m.scene> } => Boolean(m.scene))
+    .map((m) => ({ zh: m.zh, scene: m.scene }))
+  const displayedExamples = wordResult.examples.length > 0 ? wordResult.examples : aiAnalysis?.examples ?? []
 
   return (
     <div className="px-4 py-4">
@@ -66,22 +70,30 @@ export function ResultView({
             case 'dictionary':
               return (
                 <div key={module.id}>
-                  <MeaningList meanings={wordResult.meanings} scenes={scenes} />
-                  {relatedPhrases.length > 0 && (
-                    <PhrasesSection phrases={relatedPhrases} onPhraseClick={onWordClick} />
-                  )}
-                  {mode === 'instant' && !scenes && (
+                  <MeaningList meanings={wordResult.meanings} />
+                  {mode === 'instant' && !semanticMeanings?.length && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-8 animate-in fade-in duration-700">
                       切换 AI mode 可查看：语义情景 · 词根词缀 · 近义词辨析
                     </p>
                   )}
                 </div>
               )
+            case 'semantic':
+              return mode === 'ai' && aiStatus === 'success' && semanticMeanings?.length ? (
+                <SemanticScene
+                  key={module.id}
+                  meanings={semanticMeanings}
+                />
+              ) : null
             case 'examples':
               return (
                 <div key={module.id}>
-                  <ExampleList examples={wordResult.examples} />
+                  <ExampleList examples={displayedExamples} />
                 </div>
+              )
+            case 'related':
+              return relatedPhrases.length > 0 && (
+                <PhrasesSection key={module.id} phrases={relatedPhrases} onPhraseClick={onWordClick} />
               )
             case 'synonyms':
               return mode === 'ai' && aiStatus === 'success' && (aiAnalysis?.synonyms || aiAnalysis?.antonyms) && (

@@ -131,7 +131,7 @@ export function App() {
   const prevModeRef = useRef(mode)
   useEffect(() => {
     if (prevModeRef.current !== 'ai' && mode === 'ai' && searchSource === 'local' && wordResult && aiStatus === 'idle') {
-      triggerAi(wordResult.word, wordResult.meanings)
+      triggerAi(wordResult.word, wordResult.meanings, wordResult.examples.length === 0)
       upgradeHistory(wordResult.word, 'analyze')
     }
     // 从 ai-full 切回 Instant：恢复本地快照
@@ -198,7 +198,7 @@ export function App() {
           triggerPhraseQuery(word)
         } else if (historyAiMode === 'analyze') {
           useSearchStore.getState().setMode('ai')
-          triggerAi(word, result.meanings)
+          triggerAi(word, result.meanings, result.examples.length === 0)
           upgradeHistory(word, 'analyze')
         }
         // historyAiMode === null → normal instant, no extra action
@@ -224,7 +224,7 @@ export function App() {
           useResultStore.getState().setAiAnalysis(word, cachedAi)
           upgradeHistory(word, 'analyze')
         } else if (currentMode === 'ai') {
-          triggerAi(word, result.meanings)
+          triggerAi(word, result.meanings, result.examples.length === 0)
           upgradeHistory(word, 'analyze')
         }
       }
@@ -246,7 +246,7 @@ export function App() {
 
   function handleRetry() {
     if (searchSource === 'local' && wordResult && mode === 'ai') {
-      triggerAi(wordResult.word, wordResult.meanings)
+      triggerAi(wordResult.word, wordResult.meanings, wordResult.examples.length === 0)
     } else if (searchSource === 'phrase' && query) {
       triggerPhraseQuery(query)
     } else if (searchSource === 'ai-full' && query) {

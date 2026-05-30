@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 2026-05-30 — AI 模式例句补全 & 模块布局顺序修复
+
+### 1. 修复：AI mode 搜索词库词条时若无例句不自动补全
+
+- **文件**：`src/services/ai.ts`、`src/hooks/useAiLookup.ts`、`src/App.tsx`
+- **根因**：`analyzeWord` 的 prompt 从未请求 AI 生成例句；`trigger` 调用时 `includeExamples` 参数未传递，导致即使词库没有例句，AI 分析结果中也不含 `examples` 字段。
+- **修复**：
+  - `getSystemPrompt` 新增 `includeExamples` 开关，当为 `true` 时在 schema 中加入 `examples` 字段并附上对应生成规则。
+  - `buildUserPrompt` 当 `includeExamples=true` 时在用户消息中追加提示（"The dictionary has no example sentences"）。
+  - `analyzeWord` 签名增加 `includeExamples: boolean = false` 参数，完整传递给 prompt 构建逻辑。
+  - `useAiLookup.trigger` 增加 `includeExamples` 参数，并在检查旧缓存时，若旧缓存缺例句而当前需要例句则绕过缓存重新请求。
+  - `App.tsx` 所有 `triggerAi(...)` 调用点改为传入 `wordResult.examples.length === 0` 作为 `includeExamples`。
+  - `AiAnalysis` 类型新增可选 `examples?: Example[]` 字段。
+  - `ResultView` 例句显示改为：词库例句优先展示；词库无例句时回退到 `aiAnalysis.examples`。
+
+---
+
+### 2. 修复：设置中模块顺序调整部分不生效
+
+- **文件**：`src/stores/settingsStore.ts`、`src/components/ResultView/index.tsx`、`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/PhraseView.tsx`
+- **根因**：
+  - `DEFAULT_MODULES` 缺少 `semantic`（语义情景）、`related`（相关词组）、`culture`（文化背景）三个模块，旧数据中也没有对应 id，导致设置 UI 无法管理这些块的顺序和开关。
+  - 三个结果视图（普通词条、AI 全量查词、短语/句子）中，语义情景、相关词组、文化背景都被硬编码在 `dictionary` 模块的 JSX 内部，顺序固定，改了设置也没有效果。
+- **修复**：
+  - `DEFAULT_MODULES` 补充 `semantic`、`related`、`culture` 三个模块。
+  - 新增 `normalizeModules(modules?)` 函数，将旧的持久化模块数组与新的默认列表合并（保留用户自定义顺序和开关，新模块插入到相邻已知模块旁）。
+  - `persist` 配置新增 `merge` 钩子，在恢复本地存储时自动调用 `normalizeModules`，保证新模块无缝注入而无需用户清除缓存。
+  - `setModules` 同样过 `normalizeModules`，防止手动写入残缺数组。
+  - `ResultView`：`semantic` 从 `dictionary` 块中剥离为独立 case；`related` 独立为 `related` case；例句来源改为可回退到 AI 例句。
+  - `AiFullView`：`semantic` 和 `culture` 从 `dictionary` 块中剥离为独立 case；`SemanticScene` 仅在有场景数据时渲染；`CulturalLoreCard` 提取为独立组件。
+  - `PhraseView`：`usageScenes`（使用场景）映射到 `semantic` case；`culturalLore`（文化背景）映射到 `culture` case；均从 `dictionary` 块中剥离。
+  - `AiFullResult`、`PhraseResult` 类型中 `scene` 和 `usageScenes` 改为可选，避免旧数据和缺 scene 的 AI 回包引发类型错误。
+
+---
+
 ## 2026-05-29 — 图片翻译：聊天截图阅读顺序修复
 
 ### 1. 修复：日语聊天截图被误判为漫画阅读顺序

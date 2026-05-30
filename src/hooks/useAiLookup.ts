@@ -20,16 +20,16 @@ export function useAiLookup() {
   const abortRef = useRef<AbortController | null>(null)
 
   /** Standard AI analysis for a word that exists in the dictionary */
-  const trigger = useCallback(async (word: string, meanings: Meaning[]) => {
+  const trigger = useCallback(async (word: string, meanings: Meaning[], includeExamples = false) => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
 
     const cached = getCachedAi(word)
-    if (cached) { setAiAnalysis(word, cached); return }
+    if (cached && (!includeExamples || (cached.examples?.length ?? 0) > 0)) { setAiAnalysis(word, cached); return }
 
     setAiStatus('loading')
     try {
-      const analysis = await analyzeWord(word, meanings, abortRef.current.signal)
+      const analysis = await analyzeWord(word, meanings, includeExamples, abortRef.current.signal)
       setAiAnalysis(word, analysis)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return

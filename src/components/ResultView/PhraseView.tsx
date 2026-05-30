@@ -21,6 +21,7 @@ interface PhraseViewProps {
 export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings }: PhraseViewProps) {
   const { modules } = useSettingsStore()
   const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
+  const usageScenes = phraseResult?.usageScenes ?? []
 
   return (
     <div className="px-4 py-4">
@@ -59,7 +60,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             switch (module.id) {
               case 'dictionary':
                 return (
-                  <div key={module.id} className="space-y-4">
+                  <div key={module.id}>
                     {/* 释义 */}
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
@@ -68,43 +69,43 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                       </div>
                       <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{phraseResult.meaning}</p>
                     </div>
-
+                  </div>
+                )
+              case 'semantic':
+                return usageScenes.length > 0 && (
+                  <div key={module.id} className="mb-4">
                     {/* 使用场景 */}
-                    {phraseResult.usageScenes.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                          <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">使用场景</h2>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                      <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">使用场景</h2>
+                    </div>
+                    <div className="space-y-2">
+                      {usageScenes.map((s, i) => (
+                        <div key={i} className="rounded-lg px-3 py-2.5 bg-teal-50 dark:bg-teal-900/20">
+                          <span className="text-xs font-semibold text-teal-900 dark:text-teal-200 mr-2">{s.label}</span>
+                          <p className="text-xs leading-relaxed text-teal-800 dark:text-teal-200 mt-0.5">{s.description}</p>
                         </div>
-                        <div className="space-y-2">
-                          {phraseResult.usageScenes.map((s, i) => (
-                            <div key={i} className="rounded-lg px-3 py-2.5 bg-teal-50 dark:bg-teal-900/20">
-                              <span className="text-xs font-semibold text-teal-900 dark:text-teal-200 mr-2">{s.label}</span>
-                              <p className="text-xs leading-relaxed text-teal-800 dark:text-teal-200 mt-0.5">{s.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
+                      ))}
+                    </div>
+                  </div>
+                )
+              case 'culture':
+                return phraseResult.culturalLore && (
+                  <div key={module.id} className="mb-4">
                     {/* 文化/背景趣味知识 (针对日语/韩语等) */}
-                    {phraseResult.culturalLore && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                          <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{phraseResult.culturalLore.title || '文化背景 & 趣味百科'}</h2>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                      <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{phraseResult.culturalLore.title || '文化背景 & 趣味百科'}</h2>
+                    </div>
+                    <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
+                      <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{phraseResult.culturalLore.content}</p>
+                      {phraseResult.culturalLore.subculture && (
+                        <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
+                          <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
+                          <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{phraseResult.culturalLore.subculture}</p>
                         </div>
-                        <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
-                          <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{phraseResult.culturalLore.content}</p>
-                          {phraseResult.culturalLore.subculture && (
-                            <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
-                              <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
-                              <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{phraseResult.culturalLore.subculture}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )
               case 'mnemonic':

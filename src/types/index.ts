@@ -88,18 +88,19 @@ export interface WordResult {
 }
 
 export interface AiAnalysis {
-  meanings: Array<{ zh: string; pos?: string; scene: Scene }>
+  meanings: Array<{ zh: string; pos?: string; scene?: Scene }>
   etymology: Etymology
   synonyms: Synonym[]
   antonyms?: Antonym[]
   mnemonic?: Mnemonic
+  examples?: Example[]
 }
 
 export interface AiFullResult {
   correctForm: string
   phonetic: string
   pos: string
-  meanings: Array<{ zh: string; en: string; pos?: string; scene: Scene }>
+  meanings: Array<{ zh: string; en: string; pos?: string; scene?: Scene }>
   etymology: Etymology
   synonyms: Synonym[]
   antonyms?: Antonym[]
@@ -116,7 +117,7 @@ export interface PhraseResult {
   phrase: string
   correctForm: string
   meaning: string
-  usageScenes: Array<{ label: string; description: string }>
+  usageScenes?: Array<{ label: string; description: string }>
   examples: Example[]
   mnemonic?: Mnemonic
   culturalLore?: {

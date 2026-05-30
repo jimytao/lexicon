@@ -1,11 +1,11 @@
 {
-    "version":  "0.7.19",
-    "notes":  "图片翻译阅读顺序修复：新增 CHAT/MESSAGING 图像分类，修复日语聊天截图（瀑布流对话）被误判为漫画阅读顺序的问题。现在聊天界面截图将严格按垂直位置从上到下排序，左右气泡交替输出，还原真实对话顺序。",
-    "pub_date":  "2026-05-29T06:00:00Z",
-    "platforms":  {
-                      "windows-x86_64":  {
-                                             "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS9qU0Ezem5mZVlXRnd5UEJXWUp5OFFRdDdMS2hVZlZQa21vTStHcVlsZ25nQXo3aHVzRVVrWDBEbHNJYXFBSVMwcFlHKzI5M2pDTFVha3Vtb21McWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMDMzNTkyCWZpbGU6TGV4aWNvbl8wLjcuMTlfeDY0LXNldHVwLmV4ZQpxYmcvRFlaeW8vaDhVZFMvbDB6N2Q1K2RmSng4bHo1STY0VlJDMzArQlgrNVVVUEJmY0pKYVA2WlVUcXMvNDRwY2xuVk14VnJlQkRDdkhkWG1EMWlCdz09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.7.19/Lexicon_0.7.19_x64-setup.exe"
-                                         }
-                  }
+    "version": "0.7.20",
+    "notes": "AI 模式例句补全 & 模块布局顺序修复：\n1. 修复AI模式搜索词库词条时若无例句不自动补全的问题，AI分析将智能生成高质量双语例句进行补全展示。\n2. 修复设置中模块顺序调整部分不生效的问题。将语义情景、相关词组、文化背景剥离为独立模块，支持在设置中完全自由地拖拽排序和开关；同时修复了AI问答（chat）模块在全量查词和词组视图下自定义排序不生效的Bug。",
+    "pub_date": "2026-05-30T08:26:00Z",
+    "platforms": {
+        "windows-x86_64": {
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXpYdER6aXdFOERrdmVJQzBNMkZuSTJ3WFlVbVVXejlTSDN1MjRWVTRiYWxsM3FFS0ZtYUFHblAwNDB6c0NWM1BOc1QxV2xLNjYvb2E2V29tOFR6MWdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMTI5NTc5CWZpbGU6TGV4aWNvbl8wLjcuMjBfeDY0LXNldHVwLmV4ZQo0enJpL2F5Qy9xRTFjWnJISmROb0ZmQ1JtSlU5eWFNUkJJcTNhUG41L1ZwVVAwNTdkZ2xjU2ZvdnVIc21QWUVOMjF4MXdHeVM2cGxScnFlMlNkc1pCZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.20/Lexicon_0.7.20_x64-setup.exe"
+        }
+    }
 }
