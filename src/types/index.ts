@@ -17,6 +17,7 @@ export interface Meaning {
   en: string
   pos?: string
   scene?: Scene
+  imageQuery?: string
 }
 
 export interface EtymologyPart {
@@ -88,7 +89,7 @@ export interface WordResult {
 }
 
 export interface AiAnalysis {
-  meanings: Array<{ zh: string; pos?: string; scene?: Scene }>
+  meanings: Array<{ zh: string; pos?: string; scene?: Scene; imageQuery?: string }>
   etymology: Etymology
   synonyms: Synonym[]
   antonyms?: Antonym[]
@@ -100,7 +101,7 @@ export interface AiFullResult {
   correctForm: string
   phonetic: string
   pos: string
-  meanings: Array<{ zh: string; en: string; pos?: string; scene?: Scene }>
+  meanings: Array<{ zh: string; en: string; pos?: string; scene?: Scene; imageQuery?: string }>
   etymology: Etymology
   synonyms: Synonym[]
   antonyms?: Antonym[]

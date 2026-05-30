@@ -6,7 +6,6 @@ import { useResultStore } from '../../stores/resultStore'
 import { MeaningList } from './InstantSection/MeaningList'
 import { ExampleList } from './InstantSection/ExampleList'
 import { PhrasesSection } from './InstantSection/PhrasesSection'
-import { SemanticScene } from './AiSection/SemanticScene'
 import { SynonymList } from './AiSection/SynonymList'
 import { EtymologyCard } from './AiSection/EtymologyCard'
 import { MnemonicCard } from './AiSection/MnemonicCard'
@@ -39,9 +38,6 @@ export function ResultView({
 }: ResultViewProps) {
   const { modules } = useSettingsStore()
   const updateMnemonic = useResultStore(state => state.updateMnemonic)
-  const semanticMeanings = aiAnalysis?.meanings
-    .filter((m): m is typeof m & { scene: NonNullable<typeof m.scene> } => Boolean(m.scene))
-    .map((m) => ({ zh: m.zh, scene: m.scene }))
   const displayedExamples = wordResult.examples.length > 0 ? wordResult.examples : aiAnalysis?.examples ?? []
 
   return (
@@ -68,10 +64,19 @@ export function ResultView({
 
           switch (module.id) {
             case 'dictionary':
+              const mergedMeanings = mode === 'ai' && aiStatus === 'success' && aiAnalysis?.meanings
+                ? wordResult.meanings.map((m, idx) => ({
+                    ...m,
+                    imageQuery: aiAnalysis.meanings[idx]?.imageQuery
+                  }))
+                : wordResult.meanings;
               return (
                 <div key={module.id}>
-                  <MeaningList meanings={wordResult.meanings} />
-                  {mode === 'instant' && !semanticMeanings?.length && (
+                  <MeaningList
+                    meanings={mergedMeanings}
+                    scenes={mode === 'ai' && aiStatus === 'success' ? aiAnalysis?.meanings?.map(m => m.scene) : undefined}
+                  />
+                  {mode === 'instant' && !aiAnalysis?.meanings?.length && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-8 animate-in fade-in duration-700">
                       切换 AI mode 可查看：语义情景 · 词根词缀 · 近义词辨析
                     </p>
@@ -79,12 +84,7 @@ export function ResultView({
                 </div>
               )
             case 'semantic':
-              return mode === 'ai' && aiStatus === 'success' && semanticMeanings?.length ? (
-                <SemanticScene
-                  key={module.id}
-                  meanings={semanticMeanings}
-                />
-              ) : null
+              return null
             case 'examples':
               return (
                 <div key={module.id}>

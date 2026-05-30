@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## 2026-05-30 — 语义释义融合折叠 & 实时按需“图片释义”系统
+
+### 1. 新增：实时按需“图片释义”懒加载系统
+- **文件**：`src/types/index.ts`、`src/services/ai.ts`、`src/components/ResultView/index.tsx`、`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/InstantSection/MeaningList.tsx`
+- **设计与实现**：
+  - **AI 搜图指令自动匹配**：在 `ai.ts` 的 `getSystemPrompt` 与 `getFullLookupPrompt` 提示词中，命令大模型为每一个释义匹配一个**极其具象、精准的搜图英文描述** (`imageQuery`，如 `"person running business in office"`)，彻底规避了直接用主词搜图造成的歧义。
+  - **Tavily 实时接口整合**：在 `ai.ts` 中新增了 `searchTavilyImage(query, signal)`。直接复用用户已配置的 `tavilyApiKey` 实时检索最新图片，完美根除了静态图片 URL 极易随着时间流逝而变成死链（404）的痛点。
+  - **1:1 精准上下文数据合并**：在 `ResultView/index.tsx` 的 `'dictionary'` 模块中，动态将 AI 成功的 `imageQuery` 与本地数据库的 `meanings` 按索引进行合并，并透传给 `MeaningList`。
+  - **极致美学 UI 懒加载卡片**：
+    - 在 `MeaningList.tsx` 中，对每个带有 `imageQuery` 的释义，增加了一个带有小相册图标的折叠按钮 **“查看图片释义”**，默认折叠。
+    - **懒加载性能防重**：只有在用户第一次点击该按钮时，前端才会发送网络请求异步搜图，节省大量首屏流量与 API 额度。
+    - **精细微动效与骨架屏**：搜图期间，展示带旋涡动效的微光骨架加载条（Skeleton Loading）。加载完成后，图片以平滑淡入动画展示，自带悬浮微放大和半透明优雅的版权署名（“图片检索自 Tavily 实时引擎”）。
+    - **优雅容错机制**：如遇到网络问题，能展示“未检索到匹配的释义图片”并提供“重新加载”的手动重试链接。
+  - **类型安全**：在 `types/index.ts` 中更新了相关接口，加入了 `imageQuery?: string` 可选类型。
+
+---
+
+### 2. 优化：语义释义融合与 5 条折叠规范（全量分析）
+- **文件**：`src/stores/settingsStore.ts`、`src/components/ResultView/index.tsx`、`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/PhraseView.tsx`、`src/components/ResultView/InstantSection/MeaningList.tsx`
+- **设计与实现**：
+  - **设置页模块精简**：从 [settingsStore.ts](file:///d:/vibe%20coding/lexicon/src/stores/settingsStore.ts) 中彻底移除了 `semantic`（语义情景）作为独立模块的定义。`normalizeModules` 会自动过滤和清理任何残留的缓存。
+  - **字典模块渲染融合**：
+    - 修改了 [ResultView index.tsx](file:///d:/vibe%20coding/lexicon/src/components/ResultView/index.tsx) 和 [AiFullView.tsx](file:///d:/vibe%20coding/lexicon/src/components/ResultView/AiFullView.tsx)，直接将 AI 识别到的语义情景按索引顺序 1:1 传递给字典释义渲染器 `MeaningList`，成功将其放置在对应的每一个中英文翻译的正下方。
+    - 修改了 [ai.ts](file:///d:/vibe%20coding/lexicon/src/services/ai.ts)，使得生成语义情景的启用状态直接与 `dictionary` 基础释义绑定。
+  - **精美卡片样式改版**：
+    - 修改了 [MeaningList.tsx](file:///d:/vibe%20coding/lexicon/src/components/ResultView/InstantSection/MeaningList.tsx)。将原本粗糙的独立卡片设计重构为高度融合的“引用块式”卡片：使用精美细窄的左侧 `accent` 颜色竖线（`border-l-2 border-l-accent`）、略带圆角的渐变轻质背景（`bg-accent-soft/30 rounded-r-xl`），排版微调得更为紧凑高雅，让情景解释完美附属于对应的释义下方。
+  - **词组与短语的统一融合**：
+    - 修改了 [PhraseView.tsx](file:///d:/vibe%20coding/lexicon/src/components/ResultView/PhraseView.tsx)，把“使用场景 (usageScenes)”融入到了释义的下方，并采用了完全一致的引用卡片风格（配合词组专属的 `teal` 主题色样式），保证了整体界面的美观度和高度统一。
+  - **基础释义不截断 + UI 5条折叠**：
+    - 撤销了先前在数据库查询层（`db.web.ts`）的截断操作，完美恢复了原生的**全量基础释义查询**。
+    - 将 `MeaningList.tsx` 中的折叠阈值 `COLLAPSE_THRESHOLD` 调整为 `5`。首屏默认只展示 5 个最常用释义，剩余的释义通过“展开更多”按钮折叠，AI 情景分析会与释义一并被优雅折叠。
+    - 在 [ai.ts](file:///d:/vibe%20coding/lexicon/src/services/ai.ts) 中去除了对生僻词大模型生成的 5 条上限截断，让 AI 针对多义生僻词能完整输出最常用的 2-8 条释义，并统一在 UI 层面进行 5 条折叠。
+
+---
+
 ## 2026-05-30 — AI 模式例句补全 & 模块布局顺序修复
 
 ### 1. 修复：AI mode 搜索词库词条时若无例句不自动补全

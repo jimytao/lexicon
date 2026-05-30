@@ -4,7 +4,6 @@ import { WordHeader } from './WordHeader'
 import { MeaningList } from './InstantSection/MeaningList'
 import { ExampleList } from './InstantSection/ExampleList'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
-import { SemanticScene } from './AiSection/SemanticScene'
 import { EtymologyCard } from './AiSection/EtymologyCard'
 import { SynonymList } from './AiSection/SynonymList'
 import { PracticeSection } from './AiSection/PracticeSection'
@@ -47,9 +46,6 @@ interface AiFullViewProps {
 export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick, onGoToSettings }: AiFullViewProps) {
   const { modules } = useSettingsStore()
   const updateFullMnemonic = useResultStore(state => state.updateFullMnemonic)
-  const semanticMeanings = aiFullResult?.meanings
-    .filter((m): m is typeof m & { scene: NonNullable<typeof m.scene> } => Boolean(m.scene))
-    .map((m) => ({ zh: m.zh, scene: m.scene }))
 
   return (
     <div className="px-4 py-4">
@@ -94,14 +90,13 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return (
                   <div key={module.id}>
                     <MeaningList
-                      meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en }))}
+                      meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en, pos: m.pos, imageQuery: m.imageQuery }))}
+                      scenes={(aiFullResult.meanings ?? []).map((m) => m.scene)}
                     />
                   </div>
                 )
               case 'semantic':
-                return semanticMeanings?.length ? (
-                  <SemanticScene key={module.id} meanings={semanticMeanings} />
-                ) : null
+                return null
               case 'examples':
                 return (
                   <div key={module.id}>

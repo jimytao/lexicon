@@ -1,11 +1,11 @@
 {
-    "version": "0.7.20",
-    "notes": "AI 模式例句补全 & 模块布局顺序修复：\n1. 修复AI模式搜索词库词条时若无例句不自动补全的问题，AI分析将智能生成高质量双语例句进行补全展示。\n2. 修复设置中模块顺序调整部分不生效的问题。将语义情景、相关词组、文化背景剥离为独立模块，支持在设置中完全自由地拖拽排序和开关；同时修复了AI问答（chat）模块在全量查词和词组视图下自定义排序不生效的Bug。",
-    "pub_date": "2026-05-30T08:26:00Z",
+    "version": "0.7.21",
+    "notes": "语义释义融合折叠 & 实时按需“图片释义”系统：\n1. 新增实时按需“图片释义”懒加载系统：通过AI智能指令生成匹配图片描述，并采用Tavily实时图搜与折叠懒加载组件，完美避免死链与内容不匹配，支持一键重试。\n2. 优化语义释义融合与5条折叠规范：移除独立语义情景模块并深度融合在基础释义下方，重构引用卡片块风格；恢复本地及生僻词全量查询，并统一由UI在超过5个释义时触发优雅折叠。",
+    "pub_date": "2026-05-30T09:08:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXpYdER6aXdFOERrdmVJQzBNMkZuSTJ3WFlVbVVXejlTSDN1MjRWVTRiYWxsM3FFS0ZtYUFHblAwNDB6c0NWM1BOc1QxV2xLNjYvb2E2V29tOFR6MWdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMTI5NTc5CWZpbGU6TGV4aWNvbl8wLjcuMjBfeDY0LXNldHVwLmV4ZQo0enJpL2F5Qy9xRTFjWnJISmROb0ZmQ1JtSlU5eWFNUkJJcTNhUG41L1ZwVVAwNTdkZ2xjU2ZvdnVIc21QWUVOMjF4MXdHeVM2cGxScnFlMlNkc1pCZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.20/Lexicon_0.7.20_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMThTakZYV3VsdVBOSFQ5MlQ2aXQzeFZUQWFOdDRLc3ZyVkphNXBFeVljWnI5T3l5SC9jTzM4V2w0SzlSajc2VWlVVnA5UloxMmpHYmh0R1Y5dzMwR0FBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMTMyMjk5CWZpbGU6TGV4aWNvbl8wLjcuMjFfeDY0LXNldHVwLmV4ZQozaUY3N2llaVpJSkFvVjA5NGFhVWpUK3FyclpJQno5dlozOGorSW1JTUMvNnFKTktUL0FaNEZST0hnNCt5VW1MK25wM1AwaVJxR3hXMjJtOCtidkVEZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.21/Lexicon_0.7.21_x64-setup.exe"
         }
     }
 }

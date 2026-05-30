@@ -9,7 +9,6 @@ export interface AppModule {
 
 export const DEFAULT_MODULES: AppModule[] = [
   { id: 'dictionary', label: '基础释义', enabled: true },
-  { id: 'semantic', label: '语义情景', enabled: true },
   { id: 'synonyms', label: '近义词/反义词', enabled: true },
   { id: 'etymology', label: '词根词缀', enabled: true },
   { id: 'mnemonic', label: 'AI 助记', enabled: true },

@@ -60,7 +60,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             switch (module.id) {
               case 'dictionary':
                 return (
-                  <div key={module.id}>
+                  <div key={module.id} className="space-y-4">
                     {/* 释义 */}
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
@@ -69,26 +69,29 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                       </div>
                       <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{phraseResult.meaning}</p>
                     </div>
+                    {/* 使用场景 */}
+                    {usageScenes.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                          <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">使用场景</h2>
+                        </div>
+                        <div className="space-y-2">
+                          {usageScenes.map((s, i) => (
+                            <div key={i} className="border-l-2 border-l-teal-500 bg-teal-50/40 dark:bg-teal-950/20 pl-3.5 pr-3 py-2.5 rounded-r-xl transition-all duration-300 hover:bg-teal-50/60 dark:hover:bg-teal-950/30">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">{s.label}</span>
+                              </div>
+                              <p className="text-xs text-foreground-muted leading-relaxed font-medium">{s.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               case 'semantic':
-                return usageScenes.length > 0 && (
-                  <div key={module.id} className="mb-4">
-                    {/* 使用场景 */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                      <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">使用场景</h2>
-                    </div>
-                    <div className="space-y-2">
-                      {usageScenes.map((s, i) => (
-                        <div key={i} className="rounded-lg px-3 py-2.5 bg-teal-50 dark:bg-teal-900/20">
-                          <span className="text-xs font-semibold text-teal-900 dark:text-teal-200 mr-2">{s.label}</span>
-                          <p className="text-xs leading-relaxed text-teal-800 dark:text-teal-200 mt-0.5">{s.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
+                return null
               case 'culture':
                 return phraseResult.culturalLore && (
                   <div key={module.id} className="mb-4">

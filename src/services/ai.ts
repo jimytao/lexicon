@@ -14,7 +14,6 @@ interface AiConfig {
 function getConfig(): AiConfig {
   const defaultModules = [
     { id: 'dictionary', enabled: true },
-    { id: 'semantic', enabled: true },
     { id: 'synonyms', enabled: true },
     { id: 'etymology', enabled: true },
     { id: 'mnemonic', enabled: true },
@@ -65,10 +64,10 @@ function getConfig(): AiConfig {
 function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>, includeExamples: boolean = false): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  const includeSemantic = isEnabled('semantic')
+  const includeSemantic = isEnabled('dictionary')
   const includeExampleSchema = includeExamples && isEnabled('examples')
 
-  let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      }` : ''}\n    }\n  ]`
+  let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
   
   if (isEnabled('etymology')) {
     schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "中文含义（来源语言）",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）1句话中文：此锚点词如何体现词根含义，帮助联想记忆"\n      }\n    ],\n    "story": "1-2句话，说明字面意义如何演变成现在的含义",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }\n    ]\n  }`
@@ -292,6 +291,32 @@ export async function performWebSearch(query: string, signal?: AbortSignal): Pro
   }
 }
 
+export async function searchTavilyImage(query: string, signal?: AbortSignal): Promise<string | null> {
+  const config = getConfig()
+  if (!config.tavilyApiKey) return null
+
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: config.tavilyApiKey,
+        query: `${query} photo`,
+        include_images: true,
+        max_results: 1,
+      }),
+    })
+
+    if (!response.ok) return null
+    const data = await response.json() as { images?: string[] }
+    return data.images?.[0] || null
+  } catch (e) {
+    console.error('Tavily image search failed:', e)
+    return null
+  }
+}
+
 export async function generateExercises(
   word: string,
   meanings: Array<{ zh: string; en: string }>,
@@ -355,7 +380,7 @@ export async function evaluateAnswer(
 function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string, isFull: boolean = true, triLingual: boolean = false): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition (or original language equivalent)",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      }\n    }\n  ]`
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition (or original language equivalent)",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
   if (isFull && isEnabled('etymology')) {
@@ -396,6 +421,7 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
+- meanings: provide the most common and practical meanings (typically 2-8, ordered strictly by frequency).
 - For abbreviations, explain what each letter stands for.
 - If the input is CHINESE: 
   - correctForm: provide the best English word.
