@@ -90,6 +90,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return (
                   <div key={module.id}>
                     <MeaningList
+                      key={word}
                       meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en, pos: m.pos, imageQuery: m.imageQuery }))}
                       scenes={(aiFullResult.meanings ?? []).map((m) => m.scene)}
                     />

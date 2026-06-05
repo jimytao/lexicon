@@ -1,11 +1,11 @@
 {
-    "version": "0.7.21",
-    "notes": "语义释义融合折叠 & 实时按需“图片释义”系统：\n1. 新增实时按需“图片释义”懒加载系统：通过AI智能指令生成匹配图片描述，并采用Tavily实时图搜与折叠懒加载组件，完美避免死链与内容不匹配，支持一键重试。\n2. 优化语义释义融合与5条折叠规范：移除独立语义情景模块并深度融合在基础释义下方，重构引用卡片块风格；恢复本地及生僻词全量查询，并统一由UI在超过5个释义时触发优雅折叠。",
-    "pub_date": "2026-05-30T09:08:00Z",
+    "version": "0.7.22",
+    "notes": "修复：图片释义跨词条状态污染\n切换搜索词后，上一个词条已展开的图片释义不再残留到新词条下方。",
+    "pub_date": "2026-06-05T09:27:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMThTakZYV3VsdVBOSFQ5MlQ2aXQzeFZUQWFOdDRLc3ZyVkphNXBFeVljWnI5T3l5SC9jTzM4V2w0SzlSajc2VWlVVnA5UloxMmpHYmh0R1Y5dzMwR0FBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMTMyMjk5CWZpbGU6TGV4aWNvbl8wLjcuMjFfeDY0LXNldHVwLmV4ZQozaUY3N2llaVpJSkFvVjA5NGFhVWpUK3FyclpJQno5dlozOGorSW1JTUMvNnFKTktUL0FaNEZST0hnNCt5VW1MK25wM1AwaVJxR3hXMjJtOCtidkVEZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.21/Lexicon_0.7.21_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTIxYi9SOGZ3WDRiMXBCUWlUb2dHQzVhbm02dUx0NTNKbkM0N3puM3E3ekUxa2tzWno2RytTZE12ejZPclZ4ZmFQRVRrTzUwQ1JKc1lURjhtOXVpN2djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwNjUxOTUyCWZpbGU6TGV4aWNvbl8wLjcuMjJfeDY0LXNldHVwLmV4ZQpzMy9BWDExT3FBUDhBaUs1ZENVS3FzNENLODcyNnVobjRtWFF2V1YzZ2Y0KzhpNjBqQXB4MHZnZ294dFE0RlROSCtiSjByOUUraGlDTmoxUGpIZFZEZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.22/Lexicon_0.7.22_x64-setup.exe"
         }
     }
 }

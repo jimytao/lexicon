@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-06-05 — 图片释义跨词条状态污染修复
+
+### 修复：切换搜索词后，上一个词条的图片释义残留在新词条下方
+
+- **文件**：`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/index.tsx`
+- **根因**：`MeaningList` 组件内部通过 `useState` 维护三组以释义索引为 key 的图片状态（`imageUrls`、`loadingStates`、`expandedImages`）。由于两处渲染均未向 `<MeaningList>` 传递 `key` prop，React 在搜索新单词时会复用同一组件实例而非重新挂载，导致旧词条的图片状态（已展开的图片、加载中状态）原封不动地出现在新词条的对应索引位置下方。
+- **修复**：
+  - `AiFullView.tsx`：在 `<MeaningList>` 上新增 `key={word}`
+  - `ResultView/index.tsx`：在 `<MeaningList>` 上新增 `key={wordResult.word}`
+  - 每次搜索不同单词时，React 检测到 `key` 变化，强制销毁并重新创建 `MeaningList` 组件，所有图片相关 state 从零初始化，彻底消除跨词条状态污染。
+
+---
+
 ## 2026-05-30 — 语义释义融合折叠 & 实时按需“图片释义”系统
 
 ### 1. 新增：实时按需“图片释义”懒加载系统

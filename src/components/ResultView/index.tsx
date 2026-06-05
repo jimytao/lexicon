@@ -73,6 +73,7 @@ export function ResultView({
               return (
                 <div key={module.id}>
                   <MeaningList
+                    key={wordResult.word}
                     meanings={mergedMeanings}
                     scenes={mode === 'ai' && aiStatus === 'success' ? aiAnalysis?.meanings?.map(m => m.scene) : undefined}
                   />
