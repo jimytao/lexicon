@@ -97,7 +97,7 @@ Tesseract.js（WASM OCR，嵌字模式文字定位）
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
 - [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
 
-**最近一次重要改动**：2026-04-29，refactor — 嵌字模式重构：bbox 检测从 VI 模型迁移至 Tesseract.js OCR 引擎（根因见 CHANGELOG.md v0.6.0）
+**最近一次重要改动**：2026-06-09，feat — 助记卡“换一个”局部更新与“提议”功能（详见 CHANGELOG.md）
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based

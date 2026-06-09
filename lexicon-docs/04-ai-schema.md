@@ -184,6 +184,15 @@ AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）�
 ### `aiImageTranslateFast(imageBase64, sourceLang, targetLang, signal?)`
 Phase 1 图片翻译（仅 OCR + 翻译，无 bbox）。返回 `TextBlock[]`。用于翻译列表视图。
 
+### `generateMnemonic(word, signal?)`
+为单词生成三种方式的记忆助记（词源逻辑、趣味故事、智能联想）。返回 `Mnemonic`。
+
+### `generatePhraseMnemonic(phrase, signal?)`
+为词组/短语生成三种方式的记忆助记。返回 `Mnemonic`。
+
+### `generateSingleMnemonic(word, type, isPhrase, currentMnemonicContent?, userIdea?, signal?)`
+生成或重新生成单个指定类型的助记（支持用户想法提议与校验）。返回 `MnemonicItem`。
+
 ### `aiImageTranslateFull(imageBase64, sourceLang, targetLang, signal?)`（已废弃 v0.6.0）
 ~~Phase 2 图片翻译（OCR + 翻译 + bbox/polygon）。~~
 

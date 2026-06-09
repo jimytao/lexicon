@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-06-09 — 助记卡“换一个”局部更新与“提议”功能
+
+### 1. 新增：助记单分页重新生成（换一个）功能
+- **文件**：`src/services/ai.ts`、`src/components/ResultView/AiSection/MnemonicCard.tsx`、`lexicon-docs/04-ai-schema.md`
+- **设计与实现**：
+  - 新增 `generateSingleMnemonic` API 服务，在请求时接收当前词汇、助记类型（词源逻辑/趣味故事/智能联想）、是否为词组、当前展示内容、以及可选的用户想法。
+  - 大模型 Prompt 指导：只生成单种类型的助记，且要求内容完全不同于现有内容，防重性好。
+  - 在 `MnemonicCard.tsx` 中，点击「换一个」时仅重新获取目前选中分页的助记，并局部更新本机状态，避免重置其余两个分页的内容。
+
+### 2. 新增：用户记忆想法“提议”校验功能
+- **文件**：`src/components/ResultView/AiSection/MnemonicCard.tsx`、`src/services/ai.ts`
+- **设计与实现**：
+  - 在助记卡片右下角新增「提议」按钮，点击后展开高度精致的行内文本框。
+  - 用户输入自己的记忆构想或关联单词并提交后，调用 `generateSingleMnemonic` 将其发送给 AI。
+  - AI 首先核验该想法。若合理则沿用并拓展为助记；若不合理，AI 会在「推荐理由 / reason」中温和解释原因，并自行生成一套正确的助记。
+  - 新增局部加载毛玻璃模糊遮罩，极大优化了重新生成时的动态加载体验。
+  - **視覺樣式優化**：重構了「提议」輸入框的配色與背景。採用半透明背景（`bg-background/30 dark:bg-black/25`）與微弱的卡片描邊，使其在明暗模式下均能自然融入 `bg-accent-soft` 的卡片主體中，消除先前突兀的純白/純黑拼貼感。
+
+### 3. 修复：局部更新助记时分段控制（Tab）跳回默认分页的问题
+- **文件**：`src/components/ResultView/AiSection/MnemonicCard.tsx`
+- **问题与修复**：
+  - 此前，當局部更新 `initialMnemonic` 時，內置 `useEffect` 會直接檢測到變更並把 `activeType` 重置為 `bestType`（通常是詞源邏輯分頁）。
+  - 修復方案：引入 `prevWordRef` 以記錄目前詞形。`useEffect` 中僅在 `word` 真正改變時才重置 `activeType` 及其他狀態；若只是同一個單詞在局部更新，則維持當前選中的分頁（如智能聯想），保證用戶在更新後能繼續停留在原分頁。
+
+---
+
 ## 2026-06-05 — 图片释义跨词条状态污染修复
 
 ### 修复：切换搜索词后，上一个词条的图片释义残留在新词条下方

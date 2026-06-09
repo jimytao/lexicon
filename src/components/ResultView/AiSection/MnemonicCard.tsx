@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { generateMnemonic, generatePhraseMnemonic } from '../../../services/ai'
+import { generateMnemonic, generatePhraseMnemonic, generateSingleMnemonic } from '../../../services/ai'
 import type { Mnemonic } from '../../../types'
 
 type MnemonicType = 'philology' | 'story' | 'smart'
@@ -36,12 +36,31 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  const [proposeOpen, setProposeOpen] = useState(false)
+  const [userIdea, setUserIdea] = useState('')
+  const [singleLoading, setSingleLoading] = useState(false)
+
+  const prevWordRef = useRef(word)
+
   useEffect(() => {
+    const wordChanged = prevWordRef.current !== word
+    prevWordRef.current = word
+
     setMnemonic(initialMnemonic)
-    setActiveType(initialMnemonic?.bestType)
-    setLoading(false)
-    setError(null)
-  }, [initialMnemonic, word])
+    
+    if (wordChanged) {
+      setActiveType(initialMnemonic?.bestType)
+      setLoading(false)
+      setError(null)
+      setProposeOpen(false)
+      setUserIdea('')
+      setSingleLoading(false)
+    } else {
+      if (!activeType && initialMnemonic) {
+        setActiveType(initialMnemonic.bestType)
+      }
+    }
+  }, [initialMnemonic, word, activeType])
 
   const handleGenerate = async () => {
     abortControllerRef.current?.abort()
@@ -68,10 +87,46 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
 
   const handleSelectType = (type: MnemonicType) => {
     setActiveType(type)
+    setProposeOpen(false)
+    setUserIdea('')
   }
 
-  const handleRegeneratePhrase = async () => {
-    handleGenerate()
+  const handleRegenerateSingle = async (idea?: string) => {
+    if (!mnemonic || !activeType) return
+
+    abortControllerRef.current?.abort()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
+    setSingleLoading(true)
+    setError(null)
+    try {
+      const currentItem = mnemonic[activeType]
+      const newMnemonicItem = await generateSingleMnemonic(
+        word,
+        activeType,
+        !!isPhrase,
+        currentItem?.content,
+        idea,
+        controller.signal
+      )
+
+      const updatedMnemonic = {
+        ...mnemonic,
+        [activeType]: newMnemonicItem,
+      } as Mnemonic
+
+      setMnemonic(updatedMnemonic)
+      onUpdateMnemonic?.(updatedMnemonic)
+
+      setUserIdea('')
+      setProposeOpen(false)
+    } catch (err: unknown) {
+      if ((err as Error).name === 'AbortError') return
+      setError('生成失败，请重试')
+    } finally {
+      if (abortControllerRef.current === controller) setSingleLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -150,7 +205,14 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
 
           {/* Mnemonic content card */}
           {activeItem && !loading && (
-            <div className="group relative rounded-2xl p-5 bg-accent-soft border border-accent/10 hover:border-accent/20 transition-all duration-300">
+            <div className="group relative rounded-2xl p-5 bg-accent-soft border border-accent/10 hover:border-accent/20 transition-all duration-300 animate-in fade-in duration-300">
+              {singleLoading && (
+                <div className="absolute inset-0 bg-background/50 dark:bg-background-soft/50 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center gap-2 z-10 animate-in fade-in duration-200">
+                  <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                  <p className="text-[10px] font-medium text-accent/70 animate-pulse">AI 正在重新联想...</p>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <div className="mt-1 shrink-0">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${TYPE_ICON_BG[activeType ?? 'smart']}`}>
@@ -172,19 +234,68 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                 <div className="flex-1">
                   <p className="text-[11px] text-accent/70 italic mb-1 font-medium">推荐理由: {activeItem.reason}</p>
                   <p className="text-sm text-foreground leading-relaxed font-semibold">{activeItem.content}</p>
+
+                  {/* Action buttons panel */}
+                  <div className="mt-4 flex items-center justify-end gap-2 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => handleRegenerateSingle()}
+                      className="font-bold text-accent/70 hover:text-accent bg-accent-soft/50 hover:bg-accent-soft/80 px-2.5 py-1 rounded-md transition-colors"
+                    >
+                      换一个
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProposeOpen(!proposeOpen)
+                        if (proposeOpen) setUserIdea('')
+                      }}
+                      className={`font-bold px-2.5 py-1 rounded-md transition-all ${
+                        proposeOpen
+                          ? 'bg-accent text-white hover:bg-accent-hover'
+                          : 'text-accent/70 hover:text-accent bg-accent-soft/50 hover:bg-accent-soft/80'
+                      }`}
+                    >
+                      {proposeOpen ? '取消提议' : '提议'}
+                    </button>
+                  </div>
+
+                  {/* Propose input form */}
+                  {proposeOpen && (
+                    <div className="mt-3 p-3 bg-background/30 dark:bg-black/25 rounded-xl border border-accent/10 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <textarea
+                        value={userIdea}
+                        onChange={(e) => setUserIdea(e.target.value)}
+                        placeholder="输入你的记忆想法或关联单词..."
+                        className="w-full text-xs bg-background/50 dark:bg-black/35 text-foreground border border-accent/5 rounded-lg p-2 focus:outline-none focus:border-accent/30 focus:bg-background/80 dark:focus:bg-black/50 resize-none font-medium placeholder-foreground-muted/40 transition-colors"
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProposeOpen(false)
+                            setUserIdea('')
+                          }}
+                          className="text-[10px] font-bold text-foreground-muted hover:text-foreground bg-accent-soft/30 hover:bg-accent-soft/60 px-2.5 py-1 rounded-md transition-colors"
+                        >
+                          取消
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!userIdea.trim() || singleLoading}
+                          onClick={() => handleRegenerateSingle(userIdea)}
+                          className="text-[10px] font-bold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
+                        >
+                          {singleLoading && <div className="w-2.5 h-2.5 border border-white/30 border-t-white rounded-full animate-spin" />}
+                          提交想法
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Phrase mode: regenerate button */}
-              {isPhrase && (
-                <button
-                  type="button"
-                  onClick={handleRegeneratePhrase}
-                  className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold text-accent/60 hover:text-accent bg-accent-soft/50 px-2 py-1 rounded-md"
-                >
-                  换一个
-                </button>
-              )}
             </div>
           )}
 
@@ -202,3 +313,4 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
     </div>
   )
 }
+

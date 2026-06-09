@@ -729,6 +729,82 @@ export async function generateMnemonic(
   throw new Error('AI returned invalid JSON for mnemonic')
 }
 
+// ── AI 单个助记生成/重新生成（支持提议） ──
+const SINGLE_MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
+
+There are three types of mnemonics:
+1. PHILOLOGY (词源逻辑 / 核心意象):
+   - For words: Write a vivid, flowing narrative paragraph (2-4 sentences) connecting the word's root/affix to its meaning using an anchor word the learner likely knows (e.g. collect/select). Describe a concrete scene/metaphor. DO NOT output a bullet list or factual etymology dump.
+   - For phrases: Explain the core image of the preposition/verb combination (e.g., 'in' is entering space, 'up' is completion) with vivid metaphors and a logical "mental movie".
+2. STORY (趣味故事):
+   - Use Chinese homophones, absurd, vivid, or humorous stories (1-3 sentences).
+3. SMART (智能联想):
+   - A hybrid approach or a completely unique association (e.g., visual letter shapes, pop culture, breaking the word into recognizable "mini-words") (1-3 sentences).
+
+Input parameters:
+- Word/Phrase: The target expression.
+- Type: The requested mnemonic type (philology | story | smart).
+- Current Mnemonic Content: The current mnemonic of this type that the user wants to change. YOU MUST generate a completely different one. Do not repeat or slightly rephrase the current one.
+- User's Mnemonic Idea (optional): An idea or related word proposed by the user.
+
+If User's Mnemonic Idea is provided:
+1. Carefully check/verify the idea. Is it correct, helpful, and logical for remembering the word?
+2. If it is viable and helpful, adopt and expand it into a fully formed mnemonic of the requested type.
+3. If it is NOT viable or misleading:
+   - Generate a new, correct mnemonic of the requested type.
+   - In the "reason" field, explain gently in Chinese why the user's idea might not be the best fit (e.g., "您的想法挺有趣，不过该词跟...可能更有关系...") and explain the logic of the new mnemonic.
+
+Output format MUST be a valid JSON object:
+{
+  "content": "Mnemonic text in Chinese.",
+  "score": 0-100 score representing memory effectiveness,
+  "reason": "Brief explanation in Chinese. If the user provided an idea, explain if it was adopted/why or why not."
+}
+
+Rules:
+- Return ONLY the JSON object. No markdown code fences. No extra text.`
+
+export async function generateSingleMnemonic(
+  word: string,
+  type: 'philology' | 'story' | 'smart',
+  isPhrase: boolean,
+  currentMnemonicContent?: string,
+  userIdea?: string,
+  signal?: AbortSignal
+): Promise<import('../types').MnemonicItem> {
+  const currentPrompt = currentMnemonicContent ? `Current mnemonic content of this type: "${currentMnemonicContent}"` : ''
+  const ideaPrompt = userIdea ? `User's proposed idea/word: "${userIdea}"` : ''
+
+  const userPrompt = `Target Expression: ${word}
+Mnemonic Type: ${type}
+Is Phrase/Sentence: ${isPhrase ? 'Yes' : 'No'}
+${currentPrompt}
+${ideaPrompt}
+
+Please generate or refine the mnemonic for this type based on the instructions.`
+
+  const cleaned = await callApi(
+    SINGLE_MNEMONIC_SYSTEM_PROMPT,
+    userPrompt,
+    signal
+  )
+
+  try {
+    return JSON.parse(cleaned) as import('../types').MnemonicItem
+  } catch { /* fall through */ }
+
+  const objMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]) as import('../types').MnemonicItem
+    } catch { /* fall through */ }
+  }
+
+  console.error('generateSingleMnemonic raw response:', cleaned)
+  throw new Error(`AI returned invalid JSON for single mnemonic`)
+}
+
+
 // ── 图片翻译 ──
 
 // ── Fast prompt: OCR + translate only, no bbox (for translation list view) ──

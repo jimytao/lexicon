@@ -1,11 +1,11 @@
 {
-    "version": "0.7.22",
-    "notes": "修复：图片释义跨词条状态污染\n切换搜索词后，上一个词条已展开的图片释义不再残留到新词条下方。",
-    "pub_date": "2026-06-05T09:27:00Z",
+    "version": "0.7.23",
+    "notes": "新增：助记卡「换一个」局部更新与「提议」功能\n1. 点击「换一个」时仅重新获取目前选中分页的助记，其余分页不重置\n2. 点击「提议」可展开输入框输入自己的记忆想法，提交后由 AI 智能核验、沿用或温和解释原因\n3. 修正了更新后分页自动跳转的问题，优化了输入框的半透明视觉配色与毛玻璃加载动画",
+    "pub_date": "2026-06-09T04:20:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTIxYi9SOGZ3WDRiMXBCUWlUb2dHQzVhbm02dUx0NTNKbkM0N3puM3E3ekUxa2tzWno2RytTZE12ejZPclZ4ZmFQRVRrTzUwQ1JKc1lURjhtOXVpN2djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwNjUxOTUyCWZpbGU6TGV4aWNvbl8wLjcuMjJfeDY0LXNldHVwLmV4ZQpzMy9BWDExT3FBUDhBaUs1ZENVS3FzNENLODcyNnVobjRtWFF2V1YzZ2Y0KzhpNjBqQXB4MHZnZ294dFE0RlROSCtiSjByOUUraGlDTmoxUGpIZFZEZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.22/Lexicon_0.7.22_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTVzbGt1anFyS2lNMmRUSkxjaC9qMjEyOG9yaDlaRlNVRmFiZlhOQUdMUkFubVI5TkVoYlJPUDF4VFdWVzZmL2VmZFRJa1E5aWUrMHBCUWkwVEhFemdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwOTc4OTU3CWZpbGU6TGV4aWNvbl8wLjcuMjNfeDY0LXNldHVwLmV4ZQpxVWxZL21GcVllSGlra2dLdm1jbDUvUUFsZnU1UFRwS0J0aEpQVU5UT0ZZQ01VRk9xeHp0K0V2TVd2SUN2cXkwODNTQ1FQVkFiVis4L0dWNVlZdmpCZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.23/Lexicon_0.7.23_x64-setup.exe"
         }
     }
 }
