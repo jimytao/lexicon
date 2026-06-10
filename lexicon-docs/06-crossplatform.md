@@ -30,10 +30,10 @@ Vite + React（核心，不改动）
   → 输出 app-debug.apk（19MB）
   → 存储层暂用 sql.js，后续可切换 @capacitor-community/sqlite
 
-阶段4：iOS（GitHub Actions + AltStore，无需 Mac）✅ 已配置（2026-04-11）
+阶段4：iOS（GitHub Actions + Sideloadly，无需 Mac）✅ 已配置（2026-04-11）
   → ios/ 已初始化，Capacitor v8，SPM（非 CocoaPods）
   → 构建：GitHub Actions macOS runner 自动编译 → 输出未签名 .ipa
-  → 安装：AltStore（Windows）用免费 Apple ID 签名并推送到手机
+  → 安装：Sideloadly（Windows/Mac）用免费 Apple ID 签名并推送到手机
   → 触发：推 tag（v*）自动构建；或 Actions 页面手动 workflow_dispatch
   → 存储层暂用 sql.js，后续可切换 @capacitor-community/sqlite
 ```
@@ -45,8 +45,8 @@ Vite + React（核心，不改动）
 | 环节 | 工具 | 费用 |
 |------|------|------|
 | 编译 IPA | GitHub Actions macOS runner | 免费（私有库 2000 min/月，公开库无限） |
-| 安装到手机 | AltStore for Windows + 免费 Apple ID | 免费 |
-| 证书续签 | AltStore 后台自动（同 Wi-Fi，7天/次） | 免费 |
+| 安装到手机 | Sideloadly for Windows/Mac + 免费 Apple ID | 免费 |
+| 证书续签 | Sideloadly 手动/Wi-Fi 自动（7天/次） | 免费 |
 
 ### 触发构建
 
@@ -64,15 +64,16 @@ git push origin v0.2.0
 
 ### 安装到 iPhone
 
-1. PC 安装 [AltStore](https://altstore.io)（需要非 Microsoft Store 版 iTunes + iCloud）
-2. iPhone 通过 USB 连接，AltStore → Install AltStore on Device（一次性）
-3. 下载 Release 中的 `.ipa`，AltStore → My Apps → + → 选择 IPA
-4. AltStore 用免费 Apple ID 签名并安装（同 Wi-Fi 自动续签）
+1. PC 安装 [Sideloadly](https://sideloadly.io)（需要非 Microsoft Store 版 iTunes + iCloud）
+2. iPhone 通过 USB 连接到 PC，并解锁手机选择“信任此电脑”
+3. 打开 Sideloadly，将下载的 `.ipa` 文件拖入 Sideloadly 中
+4. 在 `Apple Account` 输入你的 Apple ID，点击 `Start`
+5. 首次使用需要输入 Apple ID 密码（以及双重验证码），随后等待签名安装完成即可
 
-### 限制
+### 限制与续签
 
 - 免费 Apple ID：同时最多 3 个 App（个人使用足够）
-- 证书 7 天到期：需 AltStore 在 PC 后台运行 + 手机同 Wi-Fi 自动续签
+- 证书 7 天到期：需每 7 天重新连接电脑打开 Sideloadly 覆盖安装，或配置 Sideloadly 的 Automatic Refresh（需电脑常驻 Sideloadly 且手机处于同一 Wi-Fi）
 
 ### 关键文件
 

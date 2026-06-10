@@ -26,7 +26,19 @@
 > 安装或更新后如 AI 请求失败，重启一下 VPN/代理连接即可。
 
 ### iOS
-下载 `.ipa` 文件，通过 [AltStore](https://altstore.io/) 安装（免费 Apple ID，7 天 Wi-Fi 自动续签）。
+下载 `.ipa` 文件进行侧载（Sideload）安装，支持以下两种免费安装方法（使用个人免费 Apple ID）：
+
+- **方法 1：Sideloadly（推荐，更加稳定）**
+  1. 下载并安装 [Sideloadly](https://sideloadly.io/) 客户端（需要非 Microsoft Store 版 iTunes + iCloud）。
+  2. iPhone 通过 USB 连接电脑，解锁并选择“信任此电脑”。
+  3. 将下载的 `.ipa` 文件拖入 Sideloadly，在 `Apple Account` 输入你的 Apple ID。
+  4. 点击 **`Start`**，首次需输入密码及双重验证码，等待安装完成即可（支持 Wi-Fi 自动续签）。
+- **方法 2：AltStore**
+  1. PC 安装 [AltStore](https://altstore.io/)，并确保安装了官网版的 iTunes + iCloud（非 Microsoft Store 版）。
+  2. iPhone 通过 USB 连接电脑并授权，安装 AltStore 客户端到手机。
+  3. 下载 `.ipa`，在手机端 AltStore 的 **My Apps** 中点击 **+** 导入安装（需要保持电脑端 AltServer 后台运行且处于同一 Wi-Fi，支持 7 天 Wi-Fi 自动续签）。
+
+> **首次启动说明**：自签安装后如无法打开，需前往 iPhone 的 **设置 → 通用 → VPN 与设备管理**，找到你的 Apple ID 并点击 **“信任”**。
 
 ### Web
 直接在浏览器访问部署地址，或本地 `npm run dev` 运行。
@@ -72,7 +84,7 @@
 - **Web** — 任意现代浏览器
 - **Windows** — Tauri 原生桌面，安装包约 5 MB
 - **Android** — Capacitor，APK 直装
-- **iOS** — Capacitor，AltStore 安装
+- **iOS** — Capacitor，Sideloadly / AltStore 签名安装
 
 ---
 

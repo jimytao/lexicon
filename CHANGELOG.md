@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-06-10 — iOS 签名与分发工具链升级（AltStore 迁移至 Sideloadly）
+
+### 1. 变更：更新 iOS 签名分发工具链为 Sideloadly
+- **文件**：`CLAUDE.md`、`lexicon-docs/06-crossplatform.md`
+- **设计与实现**：
+  - 针对 AltStore 在 Windows 下因 iCloud/iTunes 微软商店版兼容性差、常驻后台守护进程握手失败导致高频“签名失败/连不上”的痛点，将项目推荐的 iOS 签名工具升级为 **Sideloadly**（方案 A）。
+  - 更新了项目启动上下文（`CLAUDE.md`）和跨平台设计文档（`lexicon-docs/06-crossplatform.md`）中的工具链依赖和本地操作 SOP，细化了 Sideloadly 安装及 Apple ID 双重验证等步骤。
+  - 补充了 Sideloadly 覆盖安装及 Automatic Refresh（Wi-Fi 自动续签）等机制说明，为开发与测试分发提供更稳定的侧载解决方案。
+
+---
+
 ## 2026-06-09 — 助记卡“换一个”局部更新与“提议”功能
 
 ### 1. 新增：助记单分页重新生成（换一个）功能
