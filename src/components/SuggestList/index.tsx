@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { SuggestItem } from '../../types'
+import { useT } from '../../i18n'
 
 type EnrichedSuggestItem = SuggestItem & { hasAiCache?: boolean; historyOnly?: boolean }
 
@@ -11,6 +12,7 @@ interface SuggestListProps {
 }
 
 export function SuggestList({ items, onSelect, visible, activeIndex = -1 }: SuggestListProps) {
+  const t = useT()
   const activeRef = useRef<HTMLLIElement>(null)
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function SuggestList({ items, onSelect, visible, activeIndex = -1 }: Sugg
             )}
             {item.hasAiCache && (
               <svg className="w-3 h-3 shrink-0 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                <title>AI 结果已缓存</title>
+                <title>{t('history.aiCached')}</title>
                 <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
               </svg>
             )}

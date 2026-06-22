@@ -3,20 +3,12 @@ import type { TextBlock } from '../types'
 
 type TranslateStatus = 'idle' | 'loading' | 'done' | 'error'
 
-export const FONT_OPTIONS = [
-  { value: '"ZCOOL KuaiLe", cursive', label: '快乐体（可爱圆润）' },
-  { value: '"Ma Shan Zheng", cursive', label: '马善政（毛笔手写）' },
-  { value: '"Long Cang", cursive', label: '龙藏（硬笔手写）' },
-  { value: '"Noto Sans SC", "Microsoft YaHei", sans-serif', label: '默认黑体' },
-] as const
-
 export interface ImageEntry {
   id: string
   file: File
   imageUrl: string
   imageBase64: string | null
   blocks: TextBlock[]
-  bboxReady: boolean
   status: TranslateStatus
   error: string | null
 }
@@ -26,32 +18,19 @@ interface ImageState {
   currentIndex: number
   sourceLang: string
   targetLang: string
-  fontFamily: string
 
-  // multi-image management
   addImages: (files: File[]) => void
   removeCurrentImage: () => void
   clearAll: () => void
   setCurrentIndex: (index: number) => void
-  nextImage: () => void
-  prevImage: () => void
 
-  // per-current-image actions (operate on currentIndex)
-  setImageBase64: (b64: string) => void
-  setBlocks: (blocks: TextBlock[], bboxReady?: boolean) => void
   updateBlock: (index: number, partial: Partial<TextBlock>) => void
-  deleteBlock: (index: number) => void
-  addBlock: (block: TextBlock) => void
-  setStatus: (status: TranslateStatus, error?: string) => void
-  // by explicit image index (for batch operations)
   setImageBase64At: (imageIndex: number, b64: string) => void
-  setBlocksAt: (imageIndex: number, blocks: TextBlock[], bboxReady?: boolean) => void
+  setBlocksAt: (imageIndex: number, blocks: TextBlock[]) => void
   setStatusAt: (imageIndex: number, status: TranslateStatus, error?: string) => void
 
-  // settings
   setSourceLang: (lang: string) => void
   setTargetLang: (lang: string) => void
-  setFontFamily: (font: string) => void
 }
 
 function makeEntry(file: File): ImageEntry {
@@ -61,13 +40,12 @@ function makeEntry(file: File): ImageEntry {
     imageUrl: URL.createObjectURL(file),
     imageBase64: null,
     blocks: [],
-    bboxReady: false,
     status: 'idle',
     error: null,
   }
 }
 
-function updateCurrent(images: ImageEntry[], index: number, patch: Partial<ImageEntry>): ImageEntry[] {
+function updateAt(images: ImageEntry[], index: number, patch: Partial<ImageEntry>): ImageEntry[] {
   return images.map((img, i) => i === index ? { ...img, ...patch } : img)
 }
 
@@ -75,8 +53,7 @@ export const useImageStore = create<ImageState>((set, get) => ({
   images: [],
   currentIndex: 0,
   sourceLang: 'auto',
-  targetLang: '中文',
-  fontFamily: FONT_OPTIONS[0].value,
+  targetLang: 'Chinese',
 
   addImages(files) {
     const newEntries = Array.from(files)
@@ -84,8 +61,7 @@ export const useImageStore = create<ImageState>((set, get) => ({
       .map(makeEntry)
     if (newEntries.length === 0) return
     const { images } = get()
-    const nextIndex = images.length  // new images go to end; navigate to first new one
-    set({ images: [...images, ...newEntries], currentIndex: nextIndex })
+    set({ images: [...images, ...newEntries], currentIndex: images.length })
   },
 
   removeCurrentImage() {
@@ -105,26 +81,6 @@ export const useImageStore = create<ImageState>((set, get) => ({
     if (index >= 0 && index < images.length) set({ currentIndex: index })
   },
 
-  nextImage() {
-    const { images, currentIndex } = get()
-    if (currentIndex < images.length - 1) set({ currentIndex: currentIndex + 1 })
-  },
-
-  prevImage() {
-    const { currentIndex } = get()
-    if (currentIndex > 0) set({ currentIndex: currentIndex - 1 })
-  },
-
-  setImageBase64(b64) {
-    const { images, currentIndex } = get()
-    set({ images: updateCurrent(images, currentIndex, { imageBase64: b64 }) })
-  },
-
-  setBlocks(blocks, bboxReady = false) {
-    const { images, currentIndex } = get()
-    set({ images: updateCurrent(images, currentIndex, { blocks, bboxReady }) })
-  },
-
   updateBlock(index, partial) {
     const { images, currentIndex } = get()
     const entry = images[currentIndex]
@@ -132,45 +88,25 @@ export const useImageStore = create<ImageState>((set, get) => ({
     const blocks = [...entry.blocks]
     if (blocks[index]) {
       blocks[index] = { ...blocks[index], ...partial }
-      set({ images: updateCurrent(images, currentIndex, { blocks }) })
+      set({ images: updateAt(images, currentIndex, { blocks }) })
     }
-  },
-
-  deleteBlock(index) {
-    const { images, currentIndex } = get()
-    const entry = images[currentIndex]
-    if (!entry) return
-    set({ images: updateCurrent(images, currentIndex, { blocks: entry.blocks.filter((_, i) => i !== index) }) })
-  },
-
-  addBlock(block) {
-    const { images, currentIndex } = get()
-    const entry = images[currentIndex]
-    if (!entry) return
-    set({ images: updateCurrent(images, currentIndex, { blocks: [...entry.blocks, block] }) })
-  },
-
-  setStatus(status, error) {
-    const { images, currentIndex } = get()
-    set({ images: updateCurrent(images, currentIndex, { status, error: error ?? null }) })
   },
 
   setImageBase64At(imageIndex, b64) {
     const { images } = get()
-    set({ images: updateCurrent(images, imageIndex, { imageBase64: b64 }) })
+    set({ images: updateAt(images, imageIndex, { imageBase64: b64 }) })
   },
 
-  setBlocksAt(imageIndex, blocks, bboxReady = false) {
+  setBlocksAt(imageIndex, blocks) {
     const { images } = get()
-    set({ images: updateCurrent(images, imageIndex, { blocks, bboxReady }) })
+    set({ images: updateAt(images, imageIndex, { blocks }) })
   },
 
   setStatusAt(imageIndex, status, error) {
     const { images } = get()
-    set({ images: updateCurrent(images, imageIndex, { status, error: error ?? null }) })
+    set({ images: updateAt(images, imageIndex, { status, error: error ?? null }) })
   },
 
   setSourceLang: (lang) => set({ sourceLang: lang }),
   setTargetLang: (lang) => set({ targetLang: lang }),
-  setFontFamily: (font) => set({ fontFamily: font }),
 }))

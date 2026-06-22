@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SuggestItem } from '../../../types'
+import { useT } from '../../../i18n'
 
 interface PhrasesSectionProps {
   phrases: SuggestItem[]
@@ -9,6 +10,7 @@ interface PhrasesSectionProps {
 const COLLAPSE_THRESHOLD = 6
 
 export function PhrasesSection({ phrases, onPhraseClick }: PhrasesSectionProps) {
+  const t = useT()
   const [expanded, setExpanded] = useState(false)
 
   if (phrases.length === 0) return null
@@ -19,7 +21,7 @@ export function PhrasesSection({ phrases, onPhraseClick }: PhrasesSectionProps) 
   return (
     <div className="mb-4">
       <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
-        相关词组
+        {t('phrases.heading')}
       </h2>
       <div className="space-y-1.5">
         {visible.map((p) => (
@@ -45,7 +47,7 @@ export function PhrasesSection({ phrases, onPhraseClick }: PhrasesSectionProps) 
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
-          {expanded ? '收起' : `展开全部 (${phrases.length})`}
+          {expanded ? t('phrases.collapse') : `${t('phrases.showAll')} (${phrases.length})`}
         </button>
       )}
     </div>

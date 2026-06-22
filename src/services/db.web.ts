@@ -138,7 +138,7 @@ export const webDB: DBService = {
           allMeanings.push(...meanings)
 
           const exampleRes = db.exec(
-            `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 3`,
+            `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 5`,
             [id]
           )
           const examples = (exampleRes[0]?.values ?? []).map(([en, zh]) => ({
@@ -155,7 +155,7 @@ export const webDB: DBService = {
           phonetic,
           pos: finalPos,
           meanings: allMeanings,
-          examples: allExamples.slice(0, 6)
+          examples: allExamples.slice(0, 9),
         }
       }
 

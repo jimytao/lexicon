@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
+import { useT } from '../../i18n'
 
 interface HistoryListProps {
   onSelect: (word: string) => void
 }
 
 export function HistoryList({ onSelect }: HistoryListProps) {
+  const t = useT()
   const { words, remove, clear } = useHistoryStore()
-  const { aiCache, aiFullCache, phraseCache } = useResultStore()
+  const { aiCache, aiFullCache, phraseCache, evictCacheEntry } = useResultStore()
   const [expandedWords, setExpandedWords] = useState<Set<string>>(() => new Set())
 
   if (words.length === 0) return null
@@ -64,7 +66,7 @@ export function HistoryList({ onSelect }: HistoryListProps) {
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <title>{hasCachedAi ? 'AI 结果已缓存' : 'AI 查询（缓存已清除）'}</title>
+                    <title>{t('history.aiCached')}</title>
                     <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                   </svg>
                 )}
@@ -84,7 +86,7 @@ export function HistoryList({ onSelect }: HistoryListProps) {
               )}
               <button
                 type="button"
-                onClick={() => remove(word)}
+                onClick={() => { evictCacheEntry(word); remove(word) }}
                 className="shrink-0 py-3 pr-5 pl-2 text-foreground-muted/30 hover:text-foreground-muted opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 aria-label="Delete"
               >

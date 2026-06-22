@@ -1,13 +1,19 @@
 import { useState } from 'react'
 import type { Example } from '../../../types'
+import { useT } from '../../../i18n'
+import { useSettingsStore } from '../../../stores/settingsStore'
 
 interface ExampleListProps {
   examples: Example[]
+  hideTranslation?: boolean
 }
 
 const COLLAPSE_THRESHOLD = 3
 
-export function ExampleList({ examples }: ExampleListProps) {
+export function ExampleList({ examples, hideTranslation }: ExampleListProps) {
+  const t = useT()
+  const { monolingualWord } = useSettingsStore()
+  const shouldHideTranslation = hideTranslation !== undefined ? hideTranslation : monolingualWord
   const [expanded, setExpanded] = useState(false)
 
   if (examples.length === 0) return null
@@ -22,7 +28,9 @@ export function ExampleList({ examples }: ExampleListProps) {
         {visible.map((ex, i) => (
           <div key={i} className="relative pl-4 border-l-2 border-accent/20 hover:border-accent transition-colors py-1">
             <p className="text-sm font-bold text-foreground leading-relaxed">{ex.en}</p>
-            <p className="text-xs text-foreground-muted mt-1.5 font-medium">{ex.zh}</p>
+            {!shouldHideTranslation && ex.zh && (
+              <p className="text-xs text-foreground-muted mt-1.5 font-medium">{ex.zh}</p>
+            )}
           </div>
         ))}
       </div>
@@ -38,7 +46,7 @@ export function ExampleList({ examples }: ExampleListProps) {
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
-          {expanded ? '收起' : `展开更多 (${examples.length - COLLAPSE_THRESHOLD})`}
+          {expanded ? t('examples.collapse') : `${t('examples.showMore')} (${examples.length - COLLAPSE_THRESHOLD})`}
         </button>
       )}
     </div>

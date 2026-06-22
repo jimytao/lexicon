@@ -1,11 +1,11 @@
 {
-    "version": "0.7.23",
-    "notes": "新增：助记卡「换一个」局部更新与「提议」功能\n1. 点击「换一个」时仅重新获取目前选中分页的助记，其余分页不重置\n2. 点击「提议」可展开输入框输入自己的记忆想法，提交后由 AI 智能核验、沿用或温和解释原因\n3. 修正了更新后分页自动跳转的问题，优化了输入框的半透明视觉配色与毛玻璃加载动画",
-    "pub_date": "2026-06-09T04:20:00Z",
+    "version": "0.7.24",
+    "notes": "多语言国际化 (i18n)、单语学习、语块与搭配、介词空间意象及文化背景升级\n1. 新增：UI 国际化 (i18n) 与多语言界面切换（支持中英无缝切换）\n2. 新增：单语学习模式 (Monolingual Mode) 支持单词/词组/句子细粒度纯英展示，释义由 AI 控制在 CEFR B1-B2 水平\n3. 新增：语块与常用搭配模组 (Chunks & Collocations)，以 Soft 颜色区分并在悬停时展示释义\n4. 新增：介词空间意象分析模组 (Preposition Spatial Imagery)，支持空间隐喻深度剖析与独立介词「换一个」生成\n5. 优化：重构文化背景模组 (Cultural Context) 支持英文单词并补齐普通词查词页展示\n6. 优化：实现历史记录与本地 AI 结果缓存的联动精确清除\n7. 优化：本地字典数据深挖提高例句上限至 9 条，同时清理了大量图片翻译死代码",
+    "pub_date": "2026-06-22T14:52:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTVzbGt1anFyS2lNMmRUSkxjaC9qMjEyOG9yaDlaRlNVRmFiZlhOQUdMUkFubVI5TkVoYlJPUDF4VFdWVzZmL2VmZFRJa1E5aWUrMHBCUWkwVEhFemdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwOTc4OTU3CWZpbGU6TGV4aWNvbl8wLjcuMjNfeDY0LXNldHVwLmV4ZQpxVWxZL21GcVllSGlra2dLdm1jbDUvUUFsZnU1UFRwS0J0aEpQVU5UT0ZZQ01VRk9xeHp0K0V2TVd2SUN2cXkwODNTQ1FQVkFiVis4L0dWNVlZdmpCZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.23/Lexicon_0.7.23_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTgzL25Jdnd3Rjd1Y0s0L1lyWDZrY0ZPWmtOTWpneFk5QXBzNmJhaHBJdW9ld1diM2hRckxqelphRXhyTnVyNWh4cW1taUlJMjNrdUU0Rnh3UjdOR0FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMTQwNzI2CWZpbGU6TGV4aWNvbl8wLjcuMjRfeDY0LXNldHVwLmV4ZQo0cnRuZ200Q25EV1NKRjUwNWhRWTI2MzcrN3N3TVYwQXo4SWRua2J4SVl6c2dyVm5yeFA4NXRScmZYQ0dRS3ZWVWtRcUhKOENWayszN0hpaXF1cndDZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.24/Lexicon_0.7.24_x64-setup.exe"
         }
     }
 }

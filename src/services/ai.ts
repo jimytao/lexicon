@@ -1,5 +1,5 @@
-import { detectLanguage } from '../stores/searchStore'
-import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage } from '../types'
+import { detectLanguage, detectQueryType } from '../stores/searchStore'
+import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem } from '../types'
 
 interface AiConfig {
   endpoint: string
@@ -9,11 +9,15 @@ interface AiConfig {
   webSearchEnabled: boolean
   tavilyApiKey: string
   triLingualExamples: boolean
+  monolingualWord: boolean
+  monolingualPhrase: boolean
+  monolingualSentence: boolean
 }
 
 function getConfig(): AiConfig {
   const defaultModules = [
     { id: 'dictionary', enabled: true },
+    { id: 'collocations', enabled: true },
     { id: 'synonyms', enabled: true },
     { id: 'etymology', enabled: true },
     { id: 'mnemonic', enabled: true },
@@ -22,6 +26,7 @@ function getConfig(): AiConfig {
     { id: 'practice', enabled: true },
     { id: 'culture', enabled: true },
     { id: 'chat', enabled: true },
+    { id: 'preposition', enabled: true },
   ]
   try {
     const stored = JSON.parse(localStorage.getItem('lexicon-settings') ?? '{}') as {
@@ -35,6 +40,9 @@ function getConfig(): AiConfig {
         webSearchEnabled?: boolean
         tavilyApiKey?: string
         triLingualExamples?: boolean
+        monolingualWord?: boolean
+        monolingualPhrase?: boolean
+        monolingualSentence?: boolean
       }
     }
     const s = stored.state ?? {}
@@ -47,6 +55,9 @@ function getConfig(): AiConfig {
       webSearchEnabled: s.webSearchEnabled ?? false,
       tavilyApiKey: s.tavilyApiKey ?? '',
       triLingualExamples: s.triLingualExamples ?? false,
+      monolingualWord: s.monolingualWord ?? false,
+      monolingualPhrase: s.monolingualPhrase ?? false,
+      monolingualSentence: s.monolingualSentence ?? false,
     }
   } catch {
     return {
@@ -57,32 +68,73 @@ function getConfig(): AiConfig {
       webSearchEnabled: false,
       tavilyApiKey: '',
       triLingualExamples: false,
+      monolingualWord: false,
+      monolingualPhrase: false,
+      monolingualSentence: false,
     }
   }
 }
 
-function getSystemPrompt(modules: Array<{ id: string; enabled: boolean }>, includeExamples: boolean = false): string {
+function getSystemPrompt(
+  modules: Array<{ id: string; enabled: boolean }>,
+  includeExamples: boolean = false,
+  monolingualWord: boolean = false
+): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
   const includeSemantic = isEnabled('dictionary')
   const includeExampleSchema = includeExamples && isEnabled('examples')
 
-  let schema = `{\n  "meanings": [\n    {\n      "zh": "（情景前缀）中文释义",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "2-4字的情景标签",\n        "description": "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
+  const meaningsZhDescription = monolingualWord 
+    ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'"
+    : "（情景前缀）中文释义"
+  const sceneLabel = monolingualWord ? "2-4 word English context tag" : "2-4字的情景标签"
+  const sceneDesc = monolingualWord 
+    ? "1-3 sentences in English: when this meaning occurs, tone, and how it differs"
+    : "1-3句话，用口语化中文解释这种含义在什么情境下发生、是什么感觉、和其他含义有何区别"
+  const partMeaning = monolingualWord ? "meaning in English" : "中文含义（来源语言）"
+  const anchorNote = monolingualWord 
+    ? "1 sentence in English: how this anchor word embodies the root meaning, helping association"
+    : "1句话中文：此锚点词如何体现词根含义，帮助联想记忆"
+  const storyDesc = monolingualWord ? "in English" : "1-2句话，说明字面意义如何演变成现在的含义"
+  const derivedMeaning = monolingualWord ? "meaning in English" : "中文含义"
+  const synonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的情感色彩、使用场景或强度差异"
+  const antonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的对比含义、使用场景或词义强弱差异"
+
+  let schema = `{\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
   
   if (isEnabled('etymology')) {
-    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "中文含义（来源语言）",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）1句话中文：此锚点词如何体现词根含义，帮助联想记忆"\n      }\n    ],\n    "story": "1-2句话，说明字面意义如何演变成现在的含义",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "中文含义" }\n    ]\n  }`
+    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "${derivedMeaning}" }\n    ]\n  }`
   }
   
   if (isEnabled('synonyms')) {
-    schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "1句话，说明与主词的情感色彩、使用场景或强度差异"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "反义词",\n      "distinction": "1句话，说明与主词的对比含义、使用场景或词义强弱差异"\n    }\n  ]`
+    schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "${synonymDistinction}"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "反义词",\n      "distinction": "${antonymDistinction}"\n    }\n  ]`
   }
+
+  if (isEnabled('collocations')) {
+    const collocationsNote = monolingualWord ? "English usage note" : "中文使用说明"
+    schema += `,\n  "collocations": {\n    "chunks": [\n      { "chunk": "Verb/prep pattern using the word (语块)", "note": "${collocationsNote}" }\n    ],\n    "collocations": [\n      { "chunk": "Natural word combination (搭配)", "note": "${collocationsNote}" }\n    ]\n  }`
+  }
+
   if (includeExampleSchema) {
-    schema += `,\n  "examples": [\n    { "en": "Example sentence using this word", "zh": "中文翻译" }\n  ]`
+    const exampleZh = monolingualWord ? "English meaning / explanation" : "中文翻译"
+    schema += `,\n  "examples": [\n    { "en": "Example sentence using this word", "zh": "${exampleZh}" }\n  ]`
+  }
+
+  if (isEnabled('culture')) {
+    const cultureContent = monolingualWord
+      ? "1-2 sentences in English: the word's cultural origin, register (formal/informal/slang/technical), or notable usage shift"
+      : "1-2句中文：词的文化来源、语域（正式/口语/俚语/专业）或值得注意的用法演变"
+    schema += `,\n  "culturalLore": {\n    "title": "${monolingualWord ? '2-4 word English tag (e.g. Gen-Z Slang, Legal Jargon)' : '2-4字标签（如 网络用语、医学术语）'}",\n    "content": "${cultureContent}",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
   }
   
   schema += `\n}`
 
-  return `You are a professional English vocabulary analyst for Chinese native speakers.
+  const roleDescription = monolingualWord
+    ? "You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations."
+    : "You are a professional English vocabulary analyst for Chinese native speakers."
+
+  let prompt = `${roleDescription}
 
 Given an English word and its basic Chinese translation, analyze the word deeply.
 
@@ -93,13 +145,32 @@ ${schema}
 
 Rules:
 - meanings array length must match the number of meanings provided in the user message
-${includeSemantic ? '- scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style' : ''}
-${isEnabled('etymology') ? '- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)\n- For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 Chinese sentence: how the anchor word embodies the root meaning)\n- For pure prefixes/suffixes (e.g. in-, -tion, -ual): omit sourceForm, anchor, anchorNote\n- etymology.story: 1-2 sentences max\n- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)' : ''}
-${isEnabled('synonyms') ? '- synonyms: provide 3-5 words, ordered from closest to most distant in meaning\n- synonyms distinction: 1 sentence each\n- antonyms: provide 3-5 words, ordered from most direct contrast to weaker contrast\n- antonyms distinction: 1 sentence each' : ''}
-${includeExampleSchema ? '- examples: provide 3-5 natural, common, learner-friendly sentences' : ''}
+${includeSemantic ? (monolingualWord ? '- scene.description must be conversational English, 1-3 sentences' : '- scene.description must be conversational Chinese, 1-3 sentences, NOT dictionary-style') : ''}
+${isEnabled('etymology') ? `- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)
+- For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 ${monolingualWord ? 'English' : 'Chinese'} sentence: how the anchor word embodies the root meaning)
+- For pure prefixes/suffixes (e.g. in-, -tion, -ual): omit sourceForm, anchor, anchorNote
+- etymology.story: 1-2 sentences max
+- etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)` : ''}
+${isEnabled('synonyms') ? `- synonyms: provide 3-5 words, ordered from closest to most distant in meaning
+- synonyms distinction: 1 sentence each
+- antonyms: provide 3-5 words, ordered from most direct contrast to weaker contrast
+- antonyms distinction: 1 sentence each` : ''}
+${isEnabled('collocations') ? `- collocations.chunks: provide 4-6 common verb+noun or prep+noun patterns using this word (语块)
+- collocations.collocations: provide 4-6 natural word combinations (adj+noun, noun+verb)
+- collocations notes: 1 brief note explaining the usage/combination, in ${monolingualWord ? 'English only' : 'Chinese'}` : ''}
+${includeExampleSchema ? `- examples: provide 3-5 natural, common, learner-friendly sentences` : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
 - Never output anything outside the JSON object`
+
+  if (monolingualWord) {
+    prompt += `\n- ALL output text must be in English only. No Chinese characters anywhere.`
+  }
+  if (isEnabled('culture')) {
+    prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: focus on what makes this word culturally interesting — register, origin, or shift in usage. Do NOT repeat etymology.`
+  }
+
+  return prompt
 }
 
 const EXERCISES_SYSTEM_PROMPT = `You are a language practice exercise designer for Chinese learners.
@@ -136,9 +207,9 @@ Rules:
 - correction must be a natural, corrected version of the student's sentence.
 - Never output anything outside the JSON object.`
 
-function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>, includeExamples: boolean = false): string {
+function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>, includeExamples: boolean = false, monolingualWord: boolean = false): string {
   const meaningsText = meanings
-    .map((m, i) => `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
+    .map((m, i) => monolingualWord ? `${i + 1}. EN: ${m.en}` : `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
     .join('\n')
 
   return `Word: ${word}\n\nMeanings from dictionary:\n${meaningsText}${includeExamples ? '\n\nThe dictionary has no example sentences for this word. Generate examples in the JSON.' : ''}\n\nAnalyze this word and return the JSON.`
@@ -155,7 +226,7 @@ export async function analyzeWord(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const userPrompt = buildUserPrompt(word, meanings, includeExamples)
+  const userPrompt = buildUserPrompt(word, meanings, includeExamples, config.monolingualWord)
 
   const response = await fetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
@@ -168,7 +239,7 @@ export async function analyzeWord(
       model: config.model,
       temperature: 0.3,
       messages: [
-        { role: 'system', content: getSystemPrompt(config.modules, includeExamples) },
+        { role: 'system', content: getSystemPrompt(config.modules, includeExamples, config.monolingualWord) },
         { role: 'user', content: userPrompt },
       ],
     }),
@@ -377,39 +448,75 @@ export async function evaluateAnswer(
 
 // ── AI 全量查词（词库无结果时） ──
 
-function getFullLookupPrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string, isFull: boolean = true, triLingual: boolean = false): string {
+function getFullLookupPrompt(
+  modules: Array<{ id: string; enabled: boolean }>,
+  lang: string = 'en',
+  webSearchResults?: string,
+  isFull: boolean = true,
+  triLingual: boolean = false,
+  monolingualWord: boolean = false
+): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+  const isMono = monolingualWord && lang === 'en'
 
-  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "中文释义",\n      "en": "English definition (or original language equivalent)",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "2-4字情景标签",\n        "description": "1-3句口语化中文，解释这个含义在什么情境下使用"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
+  const meaningsZhDescription = isMono ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'" : "中文释义"
+  const meaningsEnDescription = "English definition (or original language equivalent)"
+  const sceneLabel = isMono ? "2-4 word English context tag" : "2-4字情景标签"
+  const sceneDesc = isMono ? "1-3 sentences in English: when this meaning occurs, tone, and how it differs" : "1-3句口语化中文，解释这个含义在什么情境下使用"
+  const partMeaning = isMono ? "meaning in English" : "含义"
+  const anchorNote = isMono ? "1 sentence in English: how this anchor word embodies the root meaning, helping association" : "1句话中文：此词如何体现词根，帮助联想"
+  const storyDesc = isMono ? "in English" : `1-2句话说明${lang !== 'en' && lang !== 'zh' ? '词汇构成/来源' : '词根词缀/来源'}`
+  const derivedMeaning = isMono ? "meaning in English" : "含义"
+  const synonymDistinction = isMono ? "English nuance explanation" : "与主词的差异"
+  const antonymDistinction = isMono ? "English nuance explanation" : "与主词的对比差异"
+
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
   if (isFull && isEnabled('etymology')) {
-    const isForeign = lang !== 'en' && lang !== 'zh'
-    const etymLabel = isForeign ? '词汇构成/来源' : '词根词缀/来源'
-    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "含义",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）1句话中文：此词如何体现词根，帮助联想"\n      }\n    ],\n    "story": "1-2句话说明${etymLabel}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "含义" }]\n  }`
+    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "${derivedMeaning}" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
-    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "与主词的差异" }],\n  "antonyms": [{ "word": "反义词", "distinction": "与主词的对比差异" }]`
+    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
   }
+
+  if (isFull && isEnabled('collocations')) {
+    const collocationsNote = isMono ? "English usage note" : "中文使用说明"
+    schema += `,\n  "collocations": {\n    "chunks": [\n      { "chunk": "Verb/prep pattern using the word (语块)", "note": "${collocationsNote}" }\n    ],\n    "collocations": [\n      { "chunk": "Natural word combination (搭配)", "note": "${collocationsNote}" }\n    ]\n  }`
+  }
+
   if (isEnabled('examples')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign && triLingual) {
       schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "中文翻译" }\n  ]`
     } else {
-      schema += `,\n  "examples": [\n    { "en": "Example sentence in original language (or target language)", "zh": "中文翻译" }\n  ]`
+      const exampleZh = isMono ? "English meaning / explanation" : "中文翻译"
+      schema += `,\n  "examples": [\n    { "en": "Example sentence in original language (or target language)", "zh": "${exampleZh}" }\n  ]`
     }
   }
   
-  if (isFull && lang !== 'en' && lang !== 'zh') {
-    schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这个词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源和圈内含义"\n  }`
+  if (isFull && isEnabled('culture')) {
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    if (isForeign) {
+      // Foreign words: keep deep subculture/ACG focus
+      schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这个词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，说明其来源 and 圈内含义",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+    } else {
+      // English / Chinese words: focus on register + cultural note
+      const cultureContent = isMono
+        ? "1-2 sentences in English: the word's cultural origin, register (formal/informal/slang/technical), or notable usage shift"
+        : "1-2句中文：词的文化来源、语域（正式/口语/俚语/专业）或值得注意的用法演变"
+      schema += `,\n  "culturalLore": {\n    "title": "${isMono ? '2-4 word English tag (e.g. Gen-Z Slang, Legal Jargon)' : '2-4字标签（如 网络用语、医学术语）'}",\n    "content": "${cultureContent}",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+    }
   }
 
   schema += `\n}`
 
-  const basePrompt = `You are a professional English vocabulary analyst for Chinese native speakers.`
+  const basePrompt = isMono
+    ? `You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations.`
+    : `You are a professional English vocabulary analyst for Chinese native speakers.`
   const multiLangPrompt = `You are a professional multi-language translator and cultural analyst. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
 
-  return `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
+  let prompt = `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
 
 Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} word, provide a complete analysis.
 
@@ -430,9 +537,28 @@ Rules:
   - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
   - Explain the specific historical or social context behind the word.
   - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
-${isFull && isEnabled('etymology') ? '- etymology.parts: each segment must correspond to the actual letters in the target word\n- For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 Chinese sentence connecting anchor → root meaning)\n- For pure prefixes/suffixes: omit sourceForm, anchor, anchorNote' : ''}
+${isFull && isEnabled('etymology') ? `- etymology.parts: each segment must correspond to the actual letters in the target word
+- For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 ${isMono ? 'English' : 'Chinese'} sentence connecting anchor → root meaning)
+- For pure prefixes/suffixes: omit sourceForm, anchor, anchorNote` : ''}
+${isFull && isEnabled('collocations') ? `- collocations.chunks: provide 4-6 common verb+noun or prep+noun patterns using this word (语块)
+- collocations.collocations: provide 4-6 natural word combinations (adj+noun, noun+verb)
+- collocations notes: 1 brief note explaining the usage/combination, in ${isMono ? 'English only' : 'Chinese'}` : ''}
 - Provide 3-5 ${isFull ? 'synonyms, 3-5 antonyms, and 3-5 examples' : 'examples'}.
 - Keep everything concise.`
+
+  if (isMono) {
+    prompt += `\n- ALL output text must be in English only. No Chinese characters anywhere.`
+  }
+  if (isFull && isEnabled('culture')) {
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    if (isForeign) {
+      prompt += `\n- culturalLore: PRIORITY for foreign words. Provide deep cultural/subculture context. Specify ACG source, historical origin, or social context.`
+    } else {
+      prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: focus on register, cultural origin, or usage shift. Do NOT repeat etymology.`
+    }
+  }
+
+  return prompt
 }
 
 export async function aiFullLookup(
@@ -450,7 +576,7 @@ export async function aiFullLookup(
   const langName = langNames[lang] || 'Foreign Language'
 
   const cleaned = await callApi(
-    getFullLookupPrompt(config.modules, lang, webResults, isFull, config.triLingualExamples),
+    getFullLookupPrompt(config.modules, lang, webResults, isFull, config.triLingualExamples, config.monolingualWord),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -466,30 +592,50 @@ export async function aiFullLookup(
 
 // ── AI 词组/句子查询 ──
 
-function getPhrasePrompt(modules: Array<{ id: string; enabled: boolean }>, lang: string = 'en', webSearchResults?: string, isFull: boolean = true, triLingual: boolean = false): string {
+function getPhrasePrompt(
+  modules: Array<{ id: string; enabled: boolean }>,
+  lang: string = 'en',
+  webSearchResults?: string,
+  isFull: boolean = true,
+  triLingual: boolean = false,
+  isMono: boolean = false
+): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "中文释义/翻译",\n  "usageScenes": [\n    {\n      "label": "2-4字场景标签",\n      "description": "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"\n    }\n  ]`
+  const meaningDesc = isMono ? "English definition/explanation in simple terms" : "中文释义/翻译"
+  const sceneDesc = isMono ? "1-3 sentences in English, explaining when to use this expression, tone, and feeling" : "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"
+
+  let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "${meaningDesc}",\n  "usageScenes": [\n    {\n      "label": "${isMono ? '2-4 word English context tag' : '2-4字场景标签'}",\n      "description": "${sceneDesc}"\n    }\n  ]`
 
   if (isEnabled('examples')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign && triLingual) {
       schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "中文翻译" }\n  ]`
     } else {
-      schema += `,\n  "examples": [\n    { "en": "Example sentence using this phrase", "zh": "中文翻译" }\n  ]`
+      schema += `,\n  "examples": [\n    { "en": "Example sentence using this phrase", "zh": "${isMono ? 'English explanation/meaning' : '中文翻译'}" }\n  ]`
     }
   }
   
-  if (isFull && lang !== 'en' && lang !== 'zh') {
-    schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这句话或词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源 and 圈内含义"\n  }`
+  if (isFull && isEnabled('culture')) {
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    if (isForeign) {
+      schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这句话或词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，请说明其来源 and 圈内含义",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+    } else {
+      const cultureContent = isMono
+        ? "1-2 sentences in English: the phrase's register (formal/informal/slang/technical) or any cultural nuance worth knowing"
+        : "1-2句中文：这个表达的语域（正式/口语/俚语/专业）或值得知道的文化背景"
+      schema += `,\n  "culturalLore": {\n    "title": "${isMono ? '2-4 word English tag' : '2-4字标签'}",\n    "content": "${cultureContent}",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+    }
   }
 
   schema += `\n}`
 
-  const basePrompt = `You are a professional English language analyst for Chinese native speakers.`
+  const basePrompt = isMono
+    ? `You are a professional English language analyst for learners who prefer English-only monolingual explanations.`
+    : `You are a professional English language analyst for Chinese native speakers.`
   const multiLangPrompt = `You are a professional multi-language translator and cultural analyst. You specialize in "Cultural Interpretation" — explaining the social, historical, and subculture (especially ACG/Internet) context behind foreign expressions.`
 
-  return `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
+  let prompt = `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
 
 Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} phrase or sentence, provide a complete analysis.
 
@@ -505,11 +651,28 @@ Rules:
   - correctForm: the most natural English translation.
   - usageScenes: explain when to use this translation vs others.
 - If input is a FOREIGN LANGUAGE (not English/Chinese):
-  - meaning: accurate and natural Chinese translation.
+  - meaning: accurate and natural translation.
   - usageScenes: explain the specific feeling or tone of the original expression.
   - culturalLore: PRIORITY: Provide deep cultural/subculture context. Specify historical origins or social context if applicable.
 - Provide 2-4 usage scenes, 2-4 examples.
-- Keep everything concise.`
+- Keep everything concise.
+- Never output anything outside the JSON object.`
+
+  if (isMono) {
+    prompt += `
+- ALL output text must be in English only. No Chinese characters anywhere.
+- Use simple, learner-friendly English vocabulary (CEFR B1–B2 level max). Avoid idioms or advanced expressions in explanations. Your readers are learners, not native speakers.`
+  }
+  if (isFull && isEnabled('culture')) {
+    const isForeign = lang !== 'en' && lang !== 'zh'
+    if (isForeign) {
+      prompt += `\n- culturalLore: PRIORITY for foreign phrases. Provide deep cultural/subculture context.`
+    } else {
+      prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: 1-2 sentences on register or cultural nuance only. Keep it distinct from usageScenes.`
+    }
+  }
+
+  return prompt
 }
 
 export async function aiPhraseQuery(
@@ -526,8 +689,13 @@ export async function aiPhraseQuery(
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
 
+  const qType = detectQueryType(phrase)
+  const isMono = qType === 'sentence'
+    ? config.monolingualSentence
+    : config.monolingualPhrase  // phraseQuery only handles phrase/sentence; fallback is phrase, not word
+
   const cleaned = await callApi(
-    getPhrasePrompt(config.modules, lang, webResults, isFull, config.triLingualExamples),
+    getPhrasePrompt(config.modules, lang, webResults, isFull, config.triLingualExamples, isMono),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
   )
@@ -849,67 +1017,6 @@ Rules:
 - If no text found, return {"blocks": []}
 - Never output anything outside the JSON object`
 
-// ── Full prompt: OCR + translate + bbox (for embed/inlay mode) ──
-const IMAGE_TRANSLATE_FULL_PROMPT = `You are a professional manga/comic localization expert specializing in precise text region detection and translation.
-
-POSITIONING REFERENCE SYSTEM:
-- Imagine a 3x3 grid overlay on the image (top-left, top-center, top-right, middle-left, center, middle-right, bottom-left, bottom-center, bottom-right)
-- Use this grid to describe and verify text positions
-- Always include visual reference like "top-left speech bubble" or "center caption box"
-
-CRITICAL RULES FOR ACCURATE POSITIONING:
-1. First, scan entire image and COUNT all distinct text regions
-2. For each region: 
-   - Identify its grid position (e.g., "top-left area", "center-right area")
-   - Read ONLY the text visible at that exact location
-   - Verify: "The text at [grid position] is [text]" before proceeding
-   - Bounding boxes (detectedBbox) MUST tightly enclose ONLY the dialogue bubble or text block, leaving no excessive outer margins.
-3. Recommend the optimal 'detectedMaskShape' based on these rules:
-   - 'ellipse': Best for standard round, oval, or elliptical speech bubbles. This is the default.
-   - 'circle': Best for perfectly round or circular bubbles.
-   - 'capsule': Best for narrow, vertically elongated, or horizontally elongated capsules.
-   - 'rect': Best for sharp rectangular signs, notes, or square bubbles.
-   - 'rounded-rect': Best for captions, narration boxes, or cards with rounded corners.
-   - 'diamond': Best for diamond-shaped background patterns or special bubbles.
-   - 'burst': Best for highly expressive starbursts, explosions, or action exclamation bubbles.
-   - 'none': MUST be chosen for Sound Effects (SFX), graffiti, or text overlays drawn directly over complex artwork/illustrations to avoid erasing and destroying the underlying background illustration.
-   - 'polygon': If the bubble has a complex non-geometric outline, recommend 'polygon' and provide clockwise vertices in 'detectedPolygon'.
-4. Never assign one region's text to another region's coordinates
-5. For polygon shapes: trace ONLY the inner smooth boundary, ignore decorative spikes
-
-Return ONLY a valid JSON object. No markdown, no explanation, no extra text.
-
-{
-  "regions": [
-    {
-      "id": "region_1",
-      "original": "detected text in source language",
-      "translation": "translated text",
-      "type": "bubble",
-      "direction": "vertical",
-      "detectedBbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.18 },
-      "detectedPolygon": [{"x": 0.11, "y": 0.09}, {"x": 0.18, "y": 0.05}, {"x": 0.30, "y": 0.05}, {"x": 0.37, "y": 0.10}, {"x": 0.35, "y": 0.20}, {"x": 0.18, "y": 0.23}],
-      "detectedMaskShape": "ellipse",
-      "visualReference": "top-left speech bubble with spiky tail"
-    }
-  ]
-}
-
-Field rules:
-- id: unique identifier (region_1, region_2, etc.)
-- type: "bubble" | "sfx" | "caption"
-- direction: "vertical" | "horizontal"
-- detectedBbox: normalized 0-1 coordinates of where text is actually located
-- detectedPolygon: clockwise vertices of inner boundary for bubble/caption only
-- detectedMaskShape: "ellipse" | "rect" | "rounded-rect" | "circle" | "capsule" | "diamond" | "burst" | "polygon" | "none"
-- visualReference: brief description using grid position for verification
-- Order regions by natural reading order based on image type:
-  • MANGA (Japanese): right-to-left panel columns, top-to-bottom rows
-  • CHAT/MESSAGING (alternating left/right bubbles): strictly top-to-bottom by vertical position, interleaving left and right bubbles as they appear
-  • ALL OTHER: top-to-bottom, then left-to-right
-- If no text found: {"regions": []}
-- Never output anything outside of JSON object`
-
 const LANG_DISPLAY: Record<string, string> = {
   '中文': 'Chinese (Simplified)',
   '英语': 'English',
@@ -965,7 +1072,7 @@ async function callImageTranslateAPI(
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
   const cleaned = fenceMatch ? fenceMatch[1].trim() : raw.trim()
 
-  let parsed: { regions?: import('../types').TextRegion[], blocks?: import('../types').TextBlock[] }
+  let parsed: { blocks?: import('../types').TextBlock[] }
   try {
     parsed = JSON.parse(cleaned)
   } catch {
@@ -979,28 +1086,6 @@ async function callImageTranslateAPI(
     }
   }
 
-  // Handle new regions format (with L1/L2 separation)
-  if (parsed.regions) {
-    return parsed.regions.map(region => ({
-      original: region.original,
-      translation: region.translation,
-      type: region.type,
-      direction: region.direction,
-      bbox: region.detectedBbox,
-      polygon: region.detectedPolygon,
-      maskShape: region.detectedMaskShape,
-      // Default values for L1/L2 properties
-      l1ColorHue: 0,
-      l1ColorSaturation: 1,
-      l1ColorOpacity: 1,
-      colorHue: 0,
-      colorSaturation: 1,
-      colorOpacity: 1,
-      rotation: 0,
-    }))
-  }
-
-  // Handle legacy blocks format (backward compatibility)
   return parsed.blocks ?? []
 }
 
@@ -1012,140 +1097,6 @@ export async function aiImageTranslateFast(
   signal?: AbortSignal,
 ): Promise<import('../types').TextBlock[]> {
   return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FAST_PROMPT, signal)
-}
-
-/** @deprecated since v0.6.0 — bbox detection moved to Tesseract.js OCR (src/services/ocr.ts).
- * Phase 2 embed mode no longer calls this function.
- * Use `aiImageTranslateFast` for Phase 1, then `detectTextRegions` + `matchBlocksToOcr` for Phase 2. */
-export async function aiImageTranslateFull(
-  imageBase64: string,
-  sourceLang: string,
-  targetLang: string,
-  signal?: AbortSignal,
-): Promise<import('../types').TextBlock[]> {
-  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FULL_PROMPT, signal)
-}
-
-/** @deprecated use aiImageTranslateFast for Phase 1, then OCR for Phase 2 bbox */
-export async function aiImageTranslate(
-  imageBase64: string,
-  sourceLang: string,
-  targetLang: string,
-  signal?: AbortSignal,
-): Promise<import('../types').TextBlock[]> {
-  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FULL_PROMPT, signal)
-}
-
-// ── Locate prompt: given known texts, find their bubble positions only ──
-const IMAGE_LOCATE_PROMPT = `You are a manga/comic layout analyst. Your ONLY task is to locate speech bubbles and text regions.
-
-You will receive a numbered list of text snippets already known to exist in this image. For EACH snippet, find the containing speech bubble or text region and return its bounding box and shape.
-
-DO NOT translate. DO NOT detect new text. ONLY locate bubbles for the provided list.
-
-Return ONLY a valid JSON object. No markdown, no explanation.
-
-{
-  "regions": [
-    {
-      "index": 1,
-      "bbox": { "x": 0.12, "y": 0.05, "w": 0.25, "h": 0.18 },
-      "maskShape": "ellipse",
-      "polygon": null
-    }
-  ]
-}
-
-Rules:
-- index: 1-based, matches the number in the provided text list
-- bbox: normalized 0-1, covers the ENTIRE visible balloon or caption box (wider than just the text)
-- maskShape — choose the best fit:
-  - "ellipse": round/oval speech bubbles (default)
-  - "circle": perfectly circular bubbles
-  - "capsule": tall or wide elongated capsules
-  - "rect": sharp rectangular boxes or signs
-  - "rounded-rect": captions or narration boxes with rounded corners
-  - "diamond": diamond-shaped bubbles
-  - "burst": spiky/explosive action bubbles
-  - "polygon": complex non-geometric shapes (must include polygon array)
-  - "none": text drawn directly over artwork with no bubble background (SFX, graffiti)
-- polygon: clockwise [{x,y}] vertices ONLY when maskShape is "polygon", otherwise null
-- Omit entries you cannot locate (do not guess positions)
-- Never output anything outside the JSON object`
-
-/** Phase 2 embed: given known translated blocks, locate their bubble bboxes in the image.
- *  Decouples translation (Phase 1) from positional detection (Phase 2).
- *  Falls back to staggered positions for any blocks that could not be located. */
-export async function aiImageLocateBubbles(
-  imageBase64: string,
-  blocks: import('../types').TextBlock[],
-  signal?: AbortSignal,
-): Promise<import('../types').TextBlock[]> {
-  const config = getConfig()
-  if (!config.apiKey) throw new Error('API key not configured')
-  if (!config.endpoint) throw new Error('AI endpoint not configured')
-
-  const textList = blocks
-    .map((b, i) => `[${i + 1}] ${b.original || b.translation || '(unknown)'}`)
-    .join('\n')
-
-  const userContent = [
-    { type: 'image_url' as const, image_url: { url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}` } },
-    { type: 'text' as const, text: `Locate the speech bubble or caption region for each of the following ${blocks.length} text snippet(s):\n\n${textList}\n\nReturn the JSON.` },
-  ]
-
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    signal,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.1,
-      messages: [
-        { role: 'system', content: IMAGE_LOCATE_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`AI API error ${response.status}: ${err}`)
-  }
-
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
-  const raw = data.choices?.[0]?.message?.content ?? ''
-  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  const cleaned = fenceMatch ? fenceMatch[1].trim() : raw.trim()
-
-  type LocateRegion = { index: number; bbox: import('../types').TextBlock['bbox']; maskShape: string; polygon?: Array<{ x: number; y: number }> | null }
-  let parsed: { regions?: LocateRegion[] } = { regions: [] }
-  try {
-    parsed = JSON.parse(cleaned)
-  } catch {
-    const objMatch = cleaned.match(/\{[\s\S]*\}/)
-    try { parsed = JSON.parse(objMatch?.[0] ?? '{}') } catch { /* fall through to fallback */ }
-  }
-
-  const regionMap = new Map<number, LocateRegion>()
-  for (const r of parsed.regions ?? []) regionMap.set(r.index, r)
-
-  let fallbackIdx = 0
-  return blocks.map((block, i) => {
-    const region = regionMap.get(i + 1)
-    if (region?.bbox?.w) {
-      return {
-        ...block,
-        bbox: region.bbox,
-        maskShape: region.maskShape as import('../types').TextBlock['maskShape'],
-        polygon: region.polygon ?? undefined,
-      }
-    }
-    // Fallback: staggered position so the block is still visible
-    const fb = { x: 0.05, y: 0.05 + fallbackIdx * 0.09, w: 0.42, h: 0.07 }
-    fallbackIdx++
-    return { ...block, bbox: fb, maskShape: block.maskShape ?? 'ellipse' as const }
-  })
 }
 
 export async function testConnection(signal?: AbortSignal): Promise<string> {
@@ -1180,4 +1131,132 @@ export async function testConnection(signal?: AbortSignal): Promise<string> {
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
   const reply = data.choices?.[0]?.message?.content?.trim() ?? ''
   return reply || '连接成功'
+}
+
+export async function generatePrepImagery(
+  phrase: string,
+  prepositions: string[],
+  signal?: AbortSignal
+): Promise<PrepSpatialData> {
+  const userPrompt = `Phrase: "${phrase}"\nPrepositions to explain: ${prepositions.join(', ')}\n\nReturn the JSON.`
+  
+  const systemPrompt = `You are an expert in English preposition spatial imagery and phrasal verb analysis.
+
+REFERENCE — Core spatial imagery for common prepositions:
+UP: Increase · Completion · Improvement · Creation (something moving upward, becoming more complete)
+OUT: Reveal · Remove · Exhaust · Distribute (moving from inside to outside)
+OFF: Separation · Removal · Disconnection (taking something away or losing connection)
+ON: Connection · Continuation · Activation (attaching or keeping something running)
+OVER: Transfer · Review · Repetition · Completion (crossing from one side to another)
+IN: Entering · Inclusion · Participation (entering a space or group)
+INTO: Transformation · Entry (entering and changing state)
+DOWN: Reduction · Recording · Stabilisation (moving lower, settling, writing something permanent)
+BACK: Return · Response (going back to a previous state or replying)
+THROUGH: Completion Through Difficulty (persisting to the end of a challenge)
+AWAY: Distance · Continuous Action (moving or continuing action at a distance)
+AROUND: Movement Without Direct Progress · Flexibility (circling, exploring, not committed to one direction)
+FOR: Purpose · Seeking (directed toward a goal)
+
+NOTE: For any preposition NOT in this list, apply your own spatial reasoning based on native-speaker intuition.
+
+For the given phrase and its prepositions, explain:
+1. The core spatial/conceptual image of each preposition
+2. How that image specifically shapes the meaning of this phrase
+3. A concise smart association
+
+Return ONLY valid JSON. No markdown, no extra text.
+
+Schema:
+{
+  "items": [
+    {
+      "preposition": "UP",
+      "coreIdea": "Increase · Completion · Creation",
+      "phraseExplanation": "2-3 sentences explaining how UP's imagery applies to THIS phrase",
+      "smartAssoc": "1-sentence quick visual summary of the phrase's preposition usage"
+    }
+  ]
+}
+
+Rules:
+- items must contain ONE entry PER preposition in the input list, in the same order
+- phraseExplanation must reference the specific phrase, not just the preposition in isolation
+- smartAssoc should be a memorable one-liner (can use emoji or → notation)
+- Keep language clear and learner-friendly (CEFR B2 level)
+- Return ONLY the JSON object.`
+
+  const cleaned = await callApi(systemPrompt, userPrompt, signal)
+  try {
+    return JSON.parse(cleaned) as PrepSpatialData
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try {
+        return JSON.parse(objMatch[0]) as PrepSpatialData
+      } catch { /* fall through */ }
+    }
+  }
+  throw new Error('AI returned invalid JSON for preposition spatial imagery')
+}
+
+export async function regenerateSinglePrepItem(
+  phrase: string,
+  preposition: string,
+  currentContent?: string,
+  signal?: AbortSignal
+): Promise<PrepSpatialItem> {
+  const currentPrompt = currentContent ? `Current explanation content to change: "${currentContent}"` : ''
+  const userPrompt = `Phrase: "${phrase}"\nPreposition to explain: ${preposition}\n${currentPrompt}\n\nReturn the JSON.`
+
+  const systemPrompt = `You are an expert in English preposition spatial imagery and phrasal verb analysis.
+
+Your goal is to generate or refine a single preposition's spatial explanation for a given phrase.
+
+REFERENCE — Core spatial imagery for common prepositions:
+UP: Increase · Completion · Improvement · Creation (something moving upward, becoming more complete)
+OUT: Reveal · Remove · Exhaust · Distribute (moving from inside to outside)
+OFF: Separation · Removal · Disconnection (taking something away or losing connection)
+ON: Connection · Continuation · Activation (attaching or keeping something running)
+OVER: Transfer · Review · Repetition · Completion (crossing from one side to another)
+IN: Entering · Inclusion · Participation (entering a space or group)
+INTO: Transformation · Entry (entering and changing state)
+DOWN: Reduction · Recording · Stabilisation (moving lower, settling, writing something permanent)
+BACK: Return · Response (going back to a previous state or replying)
+THROUGH: Completion Through Difficulty (persisting to the end of a challenge)
+AWAY: Distance · Continuous Action (moving or continuing action at a distance)
+AROUND: Movement Without Direct Progress · Flexibility (circling, exploring, not committed to one direction)
+FOR: Purpose · Seeking (directed toward a goal)
+
+NOTE: For any preposition NOT in this list, apply your own spatial reasoning based on native-speaker intuition.
+
+If "Current explanation content to change" is provided, you MUST generate a completely different explanation and association. Do not repeat or slightly rephrase the current one.
+
+Return ONLY valid JSON. No markdown, no extra text.
+
+Schema:
+{
+  "preposition": "${preposition}",
+  "coreIdea": "e.g. Increase · Completion · Creation",
+  "phraseExplanation": "2-3 sentences explaining how this preposition's imagery applies to this specific phrase",
+  "smartAssoc": "1-sentence quick visual summary of the phrase's preposition usage"
+}
+
+Rules:
+- phraseExplanation must reference the specific phrase, not just the preposition in isolation
+- smartAssoc should be a memorable one-liner (can use emoji or → notation)
+- Keep language clear and learner-friendly (CEFR B2 level)
+- Return ONLY the JSON object.`
+
+  const cleaned = await callApi(systemPrompt, userPrompt, signal)
+  try {
+    return JSON.parse(cleaned) as PrepSpatialItem
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try {
+        return JSON.parse(objMatch[0]) as PrepSpatialItem
+      } catch { /* fall through */ }
+    }
+  }
+  throw new Error('AI returned invalid JSON for single preposition item')
 }

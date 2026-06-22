@@ -12,6 +12,9 @@ import { MnemonicCard } from './AiSection/MnemonicCard'
 import { PracticeSection } from './AiSection/PracticeSection'
 import { AiChatBox } from './AiSection/AiChatBox'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
+import { useT } from '../../i18n'
+import { CollocationCard } from './AiSection/CollocationCard'
+import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 
 interface ResultViewProps {
   wordResult: WordResult
@@ -36,6 +39,7 @@ export function ResultView({
   onWordClick,
   onGoToSettings,
 }: ResultViewProps) {
+  const t = useT()
   const { modules } = useSettingsStore()
   const updateMnemonic = useResultStore(state => state.updateMnemonic)
   const displayedExamples = wordResult.examples.length > 0 ? wordResult.examples : aiAnalysis?.examples ?? []
@@ -79,13 +83,17 @@ export function ResultView({
                   />
                   {mode === 'instant' && !aiAnalysis?.meanings?.length && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-8 animate-in fade-in duration-700">
-                      切换 AI mode 可查看：语义情景 · 词根词缀 · 近义词辨析
+                      {t('result.aiModeHint')}
                     </p>
                   )}
                 </div>
               )
             case 'semantic':
               return null
+            case 'collocations':
+              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.collocations && (
+                <CollocationCard key={module.id} collocations={aiAnalysis.collocations} />
+              )
             case 'examples':
               return (
                 <div key={module.id}>
@@ -121,6 +129,10 @@ export function ResultView({
             case 'practice':
               return mode === 'ai' && aiStatus === 'success' && (
                 <PracticeSection key={module.id} word={wordResult.word} meanings={wordResult.meanings} />
+              )
+            case 'culture':
+              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.culturalLore && (
+                <CulturalLoreCard key={module.id} lore={aiAnalysis.culturalLore} />
               )
             case 'chat':
               if (mode === 'ai' && aiStatus !== 'success') return null

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useResultStore } from './resultStore'
+
 
 export interface AppModule {
   id: string
@@ -8,15 +10,17 @@ export interface AppModule {
 }
 
 export const DEFAULT_MODULES: AppModule[] = [
-  { id: 'dictionary', label: '基础释义', enabled: true },
-  { id: 'synonyms', label: '近义词/反义词', enabled: true },
-  { id: 'etymology', label: '词根词缀', enabled: true },
-  { id: 'mnemonic', label: 'AI 助记', enabled: true },
-  { id: 'examples', label: '双语例句', enabled: true },
-  { id: 'related', label: '相关词组', enabled: true },
-  { id: 'practice', label: '场景练习', enabled: true },
-  { id: 'culture', label: '文化背景', enabled: true },
-  { id: 'chat', label: 'AI 问答', enabled: true },
+  { id: 'dictionary',   label: 'Definitions',          enabled: true },
+  { id: 'collocations', label: 'Chunks & Collocations', enabled: true },
+  { id: 'synonyms',     label: 'Synonyms',              enabled: true },
+  { id: 'etymology',    label: 'Roots & Affixes',       enabled: true },
+  { id: 'mnemonic',     label: 'AI Mnemonics',          enabled: true },
+  { id: 'examples',     label: 'Examples',              enabled: true },
+  { id: 'related',      label: 'Related Phrases',       enabled: true },
+  { id: 'practice',     label: 'Practice',              enabled: true },
+  { id: 'culture',      label: 'Cultural Context',      enabled: true },
+  { id: 'chat',         label: 'AI Chat',               enabled: true },
+  { id: 'preposition',  label: 'Prep. Imagery',         enabled: true },
 ]
 
 export function normalizeModules(modules?: AppModule[]): AppModule[] {
@@ -74,6 +78,10 @@ interface SettingsStore {
   defaultSearchMode: 'instant' | 'ai'
   triLingualExamples: boolean
   modules: AppModule[]
+  appLanguage: 'zh' | 'en'
+  monolingualWord: boolean
+  monolingualPhrase: boolean
+  monolingualSentence: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -88,6 +96,10 @@ interface SettingsStore {
   setDefaultSearchMode: (v: 'instant' | 'ai') => void
   setTriLingualExamples: (v: boolean) => void
   setModules: (v: AppModule[]) => void
+  setAppLanguage: (v: 'zh' | 'en') => void
+  setMonolingualWord: (v: boolean) => void
+  setMonolingualPhrase: (v: boolean) => void
+  setMonolingualSentence: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -107,6 +119,10 @@ export const useSettingsStore = create<SettingsStore>()(
       defaultSearchMode: 'instant',
       triLingualExamples: false,
       modules: DEFAULT_MODULES,
+      appLanguage: 'en',
+      monolingualWord: false,
+      monolingualPhrase: false,
+      monolingualSentence: false,
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,
@@ -131,6 +147,19 @@ export const useSettingsStore = create<SettingsStore>()(
       setDefaultSearchMode: (defaultSearchMode) => set({ defaultSearchMode }),
       setTriLingualExamples: (triLingualExamples) => set({ triLingualExamples }),
       setModules: (modules) => set({ modules: normalizeModules(modules) }),
+      setAppLanguage: (appLanguage) => set({ appLanguage }),
+      setMonolingualWord: (monolingualWord) => {
+        set({ monolingualWord })
+        useResultStore.getState().clearCacheOnly()
+      },
+      setMonolingualPhrase: (monolingualPhrase) => {
+        set({ monolingualPhrase })
+        useResultStore.getState().clearCacheOnly()
+      },
+      setMonolingualSentence: (monolingualSentence) => {
+        set({ monolingualSentence })
+        useResultStore.getState().clearCacheOnly()
+      },
     }),
     {
       name: 'lexicon-settings',

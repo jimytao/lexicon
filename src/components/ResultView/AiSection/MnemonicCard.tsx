@@ -1,14 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { generateMnemonic, generatePhraseMnemonic, generateSingleMnemonic } from '../../../services/ai'
 import type { Mnemonic } from '../../../types'
+import { useT } from '../../../i18n'
 
 type MnemonicType = 'philology' | 'story' | 'smart'
 
-const TYPE_LABELS: Record<MnemonicType, string> = {
-  philology: '词源逻辑',
-  story: '趣味故事',
-  smart: '智能联想',
-}
 
 const TYPE_COLORS: Record<MnemonicType, string> = {
   philology: 'bg-blue-500 text-white',
@@ -30,6 +26,12 @@ interface MnemonicCardProps {
 }
 
 export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic }: MnemonicCardProps) {
+  const t = useT()
+  const TYPE_LABELS: Record<MnemonicType, string> = {
+    philology: t('mnemonic.philology'),
+    story: t('mnemonic.story'),
+    smart: t('mnemonic.smart'),
+  }
   const [mnemonic, setMnemonic] = useState<Mnemonic | undefined>(initialMnemonic)
   const [activeType, setActiveType] = useState<MnemonicType | undefined>(initialMnemonic?.bestType)
   const [loading, setLoading] = useState(false)
@@ -79,7 +81,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
       onUpdateMnemonic?.(res)
     } catch (err: unknown) {
       if ((err as Error).name === 'AbortError') return
-      setError('生成失败，请重试')
+      setError(t('mnemonic.failed'))
     } finally {
       if (abortControllerRef.current === controller) setLoading(false)
     }
@@ -123,7 +125,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
       setProposeOpen(false)
     } catch (err: unknown) {
       if ((err as Error).name === 'AbortError') return
-      setError('生成失败，请重试')
+      setError(t('mnemonic.failed'))
     } finally {
       if (abortControllerRef.current === controller) setSingleLoading(false)
     }
@@ -148,7 +150,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            生成助记
+            {t('mnemonic.generate')}
           </button>
         )}
       </div>
@@ -157,7 +159,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
       {loading && !mnemonic && (
         <div className="rounded-2xl border border-dashed border-accent/20 p-6 flex flex-col items-center justify-center gap-3 bg-accent-soft/30">
           <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-          <p className="text-[11px] font-medium text-accent/60 animate-pulse">AI 正在疯狂联想中...</p>
+          <p className="text-[11px] font-medium text-accent/60 animate-pulse">{t('mnemonic.generating')}</p>
         </div>
       )}
 
@@ -165,7 +167,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
       {error && !mnemonic && (
         <div className="rounded-2xl border border-red-200 dark:border-red-900/30 p-4 bg-red-50 dark:bg-red-900/10 text-center">
           <p className="text-xs text-red-500 mb-2">{error}</p>
-          <button type="button" onClick={handleGenerate} className="text-[10px] font-bold text-red-600 dark:text-red-400 underline">重试</button>
+          <button type="button" onClick={handleGenerate} className="text-[10px] font-bold text-red-600 dark:text-red-400 underline">{t('mnemonic.retry')}</button>
         </div>
       )}
 
@@ -209,7 +211,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
               {singleLoading && (
                 <div className="absolute inset-0 bg-background/50 dark:bg-background-soft/50 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center gap-2 z-10 animate-in fade-in duration-200">
                   <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-                  <p className="text-[10px] font-medium text-accent/70 animate-pulse">AI 正在重新联想...</p>
+                  <p className="text-[10px] font-medium text-accent/70 animate-pulse">{t('mnemonic.regenerating')}</p>
                 </div>
               )}
 
@@ -232,7 +234,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                   </div>
                 </div>
                 <div className="flex-1">
-                  <p className="text-[11px] text-accent/70 italic mb-1 font-medium">推荐理由: {activeItem.reason}</p>
+                  <p className="text-[11px] text-accent/70 italic mb-1 font-medium">{t('mnemonic.reason')}{activeItem.reason}</p>
                   <p className="text-sm text-foreground leading-relaxed font-semibold">{activeItem.content}</p>
 
                   {/* Action buttons panel */}
@@ -242,7 +244,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                       onClick={() => handleRegenerateSingle()}
                       className="font-bold text-accent/70 hover:text-accent bg-accent-soft/50 hover:bg-accent-soft/80 px-2.5 py-1 rounded-md transition-colors"
                     >
-                      换一个
+                      {t('mnemonic.regenerate')}
                     </button>
                     <button
                       type="button"
@@ -256,7 +258,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                           : 'text-accent/70 hover:text-accent bg-accent-soft/50 hover:bg-accent-soft/80'
                       }`}
                     >
-                      {proposeOpen ? '取消提议' : '提议'}
+                      {proposeOpen ? t('mnemonic.cancelSuggest') : t('mnemonic.suggest')}
                     </button>
                   </div>
 
@@ -266,7 +268,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                       <textarea
                         value={userIdea}
                         onChange={(e) => setUserIdea(e.target.value)}
-                        placeholder="输入你的记忆想法或关联单词..."
+                        placeholder={t('mnemonic.ideaPlaceholder')}
                         className="w-full text-xs bg-background/50 dark:bg-black/35 text-foreground border border-accent/5 rounded-lg p-2 focus:outline-none focus:border-accent/30 focus:bg-background/80 dark:focus:bg-black/50 resize-none font-medium placeholder-foreground-muted/40 transition-colors"
                         rows={2}
                         autoFocus
@@ -280,7 +282,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                           }}
                           className="text-[10px] font-bold text-foreground-muted hover:text-foreground bg-accent-soft/30 hover:bg-accent-soft/60 px-2.5 py-1 rounded-md transition-colors"
                         >
-                          取消
+                          {t('mnemonic.cancel')}
                         </button>
                         <button
                           type="button"
@@ -289,7 +291,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
                           className="text-[10px] font-bold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
                         >
                           {singleLoading && <div className="w-2.5 h-2.5 border border-white/30 border-t-white rounded-full animate-spin" />}
-                          提交想法
+                          {t('mnemonic.submit')}
                         </button>
                       </div>
                     </div>
@@ -304,7 +306,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
             <div className="rounded-2xl border border-dashed border-accent/20 p-5 flex items-center justify-center gap-3 bg-accent-soft/30">
               <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
               <p className="text-[11px] font-medium text-accent/60">
-                AI 正在疯狂联想中...
+                {t('mnemonic.generating')}
               </p>
             </div>
           )}

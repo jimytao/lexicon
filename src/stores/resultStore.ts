@@ -34,6 +34,8 @@ interface ResultStore {
   getCachedAiFull: (word: string) => AiFullResult | null
   getCachedPhrase: (key: string) => PhraseResult | null
   clearCache: () => void
+  clearCacheOnly: () => void
+  evictCacheEntry: (key: string) => void
   reset: () => void
 }
 
@@ -183,6 +185,19 @@ export const useResultStore = create<ResultStore>()(
         return null
       },
       clearCache: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, aiStatus: 'idle', aiError: null }),
+      clearCacheOnly: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {} }),
+      evictCacheEntry: (key) => {
+        const normalized = normalizeQuery(key)
+        set((state) => {
+          const aiCache = { ...state.aiCache }
+          const aiFullCache = { ...state.aiFullCache }
+          const phraseCache = { ...state.phraseCache }
+          delete aiCache[normalized]
+          delete aiFullCache[normalized]
+          delete phraseCache[normalized]
+          return { aiCache, aiFullCache, phraseCache }
+        })
+      },
       reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, chatMessages: [], aiStatus: 'idle', aiError: null }),
     }),
     { 

@@ -3,22 +3,24 @@ import { useImageStore } from '../../stores/imageStore'
 import { aiImageTranslateFast } from '../../services/ai'
 import { TranslationList } from './TranslationList'
 import { ImageViewer, type ImageViewerHandle } from './ImageViewer'
+import { useT } from '../../i18n'
 
 const LANG_OPTIONS = [
-  { value: 'auto', label: '自动检测' },
-  { value: '日语', label: '日语' },
-  { value: '英语', label: '英语' },
-  { value: '韩语', label: '韩语' },
-  { value: '法语', label: '法语' },
+  { value: 'auto', labelKey: 'image.lang.auto' },
+  { value: '日语', labelKey: 'image.lang.ja' },
+  { value: '英语', labelKey: 'image.lang.en' },
+  { value: '韩语', labelKey: 'image.lang.ko' },
+  { value: '法语', labelKey: 'image.lang.fr' },
 ]
 
 const TARGET_OPTIONS = [
-  { value: '中文', label: '中文' },
-  { value: '英语', label: '英语' },
-  { value: '日语', label: '日语' },
+  { value: '中文', labelKey: 'image.lang.zh' },
+  { value: '英语', labelKey: 'image.lang.en' },
+  { value: '日语', labelKey: 'image.lang.ja' },
 ]
 
 export function ImageTranslateView() {
+  const t = useT()
   const {
     images, currentIndex,
     sourceLang, targetLang,
@@ -79,7 +81,7 @@ export function ImageTranslateView() {
       try {
         const base64 = await getBase64At(i)
         const result = await aiImageTranslateFast(base64, sourceLang, targetLang, controller.signal)
-        setBlocksAt(i, result, false)
+        setBlocksAt(i, result)
         setStatusAt(i, 'done')
       } catch (err) {
         if ((err as Error).name === 'AbortError') return
@@ -94,21 +96,21 @@ export function ImageTranslateView() {
       {/* Language selectors */}
       <div className="flex flex-wrap items-center gap-2 pt-4">
         <select
-          aria-label="源语言"
+          aria-label={t('settings.appLanguage')}
           value={sourceLang}
           onChange={(e) => setSourceLang(e.target.value)}
           className="text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
         >
-          {LANG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {LANG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
         </select>
         <span className="text-gray-400">→</span>
         <select
-          aria-label="目标语言"
+          aria-label={t('settings.appLanguage')}
           value={targetLang}
           onChange={(e) => setTargetLang(e.target.value)}
           className="text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
         >
-          {TARGET_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {TARGET_OPTIONS.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
         </select>
       </div>
 
@@ -123,13 +125,13 @@ export function ImageTranslateView() {
           <svg className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
           </svg>
-          <p className="text-sm text-gray-400 dark:text-gray-500">点击或拖拽上传图片（可多选）</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">{t('image.uploadHint')}</p>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
             multiple
-            aria-label="上传图片"
+            aria-label={t('image.uploadHint')}
             className="hidden"
             onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = '' }}
           />
@@ -146,24 +148,24 @@ export function ImageTranslateView() {
               className="flex-1 py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-500 hover:bg-blue-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
             >
               {images.some(img => img.status === 'loading')
-                ? '翻译中...'
+                ? t('image.translating')
                 : images.some(img => img.status === 'done')
-                  ? '重新翻译全部'
-                  : '开始翻译全部'}
+                  ? t('image.retranslateAll')
+                  : t('image.translateAll')}
             </button>
             <button
               type="button"
               onClick={() => addFileInputRef.current?.click()}
               className="w-11 h-11 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title="添加更多图片"
-              aria-label="添加更多图片"
+              title={t('image.addMore')}
+              aria-label={t('image.addMore')}
             >+</button>
             <input
               ref={addFileInputRef}
               type="file"
               accept="image/*"
               multiple
-              aria-label="添加图片"
+              aria-label={t('image.addMore')}
               className="hidden"
               onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = '' }}
             />
@@ -171,13 +173,13 @@ export function ImageTranslateView() {
               type="button"
               onClick={removeCurrentImage}
               className="px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >删除</button>
+            >{t('image.remove')}</button>
             {multiImage && (
               <button
                 type="button"
                 onClick={clearAll}
                 className="px-4 py-2 rounded-xl text-xs font-bold border border-red-200 dark:border-red-800 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >清空</button>
+              >{t('image.clearAll')}</button>
             )}
           </div>
 
@@ -193,7 +195,7 @@ export function ImageTranslateView() {
                     i === currentIndex ? 'border-blue-500' : 'border-transparent hover:border-gray-400'
                   }`}
                 >
-                  <img src={img.imageUrl} alt={`图片${i + 1}`} className="w-full h-full object-cover" />
+                  <img src={img.imageUrl} alt={`Image ${i + 1}`} className="w-full h-full object-cover" />
                   {img.status === 'done' && <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-tl-sm" />}
                   {img.status === 'loading' && (
                     <span className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -209,7 +211,7 @@ export function ImageTranslateView() {
           {status === 'error' && error && (
             <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
               {error}
-              <button type="button" onClick={handleTranslate} className="ml-2 underline">重试</button>
+              <button type="button" onClick={handleTranslate} className="ml-2 underline">{t('image.retry')}</button>
             </div>
           )}
 
@@ -218,7 +220,7 @@ export function ImageTranslateView() {
             <div className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
               <div className="relative">
                 <ImageViewer ref={viewerRef} onScaleChange={() => {}} compact>
-                  <img src={imageUrl} alt="原图" className="w-full object-contain max-h-[50vh]" />
+                  <img src={imageUrl} alt="Original" className="w-full object-contain max-h-[50vh]" />
                 </ImageViewer>
                 {multiImage && (
                   <>
@@ -251,7 +253,7 @@ export function ImageTranslateView() {
                   type="button"
                   onClick={() => viewerRef.current?.resetTransform()}
                   className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
-                  title="重置视图"
+                  title={t('image.resetView')}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
@@ -281,7 +283,7 @@ export function ImageTranslateView() {
                   />
                 </div>
               ) : status === 'done' ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">未检测到文字</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">{t('image.noText')}</p>
               ) : null}
             </div>
           )}

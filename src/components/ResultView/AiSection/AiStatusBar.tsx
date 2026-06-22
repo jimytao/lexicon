@@ -1,4 +1,5 @@
 import type { AiStatus } from '../../../stores/resultStore'
+import { useT } from '../../../i18n'
 
 interface SkeletonBlockProps {
   lines?: number
@@ -33,11 +34,12 @@ interface AiStatusBarProps {
 }
 
 export function AiStatusBar({ status, error, onRetry, word, onGoToSettings }: AiStatusBarProps) {
+  const t = useT()
   if (status === 'loading') {
     return (
       <div className="flex items-center gap-2 mb-3 text-xs text-indigo-500 dark:text-indigo-400 font-semibold animate-pulse">
         <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400" />
-        AI 深度解析中，正在调遣语言模型…
+        {t('status.loading')}
       </div>
     )
   }
@@ -55,9 +57,9 @@ export function AiStatusBar({ status, error, onRetry, word, onGoToSettings }: Ai
               </svg>
             </div>
             <div className="space-y-1 flex-1">
-              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300">AI 服务配置未就绪</h3>
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300">{t('status.notConfigured.title')}</h3>
               <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-400/80 mt-1">
-                当前尚未配置有效的 AI 密钥或接口地址。请前往设置页面配置您的 API 密钥，即可开启单词/词组「{word || '生僻词'}」的 AI 全量深度解析、助记词与情景会话。
+                {t('status.notConfigured.body')}
               </p>
               <div className="flex items-center gap-3 pt-3">
                 {onGoToSettings && (
@@ -65,14 +67,14 @@ export function AiStatusBar({ status, error, onRetry, word, onGoToSettings }: Ai
                     onClick={onGoToSettings}
                     className="text-xs font-bold px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white shadow-md shadow-amber-500/20 transition-all cursor-pointer"
                   >
-                    前往配置 (Settings)
+                    {t('status.goToSettings')}
                   </button>
                 )}
                 <button
                   onClick={onRetry}
                   className="text-xs font-bold px-4 py-2 rounded-full border border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/5 active:scale-95 transition-all cursor-pointer"
                 >
-                  重试 (Retry)
+                  {t('status.retry')}
                 </button>
               </div>
             </div>
@@ -90,23 +92,23 @@ export function AiStatusBar({ status, error, onRetry, word, onGoToSettings }: Ai
             </svg>
           </div>
           <div className="space-y-1 flex-1">
-            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-300">AI 解析「{word || '生僻词'}」遇到阻碍</h3>
+            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-300">{t('status.error.title')}{word ? ` — "${word}"` : ''}</h3>
             <p className="text-xs leading-relaxed text-rose-800/80 dark:text-rose-400/80 font-mono select-all mt-1">
-              {error || '未知网络或接口错误'}
+              {error || 'Unknown network or API error'}
             </p>
             <div className="flex items-center gap-3 pt-3">
               <button
                 onClick={onRetry}
                 className="text-xs font-bold px-4 py-2 rounded-full bg-rose-500 hover:bg-rose-600 active:scale-95 text-white shadow-md shadow-rose-500/20 transition-all cursor-pointer"
               >
-                再次尝试 (Retry)
+                {t('status.tryAgain')}
               </button>
               {onGoToSettings && (
                 <button
                   onClick={onGoToSettings}
                   className="text-xs font-bold px-4 py-2 rounded-full border border-rose-500/30 text-rose-700 dark:text-rose-300 hover:bg-rose-500/5 active:scale-95 transition-all cursor-pointer"
                 >
-                  检查配置 (Check Settings)
+                  {t('status.checkSettings')}
                 </button>
               )}
             </div>

@@ -1,4 +1,6 @@
 import { Component, type ReactNode } from 'react'
+import { useSettingsStore } from '../stores/settingsStore'
+import { translations } from '../i18n'
 
 interface Props {
   children: ReactNode
@@ -25,6 +27,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const lang = useSettingsStore.getState().appLanguage || 'en'
+      const t = (key: string) => translations[lang]?.[key] ?? translations.en[key] ?? key
+
       return (
         <div className="px-6 py-10 flex flex-col items-center gap-4 text-center">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
@@ -33,16 +38,16 @@ export class ErrorBoundary extends Component<Props, State> {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-bold text-rose-700 dark:text-rose-300">页面渲染出错</p>
+            <p className="text-sm font-bold text-rose-700 dark:text-rose-300">{t('error.renderError')}</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 font-mono select-all">
-              {this.state.error?.message ?? '未知错误'}
+              {this.state.error?.message ?? t('error.unknown')}
             </p>
           </div>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             className="text-xs font-bold px-4 py-2 rounded-full bg-rose-500 hover:bg-rose-600 text-white transition-all cursor-pointer"
           >
-            重试 (Retry)
+            {t('error.retry')}
           </button>
         </div>
       )

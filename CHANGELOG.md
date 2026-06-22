@@ -1,5 +1,61 @@
 # CHANGELOG
 
+## 2026-06-22 — 多语言国际化 (i18n)、单语学习、语块与搭配、介词空间意象及文化背景升级
+
+### 1. 新增：UI 国际化 (i18n) 与多语言界面切换
+- **文件**：`src/i18n/index.ts`、`src/components/Settings/SettingsView.tsx`、`src/components/ErrorBoundary.tsx` 及十余个 UI 组件文件
+- **设计与实现**：
+  - 新增多语言本地化配置，建立完整的翻译资源字典，并封装出统一的国际化翻译 Hook `useT()`。
+  - 将整个应用中硬编码的中文 UI 文本（包括释义折叠、卡片标题、助记词交互、设置选项等）全面替换为多语言 key 引用。
+  - 在设置页中新增了「App Language（系统语言）」设置，支持用户在一键无缝切换中文和英文界面。
+  - 适配了 `ErrorBoundary.tsx` 页面渲染崩溃边界的国际化，避免了系统报错时的中文硬编码残留。
+
+### 2. 新增：单语学习模式 (Monolingual Mode) 及词级/词组级/句级细粒度控制
+- **文件**：`src/stores/settingsStore.ts`、`src/components/Settings/SettingsView.tsx`、`src/services/ai.ts`、`src/components/ResultView/InstantSection/MeaningList.tsx`、`src/components/ResultView/InstantSection/ExampleList.tsx`、`src/components/ResultView/PhraseView.tsx`
+- **设计与实现**：
+  - 在设置中提供细粒度的单语配置：支持分别针对单词 (Word)、短语 (Phrase) 和句子 (Sentence) 独立开启单语模式。
+  - **大模型 Prompt 适配**：对于单语查词/分析，修改系统提示词强制 AI 生成纯英文释义与解释，并使用 CEFR B1-B2 水平的词汇以确保内容对学习者易读，拒绝复杂的生僻词定义。
+  - **UI 与本地词典联动**：在界面展示中，当开启对应单语模式后，自动屏蔽本地词典查询结果和 AI 生成结果中的中文翻译/例句中文。
+  - **缓存失效联动**：修改设置状态 store，当用户变更单语模式开关时，自动清除本地的 AI 缓存，防止混杂的中英双语脏缓存污染未来的纯英单语查询。
+
+### 3. 新增：语块与常用搭配模组 (Chunks & Collocations)
+- **文件**：`src/types/index.ts`、`src/services/ai.ts` 、`src/components/ResultView/AiSection/CollocationCard.tsx` (新文件)、`src/components/ResultView/index.tsx`、`src/components/ResultView/AiFullView.tsx`
+- **设计与实现**：
+  - 在 `types/index.ts` 中定义了语块和搭配的数据模型。
+  - 在 AI 的 System Prompts 和全量分析 Prompts 中新增 schema 与生成指引，要求生成该词最具代表性的 4-6 个常用语块（chunks，如动介搭配）与常用固定搭配（collocations，如形容词修饰）。
+  - 创建了全新的 `CollocationCard.tsx` 卡片组件，将语块和搭配以不同颜色高亮展示，并利用 CSS Tooltip 技术以极其平滑优雅的形式在悬停时显示其用法说明。
+  - 在标准字典卡片词条与 AI 全量卡片词条中均注册并渲染了该模组。
+
+### 4. 新增：介词空间意象分析模组 (Preposition Spatial Imagery)
+- **文件**：`src/types/index.ts`、`src/utils/prepDetect.ts` (新文件)、`src/services/ai.ts`、`src/components/ResultView/AiSection/PrepImageryCard.tsx` (新文件)、`src/components/ResultView/PhraseView.tsx`
+- **设计与实现**：
+  - 在 `prepDetect.ts` 中针对英语中核心的 13 个具有丰富空间隐喻的介词（如 up, out, off, on, over, in 等）编写了高效的短语成分提取扫描器。
+  - 修改 `ai.ts` 新增介词空间意象的生成 API (`generatePrepImagery` & `regenerateSinglePrepItem`)，促使大模型基于认知语言学的“空间隐喻”理论（如 UP 表示“上升/完成/改善”，OUT 表示“显现/排除/发散”），以简明易懂的文笔剖析介词在该短语中对整词含义的塑形作用，并提供趣味联想。
+  - 编写了极致精美的 `PrepImageryCard.tsx`，支持组件层面的异步首屏懒加载（按需按键生成）、支持骨架屏微动效与毛玻璃遮罩、支持独立介词一键「换一个」的局部更新。
+  - 将介词意象模组成功嵌入短语/句子分析视图 `PhraseView` 中。
+
+### 5. 优化：文化背景模组 (Cultural Context) 重塑与多语自适应
+- **文件**：`src/services/ai.ts` 、`src/components/ResultView/index.tsx`、`src/components/ResultView/AiSection/CulturalLoreCard.tsx` (新文件)、`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/PhraseView.tsx`
+- **设计与实现**：
+  - **打破外语局限**：大幅度重构了 AI 的 `culturalLore` 提示词逻辑。不仅日语/韩语等外语会提供亚文化背景，针对核心的英文词汇也提供极其精准的社会语域（Register，如 Formal/Informal/Slang/Technical/Neutral 等）标记、流行度及文化典故、俚语演变。
+  - **界面激活**：在标准字典命中的 `ResultView` 中补全了缺失的 `case 'culture'`，彻底解决了该模组对普通查词场景完全不可见的痛点。
+  - **组件共享**：新建并抽取公共的 `CulturalLoreCard.tsx` 组件，精细微调了其在明暗模式下的背景对比度，消除了多个地方复制粘贴的冗余 JSX，提高了渲染效率。
+
+### 6. 优化：历史记录与本地 AI 结果缓存的联动清除
+- **文件**：`src/stores/resultStore.ts`、`src/components/SearchBar/HistoryList.tsx`
+- **设计与实现**：
+  - 为了提供极佳的个性化隐私/控制感，解决了用户在查词历史中删除某一条历史记录时，背后的本地 AI 结果缓存仍会残留并可能再次被误调出来的体验缺陷。
+  - 在 `resultStore` 中新增 `evictCacheEntry(key)` 精准缓存逐出逻辑。
+  - 在输入框历史记录弹窗的删除按钮中绑定该清除逻辑。现在，当用户在历史列表中删除某一个单词时，与其关联的 Standard AI Cache、Full AI Cache 和 Phrase Cache 将被同步精确清理。
+
+### 7. 优化：字典数据深挖与废弃死码清理
+- **文件**：`src/services/db.web.ts`、`src/stores/imageStore.ts`、`src/services/ocr.ts` (删除)、图片翻译相关等十余个文件
+- **设计与实现**：
+  - **本地字典深挖 (B-2 方案)**：修改 Web SQLite 查询服务，将本地字典中例句的查询上限由 3 条提升为 5 条，总上限切片（slice）由 6 条提升至 9 条，让包含多义多词性词条的例句库展示更加全面，并在 UI 中与既有的 3 条首屏折叠机制协同。
+  - **图片翻译死码清理**：彻底清除了项目中由于旧版本重构而遗留的大量无用文件：`ImageEditor.tsx`、`ExportButton.tsx`、`BlockStylePanel.tsx` 和 `ocr.ts`，并同步清理了其在 `imageStore`、`ai.ts` 和 `types/index.ts` 中的冗余导入、类型定义和状态。
+
+---
+
 ## 2026-06-10 — iOS 签名与分发工具链升级（AltStore 迁移至 Sideloadly）
 
 ### 1. 变更：更新 iOS 签名分发工具链为 Sideloadly

@@ -2,12 +2,14 @@ import { useState, useRef } from 'react'
 import { useResultStore } from '../../../stores/resultStore'
 import { askQuestion } from '../../../services/ai'
 import type { ChatMessage } from '../../../types'
+import { useT } from '../../../i18n'
 
 interface AiChatBoxProps {
   context: string
 }
 
 export function AiChatBox({ context }: AiChatBoxProps) {
+  const t = useT()
   const { chatMessages, addChatMessage } = useResultStore()
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -43,7 +45,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
       if (contextRef.current === requestContext) {
-        addChatMessage({ role: 'assistant', content: `出错了：${(e as Error).message}` })
+        addChatMessage({ role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` })
       }
     } finally {
       setLoading(false)
@@ -61,7 +63,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
     <div className="mb-4">
       <div className="flex items-center gap-1.5 mb-3">
         <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-        <h2 className="text-xs font-semibold text-violet-900 dark:text-violet-300">AI 问答</h2>
+        <h2 className="text-xs font-semibold text-violet-900 dark:text-violet-300">{t('chat.heading')}</h2>
       </div>
 
       {chatMessages.length > 0 && (
@@ -85,7 +87,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                思考中…
+                {t('chat.thinking')}
               </div>
             </div>
           )}
@@ -99,7 +101,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入问题…"
+          placeholder={t('chat.placeholder')}
           disabled={loading}
           className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 outline-none focus:border-violet-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 disabled:opacity-60"
         />
@@ -108,7 +110,7 @@ export function AiChatBox({ context }: AiChatBoxProps) {
           disabled={loading || !input.trim()}
           className="text-xs px-3 py-2 rounded-xl bg-violet-500 text-white hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
         >
-          发送
+          {t('chat.send')}
         </button>
       </div>
     </div>

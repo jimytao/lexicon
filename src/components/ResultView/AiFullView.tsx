@@ -12,26 +12,11 @@ import { AiChatBox } from './AiSection/AiChatBox'
 import { DiffText } from './DiffText'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useT } from '../../i18n'
+import { CollocationCard } from './AiSection/CollocationCard'
+import { detectLanguage } from '../../stores/searchStore'
+import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 
-function CulturalLoreCard({ lore }: { lore: NonNullable<AiFullResult['culturalLore']> }) {
-  return (
-    <div className="mb-4">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-        <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{lore.title || '文化背景 & 趣味百科'}</h2>
-      </div>
-      <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
-        <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{lore.content}</p>
-        {lore.subculture && (
-          <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
-            <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
-            <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{lore.subculture}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 interface AiFullViewProps {
   word: string
@@ -44,15 +29,20 @@ interface AiFullViewProps {
 }
 
 export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick, onGoToSettings }: AiFullViewProps) {
-  const { modules } = useSettingsStore()
+  const t = useT()
+  const { modules, monolingualWord } = useSettingsStore()
   const updateFullMnemonic = useResultStore(state => state.updateFullMnemonic)
+  // Only hide translation when the queried word is English — mirrors getFullLookupPrompt's
+  // `isMono = monolingualWord && lang === 'en'` guard on the AI side.
+  const lang = detectLanguage(word)
+  const shouldHideTranslation = monolingualWord && lang === 'en'
 
   return (
     <div className="px-4 py-4">
       {/* AI badge */}
       <div className="mb-3">
         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">
-          AI 查询
+          {t('aifull.queryLabel')}
         </span>
       </div>
 
@@ -78,7 +68,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
           <WordHeader word={aiFullResult.correctForm || word} phonetic={aiFullResult.phonetic} pos={aiFullResult.pos} />
           {aiFullResult.correctForm && aiFullResult.correctForm.toLowerCase() !== word.toLowerCase() && (
             <p className="text-xs text-gray-400 dark:text-gray-500 -mt-3 mb-3">
-              你输入的是 <DiffText original={word} corrected={aiFullResult.correctForm} />
+              {t('aifull.youEntered')} <DiffText original={word} corrected={aiFullResult.correctForm} />
             </p>
           )}
 
@@ -98,11 +88,15 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 )
               case 'semantic':
                 return null
+              case 'collocations':
+                return aiFullResult.collocations && (
+                  <CollocationCard key={module.id} collocations={aiFullResult.collocations} />
+                )
               case 'examples':
                 return (
                   <div key={module.id}>
                     {(aiFullResult.examples?.length ?? 0) > 0 && (
-                      <ExampleList examples={aiFullResult.examples} />
+                      <ExampleList examples={aiFullResult.examples} hideTranslation={shouldHideTranslation} />
                     )}
                   </div>
                 )

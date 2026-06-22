@@ -8,6 +8,11 @@ import { PracticeSection } from './AiSection/PracticeSection'
 import { MnemonicCard } from './AiSection/MnemonicCard'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useT } from '../../i18n'
+import { useSearchStore } from '../../stores/searchStore'
+import { PrepImageryCard } from './AiSection/PrepImageryCard'
+import { detectSpatialPreps } from '../../utils/prepDetect'
+import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 
 interface PhraseViewProps {
   phrase: string
@@ -19,16 +24,19 @@ interface PhraseViewProps {
 }
 
 export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings }: PhraseViewProps) {
-  const { modules } = useSettingsStore()
+  const t = useT()
+  const { modules, monolingualPhrase, monolingualSentence } = useSettingsStore()
   const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
   const usageScenes = phraseResult?.usageScenes ?? []
+  const queryType = useSearchStore(s => s.queryType)
+  const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
 
   return (
     <div className="px-4 py-4">
       {/* AI badge */}
       <div className="mb-3">
         <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">
-          AI 查询 · 词组/句子
+          {t('phrase.queryLabel')}
         </span>
       </div>
 
@@ -36,7 +44,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         <>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-snug">{phraseResult.correctForm}</h1>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-            你输入的是 <DiffText original={phrase} corrected={phraseResult.correctForm} />
+            {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
           </p>
         </>
       ) : (
@@ -65,7 +73,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                        <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">释义</h2>
+                        <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">{t('phrase.meaning')}</h2>
                       </div>
                       <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{phraseResult.meaning}</p>
                     </div>
@@ -74,7 +82,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                          <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">使用场景</h2>
+                          <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">{t('phrase.usageScenes')}</h2>
                         </div>
                         <div className="space-y-2">
                           {usageScenes.map((s, i) => (
@@ -93,24 +101,9 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
               case 'semantic':
                 return null
               case 'culture':
-                return phraseResult.culturalLore && (
-                  <div key={module.id} className="mb-4">
-                    {/* 文化/背景趣味知识 (针对日语/韩语等) */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                      <h2 className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">{phraseResult.culturalLore.title || '文化背景 & 趣味百科'}</h2>
-                    </div>
-                    <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
-                      <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">{phraseResult.culturalLore.content}</p>
-                      {phraseResult.culturalLore.subculture && (
-                        <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
-                          <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">Subculture / Lore</span>
-                          <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">{phraseResult.culturalLore.subculture}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
+                return phraseResult.culturalLore ? (
+                  <CulturalLoreCard key={module.id} lore={phraseResult.culturalLore} />
+                ) : null
               case 'mnemonic':
                 return (
                   <MnemonicCard 
@@ -125,7 +118,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 return (
                   <div key={module.id}>
                     {phraseResult.examples.length > 0 && (
-                      <ExampleList examples={phraseResult.examples} />
+                      <ExampleList examples={phraseResult.examples} hideTranslation={hideTranslation} />
                     )}
                   </div>
                 )
@@ -139,6 +132,17 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 )
               case 'chat':
                 return <AiChatBox key={module.id} context={phrase} />
+              case 'preposition': {
+                const preps = detectSpatialPreps(phraseResult.correctForm || phrase)
+                if (preps.length === 0) return null
+                return (
+                  <PrepImageryCard
+                    key={module.id}
+                    phrase={phraseResult.correctForm || phrase}
+                    prepositions={preps}
+                  />
+                )
+              }
               default:
                 return null
             }

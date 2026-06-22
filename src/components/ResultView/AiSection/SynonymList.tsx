@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Synonym, Antonym } from '../../../types'
+import { useT } from '../../../i18n'
 
 interface SynonymListProps {
   synonyms?: Synonym[]
@@ -8,6 +9,7 @@ interface SynonymListProps {
 }
 
 export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: SynonymListProps) {
+  const t = useT()
   const [activeTab, setActiveTab] = useState<'synonyms' | 'antonyms'>('synonyms')
 
   const synonymsList = synonyms || []
@@ -65,10 +67,10 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-indigo-500 to-rose-400" />
           <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-            {synonymsList.length > 0 && antonymsList.length > 0 ? '近/反义词对比辨析' : synonymsList.length > 0 ? '近义词辨析' : '反义词辨析'}
+            {synonymsList.length > 0 && antonymsList.length > 0 ? t('synonyms.heading.both') : synonymsList.length > 0 ? t('synonyms.heading.synonyms') : t('synonyms.heading.antonyms')}
           </h2>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
-            AI 解析
+            {t('synonyms.aiLabel')}
           </span>
         </div>
       </div>
@@ -86,7 +88,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              近义词 ({synonymsList.length})
+              {t('synonyms.tab')} ({synonymsList.length})
             </button>
             <button
               onClick={() => setActiveTab('antonyms')}
@@ -96,7 +98,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              反义词 ({antonymsList.length})
+              {t('antonyms.tab')} ({antonymsList.length})
             </button>
           </div>
 
@@ -106,7 +108,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 border-b border-indigo-50/50 dark:border-indigo-950/20 pb-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-300 tracking-wider">近义词 (SYNONYMS)</h3>
+                <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-300 tracking-wider">{t('synonyms.sectionLabel')}</h3>
               </div>
               {renderSynonyms()}
             </div>
@@ -115,7 +117,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 border-b border-rose-50/50 dark:border-rose-950/20 pb-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                <h3 className="text-xs font-bold text-rose-950 dark:text-rose-300 tracking-wider">反义词 (ANTONYMS)</h3>
+                <h3 className="text-xs font-bold text-rose-950 dark:text-rose-300 tracking-wider">{t('antonyms.sectionLabel')}</h3>
               </div>
               {renderAntonyms()}
             </div>
@@ -137,7 +139,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 border-b border-indigo-50/50 dark:border-indigo-950/20 pb-1.5 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-300 tracking-wider">近义词 (SYNONYMS)</h3>
+                <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-300 tracking-wider">{t('synonyms.sectionLabel')}</h3>
               </div>
               {renderSynonyms()}
             </div>
@@ -145,7 +147,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 border-b border-rose-50/50 dark:border-rose-950/20 pb-1.5 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                <h3 className="text-xs font-bold text-rose-950 dark:text-rose-300 tracking-wider">反义词 (ANTONYMS)</h3>
+                <h3 className="text-xs font-bold text-rose-950 dark:text-rose-300 tracking-wider">{t('antonyms.sectionLabel')}</h3>
               </div>
               {renderAntonyms()}
             </div>

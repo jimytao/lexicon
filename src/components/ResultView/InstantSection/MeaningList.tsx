@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Meaning, Scene } from '../../../types'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { searchTavilyImage } from '../../../services/ai'
+import { useT } from '../../../i18n'
 
 interface MeaningListProps {
   meanings: Meaning[]
@@ -19,8 +20,9 @@ const POS_COLORS: Record<string, { bg: string; text: string; darkBg: string; dar
 }
 
 export function MeaningList({ meanings, scenes }: MeaningListProps) {
+  const t = useT()
   const [expanded, setExpanded] = useState(false)
-  const { darkMode } = useSettingsStore()
+  const { darkMode, monolingualWord } = useSettingsStore()
 
   const [imageUrls, setImageUrls] = useState<Record<number, string | null>>({})
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({})
@@ -64,7 +66,9 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                 <span className="text-sm font-bold text-accent/40 mt-0.5 shrink-0 tabular-nums">{(i + 1).toString().padStart(2, '0')}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <p className="text-base font-bold text-foreground leading-snug">{m.zh}</p>
+                    <p className="text-base font-bold text-foreground leading-snug">
+                      {monolingualWord ? (m.en || m.zh) : m.zh}
+                    </p>
                     {m.pos && (
                       <span
                         className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm shrink-0"
@@ -74,7 +78,9 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-foreground-muted mt-1 leading-relaxed font-medium">{m.en}</p>
+                  {!monolingualWord && (
+                    <p className="text-sm text-foreground-muted mt-1 leading-relaxed font-medium">{m.en}</p>
+                  )}
                   
                   {scenes?.[i] && (scenes[i].label || scenes[i].description) && (
                     <div className="mt-2.5 border-l-2 border-l-accent bg-accent-soft/30 dark:bg-accent-soft/10 pl-3.5 pr-3 py-2.5 rounded-r-xl transition-all duration-300 hover:bg-accent-soft/40 dark:hover:bg-accent-soft/20">
@@ -99,7 +105,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        {expandedImages[i] ? '收起图片释义' : '查看图片释义'}
+                        {expandedImages[i] ? t('meaning.hideImage') : t('meaning.viewImage')}
                       </button>
 
                       {expandedImages[i] && (
@@ -107,7 +113,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                           {loadingStates[i] ? (
                             <div className="flex flex-col items-center justify-center py-6 text-foreground-muted gap-2">
                               <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                              <span className="text-[10px] font-medium tracking-wide">AI 正在加载实时图片释义...</span>
+                              <span className="text-[10px] font-medium tracking-wide">{t('meaning.imageLoading')}</span>
                             </div>
                           ) : imageUrls[i] ? (
                             <div className="relative group/img overflow-hidden">
@@ -117,12 +123,12 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                                 className="w-full max-h-48 object-cover rounded-xl transition-transform duration-500 hover:scale-105"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end p-2">
-                                <span className="text-[8px] font-bold text-white/70 tracking-wider">图片检索自 Tavily 实时引擎</span>
+                                <span className="text-[8px] font-bold text-white/70 tracking-wider">{t('meaning.imageSource')}</span>
                               </div>
                             </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center py-5 text-foreground-muted gap-1 text-[10px]">
-                              <span>未检索到匹配的释义图片</span>
+                              <span>{t('meaning.imageNone')}</span>
                               <button
                                 onClick={() => {
                                   setImageUrls(prev => {
@@ -134,7 +140,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                                 }}
                                 className="text-accent underline font-bold mt-1 cursor-pointer"
                               >
-                                重新加载
+                                {t('meaning.imageRetry')}
                               </button>
                             </div>
                           )}
@@ -160,7 +166,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
-          {expanded ? '收起' : `展开更多 (${meanings.length - COLLAPSE_THRESHOLD})`}
+          {expanded ? t('meaning.collapse') : `${t('meaning.showMore')} (${meanings.length - COLLAPSE_THRESHOLD})`}
         </button>
       )}
     </div>

@@ -21,6 +21,7 @@ import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
 import { useUpdateStore } from '../../stores/updateStore'
+import { useT } from '../../i18n'
 
 interface ProviderDef {
   id: string
@@ -318,6 +319,7 @@ function SortableModuleRow({
 }
 
 export function SettingsView() {
+  const t = useT()
   const {
     aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode, webSearchEnabled, tavilyApiKey, maxExercises,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
@@ -326,6 +328,10 @@ export function SettingsView() {
     defaultSearchMode, setDefaultSearchMode,
     triLingualExamples, setTriLingualExamples,
     modules, setModules,
+    appLanguage, setAppLanguage,
+    monolingualWord, setMonolingualWord,
+    monolingualPhrase, setMonolingualPhrase,
+    monolingualSentence, setMonolingualSentence,
   } = useSettingsStore()
 
   const { status, manifest, checkUpdate, currentVersion, error } = useUpdateStore()
@@ -469,19 +475,24 @@ export function SettingsView() {
           <div>
             <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">AI Provider</label>
             <div className="grid grid-cols-2 gap-2">
-              {PROVIDERS.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => handleProviderSelect(p)}
-                  className={`text-xs px-3 py-3.5 rounded-xl border transition-all text-left truncate font-medium ${
-                    aiProvider === p.id
-                      ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
-                      : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
+              {PROVIDERS.map(p => {
+                const displayName = p.id === 'zhipu' ? t('settings.provider.zhipu') :
+                                    p.id === 'yi' ? t('settings.provider.yi') :
+                                    p.id === 'custom' ? t('settings.provider.custom') : p.name
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleProviderSelect(p)}
+                    className={`text-xs px-3 py-3.5 rounded-xl border transition-all text-left truncate font-medium ${
+                      aiProvider === p.id
+                        ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
+                        : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
+                    }`}
+                  >
+                    {displayName}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -642,6 +653,32 @@ export function SettingsView() {
           </div>
 
           <div className="border-t border-border pt-8 space-y-6">
+            {/* App Language */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground">{t('settings.appLanguage')}</span>
+                <p className="text-[10px] text-foreground-muted">{t('settings.appLanguageDesc')}</p>
+              </div>
+              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border">
+                <button
+                  onClick={() => setAppLanguage('zh')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                    appLanguage === 'zh' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
+                  }`}
+                >
+                  中文
+                </button>
+                <button
+                  onClick={() => setAppLanguage('en')}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                    appLanguage === 'en' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
+                  }`}
+                >
+                  English
+                </button>
+              </div>
+            </div>
+
             {/* Dark mode */}
             <div className="flex items-center justify-between">
               <div>
@@ -798,6 +835,56 @@ export function SettingsView() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Monolingual Mode Section */}
+            <div className="border-t border-border pt-6 space-y-4">
+              <div>
+                <span className="text-sm font-bold text-foreground">{t('settings.monolingualMode')}</span>
+                <p className="text-[10px] text-foreground-muted">{t('settings.monolingualDesc')}</p>
+              </div>
+              
+              {/* Word queries */}
+              <div className="flex items-center justify-between pl-4">
+                <span className="text-xs font-medium text-foreground">{t('settings.monolingualWord')}</span>
+                <button
+                  onClick={() => setMonolingualWord(!monolingualWord)}
+                  className="flex items-center h-9 px-2 -mr-2 group"
+                  aria-label="Toggle Word Monolingual Mode"
+                >
+                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualWord ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualWord ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+
+              {/* Phrase queries */}
+              <div className="flex items-center justify-between pl-4">
+                <span className="text-xs font-medium text-foreground">{t('settings.monolingualPhrase')}</span>
+                <button
+                  onClick={() => setMonolingualPhrase(!monolingualPhrase)}
+                  className="flex items-center h-9 px-2 -mr-2 group"
+                  aria-label="Toggle Phrase Monolingual Mode"
+                >
+                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualPhrase ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualPhrase ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+
+              {/* Sentence queries */}
+              <div className="flex items-center justify-between pl-4">
+                <span className="text-xs font-medium text-foreground">{t('settings.monolingualSentence')}</span>
+                <button
+                  onClick={() => setMonolingualSentence(!monolingualSentence)}
+                  className="flex items-center h-9 px-2 -mr-2 group"
+                  aria-label="Toggle Sentence Monolingual Mode"
+                >
+                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualSentence ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualSentence ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
 
