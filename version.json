@@ -1,11 +1,11 @@
 {
-    "version": "0.7.24",
-    "notes": "多语言国际化 (i18n)、单语学习、语块与搭配、介词空间意象及文化背景升级\n1. 新增：UI 国际化 (i18n) 与多语言界面切换（支持中英无缝切换）\n2. 新增：单语学习模式 (Monolingual Mode) 支持单词/词组/句子细粒度纯英展示，释义由 AI 控制在 CEFR B1-B2 水平\n3. 新增：语块与常用搭配模组 (Chunks & Collocations)，以 Soft 颜色区分并在悬停时展示释义\n4. 新增：介词空间意象分析模组 (Preposition Spatial Imagery)，支持空间隐喻深度剖析与独立介词「换一个」生成\n5. 优化：重构文化背景模组 (Cultural Context) 支持英文单词并补齐普通词查词页展示\n6. 优化：实现历史记录与本地 AI 结果缓存的联动精确清除\n7. 优化：本地字典数据深挖提高例句上限至 9 条，同时清理了大量图片翻译死代码",
-    "pub_date": "2026-06-22T14:52:00Z",
+    "version": "0.7.25",
+    "notes": "支持本地英英词典与单语言模式自动切换及中文查词路由优化\n1. 新增：牛津高阶第10版纯英英词典（84k词条，lexicon_en.db）本地转换与接入，并支持单词/短语细粒度单语言模式自动切换词库。\n2. 新增：旧双解词典（lexicon.db）语法属性前缀（如 [uncountable] 等）的全面挖掘，并修复异步删除重置的竞态条件。\n3. 优化：实现中文查询自动路由回双语词典进行反向映射，且 AI 触发与缓存分析精准绑定映射后的英文词，解决中文直喂 AI 的多语言生成混乱。\n4. 优化：在英英模式下增加排版过滤，自动去重中英完全一致或翻译为空的释义/例句展示。",
+    "pub_date": "2026-06-23T13:25:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTgzL25Jdnd3Rjd1Y0s0L1lyWDZrY0ZPWmtOTWpneFk5QXBzNmJhaHBJdW9ld1diM2hRckxqelphRXhyTnVyNWh4cW1taUlJMjNrdUU0Rnh3UjdOR0FrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMTQwNzI2CWZpbGU6TGV4aWNvbl8wLjcuMjRfeDY0LXNldHVwLmV4ZQo0cnRuZ200Q25EV1NKRjUwNWhRWTI2MzcrN3N3TVYwQXo4SWRua2J4SVl6c2dyVm5yeFA4NXRScmZYQ0dRS3ZWVWtRcUhKOENWayszN0hpaXF1cndDZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.24/Lexicon_0.7.24_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXgrQWlLMlJNMWVrM0dtY3Y5a0szMm96Z2RqbEZvMHR1bWxQc1RSUUhvN3RpL3h6QjRjZkpRaDIrTHdnMVRyMHhwTGhENE5NR0NQRlJ2WXJFRkFWd0FFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMTkyMjc4CWZpbGU6TGV4aWNvbl8wLjcuMjVfeDY0LXNldHVwLmV4ZQpUT3A4TDB5aTVuRmxrLy9JcVNpYUY4bjNycmlocERaeWFFRkc0b2NsdEFJSXd2SE5US21LOURoQlFHRFdwMzdRM2hTYytkeUorcUJIOTVTN3ZjNHREZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.25/Lexicon_0.7.25_x64-setup.exe"
         }
     }
 }

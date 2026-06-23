@@ -332,6 +332,8 @@ export function SettingsView() {
     monolingualWord, setMonolingualWord,
     monolingualPhrase, setMonolingualPhrase,
     monolingualSentence, setMonolingualSentence,
+    activeDictionary, setActiveDictionary,
+    autoSwitchDictionary, setAutoSwitchDictionary,
   } = useSettingsStore()
 
   const { status, manifest, checkUpdate, currentVersion, error } = useUpdateStore()
@@ -882,6 +884,51 @@ export function SettingsView() {
                 >
                   <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualSentence ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
                     <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualSentence ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Dictionary Settings Section */}
+            <div className="border-t border-border pt-6 space-y-4">
+              <div>
+                <span className="text-sm font-bold text-foreground">{t('settings.dictionarySettings')}</span>
+                <p className="text-[10px] text-foreground-muted">{t('settings.dictionaryDesc')}</p>
+              </div>
+
+              {/* Active Dictionary Select */}
+              <div className="flex items-center justify-between pl-4">
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-foreground">{t('settings.activeDictionary')}</span>
+                  {autoSwitchDictionary && (
+                    <span className="text-[9px] text-accent font-medium mt-0.5">
+                      {t('settings.autoSwitchActiveNote')}
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={activeDictionary}
+                  disabled={autoSwitchDictionary}
+                  onChange={(e) => setActiveDictionary(e.target.value as 'lexicon.db' | 'lexicon_en.db')}
+                  className={`text-xs border border-border rounded-xl px-3 py-1.5 outline-none focus:border-accent bg-background-soft text-foreground min-w-[200px] ${
+                    autoSwitchDictionary ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <option value="lexicon.db">{t('settings.dictEnZh')}</option>
+                  <option value="lexicon_en.db">{t('settings.dictEnEn')}</option>
+                </select>
+              </div>
+
+              {/* Auto Switch Toggle */}
+              <div className="flex items-center justify-between pl-4">
+                <span className="text-xs font-medium text-foreground">{t('settings.autoSwitchDictionary')}</span>
+                <button
+                  onClick={() => setAutoSwitchDictionary(!autoSwitchDictionary)}
+                  className="flex items-center h-9 px-2 -mr-2 group"
+                  aria-label="Toggle Auto Switch Dictionary"
+                >
+                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${autoSwitchDictionary ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${autoSwitchDictionary ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>

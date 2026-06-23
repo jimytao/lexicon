@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 2026-06-23 — 支持本地英英词典与单语言模式自动切换
+
+### 1. 新增与优化：本地双解词库深度重构及英英词典本地转换与接入
+- **文件**：`scripts/mdx-en-to-sqlite.mjs` (新文件)、`scripts/mdx-to-sqlite.mjs`、`public/lexicon.db`、`public/lexicon_en.db` (新文件)
+- **设计与实现**：
+  - **英英词库转换**：编写了纯英英版 OALD10 MDX 转换脚本 `mdx-en-to-sqlite.mjs`，利用基于栈平衡的 HTML 标签匹配算法解析并提取了 OALD10 中的音标、词性、纯英文释义及英文例句，成功转换出包含 **84,843** 个词条的纯英英本地词库 `lexicon_en.db`。
+  - **双解词库语法属性挖掘**：重构了双解版 OALD9 转换脚本 `mdx-to-sqlite.mjs`，成功抓取并解析了原先被忽略的 `<gram>`（如 `[uncountable]`）和 `<reg>`（如 `(formal)`）等语法/语域标签，并将其作为前缀嵌入中英文释义中，成功重新生成了包含 **52,867** 个词条的双解词典 `lexicon.db`。
+  - **异步竞态条件修复**：修复了转换脚本中由于异步 `import('fs').then(fs => fs.unlinkSync)` 动态调用与 SQLite 实例化之间的并发冲突竞态条件，该竞态曾导致目标数据库文件偶尔被重置为 0 字节。
+
+### 2. 新增：本地词典手动切换与单语言自动切换逻辑
+- **文件**：`src/stores/settingsStore.ts`、`src/services/db.web.ts`、`src/components/Settings/SettingsView.tsx`、`src/i18n/index.ts`
+- **设计与实现**：
+  - 在设置状态中新增了当前激活词库 `activeDictionary` 和自动切换控制 `autoSwitchDictionary`。
+  - 在 `db.web.ts` 中通过 Zustand `subscribe` 监听词典切换状态，自动释放 WASM 内存，并在下一次查询时重新加载对应的词库。
+  - 在 `db.web.ts` 中添加了回退保护机制，如果加载英英词库失败，自动回退到默认的 `lexicon.db`，确保系统鲁棒性。
+  - 在设置界面中新增了「本地词库设置」板块，允许手动切换词库以及启用单语言自动联动。
+
+### 3. 优化：界面防重与排版过滤
+- **文件**：`src/components/ResultView/InstantSection/MeaningList.tsx`、`src/components/ResultView/InstantSection/ExampleList.tsx`
+- **设计与实现**：
+  - 对释义与例句组件进行优化，在英英模式下（即释义字段与英文一致，或例句翻译为空时），隐藏底部的重复英文字段，防止界面文本重叠，实现最清爽的英英排版。
+
+### 4. 优化：中文反向查词的数据库自动路由与 AI 提示词英文精准继承
+- **文件**：`src/services/db.web.ts`、`src/App.tsx`
+- **设计与实现**：
+  - **中文强制路由**：在 `getTargetDb` 中增加了中文检测机制。一旦查询词包含中文字符，即使开启了单语言模式或手动指定了英英词典，系统也会自动路由到双语词典 (`lexicon.db`)，通过其 `zh_brief` 索引进行反向英文映射。
+  - **AI 缓存与分析纠正**：当在双语词典匹配到对应的英文单词（如通过“跑”匹配到 "run"）后，后续的 AI 提示词触发与 `getCachedAi` / `setAiAnalysis` 缓存机制将全部自动继承其目标英文单词 "run"，避免了将中文检索词直接喂给 AI 导致的多语言生成混乱与缓存失效。
+
 ## 2026-06-22 — 多语言国际化 (i18n)、单语学习、语块与搭配、介词空间意象及文化背景升级
 
 ### 1. 新增：UI 国际化 (i18n) 与多语言界面切换

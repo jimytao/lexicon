@@ -78,7 +78,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                       </span>
                     )}
                   </div>
-                  {!monolingualWord && (
+                  {!monolingualWord && m.en && m.en !== m.zh && (
                     <p className="text-sm text-foreground-muted mt-1 leading-relaxed font-medium">{m.en}</p>
                   )}
                   

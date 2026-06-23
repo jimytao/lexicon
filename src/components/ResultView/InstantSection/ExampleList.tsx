@@ -28,7 +28,7 @@ export function ExampleList({ examples, hideTranslation }: ExampleListProps) {
         {visible.map((ex, i) => (
           <div key={i} className="relative pl-4 border-l-2 border-accent/20 hover:border-accent transition-colors py-1">
             <p className="text-sm font-bold text-foreground leading-relaxed">{ex.en}</p>
-            {!shouldHideTranslation && ex.zh && (
+            {!shouldHideTranslation && ex.zh && ex.zh !== ex.en && (
               <p className="text-xs text-foreground-muted mt-1.5 font-medium">{ex.zh}</p>
             )}
           </div>

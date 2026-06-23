@@ -172,7 +172,7 @@ export function App() {
         const store = useResultStore.getState()
         const cachedFull = store.getCachedAiFull(word)
         const cachedPhrase = store.getCachedPhrase(word)
-        const cachedAi = store.getCachedAi(word)
+        const cachedAi = store.getCachedAi(result.word)
 
         if (cachedFull) {
           setSearchSource('ai-full')
@@ -186,7 +186,7 @@ export function App() {
           upgradeHistory(word, 'phrase')
         } else if (cachedAi) {
           useSearchStore.getState().setMode('ai')
-          useResultStore.getState().setAiAnalysis(word, cachedAi)
+          useResultStore.getState().setAiAnalysis(result.word, cachedAi)
           upgradeHistory(word, 'analyze')
         } else if (historyAiMode === 'full') {
           setSearchSource('ai-full')
@@ -198,7 +198,7 @@ export function App() {
           triggerPhraseQuery(word)
         } else if (historyAiMode === 'analyze') {
           useSearchStore.getState().setMode('ai')
-          triggerAi(word, result.meanings, result.examples.length === 0)
+          triggerAi(result.word, result.meanings, result.examples.length === 0)
           upgradeHistory(word, 'analyze')
         }
         // historyAiMode === null → normal instant, no extra action
@@ -207,7 +207,7 @@ export function App() {
         const currentMode = useSearchStore.getState().mode
         const cachedFull = store.getCachedAiFull(word)
         const cachedPhrase = store.getCachedPhrase(word)
-        const cachedAi = store.getCachedAi(word)
+        const cachedAi = store.getCachedAi(result.word)
 
         if (cachedFull) {
           setSearchSource('ai-full')
@@ -221,10 +221,10 @@ export function App() {
           upgradeHistory(word, 'phrase')
         } else if (cachedAi) {
           useSearchStore.getState().setMode('ai')
-          useResultStore.getState().setAiAnalysis(word, cachedAi)
+          useResultStore.getState().setAiAnalysis(result.word, cachedAi)
           upgradeHistory(word, 'analyze')
         } else if (currentMode === 'ai') {
-          triggerAi(word, result.meanings, result.examples.length === 0)
+          triggerAi(result.word, result.meanings, result.examples.length === 0)
           upgradeHistory(word, 'analyze')
         }
       }

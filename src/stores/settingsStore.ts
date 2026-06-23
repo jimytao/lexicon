@@ -82,6 +82,8 @@ interface SettingsStore {
   monolingualWord: boolean
   monolingualPhrase: boolean
   monolingualSentence: boolean
+  activeDictionary: 'lexicon.db' | 'lexicon_en.db'
+  autoSwitchDictionary: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -100,6 +102,8 @@ interface SettingsStore {
   setMonolingualWord: (v: boolean) => void
   setMonolingualPhrase: (v: boolean) => void
   setMonolingualSentence: (v: boolean) => void
+  setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
+  setAutoSwitchDictionary: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -123,6 +127,8 @@ export const useSettingsStore = create<SettingsStore>()(
       monolingualWord: false,
       monolingualPhrase: false,
       monolingualSentence: false,
+      activeDictionary: 'lexicon.db',
+      autoSwitchDictionary: true,
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,
@@ -158,6 +164,14 @@ export const useSettingsStore = create<SettingsStore>()(
       },
       setMonolingualSentence: (monolingualSentence) => {
         set({ monolingualSentence })
+        useResultStore.getState().clearCacheOnly()
+      },
+      setActiveDictionary: (activeDictionary) => {
+        set({ activeDictionary })
+        useResultStore.getState().clearCacheOnly()
+      },
+      setAutoSwitchDictionary: (autoSwitchDictionary) => {
+        set({ autoSwitchDictionary })
         useResultStore.getState().clearCacheOnly()
       },
     }),

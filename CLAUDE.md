@@ -96,8 +96,10 @@ Tesseract.js（WASM OCR，嵌字模式文字定位）
 - [x] Step 10：所有组件
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
 - [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
+- [x] Step 13：接入纯英英词库（MDX → SQLite）— OALD10，84k 词条，public/lexicon_en.db 46MB，并支持单语言模式自动切换词典
+- [x] Step 14：优化中文反向查词路由器，支持强制路由双语词库与 AI 查词分析/缓存实体自动对齐
 
-**最近一次重要改动**：2026-06-09，feat — 助记卡“换一个”局部更新与“提议”功能（详见 CHANGELOG.md）
+**最近一次重要改动**：2026-06-23，feat — 接入牛津高阶第10版纯英英本地词库，实现单语言自动/手动切换词库与 WASM 动态热重载；同时优化中文查询逻辑，支持拦截中文并自动强制路由至双语词库做反向映射，AI 深度分析与缓存自动绑定对齐目标英文单词。
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based

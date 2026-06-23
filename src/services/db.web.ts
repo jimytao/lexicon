@@ -3,11 +3,25 @@ import type { Database } from 'sql.js'
 import type { DBService } from './db'
 import type { Meaning, Example } from '../types'
 import { normalizeQuery } from '../utils/text'
+import { useSettingsStore } from '../stores/settingsStore'
 
-let _db: Database | null = null
+let _dbEnZh: Database | null = null
+let _dbEnEn: Database | null = null
 
-async function getDb(): Promise<Database> {
-  if (_db) return _db
+// Subscribe to activeDictionary changes and release WASM memory / reload on next query
+useSettingsStore.subscribe(() => {
+  if (_dbEnZh) {
+    try { _dbEnZh.close() } catch (e) {}
+    _dbEnZh = null
+  }
+  if (_dbEnEn) {
+    try { _dbEnEn.close() } catch (e) {}
+    _dbEnEn = null
+  }
+})
+
+async function getDbEnZh(): Promise<Database> {
+  if (_dbEnZh) return _dbEnZh
   const SQL = await initSqlJs({
     locateFile: (file) => `/sql-wasm/${file}`,
   })
@@ -16,8 +30,50 @@ async function getDb(): Promise<Database> {
     throw new Error('lexicon.db not found — run Step 12 to import word database')
   }
   const buffer = await response.arrayBuffer()
-  _db = new SQL.Database(new Uint8Array(buffer))
-  return _db
+  _dbEnZh = new SQL.Database(new Uint8Array(buffer))
+  return _dbEnZh
+}
+
+async function getDbEnEn(): Promise<Database> {
+  if (_dbEnEn) return _dbEnEn
+  const SQL = await initSqlJs({
+    locateFile: (file) => `/sql-wasm/${file}`,
+  })
+  let response: Response
+  try {
+    response = await fetch('/lexicon_en.db')
+    if (!response.ok) {
+      console.warn('lexicon_en.db not found, falling back to lexicon.db')
+      return getDbEnZh()
+    }
+  } catch (err) {
+    console.warn('Error fetching lexicon_en.db, falling back to lexicon.db:', err)
+    return getDbEnZh()
+  }
+  const buffer = await response.arrayBuffer()
+  _dbEnEn = new SQL.Database(new Uint8Array(buffer))
+  return _dbEnEn
+}
+
+async function getTargetDb(queryText: string): Promise<Database> {
+  // If the query contains Chinese characters, always route to the bilingual dictionary (lexicon.db)
+  const isChinese = /[\u4e00-\u9fa5]/.test(queryText)
+  if (isChinese) {
+    return getDbEnZh()
+  }
+
+  const settings = useSettingsStore.getState()
+  
+  if (!settings.autoSwitchDictionary) {
+    // Manual mode: always use the chosen activeDictionary
+    return settings.activeDictionary === 'lexicon_en.db' ? getDbEnEn() : getDbEnZh()
+  }
+  
+  // Auto-switch mode: determine database dynamically per query type
+  const isPhrase = queryText.trim().includes(' ')
+  const isMono = isPhrase ? settings.monolingualPhrase : settings.monolingualWord
+  
+  return isMono ? getDbEnEn() : getDbEnZh()
 }
 
 export const webDB: DBService = {
@@ -26,7 +82,7 @@ export const webDB: DBService = {
     if (!lp) return []
     const hasSpace = lp.includes(' ')
     try {
-      const db = await getDb()
+      const db = await getTargetDb(lp)
       const isChinese = /[\u4e00-\u9fa5]/.test(lp)
 
       if (isChinese) {
@@ -108,7 +164,7 @@ export const webDB: DBService = {
   async lookup(word) {
     const lw = normalizeQuery(word)
     try {
-      const db = await getDb()
+      const db = await getTargetDb(lw)
 
       const performLookup = (searchWord: string) => {
         const entryRes = db.exec(
@@ -206,7 +262,7 @@ export const webDB: DBService = {
   async getRelatedPhrases(word, limit = 30) {
     const lw = normalizeQuery(word)
     try {
-      const db = await getDb()
+      const db = await getTargetDb(lw)
       // 查以该词开头的短语（含空格的条目）
       const results = db.exec(
         `SELECT word, zh_brief FROM suggest

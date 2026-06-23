@@ -103,15 +103,46 @@ export interface DBService {
 import initSqlJs from 'sql.js'
 import type { Database } from 'sql.js'
 import type { DBService } from './db'
+import { useSettingsStore } from '../stores/settingsStore'
 
 let db: Database | null = null
+
+// 订阅设置中词典状态的变更，自动断开并重新加载新词典
+let lastDb = useSettingsStore.getState().activeDictionary || 'lexicon.db'
+useSettingsStore.subscribe((state) => {
+  const newDb = state.activeDictionary || 'lexicon.db'
+  if (newDb !== lastDb) {
+    lastDb = newDb
+    if (db) {
+      try { db.close() } catch (e) {}
+      db = null
+    }
+  }
+})
 
 async function getDb(): Promise<Database> {
   if (db) return db
   const SQL = await initSqlJs({
     locateFile: (file) => `/sql-wasm/${file}`,
   })
-  const response = await fetch('/lexicon.db')
+  
+  // 从 Settings Store 中动态获取激活的本地词库文件名
+  const activeDb = useSettingsStore.getState().activeDictionary || 'lexicon.db'
+  let response: Response
+  try {
+    response = await fetch(`/${activeDb}`)
+    if (!response.ok && activeDb !== 'lexicon.db') {
+      console.warn(`Failed to fetch ${activeDb}, falling back to lexicon.db`)
+      response = await fetch('/lexicon.db')
+    }
+  } catch (err) {
+    if (activeDb !== 'lexicon.db') {
+      response = await fetch('/lexicon.db')
+    } else {
+      throw err
+    }
+  }
+
   const buffer = await response.arrayBuffer()
   db = new SQL.Database(new Uint8Array(buffer))
   return db

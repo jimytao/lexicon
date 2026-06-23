@@ -143,6 +143,8 @@ interface SettingsStore {
   historyEnabled: boolean
   darkMode: boolean               // 深色模式，手动切换，persist 到 localStorage
   maxExercises: number            // 练习题数，1–10，默认 5
+  activeDictionary: 'lexicon.db' | 'lexicon_en.db' // 当前本地词库文件
+  autoSwitchDictionary: boolean    // 是否开启单语言模式自动切换词典
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -150,6 +152,8 @@ interface SettingsStore {
   setHistoryEnabled: (v: boolean) => void
   setDarkMode: (v: boolean) => void
   setMaxExercises: (v: number) => void
+  setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
+  setAutoSwitchDictionary: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(

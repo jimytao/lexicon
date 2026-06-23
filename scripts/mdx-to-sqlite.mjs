@@ -8,7 +8,7 @@
 
 import { MDX } from 'js-mdict'
 import Database from 'better-sqlite3'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync, mkdirSync, unlinkSync } from 'fs'
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -78,8 +78,18 @@ function parseEntry(word, rawDef) {
     // chn 紧跟在 def 之后（可能在 def 外的 sn-g 范围内）
     const chnMatch = block.match(/<chn>(.*?)<\/chn>/s)
     if (defMatch && chnMatch) {
-      const en = stripTags(defMatch[1])
-      const zh = stripTags(chnMatch[1]).replace(/^[^\u4e00-\u9fff]*/, '') // 去掉前导符号
+      let prefix = ''
+      const gramMatch = block.match(/<gram[^>]*>(.*?)<\/gram>/s)
+      if (gramMatch) {
+        prefix += `[${stripTags(gramMatch[1])}] `
+      }
+      const regMatch = block.match(/<reg[^>]*>(.*?)<\/reg>/s)
+      if (regMatch) {
+        prefix += `(${stripTags(regMatch[1])}) `
+      }
+
+      const en = prefix + stripTags(defMatch[1])
+      const zh = prefix + stripTags(chnMatch[1]).replace(/^[^\u4e00-\u9fff]*/, '') // 去掉前导符号
       if (en && zh) meanings.push({ en, zh })
     }
   }
@@ -116,7 +126,7 @@ if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true })
 // 删除旧 DB
 if (existsSync(DB_PATH)) {
   console.log('🗑  Removing old database...')
-  import('fs').then(fs => fs.unlinkSync(DB_PATH))
+  unlinkSync(DB_PATH)
 }
 
 const db = new Database(DB_PATH)
