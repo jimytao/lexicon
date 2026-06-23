@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-06-23 — 单词与短语搜索结果页面的紧凑度与留白布局极致优化 (v0.7.26)
+
+### 1. 优化：扁平布局重构与自定义排序兼容
+- **文件**：`src/components/ResultView/index.tsx`、`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/PhraseView.tsx`
+- **设计与实现**：
+  - 取消了实验性的 Tab 标签页分栏设计，恢复为直观流畅的单流扁平瀑布布局，完美保留并全面兼容设置中由用户自定义的模块排序逻辑。
+
+### 2. 优化：左右边距微调与文字折行优化
+- **文件**：`src/components/ResultView/index.tsx`、`src/components/ResultView/AiFullView.tsx`、`src/components/ResultView/PhraseView.tsx`
+- **设计与实现**：
+  - 将搜索结果页面最外层容器的左右内边距从 `px-4`（16px）收缩至 `px-3`（12px），极大拓宽了移动端文本的水平展示宽度，有效减少了长句及释义频繁换行导致的页面非必要垂直拉伸。
+
+### 3. 优化：卡片紧凑度与间距重构
+- **文件**：`src/components/ResultView/AiSection/CollocationCard.tsx`、`src/components/ResultView/AiSection/SynonymList.tsx`、`src/components/ResultView/AiSection/MnemonicCard.tsx`、`src/components/ResultView/AiSection/CulturalLoreCard.tsx`、`src/components/ResultView/AiSection/PrepImageryCard.tsx`
+- **设计与实现**：
+  - 将所有卡片容器的圆角统一从 `rounded-2xl` 改为更精致的 `rounded-xl`。
+  - 将卡片内边距从 `p-4`/`p-5` 压缩至 `p-3.5`，使内容显示更紧凑。
+  - 将各卡片之间的垂直外边距从 `mb-6`/`mb-8` 缩减至 `mb-3`/`mb-4`，大幅提升了排版的信息密度。
+
+### 4. 优化：头部与具体内容项细节微调
+- **文件**：`src/components/ResultView/WordHeader.tsx`、`src/components/ResultView/InstantSection/MeaningList.tsx`、`src/components/ResultView/InstantSection/ExampleList.tsx`
+- **设计与实现**：
+  - **WordHeader**：将单词头部的下边距从 `mb-8` 减小到 `mb-4`，使核心释义模块首屏显现位置更高。
+  - **MeaningList**：将释义项外边距减为 `mb-4`，释义项垂直间距缩短至 `space-y-3.5`，并极度压缩了语境场景块的内边距和字号。
+  - **ExampleList**：将例句外边距缩减至 `mb-4`，列表行高间隔降至 `space-y-3`，减少用户的翻页滚动阻力。
+
 ## 2026-06-23 — 支持本地英英词典与单语言模式自动切换
 
 ### 1. 新增与优化：本地双解词库深度重构及英英词典本地转换与接入
