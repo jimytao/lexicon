@@ -52,3 +52,4 @@ app-icon.png
 *.exe
 *.msi
 *.sig
+*.idsig

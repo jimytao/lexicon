@@ -1,6 +1,6 @@
 # Lexicon
 
-**Next-generation deep English learning tool for Chinese speakers**
+**Next-generation deep English learning tool for Chinese speakers** | **[中文版](./README.md)**
 
 Lexicon is not just another translation tool. It helps you genuinely grasp English vocabulary through dual local databases, cognitive preposition spatial imagery, cultural register tags, and asynchronous AI-enhanced semantic analysis.
 
