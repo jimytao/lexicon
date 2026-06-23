@@ -35,7 +35,7 @@ export function CulturalLoreCard({ lore }: CulturalLoreCardProps) {
         </h2>
       </div>
 
-      <div className="rounded-xl p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
+      <div className="rounded-xl p-3.5 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
         {/* Header row: title tag + register badge */}
         {(lore.title || registerCfg) && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">

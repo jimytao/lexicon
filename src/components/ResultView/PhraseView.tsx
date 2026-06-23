@@ -32,7 +32,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-3 py-3">
       {/* AI badge */}
       <div className="mb-3">
         <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">

@@ -14,7 +14,7 @@ export function CollocationCard({ collocations }: CollocationCardProps) {
   if (chunks.length === 0 && colls.length === 0) return null
 
   return (
-    <div className="mb-6 rounded-2xl p-4 bg-white dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/40 shadow-sm animate-in fade-in duration-300">
+    <div className="mb-3 rounded-xl p-3.5 bg-white dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/40 shadow-sm animate-in fade-in duration-300">
       {/* Title Header */}
       <div className="flex items-center justify-between mb-4 border-b border-gray-100/80 dark:border-gray-800/50 pb-3">
         <div className="flex items-center gap-2">

@@ -22,14 +22,14 @@ export function ExampleList({ examples, hideTranslation }: ExampleListProps) {
   const visible = needsCollapse && !expanded ? examples.slice(0, COLLAPSE_THRESHOLD) : examples
 
   return (
-    <div className="mb-8 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-4">Examples</h2>
-      <div className="space-y-4">
+    <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
+      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">Examples</h2>
+      <div className="space-y-3">
         {visible.map((ex, i) => (
           <div key={i} className="relative pl-4 border-l-2 border-accent/20 hover:border-accent transition-colors py-1">
             <p className="text-sm font-bold text-foreground leading-relaxed">{ex.en}</p>
             {!shouldHideTranslation && ex.zh && ex.zh !== ex.en && (
-              <p className="text-xs text-foreground-muted mt-1.5 font-medium">{ex.zh}</p>
+              <p className="text-xs text-foreground-muted mt-1 font-medium">{ex.zh}</p>
             )}
           </div>
         ))}

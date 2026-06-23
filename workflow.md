@@ -24,9 +24,23 @@
 > [!IMPORTANT]
 > **修改顺序**：必须先完成上述所有文件的版本修改，然后再执行后续的 `npm run build` 或打包流程。否则，打包出的二进制文件内部仍可能显示旧版本号。
 
-## 2. 提取更新日志与重大版本判定 (Changelog & Major Flag)
-打开根目录下的 `CHANGELOG.md`，读取最顶部（即刚刚由人类或 AI 更新的最新一条）的中文更新说明。
-将提取出的中文说明填入 `version.json` 的 `"notes"` 字段中。
+## 2. 准备中英双语更新日志与重大版本判定 (Release Notes & Major Flag)
+你必须在项目根目录下准备并确认中英双语的两份 Release Notes 文件，格式如下（第一行为简短摘要/标题，后续为编号更新项，可参考最新发版）：
+- **`release_notes_zh.md`**：中文更新说明。例如：
+  ```markdown
+  支持本地英英词典与单语言模式自动切换及中文查词路由优化
+  1. 新增：牛津高阶第10版纯英英词典...
+  2. 新增：旧双解词典...
+  ```
+- **`release_notes_en.md`**：英文更新说明。例如：
+  ```markdown
+  Support for local English-English dictionary, monolingual mode auto-switching, and Chinese query routing optimization.
+  1. **New**: Integrated the pure English-English Oxford Advanced Learner's Dictionary...
+  2. **New**: Fully mined syntax and register prefixes...
+  ```
+
+读取 `release_notes_zh.md` 的第一行及内容，将其填入 `version.json` 的 `"notes"` 字段中。
+
 **重大版本判定逻辑**：
 - **默认行为**：如果你没有收到“这是重大更新”或类似的明确指令，请**务必确保** `version.json` 中的 `"is_major"` 为 `false` 或将其彻底移除。即使上一个版本是重大版本，当前版本也应默认为小版本。
 - **特殊指令**：只有当用户明确强调“这是重大版本”或要求“弹出大窗口提醒”时，才在 `version.json` 中设置 `"is_major": true`。
@@ -101,7 +115,14 @@ git push origin master
 ```
 
 ## 6. 创建 GitHub Release 并上传全架构产物
-使用 GitHub CLI 自动创建 Release 附带更新日志，并上传本地编译完成的所有 PC 和安卓端产物。
+使用 GitHub CLI 自动创建 Release 并上传本地编译完成的所有 PC 和安卓端产物。
+
+**更新日志整合**：
+在创建 GitHub Release 前，需要将中英文更新日志合并进同一个临时说明文件中：
+1. 读取 `release_notes_en.md` 的英文内容。
+2. 添加一行分隔线 `\n\n---\n\n`。
+3. 读取 `release_notes_zh.md` 的中文内容。
+4. 将合并后的内容写入临时文件 `release_notes.txt`，作为 GitHub Release 的 description。
 
 **上传前准备 (安卓重命名)**：
 为了文件名整齐，请将 `android/app/build/outputs/apk/release/` 下的各架构包重命名/拷贝为：
@@ -113,7 +134,7 @@ git push origin master
 
 **执行上传命令**：
 ```bash
-# 1. 创建 Release 标签和说明
+# 1. 创建 Release 标签和说明（使用整合后的中英文说明文件 release_notes.txt）
 gh release create vX.X.X -t "Lexicon vX.X.X" -F release_notes.txt
 
 # 2. 上传 Windows 产物 (exe 和 msi)

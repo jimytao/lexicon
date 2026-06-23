@@ -38,7 +38,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
   const shouldHideTranslation = monolingualWord && lang === 'en'
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-3 py-3">
       {/* AI badge */}
       <div className="mb-3">
         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">

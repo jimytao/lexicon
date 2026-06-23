@@ -45,7 +45,7 @@ export function ResultView({
   const displayedExamples = wordResult.examples.length > 0 ? wordResult.examples : aiAnalysis?.examples ?? []
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-3 py-3">
       <WordHeader word={wordResult.word} phonetic={wordResult.phonetic} pos={wordResult.pos} />
 
       {/* AI Status & Loading state for AI mode */}

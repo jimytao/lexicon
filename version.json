@@ -1,11 +1,11 @@
 {
-    "version": "0.7.25",
-    "notes": "支持本地英英词典与单语言模式自动切换及中文查词路由优化\n1. 新增：牛津高阶第10版纯英英词典（84k词条，lexicon_en.db）本地转换与接入，并支持单词/短语细粒度单语言模式自动切换词库。\n2. 新增：旧双解词典（lexicon.db）语法属性前缀（如 [uncountable] 等）的全面挖掘，并修复异步删除重置的竞态条件。\n3. 优化：实现中文查询自动路由回双语词典进行反向映射，且 AI 触发与缓存分析精准绑定映射后的英文词，解决中文直喂 AI 的多语言生成混乱。\n4. 优化：在英英模式下增加排版过滤，自动去重中英完全一致或翻译为空的释义/例句展示。",
-    "pub_date": "2026-06-23T13:25:00Z",
+    "version": "0.7.26",
+    "notes": "单词与短语搜索结果页面的紧凑度与留白布局极致优化\n1. 优化：取消实验性的 Tab 切换页，恢复为瀑布流平铺布局，完美保留并兼容设置中的自定义模块排序。\n2. 优化：收窄移动端左右外边距（从 px-4 降至 px-3），极大扩宽文本水平展示空间，减少文本换行导致的垂直拉伸。\n3. 优化：压缩所有卡片圆角和内边距（p-4 降至 p-3.5，圆角从 2xl 降至 xl），并统一将卡片外边距 mb-6/mb-8 缩减为 mb-3/mb-4。\n4. 优化：缩减单词头部（WordHeader）、介词空间意象（PrepImageryCard）、例句列表（ExampleList）的下边距和空隙，使排版更紧实，减少滑动翻页阻力。",
+    "pub_date": "2026-06-23T15:59:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXgrQWlLMlJNMWVrM0dtY3Y5a0szMm96Z2RqbEZvMHR1bWxQc1RSUUhvN3RpL3h6QjRjZkpRaDIrTHdnMVRyMHhwTGhENE5NR0NQRlJ2WXJFRkFWd0FFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMTkyMjc4CWZpbGU6TGV4aWNvbl8wLjcuMjVfeDY0LXNldHVwLmV4ZQpUT3A4TDB5aTVuRmxrLy9JcVNpYUY4bjNycmlocERaeWFFRkc0b2NsdEFJSXd2SE5US21LOURoQlFHRFdwMzdRM2hTYytkeUorcUJIOTVTN3ZjNHREZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.25/Lexicon_0.7.25_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTdmTVJMRVBXeVlhMGw1Q3RoL291MEs5dC9NV0E2d2xmek14WDNDd0xiTWtyNEkrb1B6RUNLUHdsSUZJTkV6V3d1NWVDUzVjc09aSTAzZDM1ZWdEK0FZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMjAxNzgxCWZpbGU6TGV4aWNvbl8wLjcuMjZfeDY0LXNldHVwLmV4ZQoxSUJSTGtiQzExWWRBUmpIczlRZStPSVZ4OWk4WGwwVDRyQVdsNjNlRXVpQ2VCcVhESFpNbWhIb2ZNVUNITlNFNzN0VnpvTkpvZjhHc0FrVDF1ekRDUT09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.26/Lexicon_0.7.26_x64-setup.exe"
         }
     }
 }

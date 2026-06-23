@@ -138,7 +138,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
   const activeItem = mnemonic && activeType ? mnemonic[activeType] : undefined
 
   return (
-    <div className="mt-6 mb-8 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
+    <div className="mt-1 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Mnemonic</h2>
         {!mnemonic && !loading && (
@@ -207,9 +207,9 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
 
           {/* Mnemonic content card */}
           {activeItem && !loading && (
-            <div className="group relative rounded-2xl p-5 bg-accent-soft border border-accent/10 hover:border-accent/20 transition-all duration-300 animate-in fade-in duration-300">
+            <div className="group relative rounded-xl p-3.5 bg-accent-soft border border-accent/10 hover:border-accent/20 transition-all duration-300 animate-in fade-in duration-300">
               {singleLoading && (
-                <div className="absolute inset-0 bg-background/50 dark:bg-background-soft/50 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center gap-2 z-10 animate-in fade-in duration-200">
+                <div className="absolute inset-0 bg-background/50 dark:bg-background-soft/50 backdrop-blur-[1px] rounded-xl flex flex-col items-center justify-center gap-2 z-10 animate-in fade-in duration-200">
                   <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
                   <p className="text-[10px] font-medium text-accent/70 animate-pulse">{t('mnemonic.regenerating')}</p>
                 </div>

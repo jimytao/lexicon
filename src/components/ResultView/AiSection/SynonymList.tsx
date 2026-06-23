@@ -61,7 +61,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
   )
 
   return (
-    <div className="mb-6 rounded-2xl p-4 bg-white dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/40 shadow-sm">
+    <div className="mb-3 rounded-xl p-3.5 bg-white dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/40 shadow-sm">
       {/* Title Header */}
       <div className="flex items-center justify-between mb-4 border-b border-gray-100/80 dark:border-gray-800/50 pb-3">
         <div className="flex items-center gap-2">

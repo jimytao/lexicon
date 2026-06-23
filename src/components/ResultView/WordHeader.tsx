@@ -19,7 +19,7 @@ export function WordHeader({ word, phonetic, pos }: WordHeaderProps) {
   const posList = pos.split('/').filter(Boolean)
 
   return (
-    <div className="flex flex-col gap-2 mb-8 animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
+    <div className="flex flex-col gap-2 mb-4 animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
       <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-4xl font-extrabold tracking-tight text-foreground break-words min-w-0">{word}</h1>
         <div className="flex gap-1.5 flex-wrap">
