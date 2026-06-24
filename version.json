@@ -1,11 +1,11 @@
 {
-    "version": "0.7.26",
-    "notes": "单词与短语搜索结果页面的紧凑度与留白布局极致优化\n1. 优化：取消实验性的 Tab 切换页，恢复为瀑布流平铺布局，完美保留并兼容设置中的自定义模块排序。\n2. 优化：收窄移动端左右外边距（从 px-4 降至 px-3），极大扩宽文本水平展示空间，减少文本换行导致的垂直拉伸。\n3. 优化：压缩所有卡片圆角和内边距（p-4 降至 p-3.5，圆角从 2xl 降至 xl），并统一将卡片外边距 mb-6/mb-8 缩减为 mb-3/mb-4。\n4. 优化：缩减单词头部（WordHeader）、介词空间意象（PrepImageryCard）、例句列表（ExampleList）的下边距和空隙，使排版更紧实，减少滑动翻页阻力。",
-    "pub_date": "2026-06-23T15:59:00Z",
+    "version": "0.7.27",
+    "notes": "全单语言模式（Monolingual）下 AI 功能全面适配：\n1. 助记模块（Mnemonic）在单英文模式下生成全英文助记内容及原因，支持英文故事、谐音及词源叙述。\n2. 练习（Exercises）在单英文模式下自动以英文描述练习场景，并仅展示英文释义。\n3. 写作批改评估（Evaluation）在单英文模式下采用英文回复批改意见和修改例句。\n4. AI 问答（Chat QA）在单英文模式下的词条会话中自动改用英文交流答复。",
+    "pub_date": "2026-06-24T15:00:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTdmTVJMRVBXeVlhMGw1Q3RoL291MEs5dC9NV0E2d2xmek14WDNDd0xiTWtyNEkrb1B6RUNLUHdsSUZJTkV6V3d1NWVDUzVjc09aSTAzZDM1ZWdEK0FZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMjAxNzgxCWZpbGU6TGV4aWNvbl8wLjcuMjZfeDY0LXNldHVwLmV4ZQoxSUJSTGtiQzExWWRBUmpIczlRZStPSVZ4OWk4WGwwVDRyQVdsNjNlRXVpQ2VCcVhESFpNbWhIb2ZNVUNITlNFNzN0VnpvTkpvZjhHc0FrVDF1ekRDUT09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.26/Lexicon_0.7.26_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTMrQld2MUlxUWtOS29XTnNWM1lqeEx0QmpsbjdtTmc0aHVIdHV6TDBTVGkzdkNkc0dvWjdsZEFON2h2Z3YyZnJHeVh1VUg2YzVJenpSQnlHOG9Hbnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMzEzNzc4CWZpbGU6TGV4aWNvbl8wLjcuMjdfeDY0LXNldHVwLmV4ZQpLM1IzM05FdTNIVWU4UVhNWG9mZlhyUExWMHZYbXBQTzIzRFRpWFpHa1VzUTArRHF1S0loSVlSV0F0Um9WRC9OcHVCK1JhbVV0bzJiWUVhSkJVejBCZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.27/Lexicon_0.7.27_x64-setup.exe"
         }
     }
 }

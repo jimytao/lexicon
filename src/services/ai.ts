@@ -75,6 +75,15 @@ function getConfig(): AiConfig {
   }
 }
 
+function getIsMono(query: string, config: AiConfig): boolean {
+  const lang = detectLanguage(query)
+  if (lang !== 'en') return false
+  const qType = detectQueryType(query)
+  if (qType === 'sentence') return config.monolingualSentence
+  if (qType === 'phrase') return config.monolingualPhrase
+  return config.monolingualWord
+}
+
 function getSystemPrompt(
   modules: Array<{ id: string; enabled: boolean }>,
   includeExamples: boolean = false,
@@ -388,14 +397,64 @@ export async function searchTavilyImage(query: string, signal?: AbortSignal): Pr
   }
 }
 
+function getExercisesSystemPrompt(isMono: boolean): string {
+  if (isMono) {
+    return `You are a language practice exercise designer for English learners.
+
+Given a word/phrase and its meanings, generate practice scenarios.
+
+Return ONLY a valid JSON array. No markdown. No explanation.
+
+[
+  { "scenario": "Scenario description in simple English, creating a concrete everyday context for the learner to write a sentence using the target word/phrase." }
+]
+
+Rules:
+- The scenario MUST be written entirely in simple, learner-friendly English (CEFR B1-B2 level).
+- The learner should be expected to use the target word/phrase in their response.
+- Prioritize the most COMMON and PRACTICAL meanings/usages.
+- Never output anything outside the JSON array.`
+  }
+
+  return EXERCISES_SYSTEM_PROMPT
+}
+
+function getEvalSystemPrompt(isMono: boolean): string {
+  if (isMono) {
+    return `You are a language writing coach for English learners.
+
+Evaluate whether the student's sentence correctly uses the given word/phrase in the given scenario.
+
+Return ONLY a valid JSON object. No markdown. No explanation.
+
+{
+  "correct": true or false,
+  "feedback": "Specific feedback/explanation in English. If correct is true, output an empty string.",
+  "correction": "The corrected sentence. If correct is true, output an empty string."
+}
+
+Rules:
+- Mark correct ONLY if BOTH the meaning AND grammar are right.
+- Grammar errors in the target language must be marked incorrect.
+- feedback must be in simple English, explaining the specific rule or usage nuance that was violated.
+- correction must be a natural, corrected version of the student's sentence.
+- Never output anything outside the JSON object.`
+  }
+
+  return EVAL_SYSTEM_PROMPT
+}
+
 export async function generateExercises(
   word: string,
   meanings: Array<{ zh: string; en: string }>,
   count: number,
   signal?: AbortSignal
 ): Promise<Exercise[]> {
+  const config = getConfig()
+  const isMono = getIsMono(word, config)
+
   const meaningsText = meanings
-    .map((m, i) => `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
+    .map((m, i) => isMono ? `${i + 1}. EN: ${m.en}` : `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
     .join('\n')
 
   const lang = detectLanguage(word)
@@ -403,7 +462,7 @@ export async function generateExercises(
   const langName = langNames[lang] || 'the target language'
 
   const userPrompt = `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios for learning this ${langName} expression.`
-  const cleaned = await callApi(EXERCISES_SYSTEM_PROMPT, userPrompt, signal)
+  const cleaned = await callApi(getExercisesSystemPrompt(isMono), userPrompt, signal)
 
   // Primary parse
   try {
@@ -428,8 +487,10 @@ export async function evaluateAnswer(
   userAnswer: string,
   signal?: AbortSignal
 ): Promise<EvaluationResult> {
+  const config = getConfig()
+  const isMono = getIsMono(word, config)
   const userPrompt = `Word: ${word}\nScenario: ${scenario}\nStudent's answer: "${userAnswer}"\n\nEvaluate the answer.`
-  const cleaned = await callApi(EVAL_SYSTEM_PROMPT, userPrompt, signal)
+  const cleaned = await callApi(getEvalSystemPrompt(isMono), userPrompt, signal)
 
   try {
     return JSON.parse(cleaned) as EvaluationResult
@@ -726,7 +787,13 @@ export async function askQuestion(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const systemPrompt = `You are a helpful English learning assistant for Chinese native speakers.
+  const isMono = getIsMono(context, config)
+  const systemPrompt = isMono
+    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.
+The user is currently studying: "${context}".
+Answer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.
+Keep answers concise and practical.`
+    : `You are a helpful English learning assistant for Chinese native speakers.
 The user is currently studying: "${context}".
 Answer their questions in Chinese, with English examples where appropriate.
 Keep answers concise and practical.`
@@ -851,54 +918,147 @@ Rules:
 - bestType must be the highest scoring one.
 - Never output anything outside the JSON object.`
 
-export async function generatePhraseMnemonic(
-  phrase: string,
-  signal?: AbortSignal
-): Promise<import('../types').Mnemonic> {
-  const cleaned = await callApi(
-    PHRASE_MNEMONIC_SYSTEM_PROMPT,
-    `Phrase: ${phrase}\n\nGenerate a mnemonic from a native speaker's perspective and return the JSON.`,
-    signal
-  )
-  try {
-    return JSON.parse(cleaned) as import('../types').Mnemonic
-  } catch {
-    const objMatch = cleaned.match(/\{[\s\S]*\}/)
-    if (objMatch) {
-      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
-        throw new Error('AI returned invalid JSON for phrase mnemonic')
-      }
-    }
-  }
-  throw new Error('AI returned invalid JSON for phrase mnemonic')
+function getMnemonicSystemPrompt(isMono: boolean): string {
+  if (isMono) {
+    return `You are a creative English mnemonic expert. Your goal is to evaluate and provide the most effective memory aids for a given word.
+
+Generate mnemonics for ALL THREE approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
+
+1. PHILOLOGY:
+   GOAL: Write a vivid, flowing NARRATIVE — NOT a factual etymology list. The learner already sees a structured breakdown of roots/affixes elsewhere; here you must turn that knowledge into a durable mental image.
+   HOW:
+   - Open with an anchor word the learner likely already knows that shares the same root (e.g. "If you know select or collect..."), then use it as a bridge: show HOW the shared root connects to the target word's meaning.
+   - Describe a concrete scene, metaphor, or action that makes the root meaning visceral and memorable (e.g., a scholar picking books, a river flowing through).
+   - End by snapping back to the target word — why the image *is* the word's meaning.
+   - High score if the root connection is clear and the scene is vivid.
+
+2. STORY:
+   - Absurd, vivid, or humorous stories in English.
+   - You can use English wordplay, rhyming words, spelling mnemonics, or puns (e.g., "hear" has "ear", "d-e-s-s-e-r-t" has double "s" because you want Sweet Stuff, "desert" has one "s" because it's Sandy).
+   - High score if the association is memorable and funny.
+
+3. SMART:
+   - A hybrid approach or a unique association (e.g., visual cues based on letter shapes like V representing a valley, connection to pop culture, or breaking the word into recognizable "mini-words" that aren't strictly roots).
+   - Use this if the other two methods feel forced or weak.
+
+JSON Output Schema:
+{
+  "philology": {
+    "content": "Mnemonic narrative in English, 2-4 sentences.",
+    "score": 90,
+    "reason": "Brief explanation of why this method works well or poorly, in English."
+  },
+  "story": {
+    "content": "Mnemonic text in English, 1-3 sentences.",
+    "score": 30,
+    "reason": "Brief explanation in English."
+  },
+  "smart": {
+    "content": "Mnemonic text in English, 1-3 sentences.",
+    "score": 60,
+    "reason": "Brief explanation in English."
+  },
+  "bestType": "philology" | "story" | "smart"
 }
 
-
-
-export async function generateMnemonic(
-  word: string,
-  signal?: AbortSignal
-): Promise<import('../types').Mnemonic> {
-  const cleaned = await callApi(
-    MNEMONIC_SYSTEM_PROMPT,
-    `Word: ${word}\n\nGenerate a mnemonic for this word and return the JSON.`,
-    signal
-  )
-  try {
-    return JSON.parse(cleaned) as import('../types').Mnemonic
-  } catch {
-    const objMatch = cleaned.match(/\{[\s\S]*\}/)
-    if (objMatch) {
-      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
-        throw new Error('AI returned invalid JSON for mnemonic')
-      }
-    }
+Rules:
+- philology.content MUST be a narrative paragraph, NOT a bullet list or etymology fact-dump. It should read like a mini story or vivid metaphor, 2-4 sentences.
+- bestType must indicate the approach with the highest score. If scores are close, prioritize: Philology > Story > Smart.
+- Scores must be honest.
+- ALL output text must be in English only. No Chinese characters anywhere. Use clear, learner-friendly English.
+- Return ONLY the JSON object.`
   }
-  throw new Error('AI returned invalid JSON for mnemonic')
+
+  return MNEMONIC_SYSTEM_PROMPT
 }
 
-// ── AI 单个助记生成/重新生成（支持提议） ──
-const SINGLE_MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
+function getPhraseMnemonicSystemPrompt(isMono: boolean): string {
+  if (isMono) {
+    return `You are an English phrasal verb and idiom expert. Your goal is to help students understand the "why" behind phrases, especially those involving prepositions.
+
+Explain phrases from a NATIVE SPEAKER'S perspective, providing mnemonics for these approaches:
+
+1. CORE IMAGE (mapped to "philology"):
+   - Explain the root image of the preposition in English (e.g., 'in' is entering a space, 'up' is completeness/arrival, 'off' is detachment).
+   - Use vivid metaphors (e.g., "pop in" is like a quick head-pop into a room through a window).
+   - Show how the combination creates a logical "mental movie".
+
+2. STORY (mapped to "story"):
+   - Use the historical origin or a modern humorous scenario in English to link the words.
+
+3. SMART (mapped to "smart"):
+   - Other intuitive ways to remember the phrase, or practical usage cues in English.
+
+JSON Output Schema:
+{
+  "philology": {
+    "content": "Core image explanation in English.",
+    "score": 90,
+    "reason": "Why this core image makes sense, in English."
+  },
+  "story": {
+    "content": "Story or origin explanation in English.",
+    "score": 30,
+    "reason": "Why this story helps, in English."
+  },
+  "smart": {
+    "content": "Smart association in English.",
+    "score": 60,
+    "reason": "Why this association is useful, in English."
+  },
+  "bestType": "philology" | "story" | "smart"
+}
+
+Rules:
+- Focus on the "Native Thinking" (母语者思维).
+- Explain the logic of prepositions clearly.
+- bestType must be the highest scoring one.
+- ALL output text must be in English only. No Chinese characters anywhere. Use clear, learner-friendly English.
+- Never output anything outside the JSON object.`
+  }
+
+  return PHRASE_MNEMONIC_SYSTEM_PROMPT
+}
+
+function getSingleMnemonicPrompt(isMono: boolean): string {
+  if (isMono) {
+    return `You are a creative English mnemonic expert. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
+
+There are three types of mnemonics:
+1. PHILOLOGY (词源逻辑 / 核心意象):
+   - For words: Write a vivid, flowing narrative paragraph (2-4 sentences) connecting the word's root/affix to its meaning using an anchor word the learner likely knows (e.g. collect/select). Describe a concrete scene/metaphor. DO NOT output a bullet list or factual etymology dump.
+   - For phrases: Explain the core image of the preposition/verb combination (e.g., 'in' is entering space, 'up' is completion) with vivid metaphors and a logical "mental movie".
+2. STORY (趣味故事):
+   - Use English wordplay, rhyming words, puns, spelling tricks, or absurd, vivid, or humorous stories in English (1-3 sentences).
+3. SMART (智能联想):
+   - A hybrid approach or a completely unique association in English (e.g., visual letter shapes, pop culture, breaking the word into recognizable "mini-words") (1-3 sentences).
+
+Input parameters:
+- Word/Phrase: The target expression.
+- Type: The requested mnemonic type (philology | story | smart).
+- Current Mnemonic Content: The current mnemonic of this type that the user wants to change. YOU MUST generate a completely different one. Do not repeat or slightly rephrase the current one.
+- User's Mnemonic Idea (optional): An idea or related word proposed by the user.
+
+If User's Mnemonic Idea is provided:
+1. Carefully check/verify the idea. Is it correct, helpful, and logical for remembering the word?
+2. If it is viable and helpful, adopt and expand it into a fully formed mnemonic of the requested type.
+3. If it is NOT viable or misleading:
+   - Generate a new, correct mnemonic of the requested type.
+   - In the "reason" field, explain gently in English why the user's idea might not be the best fit and explain the logic of the new mnemonic.
+
+Output format MUST be a valid JSON object:
+{
+  "content": "Mnemonic text in English.",
+  "score": 0-100 score representing memory effectiveness,
+  "reason": "Brief explanation in English. If the user provided an idea, explain if it was adopted/why or why not."
+}
+
+Rules:
+- ALL output text must be in English only. No Chinese characters anywhere. Use clear, learner-friendly English.
+- Return ONLY the JSON object. No markdown code fences. No extra text.`
+  }
+
+  return `You are a creative English mnemonic expert. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
 
 There are three types of mnemonics:
 1. PHILOLOGY (词源逻辑 / 核心意象):
@@ -931,6 +1091,55 @@ Output format MUST be a valid JSON object:
 
 Rules:
 - Return ONLY the JSON object. No markdown code fences. No extra text.`
+}
+
+export async function generatePhraseMnemonic(
+  phrase: string,
+  signal?: AbortSignal
+): Promise<import('../types').Mnemonic> {
+  const config = getConfig()
+  const isMono = getIsMono(phrase, config)
+  const cleaned = await callApi(
+    getPhraseMnemonicSystemPrompt(isMono),
+    `Phrase: ${phrase}\n\nGenerate a mnemonic from a native speaker's perspective and return the JSON.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as import('../types').Mnemonic
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
+        throw new Error('AI returned invalid JSON for phrase mnemonic')
+      }
+    }
+  }
+  throw new Error('AI returned invalid JSON for phrase mnemonic')
+}
+
+export async function generateMnemonic(
+  word: string,
+  signal?: AbortSignal
+): Promise<import('../types').Mnemonic> {
+  const config = getConfig()
+  const isMono = getIsMono(word, config)
+  const cleaned = await callApi(
+    getMnemonicSystemPrompt(isMono),
+    `Word: ${word}\n\nGenerate a mnemonic for this word and return the JSON.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as import('../types').Mnemonic
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try { return JSON.parse(objMatch[0]) as import('../types').Mnemonic } catch {
+        throw new Error('AI returned invalid JSON for mnemonic')
+      }
+    }
+  }
+  throw new Error('AI returned invalid JSON for mnemonic')
+}
 
 export async function generateSingleMnemonic(
   word: string,
@@ -951,8 +1160,11 @@ ${ideaPrompt}
 
 Please generate or refine the mnemonic for this type based on the instructions.`
 
+  const config = getConfig()
+  const isMono = getIsMono(word, config)
+
   const cleaned = await callApi(
-    SINGLE_MNEMONIC_SYSTEM_PROMPT,
+    getSingleMnemonicPrompt(isMono),
     userPrompt,
     signal
   )

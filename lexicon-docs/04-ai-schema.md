@@ -147,7 +147,7 @@ Analyze this word and return the JSON.`
 ### `generateExercises(word, meanings, count, signal?)`
 按需生成练习场景。返回 `Exercise[]`。
 
-- 每条 `Exercise` 只有 `scenario`（中文场景描述）
+- 每条 `Exercise` 只有 `scenario`（中文场景描述，在单语言模式下为简单英文场景描述）
 - `count` 由 `settingsStore.maxExercises` 控制（默认 5，范围 1–10）
 - JSON 解析同样有 regex array fallback
 
@@ -155,7 +155,7 @@ Analyze this word and return the JSON.`
 评分单道练习。返回 `EvaluationResult`。
 
 - `correct: boolean`
-- `feedback`：中文错误说明（正确时为空）
+- `feedback`：中文错误说明（正确时为空，在单语言模式下为英文错误说明）
 - `correction`：纠正后的句子（正确时为空）
 - 语法错误（时态、介词、句型）必须标为 incorrect；轻微拼写错误可忽略
 
@@ -176,7 +176,7 @@ AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）�
 
 - `context`：当前查询的单词或词组
 - `history`：`ChatMessage[]`，支持多轮对话
-- 回答用中文，适当穿插英文例句
+- 回答用中文，适当穿插英文例句（单语言模式开启且查询词为英文时，自动改用简单英文进行回复）
 
 ### `testConnection(signal?)`
 验证当前 Settings 配置是否可用。返回 `string`（模型回复）。
@@ -185,13 +185,13 @@ AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）�
 Phase 1 图片翻译（仅 OCR + 翻译，无 bbox）。返回 `TextBlock[]`。用于翻译列表视图。
 
 ### `generateMnemonic(word, signal?)`
-为单词生成三种方式的记忆助记（词源逻辑、趣味故事、智能联想）。返回 `Mnemonic`。
+为单词生成三种方式的记忆助记（词源逻辑、趣味故事、智能联想）。返回 `Mnemonic`。单语言模式下生成英文内容与原因，且故事使用英文 wordplay/rhyme 替代中文谐音。
 
 ### `generatePhraseMnemonic(phrase, signal?)`
-为词组/短语生成三种方式的记忆助记。返回 `Mnemonic`。
+为词组/短语生成三种方式的记忆助记。返回 `Mnemonic`。单语言模式下生成英文内容与原因。
 
 ### `generateSingleMnemonic(word, type, isPhrase, currentMnemonicContent?, userIdea?, signal?)`
-生成或重新生成单个指定类型的助记（支持用户想法提议与校验）。返回 `MnemonicItem`。
+生成或重新生成单个指定类型的助记（支持用户想法提议与校验）。返回 `MnemonicItem`。单语言模式下生成英文内容与原因，提议校验与回复同样切换为英文。
 
 ### `aiImageTranslateFull(imageBase64, sourceLang, targetLang, signal?)`（已废弃 v0.6.0）
 ~~Phase 2 图片翻译（OCR + 翻译 + bbox/polygon）。~~
