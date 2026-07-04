@@ -1350,6 +1350,23 @@ export async function generatePrepImagery(
   prepositions: string[],
   signal?: AbortSignal
 ): Promise<PrepSpatialData> {
+  const config = getConfig()
+  const isMono = getIsMono(phrase, config)
+
+  const coreIdeaPlaceholder = isMono
+    ? 'Increase · Completion · Creation'
+    : '增加 · 完成 · 创造'
+  const phraseExplanationPlaceholder = isMono
+    ? "2-3 sentences in English explaining how the preposition's imagery applies to this phrase"
+    : '2-3句中文，说明该介词的空间意象具体如何塑造了此短语的含义'
+  const smartAssocPlaceholder = isMono
+    ? '1-sentence quick visual summary in English (can use emoji or → notation)'
+    : '1句中文趣味联想/记忆线索 (可使用 emoji 或 → 符号)'
+
+  const languageRule = isMono
+    ? 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in English only. No Chinese characters.'
+    : 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in clear, learner-friendly Chinese.'
+
   const userPrompt = `Phrase: "${phrase}"\nPrepositions to explain: ${prepositions.join(', ')}\n\nReturn the JSON.`
   
   const systemPrompt = `You are an expert in English preposition spatial imagery and phrasal verb analysis.
@@ -1383,9 +1400,9 @@ Schema:
   "items": [
     {
       "preposition": "UP",
-      "coreIdea": "Increase · Completion · Creation",
-      "phraseExplanation": "2-3 sentences explaining how UP's imagery applies to THIS phrase",
-      "smartAssoc": "1-sentence quick visual summary of the phrase's preposition usage"
+      "coreIdea": "${coreIdeaPlaceholder}",
+      "phraseExplanation": "${phraseExplanationPlaceholder}",
+      "smartAssoc": "${smartAssocPlaceholder}"
     }
   ]
 }
@@ -1393,8 +1410,8 @@ Schema:
 Rules:
 - items must contain ONE entry PER preposition in the input list, in the same order
 - phraseExplanation must reference the specific phrase, not just the preposition in isolation
-- smartAssoc should be a memorable one-liner (can use emoji or → notation)
-- Keep language clear and learner-friendly (CEFR B2 level)
+- smartAssoc should be a memorable one-liner
+- ${languageRule}
 - Return ONLY the JSON object.`
 
   const cleaned = await callApi(systemPrompt, userPrompt, signal)
@@ -1417,6 +1434,23 @@ export async function regenerateSinglePrepItem(
   currentContent?: string,
   signal?: AbortSignal
 ): Promise<PrepSpatialItem> {
+  const config = getConfig()
+  const isMono = getIsMono(phrase, config)
+
+  const coreIdeaPlaceholder = isMono
+    ? 'Increase · Completion · Creation'
+    : '增加 · 完成 · 创造'
+  const phraseExplanationPlaceholder = isMono
+    ? "2-3 sentences in English explaining how this preposition's imagery applies to this specific phrase"
+    : '2-3句中文，说明该介词的空间意象具体如何塑造了此短语的含义'
+  const smartAssocPlaceholder = isMono
+    ? '1-sentence quick visual summary in English (can use emoji or → notation)'
+    : '1句中文趣味联想/记忆线索 (可使用 emoji 或 → 符号)'
+
+  const languageRule = isMono
+    ? 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in English only. No Chinese characters.'
+    : 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in clear, learner-friendly Chinese.'
+
   const currentPrompt = currentContent ? `Current explanation content to change: "${currentContent}"` : ''
   const userPrompt = `Phrase: "${phrase}"\nPreposition to explain: ${preposition}\n${currentPrompt}\n\nReturn the JSON.`
 
@@ -1448,15 +1482,15 @@ Return ONLY valid JSON. No markdown, no extra text.
 Schema:
 {
   "preposition": "${preposition}",
-  "coreIdea": "e.g. Increase · Completion · Creation",
-  "phraseExplanation": "2-3 sentences explaining how this preposition's imagery applies to this specific phrase",
-  "smartAssoc": "1-sentence quick visual summary of the phrase's preposition usage"
+  "coreIdea": "${coreIdeaPlaceholder}",
+  "phraseExplanation": "${phraseExplanationPlaceholder}",
+  "smartAssoc": "${smartAssocPlaceholder}"
 }
 
 Rules:
 - phraseExplanation must reference the specific phrase, not just the preposition in isolation
-- smartAssoc should be a memorable one-liner (can use emoji or → notation)
-- Keep language clear and learner-friendly (CEFR B2 level)
+- smartAssoc should be a memorable one-liner
+- ${languageRule}
 - Return ONLY the JSON object.`
 
   const cleaned = await callApi(systemPrompt, userPrompt, signal)
