@@ -4,7 +4,7 @@
     "pub_date": "2026-07-05T04:31:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTMrQjVYYjN5SEQvQWd0UkR4NU5zTDVmMEIwQjg2OTF1TytzakN4Wkw5UnFKZUhZUHVtTW0zK2NNV3I2Zm1FdldLSjZqVlBMbmh1K1BiZUZQRWp0WkFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjI2Mjk1CWZpbGU6TGV4aWNvbl8wLjcuMjhfeDY0LXNldHVwLmV4ZQpLcWpVUFpkTFhKU21ZT01KVWRad0wwVC9RWncwSEpZaHF6Mk9SSEFycHNWekl3d1J3eTQwaVBDTFRrQnpoQ2Y4YzlnU290YVRNbU1laGVXejV3NlZCUT09Cg==",
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBiSm90eFg1emxabmJJdlUvRG1Oa3FEc0MxUHF1eE1FOUpmZjBZSzZMQVBLdk11WjVnWWRHaFpvVm13YTBYYXhMcURST0t6eEg3MWJ2UGNTVVVadEFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjI5MDM2CWZpbGU6TGV4aWNvbl8wLjcuMjhfeDY0LXNldHVwLmV4ZQpreG1KOS9nTzRwTXA4U1JRdGxpSGlqVWtEQ0x1TmVpaEptMmRaTjVhelptNkF6NWpzL1ZWRDIzMUcyZkFDQ3orTEcrNGpocWk3TnVHMjYvS1NWNEpDZz09Cg==",
             "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.28/Lexicon_0.7.28_x64-setup.exe"
         }
     }
