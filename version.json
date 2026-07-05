@@ -1,11 +1,11 @@
 {
-    "version": "0.7.27",
-    "notes": "全单语言模式（Monolingual）下 AI 功能全面适配：\n1. 助记模块（Mnemonic）在单英文模式下生成全英文助记内容及原因，支持英文故事、谐音及词源叙述。\n2. 练习（Exercises）在单英文模式下自动以英文描述练习场景，并仅展示英文释义。\n3. 写作批改评估（Evaluation）在单英文模式下采用英文回复批改意见和修改例句。\n4. AI 问答（Chat QA）在单英文模式下的词条会话中自动改用英文交流答复。",
-    "pub_date": "2026-06-24T15:00:00Z",
+    "version": "0.7.28",
+    "notes": "优化介词空间意象分析模块的单语模式自适应语言逻辑：\n1. 修复：介词空间意象分析模块（Prep. Imagery）现在会完美对齐单词、短语和句子对应的单语言（Monolingual）用户设置。\n2. 优化：在单语言模式开启时自动生成全英文的介词意象释义与智能联想，在关闭时则自动输出清晰的中文解析。",
+    "pub_date": "2026-07-05T04:31:00Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTMrQld2MUlxUWtOS29XTnNWM1lqeEx0QmpsbjdtTmc0aHVIdHV6TDBTVGkzdkNkc0dvWjdsZEFON2h2Z3YyZnJHeVh1VUg2YzVJenpSQnlHOG9Hbnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyMzEzNzc4CWZpbGU6TGV4aWNvbl8wLjcuMjdfeDY0LXNldHVwLmV4ZQpLM1IzM05FdTNIVWU4UVhNWG9mZlhyUExWMHZYbXBQTzIzRFRpWFpHa1VzUTArRHF1S0loSVlSV0F0Um9WRC9OcHVCK1JhbVV0bzJiWUVhSkJVejBCZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.27/Lexicon_0.7.27_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTMrQjVYYjN5SEQvQWd0UkR4NU5zTDVmMEIwQjg2OTF1TytzakN4Wkw5UnFKZUhZUHVtTW0zK2NNV3I2Zm1FdldLSjZqVlBMbmh1K1BiZUZQRWp0WkFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjI2Mjk1CWZpbGU6TGV4aWNvbl8wLjcuMjhfeDY0LXNldHVwLmV4ZQpLcWpVUFpkTFhKU21ZT01KVWRad0wwVC9RWncwSEpZaHF6Mk9SSEFycHNWekl3d1J3eTQwaVBDTFRrQnpoQ2Y4YzlnU290YVRNbU1laGVXejV3NlZCUT09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.28/Lexicon_0.7.28_x64-setup.exe"
         }
     }
 }
