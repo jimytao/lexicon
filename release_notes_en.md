@@ -1,3 +1,4 @@
-Align Preposition Spatial Imagery module with monolingual settings
-1. **Fixed**: Preposition Spatial Imagery (Prep. Imagery) module now correctly respects the monolingual settings configured for words, phrases, and sentences.
-2. **Optimized**: Automatically generates English spatial explanations and associations when monolingual mode is enabled, and falls back to Chinese explanations when disabled.
+Fix sentence translation AI prompt logic and add collapsible correction explanation panel
+1. **Fix**: The AI no longer deletes or truncates content when correcting sentences. Rewrote the correctForm prompt constraints to explicitly forbid compressing or rewriting long paragraphs — the AI now only makes minimal word-by-word corrections, and returns the input verbatim when no real errors are found.
+2. **New**: Sentence search results now include a collapsible "Why was this changed?" explanation panel. When the AI modifies your input, a foldable note appears below the "You entered" diff line, explaining the type of change (unnatural but understandable / flows better / actual grammar error / minor polish with no real mistake), helping you genuinely understand the issue.
+3. **Improved**: The explanation panel is collapsed by default; click "Why was this changed?" to expand it. Automatically resets when switching to a new query.

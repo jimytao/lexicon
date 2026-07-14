@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { PhraseResult } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { DiffText } from './DiffText'
@@ -30,6 +31,12 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const usageScenes = phraseResult?.usageScenes ?? []
   const queryType = useSearchStore(s => s.queryType)
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
+  const [noteExpanded, setNoteExpanded] = useState(false)
+
+  // 切换到新的句子搜索时，重置折叠状态，避免上次展开的解释残留
+  useEffect(() => {
+    setNoteExpanded(false)
+  }, [phrase, phraseResult?.correctForm])
 
   return (
     <div className="px-3 py-3">
@@ -43,9 +50,32 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
       {phraseResult && phraseResult.correctForm && phraseResult.correctForm.toLowerCase() !== phrase.toLowerCase() ? (
         <>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-snug">{phraseResult.correctForm}</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
             {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
           </p>
+          {phraseResult.correctionNote?.trim() ? (
+            <div className="mb-4">
+              <button
+                onClick={() => setNoteExpanded(v => !v)}
+                className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
+              >
+                <svg
+                  className={`w-3 h-3 transition-transform duration-200 ${noteExpanded ? 'rotate-90' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="font-medium">{t('phrase.whyChanged')}</span>
+              </button>
+              {noteExpanded && (
+                <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{phraseResult.correctionNote}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mb-4" />
+          )}
         </>
       ) : (
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 leading-snug">{phraseResult?.correctForm || phrase}</h1>

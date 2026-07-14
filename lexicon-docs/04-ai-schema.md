@@ -5,7 +5,7 @@
 - 词库有结果时，AI 只负责**增量解析**：语义情景、词根词缀 + 派生词、近义词辨析、课后练习
 - 词库无结果时，AI 负责**全量生成**：音标、词性、释义+场景、词源、近义词、例句（`aiFullLookup`）
 - 词组/句子查询由 AI 全量生成：释义、使用场景、例句、练习（`aiPhraseQuery`）
-- 所有 AI 查询都返回 `correctForm` 字段用于拼写纠正
+- 所有 AI 查询都返回 `correctForm` 字段用于拼写纠正；词组/句子查询额外返回 `correctionNote` 字段解释改动原因
 - 释义和例句在词库有结果时始终来自本地词库（L1），AI 不替换它们
 - 输出格式固定为 JSON，system prompt 严格约束，前端直接 parse
 - 模型推荐：Gemini 2.0 Flash（快、便宜、质量足够）
@@ -168,7 +168,10 @@ Analyze this word and return the JSON.`
 ### `aiPhraseQuery(phrase, signal?)`
 词组/句子 AI 查询。返回 `PhraseResult`。
 
-- 包含 `correctForm`（纠正后的正确表达）、`meaning`、`usageScenes`、`examples`、`exercises`
+- 包含 `correctForm`（纠正后的正确表达）、`correctionNote`（改动原因简要说明，有改动时才有）、`meaning`、`usageScenes`、`examples`、`exercises`
+- `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
+- `correctionNote` 分类标注改动类型：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调
+- 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageScenes 中说明差异
 
 ### `askQuestion(context, history, signal?)`

@@ -1,6 +1,35 @@
 # CHANGELOG
 
+## 2026-07-14 — 句子翻译搜索修复 + 修改解释折叠板块
+
+### 1. 修复：correctForm 不再删减/截断原文（aiPhraseQuery 提示词）
+
+- **文件**：`src/services/ai.ts`
+- **问题**：`getPhrasePrompt` 的 `correctForm` 描述不够严格，导致 AI 误将"修正"理解为"简化"，对大段句子输入只保留开头一句。
+- **修复**：
+  - `correctForm` 字段说明改为明确禁止删减/截断：*"do NOT shorten, summarize, or truncate the input. correctForm is the proofread original, not a rewrite."*
+  - Rules 部分新增 CRITICAL 规则：长句/段落时必须保留全部内容，逐词修正，无错时与原文完全相同
+  - 中文翻译场景（输入中文→英文）同样要求保留完整中文含义
+
+### 2. 新增：correctionNote 字段（aiPhraseQuery 修改解释）
+
+- **文件**：`src/types/index.ts`、`src/services/ai.ts`
+- **设计**：
+  - `PhraseResult` 接口新增可选 `correctionNote?: string` 字段
+  - Prompt schema 加入 `correctionNote`，要求 AI 用1-2句话解释改动属于哪类：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调
+  - 大小写/标点仅在影响意义时才提及；无改动时省略
+
+### 3. 新增：可折叠"为什么这么改？"板块（PhraseView UI）
+
+- **文件**：`src/components/ResultView/PhraseView.tsx`、`src/i18n/index.ts`
+- **设计**：
+  - 在 "you entered / 你输入的是" diff 行下方，新增折叠触发按钮（默认折叠，用户点击展开）
+  - 展开后以左侧琥珀色边线块展示 `correctionNote` 内容
+  - 仅当 `correctionNote` 字段存在且非空时才显示
+  - 新增 i18n key：`phrase.whyChanged`（中：为什么这么改？/ 英：Why was this changed?）
+
 ## 2026-06-24 — 适配所有AI功能在单英文/双语模式下的提示词 (v0.7.27)
+
 
 ### 1. 新增：单语言与双语提示词动态选择辅助逻辑
 - **文件**：`src/services/ai.ts`

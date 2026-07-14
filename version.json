@@ -1,11 +1,11 @@
 {
-    "version": "0.7.28",
-    "notes": "优化介词空间意象分析模块的单语模式自适应语言逻辑：\n1. 修复：介词空间意象分析模块（Prep. Imagery）现在会完美对齐单词、短语和句子对应的单语言（Monolingual）用户设置。\n2. 优化：在单语言模式开启时自动生成全英文的介词意象释义与智能联想，在关闭时则自动输出清晰的中文解析。",
-    "pub_date": "2026-07-05T04:31:00Z",
+    "version": "0.7.29",
+    "notes": "修复句子翻译搜索的 AI 提示词逻辑，新增修改解释折叠板块\n1. 修复：句子翻译时 AI 不再删减/截断原文内容。重写 correctForm 提示词约束，明确禁止对长段落进行压缩或改写，确保 AI 只做最小化逐词纠错，无错误时与原文完全一致。\n2. 新增：句子搜索结果新增「为什么这么改？」折叠解释板块。当 AI 对输入的句子有修改时，在「你输入的是」对比行下方显示可折叠的改动原因，说明改动属于哪种类型（能理解但不地道 / 更通畅 / 语法错误 / 无实质错误微调），帮助用户真正理解问题所在。\n3. 优化：解释板块默认折叠，用户主动点击「为什么这么改？」按钮后展开查看，切换到新查询时自动重置。",
+    "pub_date": "2026-07-14T13:01:35Z",
     "platforms": {
         "windows-x86_64": {
-            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBiSm90eFg1emxabmJJdlUvRG1Oa3FEc0MxUHF1eE1FOUpmZjBZSzZMQVBLdk11WjVnWWRHaFpvVm13YTBYYXhMcURST0t6eEg3MWJ2UGNTVVVadEFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjI5MDM2CWZpbGU6TGV4aWNvbl8wLjcuMjhfeDY0LXNldHVwLmV4ZQpreG1KOS9nTzRwTXA4U1JRdGxpSGlqVWtEQ0x1TmVpaEptMmRaTjVhelptNkF6NWpzL1ZWRDIzMUcyZkFDQ3orTEcrNGpocWk3TnVHMjYvS1NWNEpDZz09Cg==",
-            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.28/Lexicon_0.7.28_x64-setup.exe"
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTk3S1diVmE1TVU1ckJDMnovVlEzaForVk9ZOGxIaStRVm5OTjNncXM0a0ltUjlYM2RyUVc0Yy80ajhvc2dTU2h1ZXlLKy9GL1pRUXB1UEN5eGk1YUEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MDM0NTMyCWZpbGU6TGV4aWNvbl8wLjcuMjlfeDY0LXNldHVwLmV4ZQphNUE4WitOVndpd2EvVE92MzBMNUtvVFlQUGFPaE1Qb2I2a2RmNGVUTFJ4K012TmRZR3laOEFYZXduS3AzMDFCK3JJS292c1dXZlR2YW5KVHY4c2hCZz09Cg==",
+            "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.29/Lexicon_0.7.29_x64-setup.exe"
         }
     }
 }

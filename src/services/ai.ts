@@ -666,7 +666,11 @@ function getPhrasePrompt(
   const meaningDesc = isMono ? "English definition/explanation in simple terms" : "中文释义/翻译"
   const sceneDesc = isMono ? "1-3 sentences in English, explaining when to use this expression, tone, and feeling" : "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"
 
-  let schema = `{\n  "correctForm": "the correct/standard form of this phrase (fix grammar, preposition, or spelling errors if any)",\n  "meaning": "${meaningDesc}",\n  "usageScenes": [\n    {\n      "label": "${isMono ? '2-4 word English context tag' : '2-4字场景标签'}",\n      "description": "${sceneDesc}"\n    }\n  ]`
+  const correctionNoteDesc = isMono
+    ? "If correctForm differs from input: 1-2 sentences in English explaining why — e.g. 'The original is understandable but unnatural; native speakers say X instead.' or 'Minor grammar error: subject-verb agreement.' Focus on the most important issue only. Skip trivial capitalization/punctuation unless it changes meaning. Omit this field if no change was made."
+    : "如果 correctForm 与原文不同，用1-2句中文简要说明改动原因，分类标注（能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质性错误微调），仅提及最关键的问题。大小写/标点等只在影响意思时才提及。无改动时省略此字段。"
+
+  let schema = `{\n  "correctForm": "the corrected/standard form — fix real grammar, preposition, or spelling errors ONLY. CRITICAL: do NOT shorten, summarize, or truncate the input. If input is a long sentence or multi-sentence paragraph, keep ALL content intact and only fix actual errors. correctForm is the proofread original, not a rewrite.",\n  "correctionNote": "${correctionNoteDesc}",\n  "meaning": "${meaningDesc}",\n  "usageScenes": [\n    {\n      "label": "${isMono ? '2-4 word English context tag' : '2-4字场景标签'}",\n      "description": "${sceneDesc}"\n    }\n  ]`
 
   if (isEnabled('examples')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
@@ -708,8 +712,12 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
+- CRITICAL — correctForm integrity: Do NOT delete, shorten, summarize, or truncate any part of the input. If input is a long sentence or multi-sentence paragraph, correctForm must preserve ALL sentences and content — only fix actual errors word by word. correctForm is a proofread copy, NOT a rewrite or summary.
+- If the input has NO real errors, set correctForm exactly equal to the input (copy it verbatim). Only change what is genuinely wrong.
+- correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.
 - If input is CHINESE (targeting English):
-  - correctForm: the most natural English translation.
+  - correctForm: the most natural, complete English translation of the full input — do NOT omit any part of the Chinese.
+  - correctionNote: omit (translation, not correction).
   - usageScenes: explain when to use this translation vs others.
 - If input is a FOREIGN LANGUAGE (not English/Chinese):
   - meaning: accurate and natural translation.

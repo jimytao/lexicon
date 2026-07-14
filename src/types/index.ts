@@ -144,6 +144,7 @@ export interface PrepSpatialData {
 export interface PhraseResult {
   phrase: string
   correctForm: string
+  correctionNote?: string
   meaning: string
   usageScenes?: Array<{ label: string; description: string }>
   examples: Example[]

@@ -83,6 +83,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     // Phrase View
     'phrase.queryLabel': 'AI 查询 · 词组/句子',
     'phrase.youEntered': '你输入的是',
+    'phrase.whyChanged': '为什么这么改？',
     'phrase.meaning': '释义',
     'phrase.usageScenes': '使用场景',
     'phrase.culturalContext': '文化背景 & 趣味百科',
@@ -254,6 +255,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     // Phrase View
     'phrase.queryLabel': 'AI Query · Phrase / Sentence',
     'phrase.youEntered': 'You entered',
+    'phrase.whyChanged': 'Why was this changed?',
     'phrase.meaning': 'Meaning',
     'phrase.usageScenes': 'Usage Contexts',
     'phrase.culturalContext': 'Cultural Context',
