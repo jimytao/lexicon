@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 2026-07-17 — AI Chat 语境准确性与记录持久化 (v0.7.31)
+
+### 1. 修复：Phrase/Sentence 查询时 AI 辅助板块使用正确的纠正句
+
+- **文件**：`src/components/ResultView/PhraseView.tsx`、`src/components/ResultView/AiFullView.tsx`
+- **问题**：在短语/句子模式下，Mnemonic、Practice、AI Chat 等模块错误地将用户输入的原始错误短语（例如 "catch you round"）作为生成词，导致助记与后续练习退回到错误表达的语义上去解释。
+- **修复**：修正了这三个板块传递给底层的入参，确保在存在修正句时，统一优先使用纠正后的 `phraseResult.correctForm` / `aiFullResult.correctForm`。
+
+### 2. 新增：AI Chat 完整语境一键注入功能（灯泡按钮）
+
+- **文件**：`src/components/ResultView/AiSection/AiChatBox.tsx`、`src/services/ai.ts`、`src/i18n/index.ts`
+- **设计**：
+  - 在 AI 问答模块右上角新增了一个灵动的“💡（灯泡）”纯图标按钮。
+  - 激活后，在发起提问时，会自动整理当前卡片已生成的释义、例句、助记法、介词空间意象、文化背景等所有细节作为 System Context 附加给 AI。
+  - 对话助手将不再是“凌空提问”，而是能够准确契合页面展示的分析内容进行回答，有效防止 AI 前后言行不一。
+
+### 3. 新增：设置页支持定制 Chat 语境默认开启状态
+
+- **文件**：`src/stores/settingsStore.ts`、`src/components/Settings/SettingsView.tsx`、`src/i18n/index.ts`
+- **设计**：在设置界面「单语言模式」下方新增「Chat 默认开启完整语境」开关，方便用户根据日常资费习惯/网络喜好决定初始状态是极简省 Token 模式还是完整语境模式。
+
+### 4. 新增：Chat 记录按词条独立存储并自动持久化
+
+- **文件**：`src/stores/chatStore.ts` (新文件)、`src/stores/resultStore.ts`
+- **设计**：
+  - 移除了原来全局单数组、随词条切换而丢失且无法重载的临时聊天方案。
+  - 新建了 `chatStore` 并结合 Zustand `persist`，利用 `correctForm` 纠正句作为唯一 key，实现聊过的内容自动持久化到本地。
+  - 切换搜索任何单词/短语时，自动加载该词专属的聊天历史，再次打开应用时可无缝还原历史追问场景。
+  - 引入了 LRU 自动回收策略，本地最多缓存 100 个历史词条 of 聊天记录，防止 LocalStorage 无限膨胀。
+
 ## 2026-07-14 — 句子翻译搜索修复 + 修改解释折叠板块
 
 ### 1. 修复：correctForm 不再删减/截断原文（aiPhraseQuery 提示词）
