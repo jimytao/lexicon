@@ -30,7 +30,19 @@
   - 切换搜索任何单词/短语时，自动加载该词专属的聊天历史，再次打开应用时可无缝还原历史追问场景。
   - 引入了 LRU 自动回收策略，本地最多缓存 100 个历史词条 of 聊天记录，防止 LocalStorage 无限膨胀。
 
-## 2026-07-14 — 句子翻译搜索修复 + 修改解释折叠板块
+## 2026-07-17 — 图片翻译支持 Trilingual Examples 三语模式 (v0.7.30)
+
+### 1. 新增：图片翻译 Trilingual 提示词模式
+
+- **文件**：`src/services/ai.ts`
+- **设计**：当系统设置中的「三语例句（Trilingual Examples）」开启、图片源语言为外语（如法/日/韩等）、且翻译目标语言为中文时，图片翻译（aiImageTranslateFast）会加载专有的三语翻译提示词，命令 AI 在输出中文译文的同时附加一列对应的 `translationEn` 英文译文。
+
+### 2. 新增：图片翻译列表 UI 对照展示英文副译
+
+- **文件**：`src/components/ImageTranslate/TranslationList.tsx`、`src/types/index.ts`
+- **设计**：在列表形式的翻译结果中，当对应文本块含有 `translationEn` 数据时，将在中文编辑框下方展示一行灰色斜体英文副译文本，帮助用户结合英文更好地理解外语漫画/图表语境。
+
+## 2026-07-14 — 句子翻译搜索修复 + 修改解释折叠板块 (v0.7.29)
 
 ### 1. 修复：correctForm 不再删减/截断原文（aiPhraseQuery 提示词）
 
@@ -57,6 +69,13 @@
   - 展开后以左侧琥珀色边线块展示 `correctionNote` 内容
   - 仅当 `correctionNote` 字段存在且非空时才显示
   - 新增 i18n key：`phrase.whyChanged`（中：为什么这么改？/ 英：Why was this changed?）
+
+## 2026-07-05 — 介词空间意象单语言自适应语言逻辑优化 (v0.7.28)
+
+### 1. 优化：介词空间意象板块对齐 Monolingual 用户设置
+
+- **文件**：`src/services/ai.ts`
+- **设计**：重写了 `generatePrepImagery` 与 `regenerateSinglePrepItem` 的系统提示词和返回 schema。AI 会自动根据当前的单词/短语单语模式（Monolingual）状态决定输出语种。若单语模式开启，输出全英文的介词核心概念、意象解析和记忆联想线索；若关闭，则输出中文解析，完美适配浸润式学习体验。
 
 ## 2026-06-24 — 适配所有AI功能在单英文/双语模式下的提示词 (v0.7.27)
 
