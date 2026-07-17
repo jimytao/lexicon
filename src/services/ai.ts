@@ -1237,6 +1237,51 @@ Rules:
 - If no text found, return {"blocks": []}
 - Never output anything outside the JSON object`
 
+// ── Trilingual prompt: OCR + translate to target lang + English (for trilingual mode) ──
+const IMAGE_TRANSLATE_TRILINGUAL_PROMPT = `You are a professional manga/image text detector and translator.
+
+Detect ALL text regions and translate them. Do NOT calculate bounding boxes.
+
+Return ONLY a valid JSON object. No markdown code fences. No explanation.
+
+{
+  "blocks": [
+    {
+      "original": "detected text in original language",
+      "translation": "translated text in target language",
+      "translationEn": "natural English translation of the original text",
+      "type": "bubble",
+      "direction": "vertical"
+    }
+  ]
+}
+
+type: "bubble" | "sfx" | "caption"
+direction: "vertical" | "horizontal"
+
+Rules:
+- Detect ALL visible text
+- Keep translations natural, preserve tone and style
+- For sfx: provide short description (e.g. "ゴゴゴ" → "隆隆隆" / "Rumble")
+- "translation" MUST be in the specified target language
+- "translationEn" MUST always be in natural English, regardless of target language
+- READING ORDER: First classify the image type, then choose the ordering rule.
+  Step 1 — Classify the image:
+    • MANGA: clear panel grid, speech bubbles with tails, illustrated artwork, comic-style layout
+    • CHAT/MESSAGING: conversation interface where messages alternate between left and right sides (e.g. messaging apps, LINE, WeChat, iMessage, chat software screenshots). Key indicators: clean UI chrome, avatar icons, timestamps, plain rounded chat bubbles WITHOUT artistic tails/pointers. This takes priority over MANGA even if the source language is Japanese.
+    • OTHER: tweet/social media screenshot, photo, sign, document, novel page, mixed real-world content
+  Step 2 — Apply the rule:
+    • MANGA with Japanese source → RIGHT-TO-LEFT panel columns, TOP-TO-BOTTOM rows.
+      The rightmost column of panels is read first, leftmost last.
+      Within each panel, follow the natural bubble sequence (top to bottom).
+    • CHAT/MESSAGING → Order STRICTLY by vertical position (top-to-bottom) regardless of left/right placement and regardless of source language (including Japanese).
+      Left/right alignment indicates only who sent the message, NOT reading order.
+      Interleave left and right bubbles in the exact order they appear vertically, like a real conversation.
+    • EVERYTHING ELSE (including Japanese tweets, photos, signs, Korean manhwa, Western comics) → TOP-TO-BOTTOM, LEFT-TO-RIGHT.
+  Key insight: RTL ordering applies ONLY to the Japanese manga panel grid. A Japanese chat app screenshot is NOT manga — use CHAT/MESSAGING rule instead.
+- If no text found, return {"blocks": []}
+- Never output anything outside the JSON object`
+
 const LANG_DISPLAY: Record<string, string> = {
   '中文': 'Chinese (Simplified)',
   '英语': 'English',
@@ -1309,14 +1354,21 @@ async function callImageTranslateAPI(
   return parsed.blocks ?? []
 }
 
-/** Fast: OCR + translate only, no bbox. Use for translation list view. */
+/** Fast: OCR + translate only, no bbox. Use for translation list view.
+ *  When triLingualExamples is enabled and source is a foreign language (non-Chinese/English),
+ *  uses the trilingual prompt to also return an English translation in `translationEn`.
+ */
 export async function aiImageTranslateFast(
   imageBase64: string,
   sourceLang: string,
   targetLang: string,
   signal?: AbortSignal,
 ): Promise<import('../types').TextBlock[]> {
-  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, IMAGE_TRANSLATE_FAST_PROMPT, signal)
+  const config = getConfig()
+  const isForeign = sourceLang !== '中文' && sourceLang !== '英语'
+  const useTriLingual = config.triLingualExamples && isForeign && targetLang === '中文'
+  const prompt = useTriLingual ? IMAGE_TRANSLATE_TRILINGUAL_PROMPT : IMAGE_TRANSLATE_FAST_PROMPT
+  return callImageTranslateAPI(imageBase64, sourceLang, targetLang, prompt, signal)
 }
 
 export async function testConnection(signal?: AbortSignal): Promise<string> {

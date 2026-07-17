@@ -63,6 +63,11 @@ export function TranslationList({ blocks, onUpdateTranslation }: Props) {
               placeholder={t('image.enterTranslation')}
               className="w-full text-sm px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none overflow-hidden"
             />
+            {block.translationEn && (
+              <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500 italic px-0.5">
+                {block.translationEn}
+              </p>
+            )}
           </div>
         )
       })}

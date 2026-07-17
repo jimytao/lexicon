@@ -171,6 +171,7 @@ export type TextDirection = 'vertical' | 'horizontal'
 export interface TextBlock {
   original: string
   translation: string
+  translationEn?: string
   bbox: { x: number; y: number; w: number; h: number }
   polygon?: Array<{ x: number; y: number }>
   type: TextBlockType
