@@ -1,22 +1,34 @@
-import { useState, useRef } from 'react'
-import { useResultStore } from '../../../stores/resultStore'
+import { useState, useRef, useEffect } from 'react'
+import { useChatStore } from '../../../stores/chatStore'
+import { useSettingsStore } from '../../../stores/settingsStore'
 import { askQuestion } from '../../../services/ai'
 import type { ChatMessage } from '../../../types'
 import { useT } from '../../../i18n'
 
 interface AiChatBoxProps {
-  context: string
+  context: string        // correctForm — also used as the storage key
+  enrichedContext?: string
 }
 
-export function AiChatBox({ context }: AiChatBoxProps) {
+export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
   const t = useT()
-  const { chatMessages, addChatMessage } = useResultStore()
+  // Subscribe to this specific word's messages — React re-renders whenever they change
+  const chatMessages = useChatStore(s => s.messagesByWord[context] ?? [])
+  const addMessage = useChatStore(s => s.addMessage)
+  const chatRichContextDefault = useSettingsStore(s => s.chatRichContextDefault)
+
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [richMode, setRichMode] = useState(chatRichContextDefault)
   const abortRef = useRef<AbortController | null>(null)
   const contextRef = useRef(context)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   contextRef.current = context
+
+  // Keep richMode in sync when the user changes the default in Settings
+  useEffect(() => {
+    setRichMode(chatRichContextDefault)
+  }, [chatRichContextDefault])
 
   async function handleSend() {
     const question = input.trim()
@@ -27,25 +39,30 @@ export function AiChatBox({ context }: AiChatBoxProps) {
     const requestContext = context
 
     const userMsg: ChatMessage = { role: 'user', content: question }
-    addChatMessage(userMsg)
+    addMessage(requestContext, userMsg)
     setInput('')
     setLoading(true)
 
-    // Scroll down to show the new question and the loading state
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }, 100)
 
     try {
-      const allMessages = [...chatMessages, userMsg]
-      const reply = await askQuestion(requestContext, allMessages, abortRef.current.signal)
+      // Read latest messages at send time (includes the one just added above)
+      const allMessages = useChatStore.getState().getMessages(requestContext)
+      const reply = await askQuestion(
+        requestContext,
+        allMessages,
+        abortRef.current.signal,
+        richMode && enrichedContext ? enrichedContext : undefined
+      )
       if (contextRef.current === requestContext) {
-        addChatMessage({ role: 'assistant', content: reply })
+        addMessage(requestContext, { role: 'assistant', content: reply })
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
       if (contextRef.current === requestContext) {
-        addChatMessage({ role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` })
+        addMessage(requestContext, { role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` })
       }
     } finally {
       setLoading(false)
@@ -61,9 +78,29 @@ export function AiChatBox({ context }: AiChatBoxProps) {
 
   return (
     <div className="mb-4">
-      <div className="flex items-center gap-1.5 mb-3">
-        <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-        <h2 className="text-xs font-semibold text-violet-900 dark:text-violet-300">{t('chat.heading')}</h2>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+          <h2 className="text-xs font-semibold text-violet-900 dark:text-violet-300">{t('chat.heading')}</h2>
+        </div>
+
+        {/* Rich context toggle — only shown when enriched data is available */}
+        {enrichedContext && (
+          <button
+            onClick={() => setRichMode(v => !v)}
+            title={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
+            aria-label={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
+            className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 ${
+              richMode
+                ? 'bg-violet-500 text-white shadow-sm shadow-violet-300/40 dark:shadow-violet-700/30'
+                : 'text-violet-400 dark:text-violet-500 hover:bg-violet-100 dark:hover:bg-violet-900/40'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {chatMessages.length > 0 && (

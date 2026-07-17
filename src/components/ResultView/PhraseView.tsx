@@ -138,7 +138,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 return (
                   <MnemonicCard 
                     key={module.id}
-                    word={phrase} 
+                    word={phraseResult.correctForm || phrase} 
                     initialMnemonic={phraseResult.mnemonic} 
                     isPhrase={true} 
                     onUpdateMnemonic={(m) => updatePhraseMnemonic(phrase, m)}
@@ -160,8 +160,35 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                     meanings={[{ zh: phraseResult.meaning, en: '' }]}
                   />
                 )
-              case 'chat':
-                return <AiChatBox key={module.id} context={phrase} />
+              case 'chat': {
+                const corrected = phraseResult.correctForm || phrase
+                const parts: string[] = []
+                if (phrase.toLowerCase() !== corrected.toLowerCase()) {
+                  parts.push(`用户原始输入: "${phrase}" → 纠正为: "${corrected}"`)
+                  if (phraseResult.correctionNote) parts.push(`纠正说明: ${phraseResult.correctionNote}`)
+                }
+                if (phraseResult.meaning) parts.push(`释义: ${phraseResult.meaning}`)
+                if (phraseResult.usageScenes?.length) {
+                  parts.push('使用场景:\n' + phraseResult.usageScenes.map(s => `  · ${s.label}: ${s.description}`).join('\n'))
+                }
+                if (phraseResult.examples?.length) {
+                  parts.push('例句:\n' + phraseResult.examples.slice(0, 3).map(e => `  · ${e.en}`).join('\n'))
+                }
+                if (phraseResult.mnemonic) {
+                  const best = phraseResult.mnemonic[phraseResult.mnemonic.bestType]
+                  parts.push(`助记法 (${phraseResult.mnemonic.bestType}): ${best.content}`)
+                }
+                if (phraseResult.prepSpatial?.items?.length) {
+                  parts.push('介词空间意象:\n' + phraseResult.prepSpatial.items.map(
+                    i => `  · ${i.preposition}: ${i.coreIdea} — ${i.phraseExplanation}`
+                  ).join('\n'))
+                }
+                if (phraseResult.culturalLore?.content) {
+                  parts.push(`文化背景: ${phraseResult.culturalLore.content}`)
+                }
+                const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
+                return <AiChatBox key={module.id} context={corrected} enrichedContext={enrichedContext} />
+              }
               case 'preposition': {
                 const preps = detectSpatialPreps(phraseResult.correctForm || phrase)
                 if (preps.length === 0) return null

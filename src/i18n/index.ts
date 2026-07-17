@@ -23,7 +23,11 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'chat.placeholder': '输入问题…',
     'chat.send': '发送',
     'chat.error': '出错了：',
-    // AI Status Bar
+    'chat.richContextOn': '完整语境已开启',
+    'chat.richContextOff': '开启完整语境',
+    // Settings
+    'settings.chatRichContext': 'Chat 默认开启完整语境',
+    'settings.chatRichContextDesc': '开启后，AI 问答将默认包含当前词条的释义、例句等分析内容',
     'status.loading': 'AI 深度解析中，正在调遣语言模型…',
     'status.notConfigured.title': 'AI 服务配置未就绪',
     'status.notConfigured.body': '当前尚未配置有效的 AI 密钥或接口地址。请前往设置页面配置您的 API 密钥，即可开启 AI 全量深度解析、助记词与情景会话。',
@@ -195,6 +199,11 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'chat.placeholder': 'Ask a question…',
     'chat.send': 'Send',
     'chat.error': 'Error: ',
+    'chat.richContextOn': 'Full context on',
+    'chat.richContextOff': 'Enable full context',
+    // Settings
+    'settings.chatRichContext': 'Chat full context by default',
+    'settings.chatRichContextDesc': 'When on, AI Chat will include meanings, examples and other analysis as context',
     // AI Status Bar
     'status.loading': 'AI is analyzing…',
     'status.notConfigured.title': 'AI not configured',

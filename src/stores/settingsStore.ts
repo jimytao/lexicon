@@ -84,6 +84,7 @@ interface SettingsStore {
   monolingualSentence: boolean
   activeDictionary: 'lexicon.db' | 'lexicon_en.db'
   autoSwitchDictionary: boolean
+  chatRichContextDefault: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -104,6 +105,7 @@ interface SettingsStore {
   setMonolingualSentence: (v: boolean) => void
   setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
   setAutoSwitchDictionary: (v: boolean) => void
+  setChatRichContextDefault: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -129,6 +131,7 @@ export const useSettingsStore = create<SettingsStore>()(
       monolingualSentence: false,
       activeDictionary: 'lexicon.db',
       autoSwitchDictionary: true,
+      chatRichContextDefault: false,
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,
@@ -174,6 +177,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ autoSwitchDictionary })
         useResultStore.getState().clearCacheOnly()
       },
+      setChatRichContextDefault: (chatRichContextDefault) => set({ chatRichContextDefault }),
     }),
     {
       name: 'lexicon-settings',

@@ -334,6 +334,7 @@ export function SettingsView() {
     monolingualSentence, setMonolingualSentence,
     activeDictionary, setActiveDictionary,
     autoSwitchDictionary, setAutoSwitchDictionary,
+    chatRichContextDefault, setChatRichContextDefault,
   } = useSettingsStore()
 
   const { status, manifest, checkUpdate, currentVersion, error } = useUpdateStore()
@@ -884,6 +885,26 @@ export function SettingsView() {
                 >
                   <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualSentence ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
                     <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualSentence ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* AI Chat Context Section */}
+            <div className="border-t border-border pt-6 space-y-4">
+              <div>
+                <span className="text-sm font-bold text-foreground">{t('settings.chatRichContext')}</span>
+                <p className="text-[10px] text-foreground-muted">{t('settings.chatRichContextDesc')}</p>
+              </div>
+              <div className="flex items-center justify-between pl-4">
+                <span className="text-xs font-medium text-foreground">{t('settings.chatRichContext')}</span>
+                <button
+                  onClick={() => setChatRichContextDefault(!chatRichContextDefault)}
+                  className="flex items-center h-9 px-2 -mr-2 group"
+                  aria-label="Toggle Chat Rich Context Default"
+                >
+                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${chatRichContextDefault ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${chatRichContextDefault ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>

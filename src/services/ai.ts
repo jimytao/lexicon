@@ -789,22 +789,20 @@ export async function aiPhraseQuery(
 export async function askQuestion(
   context: string,
   history: ChatMessage[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  richContext?: string
 ): Promise<string> {
   const config = getConfig()
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const isMono = getIsMono(context, config)
+  const richSection = richContext
+    ? `\n\nHere is the analysis already displayed to the user for reference:\n${richContext}\n\nAnswer based on this context where relevant.`
+    : ''
   const systemPrompt = isMono
-    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.
-The user is currently studying: "${context}".
-Answer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.
-Keep answers concise and practical.`
-    : `You are a helpful English learning assistant for Chinese native speakers.
-The user is currently studying: "${context}".
-Answer their questions in Chinese, with English examples where appropriate.
-Keep answers concise and practical.`
+    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.`
+    : `You are a helpful English learning assistant for Chinese native speakers.\nThe user is currently studying: "${context}".${richSection}\nAnswer their questions in Chinese, with English examples where appropriate.\nKeep answers concise and practical.`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },

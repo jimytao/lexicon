@@ -127,7 +127,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return (
                   <PracticeSection
                     key={module.id}
-                    word={word}
+                    word={aiFullResult.correctForm || word}
                     meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en }))}
                   />
                 )
@@ -135,8 +135,37 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return aiFullResult.culturalLore ? (
                   <CulturalLoreCard key={module.id} lore={aiFullResult.culturalLore} />
                 ) : null
-              case 'chat':
-                return <AiChatBox key={module.id} context={word} />
+              case 'chat': {
+                const corrected = aiFullResult.correctForm || word
+                const parts: string[] = []
+                if (word.toLowerCase() !== corrected.toLowerCase()) {
+                  parts.push(`用户原始输入: "${word}" → 纠正为: "${corrected}"`)
+                }
+                if (aiFullResult.meanings?.length) {
+                  parts.push('释义:\n' + aiFullResult.meanings.map(m => `  · ${m.en || m.zh}`).join('\n'))
+                }
+                if (aiFullResult.examples?.length) {
+                  parts.push('例句:\n' + aiFullResult.examples.slice(0, 3).map(e => `  · ${e.en}`).join('\n'))
+                }
+                if (aiFullResult.synonyms?.length) {
+                  parts.push('近义词: ' + aiFullResult.synonyms.map(s => s.word).join(', '))
+                }
+                if (aiFullResult.mnemonic) {
+                  const best = aiFullResult.mnemonic[aiFullResult.mnemonic.bestType]
+                  parts.push(`助记法 (${aiFullResult.mnemonic.bestType}): ${best.content}`)
+                }
+                if (aiFullResult.collocations) {
+                  const chunkList = aiFullResult.collocations.chunks?.map(c => c.chunk).join(', ')
+                  const colloList = aiFullResult.collocations.collocations?.map(c => c.chunk).join(', ')
+                  if (chunkList) parts.push(`Chunks: ${chunkList}`)
+                  if (colloList) parts.push(`Collocations: ${colloList}`)
+                }
+                if (aiFullResult.culturalLore?.content) {
+                  parts.push(`文化背景: ${aiFullResult.culturalLore.content}`)
+                }
+                const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
+                return <AiChatBox key={module.id} context={corrected} enrichedContext={enrichedContext} />
+              }
               default:
                 return null
             }

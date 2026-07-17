@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, ChatMessage, Mnemonic } from '../types'
+import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic } from '../types'
 import { normalizeQuery } from '../utils/text'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -11,7 +11,6 @@ interface ResultStore {
   aiAnalysis: AiAnalysis | null
   aiFullResult: AiFullResult | null
   phraseResult: PhraseResult | null
-  chatMessages: ChatMessage[]
   aiStatus: AiStatus
   aiError: string | null
   aiCache: Record<string, AiAnalysis>
@@ -24,8 +23,6 @@ interface ResultStore {
   setAiAnalysis: (word: string, a: AiAnalysis) => void
   setAiFullResult: (word: string, r: AiFullResult) => void
   setPhraseResult: (key: string, r: PhraseResult) => void
-  setChatMessages: (msgs: ChatMessage[]) => void
-  addChatMessage: (msg: ChatMessage) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
   updateFullMnemonic: (word: string, m: Mnemonic) => void
@@ -49,7 +46,6 @@ export const useResultStore = create<ResultStore>()(
       aiAnalysis: null,
       aiFullResult: null,
       phraseResult: null,
-      chatMessages: [],
       aiStatus: 'idle',
       aiError: null,
       aiCache: {},
@@ -64,7 +60,6 @@ export const useResultStore = create<ResultStore>()(
             aiAnalysis: null, 
             aiFullResult: null, 
             phraseResult: null, 
-            chatMessages: [], 
             aiStatus: 'idle', 
             aiError: null 
           })
@@ -141,8 +136,6 @@ export const useResultStore = create<ResultStore>()(
         }
         set({ phraseCache: cache, phraseResult, aiStatus: 'success' })
       },
-      setChatMessages: (chatMessages) => set({ chatMessages }),
-      addChatMessage: (msg) => set({ chatMessages: [...get().chatMessages, msg] }),
       setAiError: (aiError) => set({ aiError, aiStatus: 'error' }),
       getCachedAi: (word) => {
         const normalized = normalizeQuery(word)
@@ -198,7 +191,7 @@ export const useResultStore = create<ResultStore>()(
           return { aiCache, aiFullCache, phraseCache }
         })
       },
-      reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, chatMessages: [], aiStatus: 'idle', aiError: null }),
+      reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, aiStatus: 'idle', aiError: null }),
     }),
     { 
       name: 'lexicon-results',

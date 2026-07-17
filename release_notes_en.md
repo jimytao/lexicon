@@ -1,2 +1,5 @@
-Image translation now supports Trilingual Examples mode
-1. **New**: Image translation is now integrated with the "Trilingual Examples" setting. When the option is enabled, the source language is a foreign language (Japanese, Korean, French, etc.), and the target language is Chinese, each translated text block will display an additional English translation alongside the main Chinese translation — helping multilingual learners better understand the original context.
+Fix AI Chat context accuracy & persistence; add full-context injection
+1. **Fix**: In Phrase/Sentence mode, Mnemonic, Practice, and AI Chat now correctly use the AI-corrected form (correctForm) instead of the user's original raw input for all content generation
+2. **New**: AI Chat lightbulb toggle — tap to inject the current entry's meanings, examples, mnemonic, spatial imagery, cultural notes and more directly into the AI conversation context for more relevant answers
+3. **New**: Settings toggle "Chat full context by default" — control whether the lightbulb is on or off by default
+4. **New**: Chat history is now stored and persisted per word/phrase — switching entries automatically restores the relevant conversation, and history survives app restarts (up to 100 entries retained)
