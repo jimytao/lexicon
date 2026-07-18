@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBNbGx4ZlB1MXEvdElZN3FPeFJFQ0NQM1RqMEJ2K1VCT2EzK29EbHQvOHZObHNKdGs3dC9DU3lGK2w1ZjN2cS9SM0ZFNkdhR0I2RkV2emVDaHFiZ0FvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MzQ5NTUyCWZpbGU6TGV4aWNvbl8wLjcuMzJfeDY0LXNldHVwLmV4ZQo2bFZuckRRYkIxd2h6WjVqRjAzeG5wUlZSN1VjY2x2am1KWldqSklleE81UGIvQ3ZZMVJjMlZBVDlqK2h6dDRrMTd6SEthNzF2NWR4WHluSjFhVitCdz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.32/Lexicon_0.7.32_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBwTjR5Y1dNOUUybkpKUFlPUUJVOFF4QTFhMnFVNUV2dTUrK2xnYWptclQ1aFZRVjQ0RVFxdm5RU0xLT0N2WHFxblZQQzhsQU1pNktQYTJGRGprcndvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MzUwNjUyCWZpbGU6TGV4aWNvbl8wLjcuMzNfeDY0LXNldHVwLmV4ZQpjUjlMNlJwTmJKaW5hZnU1OEYrK2pma2xhRHNBRjAwWGd0MU9wQkhNTnFsWEE4UldZVVYzeklCUkY4STcyQmNnbjEvbVY0UnpmTittR3dycnBTdklEZz09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.33/Lexicon_0.7.33_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-18T14:38:00Z",
-  "version": "0.7.32",
-  "notes": "修复 AI 问答界面死循环渲染崩溃的严重 React 渲染错误\n1. 修复：彻底修复了在切换旧词条时，由于 Zustand Store 选择器默认返回新数组引用而引发的死循环 React 渲染崩溃错误（React Error #185）。"
+  "pub_date": "2026-07-18T14:57:00Z",
+  "version": "0.7.33",
+  "notes": "优化 AI 问答缓存数据清理逻辑\n1. 优化：当用户删除单条历史记录或点击「清除全部历史」时，同步清理该词条对应的本地 AI 问答历史，防止无用数据残留。\n2. 优化：在设置中点击「清除 AI 结果缓存」时，同步清空所有词条的本地 AI 问答对话。"
 }

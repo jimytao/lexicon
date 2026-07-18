@@ -9,6 +9,7 @@ interface ChatStore {
   getMessages: (word: string) => ChatMessage[]
   addMessage: (word: string, msg: ChatMessage) => void
   clearMessages: (word: string) => void
+  clearAll: () => void
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -44,6 +45,9 @@ export const useChatStore = create<ChatStore>()(
           delete next[word]
           return { messagesByWord: next }
         })
+      },
+      clearAll: () => {
+        set({ messagesByWord: {} })
       },
     }),
     { name: 'lexicon-chat' }

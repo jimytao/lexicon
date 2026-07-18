@@ -21,6 +21,7 @@ import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
 import { useUpdateStore } from '../../stores/updateStore'
+import { useChatStore } from '../../stores/chatStore'
 import { useT } from '../../i18n'
 
 interface ProviderDef {
@@ -982,6 +983,7 @@ export function SettingsView() {
                 onClick={() => { 
                   if(confirm('Clear all cached results and download files?')) {
                     clearCache();
+                    useChatStore.getState().clearAll();
                     useUpdateStore.getState().cleanupOldApks();
                   }
                 }}

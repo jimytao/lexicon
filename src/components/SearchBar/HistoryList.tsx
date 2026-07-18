@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
+import { useChatStore } from '../../stores/chatStore'
 import { useT } from '../../i18n'
 
 interface HistoryListProps {
@@ -33,7 +34,7 @@ export function HistoryList({ onSelect }: HistoryListProps) {
         <span className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">History</span>
         <button
           type="button"
-          onClick={clear}
+          onClick={() => { clear(); useChatStore.getState().clearAll(); }}
           className="text-[10px] font-bold text-accent hover:text-accent/80 transition-colors"
         >
           CLEAR ALL
@@ -86,7 +87,7 @@ export function HistoryList({ onSelect }: HistoryListProps) {
               )}
               <button
                 type="button"
-                onClick={() => { evictCacheEntry(word); remove(word) }}
+                onClick={() => { evictCacheEntry(word); useChatStore.getState().clearMessages(word); remove(word) }}
                 className="shrink-0 py-3 pr-5 pl-2 text-foreground-muted/30 hover:text-foreground-muted opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 aria-label="Delete"
               >
