@@ -10,10 +10,12 @@ interface AiChatBoxProps {
   enrichedContext?: string
 }
 
+const EMPTY_MESSAGES: ChatMessage[] = []
+
 export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
   const t = useT()
   // Subscribe to this specific word's messages — React re-renders whenever they change
-  const chatMessages = useChatStore(s => s.messagesByWord[context] ?? [])
+  const chatMessages = useChatStore(s => s.messagesByWord[context] ?? EMPTY_MESSAGES)
   const addMessage = useChatStore(s => s.addMessage)
   const chatRichContextDefault = useSettingsStore(s => s.chatRichContextDefault)
 

@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-07-18 — 修复 AI Chat 界面死循环渲染崩溃 (v0.7.32)
+
+### 1. 修复：Zustand 默认空数组引用引发的 React 渲染崩溃
+
+- **文件**：`src/components/ResultView/AiSection/AiChatBox.tsx`
+- **问题**：在切换没有聊天历史的词条时，Zustand store selector 中直接使用 `messagesByWord[context] ?? []` 默认空数组。由于 `[]` 每次选择器评估时都是全新引用，Zustand 判定状态已改变并重复触发订阅重绘，从而导致死循环及 Minified React Error #185（超过最大更新深度）。
+- **修复**：在组件外声明静态 `EMPTY_MESSAGES` 数组，在 selector 回退时统一复用该同一静态引用，从而避免了引用的频繁变化，彻底清除了死循环问题。
+
 ## 2026-07-17 — AI Chat 语境准确性与记录持久化 (v0.7.31)
 
 ### 1. 修复：Phrase/Sentence 查询时 AI 辅助板块使用正确的纠正句
