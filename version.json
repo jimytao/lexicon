@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBwTjR5Y1dNOUUybkpKUFlPUUJVOFF4QTFhMnFVNUV2dTUrK2xnYWptclQ1aFZRVjQ0RVFxdm5RU0xLT0N2WHFxblZQQzhsQU1pNktQYTJGRGprcndvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MzUwNjUyCWZpbGU6TGV4aWNvbl8wLjcuMzNfeDY0LXNldHVwLmV4ZQpjUjlMNlJwTmJKaW5hZnU1OEYrK2pma2xhRHNBRjAwWGd0MU9wQkhNTnFsWEE4UldZVVYzeklCUkY4STcyQmNnbjEvbVY0UnpmTittR3dycnBTdklEZz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.33/Lexicon_0.7.33_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTQ3azFQeUZRcVpOT3UrcDZUcHJnL1hvK1RmMEcwVUZkYWtjdGdpdkMwdTNuOGJyRFF1ZTl3d3orMjgzZmxqUFBZWVB4TXR2TUlGdzZUUi81U0dvc3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTI2Nzc3CWZpbGU6TGV4aWNvbl8wLjcuMzRfeDY0LXNldHVwLmV4ZQozaEhYQkxNWEpvNUJHZHc2NFB6cGFTdEx6YmwvOHU0OW03SnBzL05xejNpS0NuK0VFOFAySkpLK21DWWVtZ0FrZnlRMThQTDJjditsRmNDNlU5SGFDUT09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.34/Lexicon_0.7.34_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-18T14:57:00Z",
-  "version": "0.7.33",
-  "notes": "优化 AI 问答缓存数据清理逻辑\n1. 优化：当用户删除单条历史记录或点击「清除全部历史」时，同步清理该词条对应的本地 AI 问答历史，防止无用数据残留。\n2. 优化：在设置中点击「清除 AI 结果缓存」时，同步清空所有词条的本地 AI 问答对话。"
+  "pub_date": "2026-07-20T05:41:00Z",
+  "version": "0.7.34",
+  "notes": "支持单词与短语发音（英式/美式）与配置面板集成\n1. 新增：单词与短语的英音 (UK) 与美音 (US) 在线发音支持，日、韩、中等提供通用标准发音。\n2. 新增：支持离线或加载错误时自动降级至设备原生 Web Speech TTS 播放，防音频重叠播放。\n3. 新增：发音按钮增加选中高亮、呼吸闪烁（animate-pulse）与喇叭跳动（animate-bounce）动态微动效。\n4. 新增：发音配置项，支持在设置面板中选择发音默认口音及开启“查询单词自动发音”。"
 }

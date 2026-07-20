@@ -85,6 +85,8 @@ interface SettingsStore {
   activeDictionary: 'lexicon.db' | 'lexicon_en.db'
   autoSwitchDictionary: boolean
   chatRichContextDefault: boolean
+  pronunciationAccent: 'uk' | 'us'
+  autoPlayPronunciation: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -106,6 +108,8 @@ interface SettingsStore {
   setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
   setAutoSwitchDictionary: (v: boolean) => void
   setChatRichContextDefault: (v: boolean) => void
+  setPronunciationAccent: (v: 'uk' | 'us') => void
+  setAutoPlayPronunciation: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -132,6 +136,8 @@ export const useSettingsStore = create<SettingsStore>()(
       activeDictionary: 'lexicon.db',
       autoSwitchDictionary: true,
       chatRichContextDefault: false,
+      pronunciationAccent: 'us',
+      autoPlayPronunciation: false,
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,
@@ -178,6 +184,8 @@ export const useSettingsStore = create<SettingsStore>()(
         useResultStore.getState().clearCacheOnly()
       },
       setChatRichContextDefault: (chatRichContextDefault) => set({ chatRichContextDefault }),
+      setPronunciationAccent: (pronunciationAccent) => set({ pronunciationAccent }),
+      setAutoPlayPronunciation: (autoPlayPronunciation) => set({ autoPlayPronunciation }),
     }),
     {
       name: 'lexicon-settings',

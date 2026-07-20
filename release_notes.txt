@@ -3,3 +3,11 @@ Support for word and phrase pronunciation (UK/US) and configuration settings
 2. **New**: Implemented automatic fallback to device native Web Speech TTS when offline or playback fails, with overlap prevention.
 3. **New**: Designed active play-state micro-animations for play buttons (breathing pulse and bouncing speaker icons).
 4. **New**: Integrated pronunciation settings including default accent preferences and an auto-play toggle switch.
+
+---
+
+支持单词与短语发音（英式/美式）与配置面板集成
+1. 新增：单词与短语的英音 (UK) 与美音 (US) 在线发音支持，日、韩、中等提供通用标准发音。
+2. 新增：支持离线或加载错误时自动降级至设备原生 Web Speech TTS 播放，防音频重叠播放。
+3. 新增：发音按钮增加选中高亮、呼吸闪烁（animate-pulse）与喇叭跳动（animate-bounce）动态微动效。
+4. 新增：发音配置项，支持在设置面板中选择发音默认口音及开启“查询单词自动发音”。

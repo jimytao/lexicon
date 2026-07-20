@@ -145,6 +145,9 @@ interface SettingsStore {
   maxExercises: number            // 练习题数，1–10，默认 5
   activeDictionary: 'lexicon.db' | 'lexicon_en.db' // 当前本地词库文件
   autoSwitchDictionary: boolean    // 是否开启单语言模式自动切换词典
+  chatRichContextDefault: boolean  // Chat 默认开启完整语境
+  pronunciationAccent: 'uk' | 'us' // 默认发音口音偏好
+  autoPlayPronunciation: boolean  // 查词时自动播放发音
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -154,6 +157,9 @@ interface SettingsStore {
   setMaxExercises: (v: number) => void
   setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
   setAutoSwitchDictionary: (v: boolean) => void
+  setChatRichContextDefault: (v: boolean) => void
+  setPronunciationAccent: (v: 'uk' | 'us') => void
+  setAutoPlayPronunciation: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(

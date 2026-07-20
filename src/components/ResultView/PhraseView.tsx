@@ -10,10 +10,11 @@ import { MnemonicCard } from './AiSection/MnemonicCard'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useT } from '../../i18n'
-import { useSearchStore } from '../../stores/searchStore'
+import { useSearchStore, detectLanguage } from '../../stores/searchStore'
 import { PrepImageryCard } from './AiSection/PrepImageryCard'
 import { detectSpatialPreps } from '../../utils/prepDetect'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
+import { playPronunciation } from '../../services/audio'
 
 interface PhraseViewProps {
   phrase: string
@@ -26,12 +27,36 @@ interface PhraseViewProps {
 
 export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings }: PhraseViewProps) {
   const t = useT()
-  const { modules, monolingualPhrase, monolingualSentence } = useSettingsStore()
+  const { modules, monolingualPhrase, monolingualSentence, pronunciationAccent, autoPlayPronunciation } = useSettingsStore()
   const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
   const usageScenes = phraseResult?.usageScenes ?? []
   const queryType = useSearchStore(s => s.queryType)
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
   const [noteExpanded, setNoteExpanded] = useState(false)
+  const [playingAccent, setPlayingAccent] = useState<'uk' | 'us' | 'generic' | null>(null)
+
+  const targetPhrase = phraseResult?.correctForm || phrase
+  const isEnglish = detectLanguage(targetPhrase) === 'en'
+
+  const handlePlay = async (accent?: 'uk' | 'us') => {
+    const key = accent || 'generic'
+    setPlayingAccent(key)
+    try {
+      await playPronunciation(targetPhrase, accent)
+    } finally {
+      setPlayingAccent(null)
+    }
+  }
+
+  // Auto play pronunciation on mount/lookup
+  useEffect(() => {
+    if (autoPlayPronunciation && targetPhrase) {
+      const timer = setTimeout(() => {
+        handlePlay(isEnglish ? pronunciationAccent : undefined)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [targetPhrase, autoPlayPronunciation, pronunciationAccent, isEnglish])
 
   // 切换到新的句子搜索时，重置折叠状态，避免上次展开的解释残留
   useEffect(() => {
@@ -54,7 +79,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
           </p>
           {phraseResult.correctionNote?.trim() ? (
-            <div className="mb-4">
+            <div className="mb-2">
               <button
                 onClick={() => setNoteExpanded(v => !v)}
                 className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
@@ -73,13 +98,62 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 </div>
               )}
             </div>
-          ) : (
-            <div className="mb-4" />
-          )}
+          ) : null}
         </>
       ) : (
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 leading-snug">{phraseResult?.correctForm || phrase}</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 leading-snug">{phraseResult?.correctForm || phrase}</h1>
       )}
+
+      {/* Play buttons for Phrase/Sentence */}
+      <div className="flex items-center gap-2 mb-4">
+        {isEnglish ? (
+          <>
+            <button
+              onClick={() => handlePlay('uk')}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer group border ${
+                playingAccent === 'uk'
+                  ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
+                  : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
+              }`}
+              title="British Pronunciation (UK)"
+            >
+              <span>UK</span>
+              <svg className={`w-3.5 h-3.5 ${playingAccent === 'uk' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => handlePlay('us')}
+              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer group border ${
+                playingAccent === 'us'
+                  ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
+                  : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
+              }`}
+              title="American Pronunciation (US)"
+            >
+              <span>US</span>
+              <svg className={`w-3.5 h-3.5 ${playingAccent === 'us' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => handlePlay()}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer group border ${
+              playingAccent === 'generic'
+                ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
+                : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
+            }`}
+            title="Pronounce"
+          >
+            <span>Play</span>
+            <svg className={`w-3.5 h-3.5 ${playingAccent === 'generic' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          </button>
+        )}
+      </div>
 
       <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={phrase} />
 

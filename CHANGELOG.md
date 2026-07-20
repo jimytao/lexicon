@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 2026-07-20 — 单词与短语发音（音频播放）支持与配置面板集成 (v0.7.33)
+
+### 1. 新增：单词与短语的英式 (UK) / 美式 (US) 动态发音支持
+- **文件**：`src/services/audio.ts` (新文件), `src/components/ResultView/WordHeader.tsx`, `src/components/ResultView/PhraseView.tsx`
+- **设计**：
+  - 接入公共有道 dictvoice 发音流接口，针对英语单词和短语提取英式 (UK, `type=1`) 和美式 (US, `type=2`) 两个独立的在线发音。
+  - 对于日、韩、中等非英语内容，自动匹配相应的发音参数。
+  - **离线与错误兜底机制**：检测到设备离线 (`!navigator.onLine`) 或在线音频加载/播放失败时，自动退避使用原生的 Web Speech API (TTS)，依据语种对齐不同的发音人（如 `en-GB`, `en-US`, `ja-JP` 等），保障零打断的查词听音体验。
+  - **防混音重叠**：管理全局播放指针，在触发新音频前自动强制暂停上一个播放中的音频或语音合成。
+
+### 2. 新增：极具动感的播放状态微动效反馈
+- **文件**：`src/components/ResultView/WordHeader.tsx`, `src/components/ResultView/PhraseView.tsx`
+- **设计**：
+  - 发音播放底层接口封装为 Promise，待音频播放完全结束后方才 Resolve。
+  - 查词头部的 UK / US 按钮引入播放状态监听。处于发音阶段时，按钮背景自适应呈现选中高亮色并进入呼吸闪烁状态 (`animate-pulse`)，伴随轻微下沉微缩 (`scale-95`)；小喇叭图标开启律动跳跃 (`animate-bounce`)。
+  - 提供即时、自然的视觉反馈，极大提升界面精细感和灵动性。
+
+### 3. 新增：发音口音偏好设置与自动播放开关
+- **文件**：`src/stores/settingsStore.ts`, `src/components/Settings/SettingsView.tsx`, `src/i18n/index.ts`
+- **设计**：
+  - 设置页面新增 **「发音音频设置」** 专属板块。
+  - **发音默认口音**：支持定制首选的口音（美式发音 US / 英式发音 UK）。
+  - **查询单词自动发音**：控制每次查词（单词/短语）渲染时，自动进行发音。
+
 ## 2026-07-18 — 修复 AI Chat 界面死循环渲染崩溃 (v0.7.32)
 
 ### 1. 修复：Zustand 默认空数组引用引发的 React 渲染崩溃
