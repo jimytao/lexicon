@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2026-07-24 — Capacitor 原生 SQLite 双端共用存储层 (v0.7.36)
+
+### 1. 新增：`@capacitor-community/sqlite` 适配器（iOS + Android 共用）
+
+- **文件**：`src/services/db.native.ts`、`src/services/db.ts`、`capacitor.config.ts`
+- **设计**：Capacitor 下通过 `DBService` 走原生 SQLite；`copyFromAssets` 从 `public/assets/databases/` 拷入沙盒后按页查询，避免 30–46MB 整库进 JS/WASM。Web/Tauri 仍用 sql.js。原生初始化失败自动 fallback 到 sql.js。
+
+### 2. 重构：查询语义抽到 `db.ops.ts`
+
+- **文件**：`src/services/db.ops.ts`、`src/services/db.web.ts`
+- **设计**：suggest / lookup / relatedPhrases / 词典路由与 web、native 共用，两端只保留引擎打开与 `SqlRunner` 差异。
+
+### 3. 词库路径统一为 `public/assets/databases/`
+
+- **文件**：`public/assets/databases/lexicon.db`、`lexicon_en.db`；转换脚本与文档同步更新
+- **设计**：满足 Capacitor SQLite assets 约定，同时 web `fetch('/assets/databases/...')` 单一路径，避免双份进 git。
+
+### 4. 复查加固
+
+- **Native `toRunner`**：按 SELECT 列名识别 iOS 表头行；对象行用固定 key 序映射，避免纯字符串列误吃首行数据。
+- **enen 缺失回退**：不再把 enzh 连接缓存进 `_dbEnEn`（避免 invalidate 关错连接）；改用 `_enenUnavailable` 标记。`DbInvalidated` 不再被 fallback 吞掉。
+
 ## 2026-07-24 — iOS/切页卡顿止血：词库误卸载修复与 Tab 保活 (v0.7.35)
 
 ### 1. 修复：任意设置变更都会卸掉 sql.js 词库

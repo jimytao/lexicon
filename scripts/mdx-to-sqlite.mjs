@@ -3,7 +3,7 @@
  * 用法：node scripts/mdx-to-sqlite.mjs
  *
  * 输入：OALD9 MDX 文件
- * 输出：public/lexicon.db（SQLite，供 sql.js 在 Web 端加载）
+ * 输出：public/assets/databases/lexicon.db（SQLite，供 sql.js / Capacitor SQLite 加载）
  */
 
 import { MDX } from 'js-mdict'
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url'
 
 // ── 配置 ──────────────────────────────────────────────────────────────────────
 const MDX_PATH = "D:/vibe coding/牛津高阶英汉双解词典（第9版）- 带高清版图片/牛津高阶英汉双解词典（第9版）- 带高清版图片/牛津高阶英汉双解词典（第9版）.mdx"
-const DB_PATH  = "D:/vibe coding/lexicon/public/lexicon.db"
+const DB_PATH  = "D:/vibe coding/lexicon/public/assets/databases/lexicon.db"
 const BATCH    = 500   // 每批写入条数
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,19 @@ function parseEntry(word, rawDef) {
   }
 
   return { word, phonetic, pos, meanings, examples: examples.slice(0, 6) }
+}
+
+function getDefinitionResolved(mdx, word, depth = 0) {
+  if (depth > 5) return null // prevent infinite loops
+  const result = mdx.lookup(word)
+  if (!result?.definition) return null
+  
+  const def = result.definition.trim()
+  if (def.startsWith('@@@LINK=')) {
+    const target = def.substring(8).trim()
+    return getDefinitionResolved(mdx, target, depth + 1)
+  }
+  return def
 }
 
 // ── 主程序 ────────────────────────────────────────────────────────────────────
@@ -210,10 +223,10 @@ const keywords = mdx.keywordList ?? []
 
 for (const kw of keywords) {
   try {
-    const result = mdx.lookup(kw.keyText)
-    if (!result?.definition) { processed++; continue }
+    const resolvedDef = getDefinitionResolved(mdx, kw.keyText)
+    if (!resolvedDef) { processed++; continue }
 
-    const entry = parseEntry(kw.keyText, result.definition)
+    const entry = parseEntry(kw.keyText, resolvedDef)
     batch.push(entry)
     processed++
 

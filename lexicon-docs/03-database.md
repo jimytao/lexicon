@@ -10,7 +10,7 @@
 | 柯林斯COBUILD双解 | 整句情景释义（情景感强） | 推荐 |
 | 词根词缀词源词典（Etymology MDX） | Instant mode 词根参考 | 推荐 |
 
-MDX 文件通过 `scripts/mdx-to-sqlite.ts` 脚本一次性转换为 `lexicon.db`，放入 `public/` 目录，app 启动时加载。
+MDX 文件通过转换脚本生成 SQLite，放入 `public/assets/databases/`（Web fetch 与 Capacitor `copyFromAssets` 共用同一路径）。
 
 ## SQLite Schema
 
@@ -96,52 +96,43 @@ export interface DBService {
 > 不经过 `addHistory`。`DBService.addHistory` 保留供 Capacitor 原生实现使用。
 ```
 
-## Web 实现（sql.js）
+## Web 实现（sql.js）与 Capacitor 实现（原生 SQLite）
 
-当前实现见 `src/services/db.web.ts`，要点：
+查询语义集中在 `src/services/db.ops.ts`（`suggestWithRunner` / `lookupWithRunner` / `relatedPhrasesWithRunner` / `resolveDictionaryTarget`）。
 
-- 英汉 / 英英两本库可各自缓存（`_dbEnZh` / `_dbEnEn`），按查询与设置路由。
-- **仅当 `activeDictionary` 真正变化时**才 `close` 并丢弃缓存；深色模式、模块开关等其它设置变更不卸库。
-- 加载用 in-flight Promise 去重，并共享一份 `initSqlJs` 实例；换库时用 epoch 丢弃过期加载结果。
-- `warmupDictionary()` 在首屏后只预热当前 `activeDictionary` 对应的一本（不同时灌两本）。
+| 平台 | 适配器 | 引擎 |
+|------|--------|------|
+| Web / Tauri | `db.web.ts` | sql.js（fetch `/assets/databases/*.db` 进 WASM） |
+| Capacitor iOS/Android | `db.native.ts`（双端共用） | `@capacitor-community/sqlite`（`copyFromAssets` 后按页读盘） |
 
-```ts
-useSettingsStore.subscribe((state, prev) => {
-  if (!prev || state.activeDictionary === prev.activeDictionary) return
-  invalidateEnZh()
-  invalidateEnEn()
-})
-```
+两端适配器共同点：
 
-入口仍通过 `src/services/db.ts` 导出 `db` 与 `warmupDictionary()`。
+- 英汉 / 英英两本库可各自缓存，按 `resolveDictionaryTarget` 路由。
+- **仅当 `activeDictionary` 真正变化时**才 invalidate；其它设置变更不卸库。
+- in-flight / epoch / gate 防止换库竞态与双份大文件并行加载。
+- `warmupDictionary()` 在 settings hydration 后只预热当前一本。
+
+Capacitor 额外：
+
+- 预置库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`
+- Preferences key `lexicon.db.asset.version`（与 `LEXICON_ASSET_VERSION`）控制是否 `copyFromAssets(true)`
+- 原生初始化失败时，`db.ts` **fallback 到 sql.js**
 
 ## 运行时选择实现
 
 ```ts
-// src/services/db.ts（入口，根据平台选择实现）
-import { webDB, warmupDictionary } from './db.web'
-// import { nativeDB } from './db.native'  // Capacitor 版，后续接入
-
-export const db: DBService = webDB
-export { warmupDictionary }
-// 移动端时改为：export const db: DBService = nativeDB
+// src/services/db.ts
+// isCapacitor() → 动态 import('./db.native')，失败则 fallback import('./db.web')
+// 否则 → import('./db.web')
+export const db: DBService
+export async function warmupDictionary(): Promise<void>
 ```
 
 ## MDX 转换脚本（概要）
 
 ```ts
-// scripts/mdx-to-sqlite.ts
-// 运行方式：npx tsx scripts/mdx-to-sqlite.ts --input ./oald9.mdx --output ./public/lexicon.db
-
-// 步骤：
-// 1. 用 mdict-analysis 或 readmdict 库解析 MDX 二进制格式
-// 2. 提取 word + HTML 定义
-// 3. 用 cheerio 解析 HTML，提取 zh/en 释义、例句、音标、词性
-// 4. 写入 SQLite（用 better-sqlite3，Node 环境）
-// 5. 构建 suggest 表：取第一条释义的前几个中文词
-
-// 注意：这个脚本只在开发机上跑一次，生成的 lexicon.db 提交到 public/ 目录
-// 不要把 MDX 原文件放进 repo（版权问题）
+// scripts/mdx-to-sqlite.mjs → public/assets/databases/lexicon.db
+// scripts/mdx-en-to-sqlite.mjs → public/assets/databases/lexicon_en.db
 ```
 
 推荐的 MDX 解析库：`mdict-analysis`（npm）或 Python 的 `readmdict`（先生成 TSV 再用 Node 导入）。

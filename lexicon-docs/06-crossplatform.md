@@ -28,14 +28,16 @@ Vite + React（核心，不改动）
   → android/ 已初始化，Capacitor v7
   → npx cap sync android + Gradle assembleDebug
   → 输出 app-debug.apk（19MB）
-  → 存储层暂用 sql.js，后续可切换 @capacitor-community/sqlite
+  → 存储层：@capacitor-community/sqlite（db.native.ts，与 iOS 共用）；失败 fallback sql.js
+  → 词库：public/assets/databases/*.db → copyFromAssets
 
 阶段4：iOS（GitHub Actions + Sideloadly，无需 Mac）✅ 已配置（2026-04-11）
   → ios/ 已初始化，Capacitor v8，SPM（非 CocoaPods）
   → 构建：GitHub Actions macOS runner 自动编译 → 输出未签名 .ipa
   → 安装：Sideloadly（Windows/Mac）用免费 Apple ID 签名并推送到手机
   → 触发：推 tag（v*）自动构建；或 Actions 页面手动 workflow_dispatch
-  → 存储层暂用 sql.js，后续可切换 @capacitor-community/sqlite
+  → 存储层：@capacitor-community/sqlite（db.native.ts，与 iOS 共用）；失败 fallback sql.js
+  → 词库：public/assets/databases/*.db → copyFromAssets
 ```
 
 ## iOS 构建流程（无 Mac 方案）
@@ -190,36 +192,29 @@ export const nativeDB: DBService = {
 ## 存储层切换机制
 
 ```ts
-// src/services/db.ts
-import { webDB } from './db.web'
-
-// 平台检测：Capacitor 环境下 window.Capacitor 存在
-const isNative = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()
-
-// 动态导入避免 web 环境加载 native 依赖
-async function loadDB() {
-  if (isNative) {
-    const { nativeDB } = await import('./db.native')
-    return nativeDB
-  }
-  return webDB
-}
-
-export const dbPromise = loadDB()
-export const db = webDB   // web 开发时直接用，native 时在 App.tsx 初始化后替换
+// src/services/db.ts（已落地）
+// Capacitor → 动态 import db.native（@capacitor-community/sqlite）
+// 失败或非 Capacitor → db.web（sql.js）
+// 查询语义共用 db.ops.ts
 ```
 
-实际使用时在 `App.tsx` 里做一次初始化：
+词库文件统一放在 `public/assets/databases/`，构建后进入 `dist/assets/databases/`，供：
 
-```tsx
-// src/App.tsx
-useEffect(() => {
-  dbPromise.then(resolvedDB => {
-    // 通知所有 store 使用 resolvedDB
-    // 或者用 React Context 注入
-  })
-}, [])
+- Web：`fetch('/assets/databases/lexicon.db')`
+- Capacitor：`SQLiteConnection.copyFromAssets()`（插件约定目录）
+
+同步原生工程：
+
+```bash
+npm run build
+npx cap sync
 ```
+
+### 冒烟清单
+
+- Android：冷启动 → 搜 `satisfaction` → 切设置拨深色 → 回 Dict（应仍秒开，不应整库重灌 JS）
+- iOS：同上；再手动切换英英/英汉词典各查一词
+- Web：回归联想 + 精确查词 + 中文反查；Network 可见 `/assets/databases/*.db`
 
 ## Tauri 接入（PC 端）
 
@@ -265,7 +260,7 @@ PC 端可以继续用 sql.js（WASM 在 Tauri webview 里正常工作），无�
 | 问题 | Web | Android/iOS（Capacitor） | PC（Tauri） |
 |------|-----|-------------------------|------------|
 | SQLite | sql.js WASM | @capacitor-community/sqlite | sql.js 或 tauri-plugin-sql |
-| 词库文件位置 | `public/lexicon.db` | `assets/databases/lexicon.db` | 同 web |
+| 词库文件位置 | `public/assets/databases/lexicon.db` | 同左（copyFromAssets） | 同 web |
 | API 网络请求 | 正常 | 需在 capacitor.config 设置 allowedNavigations | 正常 |
 | 键盘遮挡 | 无 | 需 `@capacitor/keyboard` 处理 | 无 |
 | 离线状态检测 | `navigator.onLine` | Capacitor Network plugin | `navigator.onLine` |

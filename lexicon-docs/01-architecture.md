@@ -77,7 +77,7 @@ export default defineConfig({
 ```
 lexicon/
 ├── public/
-│   └── lexicon.db          # 预构建的 SQLite 词库（从 MDX 转换）
+│   └── assets/databases/   # 预构建 SQLite 词库（lexicon.db / lexicon_en.db）
 ├── scripts/
 │   └── mdx-to-sqlite.ts    # 一次性词库转换脚本（Node.js 运行）
 ├── src/

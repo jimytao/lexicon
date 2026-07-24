@@ -1,6 +1,7 @@
-Fix iOS context bulb visibility and Settings↔Search freezes / black screens
-1. **Fix**: AI Chat rich-context bulb was scrolled off-screen on iOS keyboard show; use nearest scroll and move the single bulb beside the input.
-2. **Fix**: Local-dictionary AI mode never passed enrichedContext, so the bulb never appeared on that path.
-3. **Fix**: Any settingsStore update incorrectly unloaded both sql.js dictionaries (30–46MB); only activeDictionary changes invalidate caches now.
-4. **Improve**: In-flight load dedupe, epoch/gate invalidation without deadlock, and warm up only the active dictionary after first paint.
-5. **Improve**: Keep Dict/Image/Settings tabs mounted after first visit (hidden toggle) to avoid expensive remount jank.
+Implement Mobile Native SQLite Storage and Fix Critical Queries, Build, and Sync Bugs
+1. **New**: Integrated native SQLite storage via @capacitor-community/sqlite on mobile platforms with seamless fallback to sql.js.
+2. **Fixed**: Refactored the query runner to return standard object records, completely eliminating fields mismatch and blank definitions on native devices due to unordered dictionary serialization.
+3. **Fixed**: Replaced Windows backslashes with Unix forward slashes in Package.swift to solve SPM dependency compile failures on macOS.
+4. **Fixed**: Repositioned iOS header row filtering logic to prevent it from becoming unreachable under native environment.
+5. **Optimized**: Redesigned database startup checking to copy asset files only when the mandatory bilingual dictionary is missing, avoiding redundant copying of 80MB files.
+6. **Optimized**: Enhanced MDX parser scripts to recursively resolve and bake @@@LINK redirects at build time, enabling full suggestions and lookup support for plural and tense inflections.

@@ -14,6 +14,10 @@ const config: CapacitorConfig = {
     Keyboard: {
       resize: 'none',
     },
+    CapacitorSQLite: {
+      iosDatabaseLocation: 'Library/CapacitorDatabase',
+      androidIsEncryption: false,
+    },
   },
 };
 

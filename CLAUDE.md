@@ -95,13 +95,16 @@ Tesseract.js（WASM OCR，嵌字模式文字定位）
 - [x] Step 9：Hooks
 - [x] Step 10：所有组件
 - [x] Step 11：基础功能验证（TypeScript 零报错，vite build 通过）
-- [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/lexicon.db 31MB
-- [x] Step 13：接入纯英英词库（MDX → SQLite）— OALD10，84k 词条，public/lexicon_en.db 46MB，并支持单语言模式自动切换词典
+- [x] Step 12：词库导入（MDX → SQLite）— OALD9，52k 词条，public/assets/databases/lexicon.db 31MB
+- [x] Step 13：接入纯英英词库（MDX → SQLite）— OALD10，84k 词条，public/assets/databases/lexicon_en.db 46MB，并支持单语言模式自动切换词典
 - [x] Step 14：优化中文反向查词路由器，支持强制路由双语词库与 AI 查词分析/缓存实体自动对齐
 - [x] Step 15：适配所有 AI 功能（助记、练习、写作批改与问答）在单英文模式与双语模式下的提示词 (v0.7.27)
 - [x] Step 16：单词与短语的英式 (UK) / 美式 (US) 动态发音、自动发音、离线 TTS 兜底与动态播放视觉微动效集成 (v0.7.33)
 
-**最近一次重要改动**：2026-07-24，fix/perf — iOS/切页卡顿止血 (v0.7.35)：修复 settingsStore 任意变更误卸载 sql.js 词库；词库加载 in-flight 去重 + 单库预热；底部 Tab 首次挂载后 `hidden` 保活，避免设置↔搜索整树卸载。
+**最近一次重要改动**：2026-07-24，feat — Capacitor 原生 SQLite 双端共用 (v0.7.36)：`db.ops.ts` 共享查询语义；Capacitor 走 `@capacitor-community/sqlite`（`public/assets/databases/` + copyFromAssets）；Web/Tauri 仍 sql.js；原生失败 fallback sql.js。
+
+- 存储层：组件只经 `src/services/db.ts` 的 `DBService`；禁止直接调 sql.js / Capacitor SQLite API
+- 词库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`
 
 **注意**：
 - 安装的 Tailwind 是 v4（非 v3），配置在 src/index.css，`@variant dark` 为 class-based
@@ -148,4 +151,4 @@ Tesseract.js（WASM OCR，嵌字模式文字定位）
 - Node 版本：请用 LTS（≥18）
 - Rust 版本：1.94+（Tauri 打包需要）
 - Android SDK：需安装（Capacitor 打包需要）
-- 词库文件（MDX）不进 git（版权），词库转换后的 `public/lexicon.db` 进 git
+- 词库文件（MDX）不进 git（版权），词库转换后的 `public/assets/databases/lexicon.db` 进 git

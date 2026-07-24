@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTVWRlptNUtLdTdsNG9SYkxja3QrN0RhdnNVQjVWQTNjc3BPNHpqWS9pdHJHSUNuV0FOS25RTWpPdHg1dnRoTGNuN0t0YjlhQldtWW1oVU5Oc1d0dXc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0ODgxODkwCWZpbGU6TGV4aWNvbl8wLjcuMzVfeDY0LXNldHVwLmV4ZQpEYkZNSkI5VWRhMFY5UEp2MGphdlliSnZYay9vdWIrVWgrQ3JKZ0h1VVZISE9JTUpVZEhkSjhBejVwMGJtOHIxZE1Nd1ovZUQ4WlpjeEJGUkFlWm9CZz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.35/Lexicon_0.7.35_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS9QaXo4U2N2MjBmV0tDcVRQcG84NzJnV3BTVUZBb0J0blpSbDBKSkt4RlVHTGI2d1YwU0tVZW10YkN3MWpJb1FJRGtOQndrL0dnK21QRENuUEcwbnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0ODg4MjEyCWZpbGU6TGV4aWNvbl8wLjcuMzZfeDY0LXNldHVwLmV4ZQpEYkZNSkI5VWRhMFY5UEp2MGphdlliSnZYay9vdWIrVWgrQ3JKZ0h1VVZISE9JTUpVZEhkSjhBejVwMGJtOHIxZE1Nd1ovZUQ4WlpjeEJGUkFlWm9CZz09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.36/Lexicon_0.7.36_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-24T08:31:40Z",
-  "version": "0.7.35",
-  "notes": "修复 iOS 语境灯泡与设置切回搜索卡顿/黑屏问题\n1. 修复：AI Chat 完整语境灯泡在 iOS 键盘弹出后易被滚出视口；改为 nearest 滚动，并将唯一灯泡移至输入框旁。\n2. 修复：本地词库 AI 模式未注入 enrichedContext，导致语境灯泡在该路径下不出现。\n3. 修复：settingsStore 任意变更误卸载 sql.js 词库（30–46MB），设置页拨开关后再回搜索会强制重载；现仅在 activeDictionary 变化时卸库。\n4. 优化：词库加载 in-flight 去重、换库 epoch/gate 防死锁与重复灌库；首屏后只预热当前一本词典。\n5. 优化：底部 Dict/Image/Settings Tab 首次挂载后 hidden 保活，避免整树卸载导致的切页卡顿。"
+  "pub_date": "2026-07-24T10:12:00Z",
+  "version": "0.7.36",
+  "notes": "落地移动端原生 SQLite 词库并修复查询逻辑、编译与发版配置问题\n1. 新增：移动端落地 @capacitor-community/sqlite 原生词库，提供极速本地查询并自动双向 fallback 至 sql.js。\n2. 修复：重构通用执行器以返回标准对象数组，彻底修复原生端因 JSON 字典键无序而引发的字段错位与释义显示空白逻辑漏洞。\n3. 修复：修改 Package.swift 将 Windows 反斜杠改为 Unix 正斜杠，彻底解决 iOS 在 macOS 环境下的 Swift SPM 编译失败问题。\n4. 修复：修复 iOS 独特的表头行过滤逻辑在 Native 端不可达的分支死锁缺陷。\n5. 优化：优化冷启动检查，仅在主词库缺失时执行资源拷贝，解决未打包可选英英词库时每次冷启动都重新灌入 80MB 数据导致的卡顿。\n6. 优化：更新 MDX 转换脚本，在编译期递归解析并录入 @@@LINK 重定向词条，使应用能完美联想和检索复数、时态等派生变形词。"
 }
