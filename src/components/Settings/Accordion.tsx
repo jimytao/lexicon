@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useT } from '../../i18n'
 
 interface AccordionProps {
   title: string
@@ -10,6 +11,7 @@ interface AccordionProps {
 
 export function Accordion({ title, subtitle, icon, defaultOpen = false, children }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const t = useT()
 
   return (
     <div className="rounded-2xl border border-border bg-background-soft/60 dark:bg-background-soft/30 overflow-hidden transition-all duration-200">
@@ -26,7 +28,9 @@ export function Accordion({ title, subtitle, icon, defaultOpen = false, children
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-foreground-muted">
-          <span className="text-[10px] font-semibold uppercase">{isOpen ? '收起' : '展开'}</span>
+          <span className="text-[10px] font-semibold uppercase">
+            {isOpen ? (t('semantic.collapse') || 'Collapse') : (t('semantic.expand') || 'Expand')}
+          </span>
           <svg
             className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
             fill="none"

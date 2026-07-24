@@ -1,11 +1,13 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBqWkpSaFF6ellUWEsxMXN1Wk54WFZxeHdJQThPV0FUeFFuY2RBS0h5OXdVMWk0TWVXM1ZibzB2WWhaUGpGWmVxeHFxTTdaTnovanYweHpHZUJFM2dRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTA1NzE5CWZpbGU6TGV4aWNvbl8wLjcuMzhfeDY0LXNldHVwLmV4ZQpJY0s3RmhoZ1I0cTdPUW9DajlZSC9LQlZPSVplWDIyclkvUU51eGlnVVpCNForaWdUdCtjbytEUGlLYmJxQU1CYjJUT0N6eVVsVkRid2hUSm5FMXdCdz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.38/Lexicon_0.7.38_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXo1UjV5OTJNR3BXaE1HbktUdVZZNkE4azk0TGFNRFREUWN4MFZhRmxZczd6bW5vZm9ianU0bmtrbEFDR09PUm0zY2NYVy9DTlNCWVdWRlRmekRMblFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTA3ODA4CWZpbGU6TGV4aWNvbl8wLjcuMzlfeDY0LXNldHVwLmV4ZQpWdnhiVjN6d3BranB6eTd3R3k5c3MvOFB0cStPMi9hZzZOTS9LTGgvL291c201WWxzNXlQZW1JeHprSHpkK1ptVVhyQzUxSnZqSkpnZFhKelhKQmtBZz09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.39/Lexicon_0.7.39_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-25T01:08:00Z",
-  "version": "0.7.38",
-  "notes": "全新深度认知体系 (Pure Core Cognitive Mode) 与 Settings UI 结构化重构\n1. 新增：深度认知分析卡片，支持“母语者思维违和感剖析 (Why it sounds unnatural)”，解答为什么直译不地道。\n2. 新增：前置 Core 核心意象卡片，为短语 Chunks 引入空间/逻辑意象延伸 (Spatial Metaphors)，为 Synonyms 近义词增加褒贬情感 Badge 与适用心智指导 (When & Why to use)。\n3. 新增：Pure Core Cognitive 模式 (模式 3)，提供词汇关系与概念延伸树状网络图谱 (Word Relationship & Concept Tree)，辅以专用 AI 追问。\n4. 重构：Settings UI 全新 3 大主 Tab 布局 (🎛️ 基础与模型 / 🧩 模组管理 / 🎨 界面与显示)，支持 Mode 2 与 Mode 3 二级 Tab 独立拖拽排序及手风琴参数折叠。"
+  "pub_date": "2026-07-25T01:43:00Z",
+  "version": "0.7.39",
+  "notes": "Settings 界面 5 大分组卡片重构与双语更新日志支持\n1. 重构：Settings UI 全新 5 大分组卡片瀑布流布局 (AI与搜索 / 搜索行为与显示 / 外观与偏好 / 本地数据 / 关于)。\n2. 优化： Mode 2 与 Mode 3 模组管理采用手风琴折叠收纳，保持页面简洁高效。\n3. 优化：更新弹窗 (UpdateModal) 正式支持多语言说明，根据 App 语言设置动态展示中文/英文更新日志。\n4. 修复：多语言文案纯净度提升，手风琴收纳词及模组名称全面适配 i18n。",
+  "notes_zh": "Settings 界面 5 大分组卡片重构与双语更新日志支持\n1. 重构：Settings UI 全新 5 大分组卡片瀑布流布局 (AI与搜索 / 搜索行为与显示 / 外观与偏好 / 本地数据 / 关于)。\n2. 优化： Mode 2 与 Mode 3 模组管理采用手风琴折叠收纳，保持页面简洁高效。\n3. 优化：更新弹窗 (UpdateModal) 正式支持多语言说明，根据 App 语言设置动态展示中文/英文更新日志。\n4. 修复：多语言文案纯净度提升，手风琴收纳词及模组名称全面适配 i18n。",
+  "notes_en": "Settings UI 5-Group Restructure & Bilingual Release Notes Support\n1. **Refactor**: Restructured Settings UI into 5 visual grouped card sections for improved layout and hierarchy.\n2. **Optimization**: Standard AI (Mode 2) and Pure Core (Mode 3) module controls now neatly reside inside collapsible accordions.\n3. **Optimization**: Software update modal (UpdateModal) now dynamically selects localized English or Chinese release notes based on App Language settings.\n4. **Fix**: Enhanced i18n label purity across all accordion handles and module row badges."
 }

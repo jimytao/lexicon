@@ -1,13 +1,13 @@
-Deep Cognitive System (Pure Core Mode) & Restructured Settings UI
-1. **New**: Unnatural mind model analysis card explaining why literal translations sound un-idiomatic to native speakers.
-2. **New**: Core image & concept card, spatial metaphors for collocations/chunks, and emotional tone badges with native mindset guidance for synonyms.
-3. **New**: Pure Core Cognitive Mode (Mode 3) featuring a structured word relationship tree graph and dedicated AI follow-up chat.
-4. **Refactor**: Restructured Settings UI with 3 primary tabs, sub-tabs for independent drag-and-drop module ordering across Mode 2 and Mode 3, and collapsible accordions.
+Settings UI 5-Group Restructure & Bilingual Release Notes Support
+1. **Refactor**: Restructured Settings UI into 5 visual grouped card sections for improved layout and hierarchy.
+2. **Optimization**: Standard AI (Mode 2) and Pure Core (Mode 3) module controls now neatly reside inside collapsible accordions.
+3. **Optimization**: Software update modal (UpdateModal) now dynamically selects localized English or Chinese release notes based on App Language settings.
+4. **Fix**: Enhanced i18n label purity across all accordion handles and module row badges.
 
 ---
 
-全新深度认知体系 (Pure Core Cognitive Mode) 与 Settings UI 结构化重构
-1. 新增：深度认知分析卡片，支持“母语者思维违和感剖析 (Why it sounds unnatural)”，解答为什么直译不地道。
-2. 新增：前置 Core 核心意象卡片，为短语 Chunks 引入空间/逻辑意象延伸 (Spatial Metaphors)，为 Synonyms 近义词增加褒贬情感 Badge 与适用心智指导 (When & Why to use)。
-3. 新增：Pure Core Cognitive 模式 (模式 3)，提供词汇关系与概念延伸树状网络图谱 (Word Relationship & Concept Tree)，辅以专用 AI 追问。
-4. 重构：Settings UI 全新 3 大主 Tab 布局 (🎛️ 基础与模型 / 🧩 模组管理 / 🎨 界面与显示)，支持 Mode 2 与 Mode 3 二级 Tab 独立拖拽排序及手风琴参数折叠。
+Settings 界面 5 大分组卡片重构与双语更新日志支持
+1. 重构：Settings UI 全新 5 大分组卡片瀑布流布局 (AI与搜索 / 搜索行为与显示 / 外观与偏好 / 本地数据 / 关于)。
+2. 优化： Mode 2 与 Mode 3 模组管理采用手风琴折叠收纳，保持页面简洁高效。
+3. 优化：更新弹窗 (UpdateModal) 正式支持多语言说明，根据 App 语言设置动态展示中文/英文更新日志。
+4. 修复：多语言文案纯净度提升，手风琴收纳词及模组名称全面适配 i18n。

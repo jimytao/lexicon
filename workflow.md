@@ -39,7 +39,17 @@
   2. **New**: Fully mined syntax and register prefixes...
   ```
 
-读取 `release_notes_zh.md` 的第一行及内容，将其填入 `version.json` 的 `"notes"` 字段中。
+读取 `release_notes_zh.md` 与 `release_notes_en.md` 的全部内容，并同时填入 `version.json` 的更新说明字段中：
+- **`notes_zh`**: 读取 `release_notes_zh.md` 的内容。
+- **`notes_en`**: 读取 `release_notes_en.md` 的内容。
+- **`notes`**: 作为通用降级兜底，填入 `release_notes_zh.md` 或 `release_notes_en.md` 的内容。
+
+> [!TIP]
+> **软件内部更新弹窗（UpdateModal）自适应渲染机制**：
+> 当用户在设置弹窗中点击更新或收到新版本通知时，`UpdateModal` 会读取当前软件语言设置（`appLanguage`）：
+> - 若语言为 `zh`，自动优先渲染 `manifest.notes_zh`；
+> - 若语言为 `en`，自动优先渲染 `manifest.notes_en`；
+> - 若未命中则降级回 `manifest.notes`。同时弹窗按钮文案也已实现全量 i18n 国际化。
 
 **重大版本判定逻辑**：
 - **默认行为**：如果你没有收到“这是重大更新”或类似的明确指令，请**务必确保** `version.json` 中的 `"is_major"` 为 `false` 或将其彻底移除。即使上一个版本是重大版本，当前版本也应默认为小版本。

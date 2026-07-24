@@ -24,12 +24,12 @@ export const DEFAULT_MODULES: AppModule[] = [
 ]
 
 export const DEFAULT_CORE_MODULES: AppModule[] = [
-  { id: 'coreConcept',   label: 'Core Image & Concept (核心意象)',   enabled: true },
-  { id: 'wordGraph',     label: 'Concept Tree Graph (词汇网络图谱)', enabled: true },
-  { id: 'collocations',  label: 'Chunks & Spatial Metaphors (短语与空间延伸)', enabled: true },
-  { id: 'synonyms',      label: 'Synonyms & Nuances (近义词与使用心智)', enabled: true },
-  { id: 'dictionary',    label: 'Definitions (基本释义)',             enabled: true },
-  { id: 'chat',          label: 'AI Chat (核心追问)',                  enabled: true },
+  { id: 'coreConcept',   label: 'Core Image & Concept', enabled: true },
+  { id: 'wordGraph',     label: 'Concept Tree Graph',   enabled: true },
+  { id: 'collocations',  label: 'Chunks & Metaphors',   enabled: true },
+  { id: 'synonyms',      label: 'Synonyms & Nuances',   enabled: true },
+  { id: 'dictionary',    label: 'Definitions',          enabled: true },
+  { id: 'chat',          label: 'AI Chat Follow-up',    enabled: true },
 ]
 
 export function normalizeModules(modules?: AppModule[]): AppModule[] {

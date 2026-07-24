@@ -24,6 +24,8 @@ function compareVersions(v1: string, v2: string): number {
 interface UpdateManifest {
   version: string
   notes: string
+  notes_zh?: string
+  notes_en?: string
   pub_date: string
   is_major?: boolean
   platforms: {
@@ -119,7 +121,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.7.38', // Should match package.json
+      currentVersion: '0.7.39', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
