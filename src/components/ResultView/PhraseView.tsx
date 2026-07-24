@@ -16,6 +16,8 @@ import { detectSpatialPreps } from '../../utils/prepDetect'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { playPronunciation } from '../../services/audio'
 
+import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
+
 interface PhraseViewProps {
   phrase: string
   phraseResult: PhraseResult | null
@@ -90,7 +92,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
               <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 break-words [overflow-wrap:anywhere]">
                 {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
               </p>
-              {phraseResult.correctionNote?.trim() ? (
+              {(phraseResult.correctionNote?.trim() || phraseResult.unnaturalMindModel) ? (
                 <div className="mb-2">
                   <button
                     onClick={() => setNoteExpanded(v => !v)}
@@ -105,10 +107,15 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                     <span className="font-medium">{t('phrase.whyChanged')}</span>
                   </button>
                   {noteExpanded && (
-                    <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
-                        {phraseResult.correctionNote}
-                      </p>
+                    <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700 space-y-2">
+                      {phraseResult.correctionNote?.trim() && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
+                          {phraseResult.correctionNote}
+                        </p>
+                      )}
+                      {phraseResult.unnaturalMindModel && (
+                        <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
+                      )}
                     </div>
                   )}
                 </div>
@@ -298,6 +305,9 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 if (phrase.toLowerCase() !== corrected.toLowerCase()) {
                   parts.push(`用户原始输入: "${phrase}" → 纠正为: "${corrected}"`)
                   if (phraseResult.correctionNote) parts.push(`纠正说明: ${phraseResult.correctionNote}`)
+                }
+                if (phraseResult.unnaturalMindModel) {
+                  parts.push(`思维违和感剖析: 中文直译("${phraseResult.unnaturalMindModel.chineseThought}") → 母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
                 }
                 if (phraseResult.meaning) parts.push(`释义: ${phraseResult.meaning}`)
                 if (phraseResult.usageScenes?.length) {

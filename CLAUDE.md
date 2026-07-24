@@ -24,6 +24,8 @@
 | `lexicon-docs/04-ai-schema.md` | AI 调用、prompt、JSON schema 相关任务 |
 | `lexicon-docs/05-components.md` | 组件结构、store、hook 相关任务 |
 | `lexicon-docs/06-crossplatform.md` | Capacitor/Tauri 跨平台相关任务 |
+| `lexicon-docs/07-cognitive-and-settings-architecture.md` | 深度认知体系、模式 3 (Core Mode) 与设置 UI 重构 |
+| `lexicon-docs/08-ai-learning-system-and-profile.md` | 智能学习系统、轻量 User Profile 与第二大脑 (Lexicon Memory) |
 
 ## 当前技术栈
 

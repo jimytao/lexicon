@@ -20,21 +20,45 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
     return null
   }
 
+  const renderToneBadge = (tone?: 'positive' | 'negative' | 'neutral' | 'informal') => {
+    if (!tone) return null
+    switch (tone) {
+      case 'positive':
+        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">🟢 褒义</span>
+      case 'negative':
+        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/40 shrink-0">🔴 贬义</span>
+      case 'informal':
+        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 shrink-0">💬 口语</span>
+      case 'neutral':
+        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 shrink-0">⚪ 中性</span>
+      default:
+        return null
+    }
+  }
+
   // Helper render for Synonyms List
   const renderSynonyms = () => (
-    <div className="space-y-1.5 animate-in fade-in duration-200">
+    <div className="space-y-2 animate-in fade-in duration-200">
       {synonymsList.map((s, i) => (
         <div 
           key={i} 
-          className="flex gap-3 items-start p-2 -mx-2 rounded-xl transition-all duration-200 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 border border-transparent hover:border-indigo-100/20 dark:hover:border-indigo-900/10"
+          className="flex flex-col gap-1 p-2 -mx-2 rounded-xl transition-all duration-200 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 border border-transparent hover:border-indigo-100/20 dark:hover:border-indigo-900/10"
         >
-          <button
-            onClick={() => onSynonymClick(s.word)}
-            className="shrink-0 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-indigo-100/60 dark:border-indigo-900/30 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60 active:scale-95 duration-100 transition-all cursor-pointer"
-          >
-            {s.word}
-          </button>
+          <div className="flex gap-2 items-center flex-wrap">
+            <button
+              onClick={() => onSynonymClick(s.word)}
+              className="shrink-0 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-indigo-100/60 dark:border-indigo-900/30 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 hover:bg-indigo-100/80 dark:hover:bg-indigo-900/60 active:scale-95 duration-100 transition-all cursor-pointer"
+            >
+              {s.word}
+            </button>
+            {renderToneBadge(s.tone)}
+          </div>
           <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pt-0.5">{s.distinction}</p>
+          {s.whenToUse && (
+            <p className="text-[11px] text-indigo-800 dark:text-indigo-200 font-medium bg-indigo-50/60 dark:bg-indigo-950/40 px-2 py-1 rounded-lg border border-indigo-100/40 dark:border-indigo-900/30">
+              💡 适用心智：{s.whenToUse}
+            </p>
+          )}
         </div>
       ))}
     </div>

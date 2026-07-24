@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-07-25 — 深度认知体系、模式 3 (Core Mode) 与设置 UI 重构架构设计完成 (v0.8.0-plan)
+
+### 1. 新增：深度认知架构规范文档 (`lexicon-docs/07-cognitive-and-settings-architecture.md`)
+- **规划**：定义了句子订正的“母语者思维违和感剖析 (Why it sounds unnatural)”算法与 UI 表达。
+- **规划**：定义了搜索模式 2 (Standard AI Mode) 的充实方案（前置 Core 意象、Chunks 空间延伸、Synonyms 褒贬色彩/用词时机）。
+- **规划**：定义了全新搜索模式 3 (Pure Core Cognitive Mode) 的信息架构（Core 统领、衍生场景、语义关系树状图、嵌入式 AI Chat）。
+- **规划**：定义了设置页面 (Settings UI) 的重构标准（Tab 分页、模式 2/3 模组独立控制、手风琴空间收纳）。
+
+### 2. 新增：智能学习系统与第二大脑架构规范文档 (`lexicon-docs/08-ai-learning-system-and-profile.md`)
+- **微调**：设定 2,000~3,000 Tokens 黄金预算，支持单词、句子违和感剖析与 AI 追问对话的三维数据摄取。
+- **微调**：定义“路径 A (即时追问) / 路径 B (保底 12 次)”双路触发与 `unprocessed_count` 共享重置算法。
+- **微调**：增加 AI 诊断 Prompt 权重层级（AI 追问与句子订正设为 High Priority，常规查词设为 Normal Priority）。
+- **微调**：明确区分 100 条流动 Search Log 与 SQLite 永久 `user_word_memory` 资产表。
+
 ## 2026-07-24 — PC 文本溢出修复、AI 长文本全文翻译 Prompt 优化与 UI 折叠展示 (v0.7.37)
 
 ### 1. 修复：PC 平台/Webview 长文本与 URL 溢出问题

@@ -1,4 +1,5 @@
-修复 PC 平台文本溢出、优化 AI 长文本全文翻译 Prompt 与 UI 折叠展示
-1. 修复：PC 平台/Webview 长文本与 URL 溢出问题，全面添加 break-words 与 overflow-wrap 约束。
-2. 优化：更新 AI 句子查询 Prompt 规则，强制要求在长文本或多句段落查询时必须提供句句对应的完整中文翻译，解决 AI 偷懒仅返回单句总结的问题。
-3. 新增：长文本与长译文 UI 渐变折叠与展开控制，大幅改善中长段落文本在各端的排版与阅读体验。
+全新深度认知体系 (Pure Core Cognitive Mode) 与 Settings UI 结构化重构
+1. 新增：深度认知分析卡片，支持“母语者思维违和感剖析 (Why it sounds unnatural)”，解答为什么直译不地道。
+2. 新增：前置 Core 核心意象卡片，为短语 Chunks 引入空间/逻辑意象延伸 (Spatial Metaphors)，为 Synonyms 近义词增加褒贬情感 Badge 与适用心智指导 (When & Why to use)。
+3. 新增：Pure Core Cognitive 模式 (模式 3)，提供词汇关系与概念延伸树状网络图谱 (Word Relationship & Concept Tree)，辅以专用 AI 追问。
+4. 重构：Settings UI 全新 3 大主 Tab 布局 (🎛️ 基础与模型 / 🧩 模组管理 / 🎨 界面与显示)，支持 Mode 2 与 Mode 3 二级 Tab 独立拖拽排序及手风琴参数折叠。

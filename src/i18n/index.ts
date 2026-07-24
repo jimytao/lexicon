@@ -17,6 +17,8 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'module.culture': '文化背景',
     'module.chat': 'AI 问答',
     'module.preposition': '介词空间意象',
+    'module.coreConcept': '核心意象 (Core Image)',
+    'module.wordGraph': '词汇网络图谱',
     // AI Chat
     'chat.heading': 'AI 问答',
     'chat.thinking': '思考中…',
@@ -199,6 +201,8 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'module.culture': 'Cultural Context',
     'module.chat': 'AI Chat',
     'module.preposition': 'Prep. Imagery',
+    'module.coreConcept': 'Core Image & Concept',
+    'module.wordGraph': 'Concept Tree Graph',
     // AI Chat
     'chat.heading': 'AI Chat',
     'chat.thinking': 'Thinking…',

@@ -11,6 +11,7 @@ import { SegmentedControl } from './components/SearchBar/SegmentedControl'
 import { ResultView } from './components/ResultView'
 import { AiFullView } from './components/ResultView/AiFullView'
 import { PhraseView } from './components/ResultView/PhraseView'
+import { CoreCognitiveView } from './components/ResultView/CoreCognitiveView'
 import { SettingsView } from './components/Settings/SettingsView'
 import { ImageTranslateView } from './components/ImageTranslate'
 import { Keyboard } from '@capacitor/keyboard'
@@ -157,15 +158,20 @@ export function App() {
     return () => sc.removeEventListener('scroll', handleScroll)
   }, [isKeyboardVisible, view])
 
-  // 切换到 AI mode 时，若处于 local 状态且尚未分析，自动触发
+  // 切换到 AI 或 Core mode 时，若处于 local 状态且尚未分析，自动触发
   const prevModeRef = useRef(mode)
   useEffect(() => {
     if (prevModeRef.current !== 'ai' && mode === 'ai' && searchSource === 'local' && wordResult && aiStatus === 'idle') {
       triggerAi(wordResult.word, wordResult.meanings, wordResult.examples.length === 0)
       upgradeHistory(wordResult.word, 'analyze')
     }
+    if (prevModeRef.current !== 'core' && mode === 'core' && query && aiStatus === 'idle') {
+      setSearchSource('ai-full')
+      triggerFullLookup(query)
+      upgradeHistory(query, 'full')
+    }
     // 从 ai-full 切回 Instant：恢复本地快照
-    if (prevModeRef.current === 'ai' && mode === 'instant' && searchSource === 'ai-full') {
+    if (prevModeRef.current !== 'instant' && mode === 'instant' && searchSource === 'ai-full') {
       const snap = localWordSnapshotRef.current
       if (snap) {
         useResultStore.getState().setWordResult(snap.wordResult, false)
@@ -174,7 +180,7 @@ export function App() {
       }
     }
     prevModeRef.current = mode
-  }, [mode])
+  }, [mode, query])
 
   function scrollToTop() {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -506,6 +512,16 @@ export function App() {
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}
+                    onGoToSettings={() => setView('settings')}
+                  />
+                ) : mode === 'core' ? (
+                  <CoreCognitiveView
+                    word={query}
+                    aiFullResult={aiFullResult}
+                    aiStatus={aiStatus}
+                    aiError={aiError}
+                    onRetry={handleRetry}
+                    onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
                   />
                 ) : showAiFullView ? (

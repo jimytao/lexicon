@@ -1,4 +1,4 @@
-import type { WordResult, AiAnalysis, SuggestItem } from '../../types'
+import type { WordResult, AiAnalysis, SuggestItem, Mode } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -16,13 +16,15 @@ import { useT } from '../../i18n'
 import { CollocationCard } from './AiSection/CollocationCard'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 
+export { CoreCognitiveView } from './CoreCognitiveView'
+
 interface ResultViewProps {
   wordResult: WordResult
   relatedPhrases: SuggestItem[]
   aiAnalysis: AiAnalysis | null
   aiStatus: AiStatus
   aiError: string | null
-  mode: 'instant' | 'ai'
+  mode: Mode
   onRetry: () => void
   onWordClick: (word: string) => void
   onGoToSettings?: () => void

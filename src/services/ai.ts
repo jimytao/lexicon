@@ -531,19 +531,21 @@ function getFullLookupPrompt(
   const synonymDistinction = isMono ? "English nuance explanation" : "与主词的差异"
   const antonymDistinction = isMono ? "English nuance explanation" : "与主词的对比差异"
 
-  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences describing the core physical image or underlying metaphor' : '1-2句描述单词的物理或逻辑核心意象 (Core Image)'}",\n    "explanation": "${isMono ? 'how this core image unifies and derives various meanings' : '核心意象如何统领和演变出各个具体分项释义'}"\n  },\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
   if (isFull && isEnabled('etymology')) {
     schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "${derivedMeaning}" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
-    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
+    const whenToUseDesc = isMono ? "1 sentence in English: when and why native speakers choose this specific word" : "1句中文：母语者在何时及为何使用该词 (如: slim -> 表示夸奖优雅的瘦)"
+    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}", "tone": "one of: positive | negative | neutral | informal", "whenToUse": "${whenToUseDesc}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
   }
 
   if (isFull && isEnabled('collocations')) {
     const collocationsNote = isMono ? "English usage note" : "中文使用说明"
-    schema += `,\n  "collocations": {\n    "chunks": [\n      { "chunk": "Verb/prep pattern using the word (语块)", "note": "${collocationsNote}" }\n    ],\n    "collocations": [\n      { "chunk": "Natural word combination (搭配)", "note": "${collocationsNote}" }\n    ]\n  }`
+    const spatialDesc = isMono ? "1 short spatial or logical metaphor (e.g. take off -> control + detach = fly/succeed)" : "空间/逻辑意象延伸 (如: take off -> 掌控 + 脱离 = 飞离/突然成功)"
+    schema += `,\n  "collocations": {\n    "chunks": [\n      { "chunk": "Verb/prep pattern using the word (语块)", "note": "${collocationsNote}", "spatialExtension": "${spatialDesc}" }\n    ],\n    "collocations": [\n      { "chunk": "Natural word combination (搭配)", "note": "${collocationsNote}" }\n    ]\n  }`
   }
 
   if (isEnabled('examples')) {
@@ -569,6 +571,8 @@ function getFullLookupPrompt(
       schema += `,\n  "culturalLore": {\n    "title": "${isMono ? '2-4 word English tag (e.g. Gen-Z Slang, Legal Jargon)' : '2-4字标签（如 网络用语、医学术语）'}",\n    "content": "${cultureContent}",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
     }
   }
+
+  schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "examples": ["${isMono ? 'phrase or example 1' : '典型表达/短语 1'}", "${isMono ? 'phrase or example 2' : '典型表达/短语 2'}"]\n      }\n    ]\n  }`
 
   schema += `\n}`
 
@@ -718,6 +722,7 @@ Rules:
 - CRITICAL — correctForm integrity: Do NOT delete, shorten, summarize, or truncate any part of the input. If input is a long sentence or multi-sentence paragraph, correctForm must preserve ALL sentences and content — only fix actual errors word by word. correctForm is a proofread copy, NOT a rewrite or summary.
 - If the input has NO real errors, set correctForm exactly equal to the input (copy it verbatim). Only change what is genuinely wrong.
 - correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.
+- unnaturalMindModel: When input sounds unnatural, un-idiomatic, or reflects Chinese-to-English translation mindset, fill unnaturalMindModel with detailed cognitive breakdown (chineseThought, nativeConcept, reusablePrinciple). Omit if input is already natural.
 - If input is CHINESE (targeting English):
   - correctForm: the most natural, complete English translation of the full input — do NOT omit any part of the Chinese.
   - correctionNote: omit (translation, not correction).

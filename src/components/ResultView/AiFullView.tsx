@@ -16,6 +16,7 @@ import { useT } from '../../i18n'
 import { CollocationCard } from './AiSection/CollocationCard'
 import { detectLanguage } from '../../stores/searchStore'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
+import { CoreConceptCard } from './AiSection/CoreConceptCard'
 
 
 interface AiFullViewProps {
@@ -78,7 +79,8 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
             switch (module.id) {
               case 'dictionary':
                 return (
-                  <div key={module.id}>
+                  <div key={module.id} className="space-y-3">
+                    <CoreConceptCard coreConcept={aiFullResult.coreConcept} />
                     <MeaningList
                       key={word}
                       meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en, pos: m.pos, imageQuery: m.imageQuery }))}
@@ -140,6 +142,9 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 const parts: string[] = []
                 if (word.toLowerCase() !== corrected.toLowerCase()) {
                   parts.push(`用户原始输入: "${word}" → 纠正为: "${corrected}"`)
+                }
+                if (aiFullResult.coreConcept?.image) {
+                  parts.push(`核心意象: "${aiFullResult.coreConcept.image}" ${aiFullResult.coreConcept.explanation ? '— ' + aiFullResult.coreConcept.explanation : ''}`)
                 }
                 if (aiFullResult.meanings?.length) {
                   parts.push('释义:\n' + aiFullResult.meanings.map(m => `  · ${m.en || m.zh}`).join('\n'))

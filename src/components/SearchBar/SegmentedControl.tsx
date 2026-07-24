@@ -9,12 +9,13 @@ export function SegmentedControl({ mode, onModeChange }: SegmentedControlProps) 
   const options = [
     { id: 'instant', label: 'Instant' },
     { id: 'ai', label: 'AI Lookup' },
+    { id: 'core', label: 'Pure Core' },
   ]
 
-  const activeIndex = options.findIndex(opt => opt.id === mode)
+  const activeIndex = Math.max(0, options.findIndex(opt => opt.id === mode))
 
   return (
-    <div className="segmented-control w-fit mx-auto mb-2 min-w-[200px]">
+    <div className="segmented-control w-fit mx-auto mb-2 min-w-[270px]">
       <div
         className="segmented-control-slider"
         style={{

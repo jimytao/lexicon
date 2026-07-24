@@ -1,4 +1,4 @@
-export type Mode = 'instant' | 'ai'
+export type Mode = 'instant' | 'ai' | 'core'
 export type QueryType = 'word' | 'phrase' | 'sentence'
 export type Language = 'en' | 'zh' | 'ja' | 'ko' | 'other'
 
@@ -63,9 +63,30 @@ export interface EvaluationResult {
   correction: string
 }
 
+export interface UnnaturalMindModel {
+  chineseThought: string
+  nativeConcept: string
+  reusablePrinciple: string
+}
+
+export interface CoreConcept {
+  image: string
+  explanation: string
+}
+
+export interface ConceptGraph {
+  rootCore: string
+  branches: Array<{
+    category: string
+    examples: string[]
+  }>
+}
+
 export interface Synonym {
   word: string
   distinction: string
+  tone?: 'positive' | 'negative' | 'neutral' | 'informal'
+  whenToUse?: string
 }
 
 export interface Antonym {
@@ -86,11 +107,13 @@ export interface WordResult {
   examples: Example[]
   etymology?: Etymology
   synonyms?: Synonym[]
+  coreConcept?: CoreConcept
 }
 
 export interface CollocationEntry {
   chunk: string   // e.g. "take the tram" / "black tea"
   note?: string   // brief usage note (language matches monolingualWord setting)
+  spatialExtension?: string // 空间/逻辑意象延伸 (e.g. "take off -> 掌控 + 脱离 = 飞离/突然成功")
 }
 
 export interface CollocationData {
@@ -99,6 +122,7 @@ export interface CollocationData {
 }
 
 export interface AiAnalysis {
+  coreConcept?: CoreConcept
   meanings: Array<{ zh: string; pos?: string; scene?: Scene; imageQuery?: string }>
   etymology: Etymology
   synonyms: Synonym[]
@@ -111,12 +135,14 @@ export interface AiAnalysis {
     content?: string   // 1-2 sentences: cultural origin, register shift, or notable usage
     register?: string  // optional: formal | informal | slang | technical | neutral
   }
+  conceptGraph?: ConceptGraph
 }
 
 export interface AiFullResult {
   correctForm: string
   phonetic: string
   pos: string
+  coreConcept?: CoreConcept
   meanings: Array<{ zh: string; en: string; pos?: string; scene?: Scene; imageQuery?: string }>
   etymology: Etymology
   synonyms: Synonym[]
@@ -129,7 +155,11 @@ export interface AiFullResult {
     subculture?: string
   }
   collocations?: CollocationData
+  conceptGraph?: ConceptGraph
 }
+
+export type WordAIResult = AiFullResult
+
 export interface PrepSpatialItem {
   preposition: string
   coreIdea: string
@@ -145,6 +175,7 @@ export interface PhraseResult {
   phrase: string
   correctForm: string
   correctionNote?: string
+  unnaturalMindModel?: UnnaturalMindModel
   meaning: string
   usageScenes?: Array<{ label: string; description: string }>
   examples: Example[]
@@ -156,6 +187,8 @@ export interface PhraseResult {
   }
   prepSpatial?: PrepSpatialData
 }
+
+export type PhraseAnalysisResult = PhraseResult
 
 export interface ChatMessage {
   role: 'user' | 'assistant'

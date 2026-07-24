@@ -1,4 +1,5 @@
-Fix PC text overflow, optimize AI long-text full translation prompt, and add UI text folding controls.
-1. **Fix**: Resolved text and URL overflow issues on PC/Webview platforms by enforcing `break-words` and `overflow-wrap: anywhere` across title, diff, and container elements.
-2. **Optimize**: Enhanced AI phrase/sentence query prompt rules so that long-text or multi-sentence queries require full sentence-by-sentence translation, preventing single-sentence summary shortcuts.
-3. **New**: Integrated UI gradient collapse and expand controls for long original texts and long translation results.
+Deep Cognitive System (Pure Core Mode) & Restructured Settings UI
+1. **New**: Unnatural mind model analysis card explaining why literal translations sound un-idiomatic to native speakers.
+2. **New**: Core image & concept card, spatial metaphors for collocations/chunks, and emotional tone badges with native mindset guidance for synonyms.
+3. **New**: Pure Core Cognitive Mode (Mode 3) featuring a structured word relationship tree graph and dedicated AI follow-up chat.
+4. **Refactor**: Restructured Settings UI with 3 primary tabs, sub-tabs for independent drag-and-drop module ordering across Mode 2 and Mode 3, and collapsible accordions.

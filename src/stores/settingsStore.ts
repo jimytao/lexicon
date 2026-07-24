@@ -23,6 +23,15 @@ export const DEFAULT_MODULES: AppModule[] = [
   { id: 'preposition',  label: 'Prep. Imagery',         enabled: true },
 ]
 
+export const DEFAULT_CORE_MODULES: AppModule[] = [
+  { id: 'coreConcept',   label: 'Core Image & Concept (核心意象)',   enabled: true },
+  { id: 'wordGraph',     label: 'Concept Tree Graph (词汇网络图谱)', enabled: true },
+  { id: 'collocations',  label: 'Chunks & Spatial Metaphors (短语与空间延伸)', enabled: true },
+  { id: 'synonyms',      label: 'Synonyms & Nuances (近义词与使用心智)', enabled: true },
+  { id: 'dictionary',    label: 'Definitions (基本释义)',             enabled: true },
+  { id: 'chat',          label: 'AI Chat (核心追问)',                  enabled: true },
+]
+
 export function normalizeModules(modules?: AppModule[]): AppModule[] {
   if (!modules) return DEFAULT_MODULES
 
@@ -75,9 +84,10 @@ interface SettingsStore {
   tavilyApiKey: string
   maxExercises: number
   performanceMode: boolean
-  defaultSearchMode: 'instant' | 'ai'
+  defaultSearchMode: 'instant' | 'ai' | 'core'
   triLingualExamples: boolean
   modules: AppModule[]
+  coreModules: AppModule[]
   appLanguage: 'zh' | 'en'
   monolingualWord: boolean
   monolingualPhrase: boolean
@@ -98,9 +108,10 @@ interface SettingsStore {
   setTavilyApiKey: (v: string) => void
   setMaxExercises: (v: number) => void
   setPerformanceMode: (v: boolean) => void
-  setDefaultSearchMode: (v: 'instant' | 'ai') => void
+  setDefaultSearchMode: (v: 'instant' | 'ai' | 'core') => void
   setTriLingualExamples: (v: boolean) => void
   setModules: (v: AppModule[]) => void
+  setCoreModules: (v: AppModule[]) => void
   setAppLanguage: (v: 'zh' | 'en') => void
   setMonolingualWord: (v: boolean) => void
   setMonolingualPhrase: (v: boolean) => void
@@ -129,6 +140,7 @@ export const useSettingsStore = create<SettingsStore>()(
       defaultSearchMode: 'instant',
       triLingualExamples: false,
       modules: DEFAULT_MODULES,
+      coreModules: DEFAULT_CORE_MODULES,
       appLanguage: 'en',
       monolingualWord: false,
       monolingualPhrase: false,
@@ -162,6 +174,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setDefaultSearchMode: (defaultSearchMode) => set({ defaultSearchMode }),
       setTriLingualExamples: (triLingualExamples) => set({ triLingualExamples }),
       setModules: (modules) => set({ modules: normalizeModules(modules) }),
+      setCoreModules: (coreModules) => set({ coreModules }),
       setAppLanguage: (appLanguage) => set({ appLanguage }),
       setMonolingualWord: (monolingualWord) => {
         set({ monolingualWord })
@@ -195,6 +208,8 @@ export const useSettingsStore = create<SettingsStore>()(
           ...current,
           ...persistedState,
           modules: normalizeModules(persistedState.modules),
+          // If upgrading from a version before coreModules existed, fall back to defaults
+          coreModules: persistedState.coreModules ?? DEFAULT_CORE_MODULES,
         }
       },
     }

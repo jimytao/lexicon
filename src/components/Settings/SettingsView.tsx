@@ -23,6 +23,7 @@ import { testConnection } from '../../services/ai'
 import { useUpdateStore } from '../../stores/updateStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useT } from '../../i18n'
+import { Accordion } from './Accordion'
 
 interface ProviderDef {
   id: string
@@ -128,7 +129,6 @@ const PROVIDERS: ProviderDef[] = [
 
 type FetchStatus = 'idle' | 'loading' | 'success' | 'error'
 
-
 function normalizeModelQuery(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9.]+/g, ' ').trim().split(/\s+/).filter(Boolean)
 }
@@ -150,25 +150,19 @@ function scoreModelMatch(model: string, query: string) {
     let found = false
     let tokenScore = 0
 
-    // 1. Exact token match in the model's split tokens
     if (mTokens.includes(qToken)) {
       tokenScore = 100
       found = true
-    }
-    // 2. Substring match
-    else {
+    } else {
       const idx = mNormalized.indexOf(qToken)
       if (idx !== -1) {
-        // If it's a version-like token (has digits or dots), be stricter
         if (/[0-9.]/.test(qToken)) {
           tokenScore = 80
         } else {
           tokenScore = 60
         }
         found = true
-      }
-      // 3. Compact match
-      else if (mCompact.includes(qToken.replace(/\./g, ''))) {
+      } else if (mCompact.includes(qToken.replace(/\./g, ''))) {
         tokenScore = 40
         found = true
       }
@@ -184,7 +178,6 @@ function scoreModelMatch(model: string, query: string) {
       }
       lastIndex = firstIdx
 
-      // Start of word bonus
       if (firstIdx === 0 || !/[a-z0-9]/.test(mNormalized[firstIdx - 1])) {
         score += 20
       }
@@ -193,10 +186,8 @@ function scoreModelMatch(model: string, query: string) {
 
   if (matchedCount === 0) return -100
 
-  // Bonus for matching all tokens
   if (matchedCount === qTokens.length) {
     score += 200
-    // Bonus for matching all in order
     if (inOrderCount === qTokens.length) {
       score += 50
     }
@@ -204,12 +195,10 @@ function scoreModelMatch(model: string, query: string) {
     score += (matchedCount / qTokens.length) * 100
   }
 
-  // Exact match bonus
   if (mNormalized === query.toLowerCase().trim()) {
     score += 1000
   }
 
-  // Length penalty
   score -= mNormalized.length * 0.1
 
   return score
@@ -329,6 +318,7 @@ export function SettingsView() {
     defaultSearchMode, setDefaultSearchMode,
     triLingualExamples, setTriLingualExamples,
     modules, setModules,
+    coreModules = [], setCoreModules,
     appLanguage, setAppLanguage,
     monolingualWord, setMonolingualWord,
     monolingualPhrase, setMonolingualPhrase,
@@ -340,7 +330,10 @@ export function SettingsView() {
     autoPlayPronunciation, setAutoPlayPronunciation,
   } = useSettingsStore()
 
-  const { status, manifest, checkUpdate, currentVersion, error } = useUpdateStore()
+  const { status, checkUpdate, currentVersion } = useUpdateStore()
+
+  const [mainTab, setMainTab] = useState<'model' | 'modules' | 'appearance'>('model')
+  const [moduleSubTab, setModuleSubTab] = useState<'mode2' | 'mode3'>('mode2')
 
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
 
@@ -359,7 +352,6 @@ export function SettingsView() {
     setAiProvider(p.id)
     if (p.endpoint) setAiEndpoint(p.endpoint)
     
-    // If no model is saved for this provider, and it has static models, pick the first one as default
     if (!aiModels[p.id] && p.staticModels && p.staticModels.length > 0) {
       setAiModel(p.staticModels[0])
     }
@@ -406,7 +398,6 @@ export function SettingsView() {
       setFetchStatus('success')
       setShowModelList(true)
     } catch {
-      // Fall back to static model list if available
       const statics = provider?.staticModels ?? []
       if (statics.length > 0) {
         setFetchedModels(statics)
@@ -443,6 +434,7 @@ export function SettingsView() {
       .map(item => item.model)
   }, [fetchedModels, aiModel])
 
+  // Mode 2 Module toggles & reorder
   function toggleModule(id: string) {
     setModules(modules.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m))
   }
@@ -454,6 +446,20 @@ export function SettingsView() {
     const [moved] = newModules.splice(index, 1)
     newModules.splice(targetIndex, 0, moved)
     setModules(newModules)
+  }
+
+  // Mode 3 Core Module toggles & reorder
+  function toggleCoreModule(id: string) {
+    setCoreModules(coreModules.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m))
+  }
+
+  function moveCoreModule(index: number, direction: 'up' | 'down') {
+    const newModules = [...coreModules]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= newModules.length) return
+    const [moved] = newModules.splice(index, 1)
+    newModules.splice(targetIndex, 0, moved)
+    setCoreModules(newModules)
   }
 
   const sensors = useSensors(
@@ -470,195 +476,431 @@ export function SettingsView() {
     setModules(arrayMove(modules, oldIndex, newIndex))
   }
 
+  function handleCoreModuleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = coreModules.findIndex((m) => m.id === active.id)
+    const newIndex = coreModules.findIndex((m) => m.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    setCoreModules(arrayMove(coreModules, oldIndex, newIndex))
+  }
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-nav-safe">
-      <div className="flex items-center justify-between px-6 pt-safe pb-4 shrink-0">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-nav-safe max-h-screen overflow-y-auto">
+      {/* Settings Header */}
+      <div className="flex items-center justify-between px-6 pt-safe pb-2 shrink-0">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">Settings</h2>
       </div>
 
-      <div className="px-6 py-2 space-y-8">
-          {/* Provider selection */}
-          <div>
-            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">AI Provider</label>
-            <div className="grid grid-cols-2 gap-2">
-              {PROVIDERS.map(p => {
-                const displayName = p.id === 'zhipu' ? t('settings.provider.zhipu') :
-                                    p.id === 'yi' ? t('settings.provider.yi') :
-                                    p.id === 'custom' ? t('settings.provider.custom') : p.name
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => handleProviderSelect(p)}
-                    className={`text-xs px-3 py-3.5 rounded-xl border transition-all text-left truncate font-medium ${
-                      aiProvider === p.id
-                        ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
-                        : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
-                    }`}
-                  >
-                    {displayName}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+      {/* Main Tab Navigation Bar */}
+      <div className="px-6 pb-4 pt-1 flex gap-1.5 border-b border-border/50 bg-background-soft/30 sticky top-0 z-20 backdrop-blur-md">
+        <button
+          onClick={() => setMainTab('model')}
+          className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+            mainTab === 'model'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'
+          }`}
+        >
+          <span>🎛️</span>
+          <span>基础与模型</span>
+        </button>
+        <button
+          onClick={() => setMainTab('modules')}
+          className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+            mainTab === 'modules'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'
+          }`}
+        >
+          <span>🧩</span>
+          <span>模组管理</span>
+        </button>
+        <button
+          onClick={() => setMainTab('appearance')}
+          className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+            mainTab === 'appearance'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'
+          }`}
+        >
+          <span>🎨</span>
+          <span>界面与显示</span>
+        </button>
+      </div>
 
-          {/* Endpoint */}
-          <div>
-            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2">Endpoint</label>
-            <input
-              type="text"
-              value={aiEndpoint}
-              onChange={(e) => { setAiEndpoint(e.target.value); setAiProvider('custom') }}
-              placeholder="https://api.example.com/v1"
-              className="w-full text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all"
-            />
-          </div>
-
-          {/* API Key */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">API Key</label>
-              {currentApiKey && (
-                <span className="text-[10px] font-bold text-green-500 uppercase tracking-tight flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  Saved
-                </span>
-              )}
+      <div className="px-6 py-4">
+        {/* ── Main Tab 1: 🎛️ 基础与模型 ── */}
+        {mainTab === 'model' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Provider Selection */}
+            <div>
+              <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2.5">
+                AI Provider (模型提供商)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {PROVIDERS.map(p => {
+                  const displayName = p.id === 'zhipu' ? t('settings.provider.zhipu') :
+                                      p.id === 'yi' ? t('settings.provider.yi') :
+                                      p.id === 'custom' ? t('settings.provider.custom') : p.name
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => handleProviderSelect(p)}
+                      className={`text-xs px-3 py-3 rounded-xl border transition-all text-left truncate font-medium cursor-pointer ${
+                        aiProvider === p.id
+                          ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
+                          : 'bg-background-soft border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
+                      }`}
+                    >
+                      {displayName}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <div className="relative">
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={currentApiKey}
-                onChange={(e) => setApiKeyForProvider(aiProvider || 'custom', e.target.value)}
-                placeholder="sk-..."
-                className="w-full text-sm border border-border rounded-xl px-4 py-2.5 pr-10 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted/50 hover:text-foreground transition-colors"
-                tabIndex={-1}
-              >
-                {showKey ? (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4-9-7 0-1.3.6-2.5 1.6-3.5M6.1 6.1A9.97 9.97 0 0112 5c5 0 9 4 9 7 0 1.3-.6 2.5-1.6 3.5M3 3l18 18" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
 
-          {/* Model */}
-          <div>
-            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2">Model</label>
-            <div className="flex gap-2">
+            {/* Endpoint Input */}
+            <div>
+              <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-1.5">
+                API Endpoint
+              </label>
               <input
                 type="text"
-                value={aiModel}
-                onChange={(e) => { setAiModel(e.target.value); if (fetchedModels.length > 0) setShowModelList(true) }}
-                onFocus={() => { if (fetchedModels.length > 0) setShowModelList(true) }}
-                placeholder="gemini-2.0-flash"
-                className="flex-1 text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all min-w-0"
+                value={aiEndpoint}
+                onChange={(e) => { setAiEndpoint(e.target.value); setAiProvider('custom') }}
+                placeholder="https://api.example.com/v1"
+                className="w-full text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all"
               />
+            </div>
+
+            {/* API Key Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">
+                  API Key
+                </label>
+                {currentApiKey && (
+                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-tight flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    Saved
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={currentApiKey}
+                  onChange={(e) => setApiKeyForProvider(aiProvider || 'custom', e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full text-sm border border-border rounded-xl px-4 py-2.5 pr-10 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted/50 hover:text-foreground transition-colors cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showKey ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4-9-7 0-1.3.6-2.5 1.6-3.5M6.1 6.1A9.97 9.97 0 0112 5c5 0 9 4 9 7 0 1.3-.6 2.5-1.6 3.5M3 3l18 18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Model Selector & Fetch */}
+            <div>
+              <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-1.5">
+                Model Name
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={aiModel}
+                  onChange={(e) => { setAiModel(e.target.value); if (fetchedModels.length > 0) setShowModelList(true) }}
+                  onFocus={() => { if (fetchedModels.length > 0) setShowModelList(true) }}
+                  placeholder="gemini-2.0-flash"
+                  className="flex-1 text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 font-mono transition-all min-w-0"
+                />
+                <button
+                  onClick={handleFetchModels}
+                  disabled={fetchStatus === 'loading' || !aiEndpoint || !currentApiKey}
+                  className="shrink-0 text-[10px] font-bold px-3 py-2.5 rounded-xl border border-border text-foreground-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider cursor-pointer"
+                >
+                  {fetchStatus === 'loading' ? 'Fetching' : 'Models'}
+                </button>
+              </div>
+
+              {showModelList && fetchedModels.length > 0 && (
+                <div className="mt-2 rounded-2xl border border-border bg-background shadow-2xl max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background-soft/50">
+                    <span className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">
+                      {fetchedModels.length} Models
+                    </span>
+                    <button
+                      onClick={() => setShowModelList(false)}
+                      className="text-foreground-muted hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  {sortedModels.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => handleModelSelect(m)}
+                      className={`w-full text-left px-4 py-3 text-xs hover:bg-foreground/5 transition-colors font-mono truncate cursor-pointer ${
+                        m === aiModel ? 'text-accent font-bold bg-accent/5' : 'text-foreground font-medium'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Test Connection Button */}
+            <div className="pt-1">
               <button
-                onClick={handleFetchModels}
-                disabled={fetchStatus === 'loading' || !aiEndpoint || !currentApiKey}
-                className="shrink-0 text-[10px] font-bold px-3 py-2.5 rounded-xl border border-border text-foreground-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
+                onClick={handleTest}
+                disabled={testStatus === 'testing' || !currentApiKey || !aiEndpoint || !aiModel}
+                className={`w-full text-xs font-bold py-3 rounded-xl border transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer
+                  ${testStatus === 'testing' 
+                    ? 'bg-background-soft border-border text-foreground-muted opacity-50 cursor-not-allowed'
+                    : 'bg-accent text-white border-transparent hover:bg-accent/90 shadow-md shadow-accent/20'
+                  }`}
               >
-                {fetchStatus === 'loading' ? 'Fetching' : 'Models'}
+                {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+              </button>
+              
+              {testStatus === 'success' && (
+                <p className="mt-2 text-[10px] font-bold text-green-500 uppercase tracking-tight flex items-center gap-1 justify-center animate-in fade-in">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Connected Successfully
+                </p>
+              )}
+              {testStatus === 'error' && (
+                <p className="mt-2 text-[10px] font-bold text-red-500 uppercase tracking-tight text-center animate-in fade-in">
+                  {testMessage}
+                </p>
+              )}
+            </div>
+
+            {/* Accordion: 高级调试与扩展选项 */}
+            <Accordion title="高级调试与扩展参数" subtitle="联网搜索 (Tavily)、出题量、性能模式与 Chat 选项" icon="⚙️">
+              <div className="space-y-4 pt-2">
+                {/* Web Search */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-bold text-foreground">Web Search (联网搜)</span>
+                    <p className="text-[10px] text-foreground-muted">获取最新流行的热词与文化信息</p>
+                  </div>
+                  <button
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    className="flex items-center h-9 px-1 group cursor-pointer"
+                  >
+                    <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${webSearchEnabled ? 'bg-accent' : 'bg-foreground/10'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${webSearchEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                </div>
+
+                {webSearchEnabled && (
+                  <div className="pl-2">
+                    <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-1">Tavily API Key</label>
+                    <input
+                      type="password"
+                      value={tavilyApiKey}
+                      onChange={(e) => setTavilyApiKey(e.target.value)}
+                      placeholder="tvly-..."
+                      className="w-full text-xs border border-border rounded-xl px-3 py-2 outline-none focus:border-accent bg-background text-foreground transition-all"
+                    />
+                  </div>
+                )}
+
+                {/* Performance Mode */}
+                <div className="flex items-center justify-between border-t border-border/40 pt-3">
+                  <div>
+                    <span className="text-sm font-bold text-foreground">Performance Mode</span>
+                    <p className="text-[10px] text-foreground-muted">简化视觉效果以提升低配设备流畅度</p>
+                  </div>
+                  <button
+                    onClick={() => setPerformanceMode(!performanceMode)}
+                    className="flex items-center h-9 px-1 group cursor-pointer"
+                  >
+                    <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${performanceMode ? 'bg-accent' : 'bg-foreground/10'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${performanceMode ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                </div>
+
+                {/* Chat Rich Context Default */}
+                <div className="flex items-center justify-between border-t border-border/40 pt-3">
+                  <div>
+                    <span className="text-sm font-bold text-foreground">{t('settings.chatRichContext')}</span>
+                    <p className="text-[10px] text-foreground-muted">{t('settings.chatRichContextDesc')}</p>
+                  </div>
+                  <button
+                    onClick={() => setChatRichContextDefault(!chatRichContextDefault)}
+                    className="flex items-center h-9 px-1 group cursor-pointer"
+                  >
+                    <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${chatRichContextDefault ? 'bg-accent' : 'bg-foreground/10'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${chatRichContextDefault ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                </div>
+
+                {/* Exercise Count */}
+                <div className="flex items-center justify-between border-t border-border/40 pt-3">
+                  <div>
+                    <span className="text-sm font-bold text-foreground">Exercise Count</span>
+                    <p className="text-[10px] text-foreground-muted">AI 测验练习题数</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMaxExercises(Math.max(1, maxExercises - 1))}
+                      className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span className="text-xs font-bold tabular-nums w-4 text-center">{maxExercises}</span>
+                    <button
+                      onClick={() => setMaxExercises(Math.min(10, maxExercises + 1))}
+                      className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Accordion>
+          </div>
+        )}
+
+        {/* ── Main Tab 2: 🧩 模组管理 ── */}
+        {mainTab === 'modules' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Sub-Tab Switcher for Mode 2 vs Mode 3 */}
+            <div className="flex gap-1.5 p-1 bg-background-soft rounded-xl border border-border">
+              <button
+                onClick={() => setModuleSubTab('mode2')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  moduleSubTab === 'mode2'
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-foreground-muted hover:text-foreground'
+                }`}
+              >
+                模式 2: Standard AI 模组
+              </button>
+              <button
+                onClick={() => setModuleSubTab('mode3')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  moduleSubTab === 'mode3'
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-foreground-muted hover:text-foreground'
+                }`}
+              >
+                模式 3: Pure Core 模组
               </button>
             </div>
 
-            {/* Model list dropdown */}
-            {showModelList && fetchedModels.length > 0 && (
-              <div className="mt-2 rounded-2xl border border-border bg-background shadow-2xl max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background-soft/50">
-                  <span className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{fetchedModels.length} Models</span>
-                  <button
-                    onClick={() => setShowModelList(false)}
-                    className="text-foreground-muted hover:text-foreground transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+            {/* Mode 2 Modules List */}
+            {moduleSubTab === 'mode2' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">Standard AI Mode 卡片显示与拖拽排序</span>
+                  <span className="text-[10px] text-foreground-muted">{modules.filter(m => m.enabled).length} 已启用</span>
                 </div>
-                {sortedModels.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => handleModelSelect(m)}
-                    className={`w-full text-left px-4 py-3 text-xs hover:bg-foreground/5 transition-colors font-mono truncate ${
-                      m === aiModel ? 'text-accent font-bold bg-accent/5' : 'text-foreground font-medium'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
+                  <SortableContext items={modules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-2">
+                      {modules.map((m, i) => (
+                        <SortableModuleRow
+                          key={m.id}
+                          module={m}
+                          index={i}
+                          total={modules.length}
+                          hoveredId={hoveredModuleId}
+                          onHoverChange={setHoveredModuleId}
+                          onToggle={toggleModule}
+                          onMove={moveModule}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </div>
             )}
-          </div>
 
-          {/* Test connection */}
-          <div className="pt-2">
-            <button
-              onClick={handleTest}
-              disabled={testStatus === 'testing' || !currentApiKey || !aiEndpoint || !aiModel}
-              className={`w-full text-xs font-bold py-3 rounded-xl border transition-all flex items-center justify-center gap-2 uppercase tracking-widest
-                ${testStatus === 'testing' 
-                  ? 'bg-background-soft border-border text-foreground-muted opacity-50 cursor-not-allowed'
-                  : 'bg-accent text-white border-transparent hover:bg-accent/90 shadow-md shadow-accent/20'
-                }`}
-            >
-              {testStatus === 'testing' ? 'Testing...' : 'Test Connection'}
-            </button>
-            
-            {testStatus === 'success' && (
-              <p className="mt-3 text-[10px] font-bold text-green-500 uppercase tracking-tight flex items-center gap-1 justify-center animate-in fade-in slide-in-from-top-1">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                Connected Successfully
-              </p>
-            )}
-            {testStatus === 'error' && (
-              <p className="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-tight text-center animate-in fade-in slide-in-from-top-1">
-                {testMessage}
-              </p>
-            )}
-          </div>
-
-          {/* Module Management */}
-          <div className="border-t border-border pt-8 space-y-4">
-            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Module Management</label>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
-              <SortableContext items={modules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {modules.map((m, i) => (
-                    <SortableModuleRow
-                      key={m.id}
-                      module={m}
-                      index={i}
-                      total={modules.length}
-                      hoveredId={hoveredModuleId}
-                      onHoverChange={setHoveredModuleId}
-                      onToggle={toggleModule}
-                      onMove={moveModule}
-                    />
-                  ))}
+            {/* Mode 3 Core Modules List */}
+            {moduleSubTab === 'mode3' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">Pure Core Mode 卡片显示与拖拽排序</span>
+                  <span className="text-[10px] text-foreground-muted">{coreModules.filter(m => m.enabled).length} 已启用</span>
                 </div>
-              </SortableContext>
-            </DndContext>
-            <p className="text-[10px] text-foreground-muted px-1">
-              Drag modules to reorder. Unchecked modules will be omitted from AI requests to save tokens.
-            </p>
-          </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCoreModuleDragEnd}>
+                  <SortableContext items={coreModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-2">
+                      {coreModules.map((m, i) => (
+                        <SortableModuleRow
+                          key={m.id}
+                          module={m}
+                          index={i}
+                          total={coreModules.length}
+                          hoveredId={hoveredModuleId}
+                          onHoverChange={setHoveredModuleId}
+                          onToggle={toggleCoreModule}
+                          onMove={moveCoreModule}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </div>
+            )}
 
-          <div className="border-t border-border pt-8 space-y-6">
+            {/* Cache Management */}
+            <div className="border-t border-border pt-6 space-y-4">
+              <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">
+                数据缓存清理
+              </label>
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-background-soft border border-border">
+                <div>
+                  <span className="text-sm font-bold text-foreground">AI 结果本地缓存</span>
+                  <p className="text-[10px] text-foreground-muted">包含全量查词与句段结果 ({cacheSize})</p>
+                </div>
+                <button
+                  onClick={() => { 
+                    if (confirm('确定清理所有本地 AI 结果缓存？')) {
+                      clearCache()
+                      useChatStore.getState().clearAll()
+                    }
+                  }}
+                  disabled={Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0 && Object.keys(phraseCache).length === 0}
+                  className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider cursor-pointer"
+                >
+                  Clear Cache
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Main Tab 3: 🎨 界面与显示 ── */}
+        {mainTab === 'appearance' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
             {/* App Language */}
             <div className="flex items-center justify-between">
               <div>
@@ -668,7 +910,7 @@ export function SettingsView() {
               <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border">
                 <button
                   onClick={() => setAppLanguage('zh')}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
                     appLanguage === 'zh' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
                   }`}
                 >
@@ -676,7 +918,7 @@ export function SettingsView() {
                 </button>
                 <button
                   onClick={() => setAppLanguage('en')}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
                     appLanguage === 'en' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
                   }`}
                 >
@@ -685,67 +927,32 @@ export function SettingsView() {
               </div>
             </div>
 
-            {/* Dark mode */}
-            <div className="flex items-center justify-between">
+            {/* Dark Mode */}
+            <div className="flex items-center justify-between border-t border-border/40 pt-4">
               <div>
-                <span className="text-sm font-bold text-foreground">Dark Mode</span>
-                <p className="text-[10px] text-foreground-muted">Switch appearance</p>
+                <span className="text-sm font-bold text-foreground">Dark Mode (深色外观)</span>
+                <p className="text-[10px] text-foreground-muted">切换极简明亮/夜间模式</p>
               </div>
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className="flex items-center h-11 px-2 -mr-2 group"
-                aria-label="Toggle Dark Mode"
+                className="flex items-center h-9 px-1 group cursor-pointer"
               >
-                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${darkMode ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
+                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${darkMode ? 'bg-accent' : 'bg-foreground/10'}`}>
                   <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${darkMode ? 'translate-x-5' : 'translate-x-0'}`} />
                 </div>
               </button>
             </div>
 
-            {/* History Toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-bold text-foreground">History Tracking</span>
-                <p className="text-[10px] text-foreground-muted">Save your lookups</p>
-              </div>
-              <button
-                onClick={() => setHistoryEnabled(!historyEnabled)}
-                className="flex items-center h-11 px-2 -mr-2 group"
-                aria-label="Toggle History Tracking"
-              >
-                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${historyEnabled ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${historyEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                </div>
-              </button>
-            </div>
-
-            {/* Performance Mode */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-bold text-foreground">Performance Mode</span>
-                <p className="text-[10px] text-foreground-muted">Disable heavy visual effects for old devices</p>
-              </div>
-              <button
-                onClick={() => setPerformanceMode(!performanceMode)}
-                className="flex items-center h-11 px-2 -mr-2 group"
-                aria-label="Toggle Performance Mode"
-              >
-                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${performanceMode ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${performanceMode ? 'translate-x-5' : 'translate-x-0'}`} />
-                </div>
-              </button>
-            </div>
-
             {/* Default Search Mode */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-t border-border/40 pt-4">
               <div>
-                <span className="text-sm font-bold text-foreground">Default Mode</span>
-                <p className="text-[10px] text-foreground-muted">Initial search mode when app starts</p>
+                <span className="text-sm font-bold text-foreground">默认启动搜索模式</span>
+                <p className="text-[10px] text-foreground-muted">软件启动时的初始 Mode</p>
               </div>
               <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border">
                 <button
                   onClick={() => setDefaultSearchMode('instant')}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
                     defaultSearchMode === 'instant' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
                   }`}
                 >
@@ -753,188 +960,98 @@ export function SettingsView() {
                 </button>
                 <button
                   onClick={() => setDefaultSearchMode('ai')}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
                     defaultSearchMode === 'ai' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
                   }`}
                 >
                   AI
                 </button>
-              </div>
-            </div>
-
-            {/* Trilingual Examples */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-bold text-foreground">Trilingual Examples</span>
-                <p className="text-[10px] text-foreground-muted">Show Target + English + Chinese (for non-English)</p>
-              </div>
-              <button
-                onClick={() => setTriLingualExamples(!triLingualExamples)}
-                className="flex items-center h-11 px-2 -mr-2 group"
-                aria-label="Toggle Trilingual Examples"
-              >
-                <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${triLingualExamples ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${triLingualExamples ? 'translate-x-5' : 'translate-x-0'}`} />
-                </div>
-              </button>
-            </div>
-
-            {/* Max exercises */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-bold text-foreground">Exercise Count</span>
-                <p className="text-[10px] text-foreground-muted">Questions per AI session</p>
-              </div>
-              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setMaxExercises(Math.max(1, maxExercises - 1))}
-                  className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 active:bg-foreground/10 transition-all"
-                  aria-label="Decrease exercise count"
+                  onClick={() => setDefaultSearchMode('core')}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                    defaultSearchMode === 'core' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'
+                  }`}
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-                  </svg>
-                </button>
-                <span className="text-sm font-bold tabular-nums text-foreground w-4 text-center">{maxExercises}</span>
-                <button
-                  onClick={() => setMaxExercises(Math.min(10, maxExercises + 1))}
-                  className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 active:bg-foreground/10 transition-all"
-                  aria-label="Increase exercise count"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
+                  Pure Core
                 </button>
               </div>
             </div>
 
-            {/* Web Search */}
-            <div className="border-t border-border pt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-bold text-foreground">Web Search</span>
-                  <p className="text-[10px] text-foreground-muted">Enhance AI with up-to-date info</p>
-                </div>
-                  <button
-                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                    className="flex items-center h-11 px-2 -mr-2 group"
-                    aria-label="Toggle Web Search"
-                  >
-                    <div className={`w-11 h-6 rounded-full transition-all duration-300 relative ${webSearchEnabled ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${webSearchEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </div>
-                  </button>
-              </div>
-              
-              {webSearchEnabled && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-2">Tavily API Key</label>
-                  <input
-                    type="password"
-                    value={tavilyApiKey}
-                    onChange={(e) => setTavilyApiKey(e.target.value)}
-                    placeholder="tvly-..."
-                    className="w-full text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background-soft text-foreground placeholder-foreground-muted/30 transition-all"
-                  />
-                  <p className="mt-2 text-[9px] text-foreground-muted">
-                    Get your key at <a href="https://tavily.com" target="_blank" rel="noreferrer" className="text-accent underline">tavily.com</a>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Monolingual Mode Section */}
-            <div className="border-t border-border pt-6 space-y-4">
+            {/* Monolingual Mode */}
+            <div className="border-t border-border/40 pt-4 space-y-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.monolingualMode')}</span>
                 <p className="text-[10px] text-foreground-muted">{t('settings.monolingualDesc')}</p>
               </div>
-              
-              {/* Word queries */}
-              <div className="flex items-center justify-between pl-4">
+
+              <div className="flex items-center justify-between pl-2">
                 <span className="text-xs font-medium text-foreground">{t('settings.monolingualWord')}</span>
                 <button
                   onClick={() => setMonolingualWord(!monolingualWord)}
-                  className="flex items-center h-9 px-2 -mr-2 group"
-                  aria-label="Toggle Word Monolingual Mode"
+                  className="flex items-center h-7 px-1 group cursor-pointer"
                 >
-                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualWord ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualWord ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${monolingualWord ? 'bg-accent' : 'bg-foreground/10'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualWord ? 'translate-x-3.5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
 
-              {/* Phrase queries */}
-              <div className="flex items-center justify-between pl-4">
+              <div className="flex items-center justify-between pl-2">
                 <span className="text-xs font-medium text-foreground">{t('settings.monolingualPhrase')}</span>
                 <button
                   onClick={() => setMonolingualPhrase(!monolingualPhrase)}
-                  className="flex items-center h-9 px-2 -mr-2 group"
-                  aria-label="Toggle Phrase Monolingual Mode"
+                  className="flex items-center h-7 px-1 group cursor-pointer"
                 >
-                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualPhrase ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualPhrase ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${monolingualPhrase ? 'bg-accent' : 'bg-foreground/10'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualPhrase ? 'translate-x-3.5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
 
-              {/* Sentence queries */}
-              <div className="flex items-center justify-between pl-4">
+              {/* Trilingual Examples */}
+              <div className="flex items-center justify-between pl-2 pt-1">
+                <div>
+                  <span className="text-xs font-medium text-foreground">Trilingual Examples (三语例句)</span>
+                  <p className="text-[9px] text-foreground-muted">小语种词汇同时展示 源语言 + 英文 + 中文</p>
+                </div>
+                <button
+                  onClick={() => setTriLingualExamples(!triLingualExamples)}
+                  className="flex items-center h-7 px-1 group cursor-pointer"
+                  aria-label="Toggle Trilingual Examples"
+                >
+                  <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${triLingualExamples ? 'bg-accent' : 'bg-foreground/10'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${triLingualExamples ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pl-2">
                 <span className="text-xs font-medium text-foreground">{t('settings.monolingualSentence')}</span>
                 <button
                   onClick={() => setMonolingualSentence(!monolingualSentence)}
-                  className="flex items-center h-9 px-2 -mr-2 group"
-                  aria-label="Toggle Sentence Monolingual Mode"
+                  className="flex items-center h-7 px-1 group cursor-pointer"
                 >
-                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${monolingualSentence ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualSentence ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${monolingualSentence ? 'bg-accent' : 'bg-foreground/10'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${monolingualSentence ? 'translate-x-3.5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
             </div>
 
-            {/* AI Chat Context Section */}
-            <div className="border-t border-border pt-6 space-y-4">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.chatRichContext')}</span>
-                <p className="text-[10px] text-foreground-muted">{t('settings.chatRichContextDesc')}</p>
-              </div>
-              <div className="flex items-center justify-between pl-4">
-                <span className="text-xs font-medium text-foreground">{t('settings.chatRichContext')}</span>
-                <button
-                  onClick={() => setChatRichContextDefault(!chatRichContextDefault)}
-                  className="flex items-center h-9 px-2 -mr-2 group"
-                  aria-label="Toggle Chat Rich Context Default"
-                >
-                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${chatRichContextDefault ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${chatRichContextDefault ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Dictionary Settings Section */}
-            <div className="border-t border-border pt-6 space-y-4">
+            {/* Dictionary Settings */}
+            <div className="border-t border-border/40 pt-4 space-y-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.dictionarySettings')}</span>
                 <p className="text-[10px] text-foreground-muted">{t('settings.dictionaryDesc')}</p>
               </div>
 
-              {/* Active Dictionary Select */}
-              <div className="flex items-center justify-between pl-4">
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-foreground">{t('settings.activeDictionary')}</span>
-                  {autoSwitchDictionary && (
-                    <span className="text-[9px] text-accent font-medium mt-0.5">
-                      {t('settings.autoSwitchActiveNote')}
-                    </span>
-                  )}
-                </div>
+              <div className="flex items-center justify-between pl-2">
+                <span className="text-xs font-medium text-foreground">{t('settings.activeDictionary')}</span>
                 <select
                   value={activeDictionary}
                   disabled={autoSwitchDictionary}
                   onChange={(e) => setActiveDictionary(e.target.value as 'lexicon.db' | 'lexicon_en.db')}
-                  className={`text-xs border border-border rounded-xl px-3 py-1.5 outline-none focus:border-accent bg-background-soft text-foreground min-w-[200px] ${
+                  className={`text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background-soft text-foreground ${
                     autoSwitchDictionary ? 'opacity-60 cursor-not-allowed' : ''
                   }`}
                 >
@@ -943,147 +1060,97 @@ export function SettingsView() {
                 </select>
               </div>
 
-              {/* Auto Switch Toggle */}
-              <div className="flex items-center justify-between pl-4">
+              <div className="flex items-center justify-between pl-2">
                 <span className="text-xs font-medium text-foreground">{t('settings.autoSwitchDictionary')}</span>
                 <button
                   onClick={() => setAutoSwitchDictionary(!autoSwitchDictionary)}
-                  className="flex items-center h-9 px-2 -mr-2 group"
-                  aria-label="Toggle Auto Switch Dictionary"
+                  className="flex items-center h-7 px-1 group cursor-pointer"
                 >
-                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${autoSwitchDictionary ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${autoSwitchDictionary ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${autoSwitchDictionary ? 'bg-accent' : 'bg-foreground/10'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${autoSwitchDictionary ? 'translate-x-3.5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
             </div>
 
-            {/* Pronunciation Settings Section */}
-            <div className="border-t border-border pt-6 space-y-4">
+            {/* Pronunciation Settings */}
+            <div className="border-t border-border/40 pt-4 space-y-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.pronunciationSettings')}</span>
                 <p className="text-[10px] text-foreground-muted">{t('settings.pronunciationDesc')}</p>
               </div>
 
-              {/* Default Accent Select */}
-              <div className="flex items-center justify-between pl-4">
+              <div className="flex items-center justify-between pl-2">
                 <span className="text-xs font-medium text-foreground">{t('settings.pronunciationAccent')}</span>
                 <select
                   value={pronunciationAccent}
                   onChange={(e) => setPronunciationAccent(e.target.value as 'uk' | 'us')}
-                  className="text-xs border border-border rounded-xl px-3 py-1.5 outline-none focus:border-accent bg-background-soft text-foreground min-w-[200px]"
+                  className="text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background-soft text-foreground"
                 >
                   <option value="us">{t('settings.accentUs')}</option>
                   <option value="uk">{t('settings.accentUk')}</option>
                 </select>
               </div>
 
-              {/* Auto Play Toggle */}
-              <div className="flex items-center justify-between pl-4">
+              <div className="flex items-center justify-between pl-2">
                 <span className="text-xs font-medium text-foreground">{t('settings.autoPlayPronunciation')}</span>
                 <button
                   onClick={() => setAutoPlayPronunciation(!autoPlayPronunciation)}
-                  className="flex items-center h-9 px-2 -mr-2 group"
-                  aria-label="Toggle Auto Play Pronunciation"
+                  className="flex items-center h-7 px-1 group cursor-pointer"
                 >
-                  <div className={`w-9 h-5 rounded-full transition-all duration-300 relative ${autoPlayPronunciation ? 'bg-accent' : 'bg-foreground/10'} group-active:scale-95`}>
-                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 transform ${autoPlayPronunciation ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${autoPlayPronunciation ? 'bg-accent' : 'bg-foreground/10'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${autoPlayPronunciation ? 'translate-x-3.5' : 'translate-x-0'}`} />
                   </div>
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className="border-t border-border pt-8 space-y-6">
-            <label className="block text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-4">Data Management</label>
-            
-            <div className="flex items-center justify-between group">
-              <div>
-                <span className="text-sm font-bold text-foreground">Search History</span>
-                <p className="text-[10px] text-foreground-muted">{words.length} items saved</p>
+            {/* History Tracking */}
+            <div className="border-t border-border/40 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-bold text-foreground">Search History Tracking</span>
+                  <p className="text-[10px] text-foreground-muted">{words.length} items saved</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setHistoryEnabled(!historyEnabled)}
+                    className="flex items-center h-7 px-1 group cursor-pointer"
+                  >
+                    <div className={`w-8 h-4.5 rounded-full transition-all duration-300 relative ${historyEnabled ? 'bg-accent' : 'bg-foreground/10'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${historyEnabled ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { if (confirm('Clear all search history?')) clearHistory() }}
+                    disabled={words.length === 0}
+                    className="px-2.5 py-1 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer uppercase"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => { if(confirm('Clear all search history?')) clearHistory() }}
-                disabled={words.length === 0}
-                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
-              >
-                Clear History
-              </button>
             </div>
 
-            <div className="flex items-center justify-between group">
-              <div>
-                <span className="text-sm font-bold text-foreground">AI Result Cache</span>
-                <p className="text-[10px] text-foreground-muted">Occupying {cacheSize} locally</p>
-              </div>
-              <button
-                onClick={() => { 
-                  if(confirm('Clear all cached results and download files?')) {
-                    clearCache();
-                    useChatStore.getState().clearAll();
-                    useUpdateStore.getState().cleanupOldApks();
-                  }
-                }}
-                disabled={Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0 && Object.keys(phraseCache).length === 0}
-                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
-              >
-                Clear Cache
-              </button>
-            </div>
-          </div>
-
-          {/* Version Info */}
-          <div className="border-t border-border pt-8 pb-12 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-bold text-foreground">Version</span>
-                <p className="text-[10px] text-foreground-muted">
-                  Build {currentVersion}
-                  {status === 'higher-version' && ' (Higher than cloud)'}
-                </p>
-              </div>
-              <button
-                onClick={() => status === 'available' ? useUpdateStore.getState().openModal() : checkUpdate(true)}
-                disabled={status === 'checking'}
-                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-30 transition-all uppercase tracking-wider"
-              >
-                {status === 'checking' ? 'Checking...' : (status === 'available' ? 'View Details' : 'Check Update')}
-              </button>
-            </div>
-            {status === 'available' && (
-              <div className="p-3 rounded-xl bg-accent/5 border border-accent/20 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
-                <span className="text-[10px] font-bold text-accent">New v{manifest?.version} is available!</span>
-                <button 
-                  onClick={() => useUpdateStore.getState().openModal()}
-                  className="text-[10px] font-black text-accent underline underline-offset-2"
+            {/* Version Info */}
+            <div className="border-t border-border/40 pt-4 pb-8 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-bold text-foreground">Lexicon Build</span>
+                  <p className="text-[10px] text-foreground-muted">v{currentVersion}</p>
+                </div>
+                <button
+                  onClick={() => status === 'available' ? useUpdateStore.getState().openModal() : checkUpdate(true)}
+                  disabled={status === 'checking'}
+                  className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-30 transition-all uppercase tracking-wider cursor-pointer"
                 >
-                  Update
+                  {status === 'checking' ? 'Checking...' : (status === 'available' ? 'View Details' : 'Check Update')}
                 </button>
               </div>
-            )}
-            {status === 'error' && error && (
-              <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/30 text-red-100 text-[11px] leading-relaxed animate-in fade-in slide-in-from-bottom-2">
-                <div className="font-black uppercase tracking-widest text-[10px] mb-1 text-red-200">Update check failed</div>
-                {error}
-              </div>
-            )}
-            
-            <div className="mt-6 flex justify-center pt-2">
-              <a 
-                href="https://github.com/jimytao/lexicon" 
-                target="_blank" 
-                rel="noreferrer"
-                className="flex items-center gap-2 text-foreground-muted hover:text-foreground transition-colors text-[11px] font-medium"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-[14px] h-[14px]">
-                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
-                </svg>
-                View on GitHub
-              </a>
             </div>
           </div>
-
-        </div>
+        )}
       </div>
+    </div>
   )
 }

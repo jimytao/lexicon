@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS9mZVNwNWFVNlo3U2tqTzByYi9LZWNqdUtleXozOVRSMDd1OUE4a2lvdUVYQXFOaG5zamVQaHRXdW13S0dORnVTcWxxaGovekM3WSt3YnJocjZpZnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0ODk5NzA2CWZpbGU6TGV4aWNvbl8wLjcuMzdfeDY0LXNldHVwLmV4ZQpWeE9zY2p3N3J4M0hpZW9KM05NVlJyWG5iMmt2Z2dSS2QvMVVYME5PVDNhNFp5d0J3aERSNzRmMmM4NWh5d0JKRE9STlo2UWl1VTY1Q0xDRzV4emJDdz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.37/Lexicon_0.7.37_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBqWkpSaFF6ellUWEsxMXN1Wk54WFZxeHdJQThPV0FUeFFuY2RBS0h5OXdVMWk0TWVXM1ZibzB2WWhaUGpGWmVxeHFxTTdaTnovanYweHpHZUJFM2dRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTA1NzE5CWZpbGU6TGV4aWNvbl8wLjcuMzhfeDY0LXNldHVwLmV4ZQpJY0s3RmhoZ1I0cTdPUW9DajlZSC9LQlZPSVplWDIyclkvUU51eGlnVVpCNForaWdUdCtjbytEUGlLYmJxQU1CYjJUT0N6eVVsVkRid2hUSm5FMXdCdz09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.38/Lexicon_0.7.38_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-24T13:30:00Z",
-  "version": "0.7.37",
-  "notes": "修复 PC 平台文本溢出、优化 AI 长文本全文翻译 Prompt 与 UI 折叠展示\n1. 修复：PC 平台/Webview 长文本与 URL 溢出问题，全面添加 break-words 与 overflow-wrap 约束。\n2. 优化：更新 AI 句子查询 Prompt 规则，强制要求在长文本或多句段落查询时必须提供句句对应的完整中文翻译，解决 AI 偷懒仅返回单句总结的问题。\n3. 新增：长文本与长译文 UI 渐变折叠与展开控制，大幅改善中长段落文本在各端的排版与阅读体验。"
+  "pub_date": "2026-07-25T01:08:00Z",
+  "version": "0.7.38",
+  "notes": "全新深度认知体系 (Pure Core Cognitive Mode) 与 Settings UI 结构化重构\n1. 新增：深度认知分析卡片，支持“母语者思维违和感剖析 (Why it sounds unnatural)”，解答为什么直译不地道。\n2. 新增：前置 Core 核心意象卡片，为短语 Chunks 引入空间/逻辑意象延伸 (Spatial Metaphors)，为 Synonyms 近义词增加褒贬情感 Badge 与适用心智指导 (When & Why to use)。\n3. 新增：Pure Core Cognitive 模式 (模式 3)，提供词汇关系与概念延伸树状网络图谱 (Word Relationship & Concept Tree)，辅以专用 AI 追问。\n4. 重构：Settings UI 全新 3 大主 Tab 布局 (🎛️ 基础与模型 / 🧩 模组管理 / 🎨 界面与显示)，支持 Mode 2 与 Mode 3 二级 Tab 独立拖拽排序及手风琴参数折叠。"
 }
