@@ -1,5 +1,6 @@
-Support for word and phrase pronunciation (UK/US) and configuration settings
-1. **New**: Added online high-quality UK and US accent pronunciation support for English, and standard pronunciations for Chinese, Japanese, and Korean.
-2. **New**: Implemented automatic fallback to device native Web Speech TTS when offline or playback fails, with overlap prevention.
-3. **New**: Designed active play-state micro-animations for play buttons (breathing pulse and bouncing speaker icons).
-4. **New**: Integrated pronunciation settings including default accent preferences and an auto-play toggle switch.
+Fix iOS context bulb visibility and Settings↔Search freezes / black screens
+1. **Fix**: AI Chat rich-context bulb was scrolled off-screen on iOS keyboard show; use nearest scroll and move the single bulb beside the input.
+2. **Fix**: Local-dictionary AI mode never passed enrichedContext, so the bulb never appeared on that path.
+3. **Fix**: Any settingsStore update incorrectly unloaded both sql.js dictionaries (30–46MB); only activeDictionary changes invalidate caches now.
+4. **Improve**: In-flight load dedupe, epoch/gate invalidation without deadlock, and warm up only the active dictionary after first paint.
+5. **Improve**: Keep Dict/Image/Settings tabs mounted after first visit (hidden toggle) to avoid expensive remount jank.

@@ -19,6 +19,7 @@ import { useUpdateStore } from './stores/updateStore'
 import { UpdateModal } from './components/Settings/UpdateModal'
 import { normalizeQuery } from './utils/text'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { warmupDictionary } from './services/db'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -40,6 +41,13 @@ export function App() {
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(true)
   const [isAtTop, setIsAtTop] = useState(true)
   const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
+  // Mount-once keep-alive: first visit mounts the tab, later switches only hide it
+  // (avoids tearing down SearchBar / ResultView / Settings on every nav — costly on iOS).
+  const [mountedViews, setMountedViews] = useState<Record<AppView, boolean>>({
+    dictionary: true,
+    translate: false,
+    settings: false,
+  })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const lastScrollTopRef = useRef(0)
@@ -50,6 +58,28 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
+
+  // Prefetch current dictionary after first paint (one file only — not both).
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void warmupDictionary().catch(() => {})
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [])
+
+  // Ensure the active tab is mounted, then reset scroll so a long Settings page
+  // does not leave the Dictionary tab scrolled into empty space.
+  useEffect(() => {
+    setMountedViews((prev) => (prev[view] ? prev : { ...prev, [view]: true }))
+    // Blur before hiding previous tab — avoids iOS keyboard stuck on a display:none input.
+    const active = document.activeElement
+    if (active instanceof HTMLElement) active.blur()
+    const sc = scrollContainerRef.current
+    if (sc) sc.scrollTop = 0
+    setIsAtTop(true)
+    setIsBottomNavVisible(true)
+    lastScrollTopRef.current = 0
+  }, [view])
 
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
@@ -376,8 +406,15 @@ export function App() {
               scrollable.style.paddingBottom = `${targetPadding}px`
               scrollable.dataset.kbPadded = 'true'
 
-              setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
-              setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)
+              // iOS: use nearest (not center) so Chat header / context bulb above the
+              // input is not scrolled out of the visible viewport. Android / others
+              // keep the existing center + double-scroll behavior unchanged.
+              if (isIos) {
+                setTimeout(() => activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 50)
+              } else {
+                setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
+                setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)
+              }
             }
           }
 
@@ -442,12 +479,11 @@ export function App() {
 
 
         <main>
-          {view === 'translate' ? (
-            <ImageTranslateView />
-          ) : view === 'settings' ? (
-            <SettingsView />
-          ) : (
-            <div className="px-6 pb-nav-safe space-y-4">
+          {mountedViews.dictionary && (
+            <div
+              className={`px-6 pb-nav-safe space-y-4 ${view === 'dictionary' ? '' : 'hidden'}`}
+              aria-hidden={view !== 'dictionary'}
+            >
               <div className="sticky top-0 z-30 pt-safe pb-3 bg-background/90 backdrop-blur-xl -mx-6 px-6 shadow-[0_4px_24px_transparent] transition-all">
                 <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 mt-4 relative z-30">
                   <div className="w-full relative z-20">
@@ -506,6 +542,18 @@ export function App() {
                 )}
                 </ErrorBoundary>
               </div>
+            </div>
+          )}
+
+          {mountedViews.translate && (
+            <div className={view === 'translate' ? '' : 'hidden'} aria-hidden={view !== 'translate'}>
+              <ImageTranslateView />
+            </div>
+          )}
+
+          {mountedViews.settings && (
+            <div className={view === 'settings' ? '' : 'hidden'} aria-hidden={view !== 'settings'}>
+              <SettingsView />
             </div>
           )}
         </main>

@@ -43,7 +43,7 @@
         │       ├── <EtymologyCard />  # 词根 pills + story + 派生词列表
         │       ├── <SynonymList />
         │       ├── <PracticeSection /> # 按需生成练习
-        │       └── <AiChatBox />      # AI 问答框，多轮对话
+        │       └── <AiChatBox />      # AI 问答；有 enrichedContext 时在输入框左侧显示唯一语境灯泡
         │
         ├── <AiFullView />          # 词库无结果 + 单词类型 → AI 全量查词
         │   ├── "AI 查询" badge
@@ -55,7 +55,7 @@
         │   ├── <SynonymList />
         │   ├── <PracticeSection />
         │   ├── <ExampleList />
-        │   └── <AiChatBox />
+        │   └── <AiChatBox />      # 同上，拼 enrichedContext 注入完整语境
         │
         └── <PhraseView />          # 词组/句子 → AI 词组查询
             ├── "AI 查询 · 词组/句子" badge
@@ -64,7 +64,7 @@
             ├── 使用场景卡片
             ├── <ExampleList />
             ├── <PhraseExercises />  # 内联练习（AI 返回的 exercises）
-            └── <AiChatBox />
+            └── <AiChatBox />      # 同上
 ```
 
 ## Zustand Store 设计

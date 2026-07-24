@@ -1,58 +1,178 @@
 import initSqlJs from 'sql.js'
-import type { Database } from 'sql.js'
+import type { Database, SqlJsStatic } from 'sql.js'
 import type { DBService } from './db'
 import type { Meaning, Example } from '../types'
 import { normalizeQuery } from '../utils/text'
 import { useSettingsStore } from '../stores/settingsStore'
 
+let _SQL: SqlJsStatic | null = null
+let _SQLLoading: Promise<SqlJsStatic> | null = null
+
 let _dbEnZh: Database | null = null
 let _dbEnEn: Database | null = null
+let _loadingEnZh: Promise<Database> | null = null
+let _loadingEnEn: Promise<Database> | null = null
+/** Bumped when a cached DB is invalidated so in-flight loads discard stale results. */
+let _enzhEpoch = 0
+let _enenEpoch = 0
+/** Serializes new loads after invalidate so two 30MB+ fetches never overlap. */
+let _enzhGate: Promise<void> = Promise.resolve()
+let _enenGate: Promise<void> = Promise.resolve()
 
-// Subscribe to activeDictionary changes and release WASM memory / reload on next query
-useSettingsStore.subscribe(() => {
-  if (_dbEnZh) {
-    try { _dbEnZh.close() } catch (e) {}
-    _dbEnZh = null
+async function getSQL(): Promise<SqlJsStatic> {
+  if (_SQL) return _SQL
+  if (_SQLLoading) return _SQLLoading
+  const loading = initSqlJs({
+    locateFile: (file) => `/sql-wasm/${file}`,
+  }).then((SQL) => {
+    _SQL = SQL
+    return SQL
+  })
+  _SQLLoading = loading
+  void loading.finally(() => {
+    if (_SQLLoading === loading) _SQLLoading = null
+  })
+  return loading
+}
+
+function closeDb(db: Database | null) {
+  if (!db) return
+  try { db.close() } catch { /* already closed */ }
+}
+
+function invalidateEnZh() {
+  closeDb(_dbEnZh)
+  _dbEnZh = null
+  _enzhEpoch++
+  const inFlight = _loadingEnZh
+  _loadingEnZh = null
+  if (inFlight) {
+    _enzhGate = inFlight.then(() => undefined, () => undefined)
   }
-  if (_dbEnEn) {
-    try { _dbEnEn.close() } catch (e) {}
-    _dbEnEn = null
+}
+
+function invalidateEnEn() {
+  closeDb(_dbEnEn)
+  _dbEnEn = null
+  _enenEpoch++
+  const inFlight = _loadingEnEn
+  _loadingEnEn = null
+  if (inFlight) {
+    _enenGate = inFlight.then(() => undefined, () => undefined)
   }
+}
+
+// Only release WASM DBs when the user manually switches the dictionary file.
+// Other settings toggles (dark mode, modules, monolingual, …) must NOT unload 30–46MB.
+useSettingsStore.subscribe((state, prev) => {
+  if (!prev || state.activeDictionary === prev.activeDictionary) return
+  invalidateEnZh()
+  invalidateEnEn()
 })
 
+function isDbInvalidatedError(e: unknown): boolean {
+  return e instanceof Error && e.name === 'DbInvalidated'
+}
+
+function throwDbInvalidated(): never {
+  const err = new Error('Dictionary cache invalidated during load')
+  err.name = 'DbInvalidated'
+  throw err
+}
+
 async function getDbEnZh(): Promise<Database> {
-  if (_dbEnZh) return _dbEnZh
-  const SQL = await initSqlJs({
-    locateFile: (file) => `/sql-wasm/${file}`,
-  })
-  const response = await fetch('/lexicon.db')
-  if (!response.ok) {
-    throw new Error('lexicon.db not found — run Step 12 to import word database')
+  // Retry outside the in-flight promise. Recursing into getDbEnZh from inside a
+  // load that invalidate() awaits via _enzhGate would deadlock.
+  for (;;) {
+    if (_dbEnZh) return _dbEnZh
+    await _enzhGate
+    if (_dbEnZh) return _dbEnZh
+    if (_loadingEnZh) {
+      try {
+        return await _loadingEnZh
+      } catch (e) {
+        if (isDbInvalidatedError(e)) continue
+        throw e
+      }
+    }
+
+    const epoch = _enzhEpoch
+    const loading = (async () => {
+      const SQL = await getSQL()
+      const response = await fetch('/lexicon.db')
+      if (!response.ok) {
+        throw new Error('lexicon.db not found — run Step 12 to import word database')
+      }
+      const buffer = await response.arrayBuffer()
+      const db = new SQL.Database(new Uint8Array(buffer))
+      if (epoch !== _enzhEpoch) {
+        closeDb(db)
+        throwDbInvalidated()
+      }
+      _dbEnZh = db
+      return db
+    })()
+    _loadingEnZh = loading
+    void loading.finally(() => {
+      if (_loadingEnZh === loading) _loadingEnZh = null
+    })
+    try {
+      return await loading
+    } catch (e) {
+      if (isDbInvalidatedError(e)) continue
+      throw e
+    }
   }
-  const buffer = await response.arrayBuffer()
-  _dbEnZh = new SQL.Database(new Uint8Array(buffer))
-  return _dbEnZh
 }
 
 async function getDbEnEn(): Promise<Database> {
-  if (_dbEnEn) return _dbEnEn
-  const SQL = await initSqlJs({
-    locateFile: (file) => `/sql-wasm/${file}`,
-  })
-  let response: Response
-  try {
-    response = await fetch('/lexicon_en.db')
-    if (!response.ok) {
-      console.warn('lexicon_en.db not found, falling back to lexicon.db')
-      return getDbEnZh()
+  for (;;) {
+    if (_dbEnEn) return _dbEnEn
+    await _enenGate
+    if (_dbEnEn) return _dbEnEn
+    if (_loadingEnEn) {
+      try {
+        return await _loadingEnEn
+      } catch (e) {
+        if (isDbInvalidatedError(e)) continue
+        throw e
+      }
     }
-  } catch (err) {
-    console.warn('Error fetching lexicon_en.db, falling back to lexicon.db:', err)
-    return getDbEnZh()
+
+    const epoch = _enenEpoch
+    const loading = (async () => {
+      const SQL = await getSQL()
+      let response: Response
+      try {
+        response = await fetch('/lexicon_en.db')
+        if (!response.ok) {
+          console.warn('lexicon_en.db not found, falling back to lexicon.db')
+          return getDbEnZh()
+        }
+      } catch (err) {
+        console.warn('Error fetching lexicon_en.db, falling back to lexicon.db:', err)
+        return getDbEnZh()
+      }
+      const buffer = await response.arrayBuffer()
+      const db = new SQL.Database(new Uint8Array(buffer))
+      if (epoch !== _enenEpoch) {
+        closeDb(db)
+        throwDbInvalidated()
+      }
+      _dbEnEn = db
+      return db
+    })()
+    _loadingEnEn = loading
+    void loading.finally(() => {
+      if (_loadingEnEn === loading) _loadingEnEn = null
+    })
+    try {
+      return await loading
+    } catch (e) {
+      if (isDbInvalidatedError(e)) continue
+      throw e
+    }
   }
-  const buffer = await response.arrayBuffer()
-  _dbEnEn = new SQL.Database(new Uint8Array(buffer))
-  return _dbEnEn
 }
 
 async function getTargetDb(queryText: string): Promise<Database> {
@@ -63,17 +183,39 @@ async function getTargetDb(queryText: string): Promise<Database> {
   }
 
   const settings = useSettingsStore.getState()
-  
+
   if (!settings.autoSwitchDictionary) {
     // Manual mode: always use the chosen activeDictionary
     return settings.activeDictionary === 'lexicon_en.db' ? getDbEnEn() : getDbEnZh()
   }
-  
+
   // Auto-switch mode: determine database dynamically per query type
   const isPhrase = queryText.trim().includes(' ')
   const isMono = isPhrase ? settings.monolingualPhrase : settings.monolingualWord
-  
+
   return isMono ? getDbEnEn() : getDbEnZh()
+}
+
+function whenSettingsHydrated(): Promise<void> {
+  const api = useSettingsStore.persist
+  if (api.hasHydrated()) return Promise.resolve()
+  return new Promise((resolve) => {
+    const unsub = api.onFinishHydration(() => {
+      unsub()
+      resolve()
+    })
+  })
+}
+
+/** Prefetch the currently preferred dictionary after first paint (one file only). */
+export async function warmupDictionary(): Promise<void> {
+  await whenSettingsHydrated()
+  const settings = useSettingsStore.getState()
+  if (settings.activeDictionary === 'lexicon_en.db') {
+    await getDbEnEn()
+  } else {
+    await getDbEnZh()
+  }
 }
 
 export const webDB: DBService = {

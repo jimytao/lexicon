@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTQ3azFQeUZRcVpOT3UrcDZUcHJnL1hvK1RmMEcwVUZkYWtjdGdpdkMwdTNuOGJyRFF1ZTl3d3orMjgzZmxqUFBZWVB4TXR2TUlGdzZUUi81U0dvc3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTI2Nzc3CWZpbGU6TGV4aWNvbl8wLjcuMzRfeDY0LXNldHVwLmV4ZQozaEhYQkxNWEpvNUJHZHc2NFB6cGFTdEx6YmwvOHU0OW03SnBzL05xejNpS0NuK0VFOFAySkpLK21DWWVtZ0FrZnlRMThQTDJjditsRmNDNlU5SGFDUT09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.34/Lexicon_0.7.34_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTVWRlptNUtLdTdsNG9SYkxja3QrN0RhdnNVQjVWQTNjc3BPNHpqWS9pdHJHSUNuV0FOS25RTWpPdHg1dnRoTGNuN0t0YjlhQldtWW1oVU5Oc1d0dXc4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0ODgxODkwCWZpbGU6TGV4aWNvbl8wLjcuMzVfeDY0LXNldHVwLmV4ZQpEYkZNSkI5VWRhMFY5UEp2MGphdlliSnZYay9vdWIrVWgrQ3JKZ0h1VVZISE9JTUpVZEhkSjhBejVwMGJtOHIxZE1Nd1ovZUQ4WlpjeEJGUkFlWm9CZz09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.35/Lexicon_0.7.35_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-20T05:41:00Z",
-  "version": "0.7.34",
-  "notes": "支持单词与短语发音（英式/美式）与配置面板集成\n1. 新增：单词与短语的英音 (UK) 与美音 (US) 在线发音支持，日、韩、中等提供通用标准发音。\n2. 新增：支持离线或加载错误时自动降级至设备原生 Web Speech TTS 播放，防音频重叠播放。\n3. 新增：发音按钮增加选中高亮、呼吸闪烁（animate-pulse）与喇叭跳动（animate-bounce）动态微动效。\n4. 新增：发音配置项，支持在设置面板中选择发音默认口音及开启“查询单词自动发音”。"
+  "pub_date": "2026-07-24T08:31:40Z",
+  "version": "0.7.35",
+  "notes": "修复 iOS 语境灯泡与设置切回搜索卡顿/黑屏问题\n1. 修复：AI Chat 完整语境灯泡在 iOS 键盘弹出后易被滚出视口；改为 nearest 滚动，并将唯一灯泡移至输入框旁。\n2. 修复：本地词库 AI 模式未注入 enrichedContext，导致语境灯泡在该路径下不出现。\n3. 修复：settingsStore 任意变更误卸载 sql.js 词库（30–46MB），设置页拨开关后再回搜索会强制重载；现仅在 activeDictionary 变化时卸库。\n4. 优化：词库加载 in-flight 去重、换库 epoch/gate 防死锁与重复灌库；首屏后只预热当前一本词典。\n5. 优化：底部 Dict/Image/Settings Tab 首次挂载后 hidden 保活，避免整树卸载导致的切页卡顿。"
 }

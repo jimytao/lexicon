@@ -134,11 +134,40 @@ export function ResultView({
               return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.culturalLore && (
                 <CulturalLoreCard key={module.id} lore={aiAnalysis.culturalLore} />
               )
-            case 'chat':
+            case 'chat': {
               if (mode === 'ai' && aiStatus !== 'success') return null
+              // Same single AiChatBox as AiFull/Phrase — only wire enrichedContext when
+              // AI analysis is ready so the context bulb can appear (one bulb, no duplicate).
+              const parts: string[] = []
+              if (mode === 'ai' && aiAnalysis) {
+                if (aiAnalysis.meanings?.length) {
+                  parts.push('释义:\n' + aiAnalysis.meanings.map(m => `  · ${m.zh}`).join('\n'))
+                }
+                if (displayedExamples.length) {
+                  parts.push('例句:\n' + displayedExamples.slice(0, 3).map(e => `  · ${e.en}`).join('\n'))
+                }
+                if (aiAnalysis.synonyms?.length) {
+                  parts.push('近义词: ' + aiAnalysis.synonyms.map(s => s.word).join(', '))
+                }
+                if (aiAnalysis.mnemonic) {
+                  const best = aiAnalysis.mnemonic[aiAnalysis.mnemonic.bestType]
+                  parts.push(`助记法 (${aiAnalysis.mnemonic.bestType}): ${best.content}`)
+                }
+                if (aiAnalysis.collocations) {
+                  const chunkList = aiAnalysis.collocations.chunks?.map(c => c.chunk).join(', ')
+                  const colloList = aiAnalysis.collocations.collocations?.map(c => c.chunk).join(', ')
+                  if (chunkList) parts.push(`Chunks: ${chunkList}`)
+                  if (colloList) parts.push(`Collocations: ${colloList}`)
+                }
+                if (aiAnalysis.culturalLore?.content) {
+                  parts.push(`文化背景: ${aiAnalysis.culturalLore.content}`)
+                }
+              }
+              const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
               return (
-                <AiChatBox key={module.id} context={wordResult.word} />
+                <AiChatBox key={module.id} context={wordResult.word} enrichedContext={enrichedContext} />
               )
+            }
             default:
               return null
           }

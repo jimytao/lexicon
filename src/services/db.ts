@@ -9,5 +9,6 @@ export interface DBService {
   getRelatedPhrases(word: string, limit?: number): Promise<SuggestItem[]>
 }
 
-import { webDB } from './db.web'
+import { webDB, warmupDictionary } from './db.web'
 export const db: DBService = webDB
+export { warmupDictionary }

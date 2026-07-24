@@ -98,131 +98,32 @@ export interface DBService {
 
 ## Web 实现（sql.js）
 
+当前实现见 `src/services/db.web.ts`，要点：
+
+- 英汉 / 英英两本库可各自缓存（`_dbEnZh` / `_dbEnEn`），按查询与设置路由。
+- **仅当 `activeDictionary` 真正变化时**才 `close` 并丢弃缓存；深色模式、模块开关等其它设置变更不卸库。
+- 加载用 in-flight Promise 去重，并共享一份 `initSqlJs` 实例；换库时用 epoch 丢弃过期加载结果。
+- `warmupDictionary()` 在首屏后只预热当前 `activeDictionary` 对应的一本（不同时灌两本）。
+
 ```ts
-// src/services/db.web.ts
-import initSqlJs from 'sql.js'
-import type { Database } from 'sql.js'
-import type { DBService } from './db'
-import { useSettingsStore } from '../stores/settingsStore'
-
-let db: Database | null = null
-
-// 订阅设置中词典状态的变更，自动断开并重新加载新词典
-let lastDb = useSettingsStore.getState().activeDictionary || 'lexicon.db'
-useSettingsStore.subscribe((state) => {
-  const newDb = state.activeDictionary || 'lexicon.db'
-  if (newDb !== lastDb) {
-    lastDb = newDb
-    if (db) {
-      try { db.close() } catch (e) {}
-      db = null
-    }
-  }
+useSettingsStore.subscribe((state, prev) => {
+  if (!prev || state.activeDictionary === prev.activeDictionary) return
+  invalidateEnZh()
+  invalidateEnEn()
 })
-
-async function getDb(): Promise<Database> {
-  if (db) return db
-  const SQL = await initSqlJs({
-    locateFile: (file) => `/sql-wasm/${file}`,
-  })
-  
-  // 从 Settings Store 中动态获取激活的本地词库文件名
-  const activeDb = useSettingsStore.getState().activeDictionary || 'lexicon.db'
-  let response: Response
-  try {
-    response = await fetch(`/${activeDb}`)
-    if (!response.ok && activeDb !== 'lexicon.db') {
-      console.warn(`Failed to fetch ${activeDb}, falling back to lexicon.db`)
-      response = await fetch('/lexicon.db')
-    }
-  } catch (err) {
-    if (activeDb !== 'lexicon.db') {
-      response = await fetch('/lexicon.db')
-    } else {
-      throw err
-    }
-  }
-
-  const buffer = await response.arrayBuffer()
-  db = new SQL.Database(new Uint8Array(buffer))
-  return db
-}
-
-export const webDB: DBService = {
-  async suggest(prefix, limit = 8) {
-    const db = await getDb()
-    const results = db.exec(
-      `SELECT word, zh_brief FROM suggest
-       WHERE word LIKE ? ORDER BY word LIMIT ?`,
-      [`${prefix.toLowerCase()}%`, limit]
-    )
-    if (!results[0]) return []
-    return results[0].values.map(([word, zhBrief]) => ({
-      word: word as string,
-      zhBrief: zhBrief as string,
-    }))
-  },
-
-  async lookup(word) {
-    const db = await getDb()
-    // 查主词条
-    const entryRes = db.exec(
-      `SELECT id, phonetic, pos FROM entries WHERE word_lower = ? LIMIT 1`,
-      [word.toLowerCase()]
-    )
-    if (!entryRes[0]) return null
-    const [id, phonetic, pos] = entryRes[0].values[0]
-
-    // 查释义
-    const meaningRes = db.exec(
-      `SELECT zh, en FROM meanings WHERE entry_id = ? ORDER BY seq`,
-      [id]
-    )
-    const meanings = (meaningRes[0]?.values ?? []).map(([zh, en]) => ({
-      zh: zh as string,
-      en: en as string,
-    }))
-
-    // 查例句
-    const exampleRes = db.exec(
-      `SELECT en, zh FROM examples WHERE entry_id = ? LIMIT 4`,
-      [id]
-    )
-    const examples = (exampleRes[0]?.values ?? []).map(([en, zh]) => ({
-      en: en as string,
-      zh: zh as string,
-    }))
-
-    return { word, phonetic: phonetic as string, pos: pos as string, meanings, examples }
-  },
-
-  async addHistory(word) {
-    const db = await getDb()
-    db.run(
-      `INSERT INTO history(word, looked_up_at) VALUES(?, ?)`,
-      [word, Date.now()]
-    )
-  },
-
-  async getHistory(limit = 20) {
-    const db = await getDb()
-    const res = db.exec(
-      `SELECT DISTINCT word FROM history ORDER BY looked_up_at DESC LIMIT ?`,
-      [limit]
-    )
-    return (res[0]?.values ?? []).map(([w]) => w as string)
-  },
-}
 ```
+
+入口仍通过 `src/services/db.ts` 导出 `db` 与 `warmupDictionary()`。
 
 ## 运行时选择实现
 
 ```ts
 // src/services/db.ts（入口，根据平台选择实现）
-import { webDB } from './db.web'
+import { webDB, warmupDictionary } from './db.web'
 // import { nativeDB } from './db.native'  // Capacitor 版，后续接入
 
 export const db: DBService = webDB
+export { warmupDictionary }
 // 移动端时改为：export const db: DBService = nativeDB
 ```
 

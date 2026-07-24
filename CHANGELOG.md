@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## 2026-07-24 — iOS/切页卡顿止血：词库误卸载修复与 Tab 保活 (v0.7.35)
+
+### 1. 修复：任意设置变更都会卸掉 sql.js 词库
+
+- **文件**：`src/services/db.web.ts`、`lexicon-docs/03-database.md`
+- **问题**：`useSettingsStore.subscribe` 未比对字段，深色模式/模块等任意 `set` 都会 `close` 两本词典；回到搜索后被迫重新灌入 30–46MB，iOS 上极易卡顿甚至 WebView 黑死。
+- **修复**：仅当 `activeDictionary` 真正变化时才 invalidate；单语言等开关只影响路由，不卸库。
+
+### 2. 优化：词库加载 in-flight 去重 + 单库预热
+
+- **文件**：`src/services/db.web.ts`、`src/services/db.ts`、`src/App.tsx`
+- **设计**：
+  - 同一本库并发 `getDb*` 共享一个 Promise；`initSqlJs` 只初始化一次。
+  - 换库用 epoch 丢弃过期加载结果；invalidate 后经 gate 串行化，避免两份 30MB+ 并行进内存。
+  - `warmupDictionary()` 等待 settings persist hydration 后再预热，且只预热当前 `activeDictionary` 对应的一本。
+
+### 3. 优化：底部 Tab 首次挂载后保活（hidden，不整树卸载）
+
+- **文件**：`src/App.tsx`
+- **设计**：Dict / Image / Settings 首次进入后保留挂载，切换仅 `hidden`；切换时 blur 焦点并重置滚动位置，避免长设置页残留 scrollTop / iOS 键盘挂在隐藏 input 上。不改特效/blur。
+
+## 2026-07-24 — 修复 iOS 上 AI Chat 语境灯泡易消失 (v0.7.34)
+
+### 1. 修复：iOS 键盘弹出时把语境灯泡滚出视口
+
+- **文件**：`src/App.tsx`
+- **问题**：Capacitor iOS 在键盘弹出时对输入框执行 `scrollIntoView({ block: 'center' })`，会把 AI Chat 标题行上的语境灯泡顶出可视区；现代 Android 早退不做该滚动，PC 无软键盘，故两端正常。
+- **修复**：仅在 `platform === 'ios'` 时改为 `block: 'nearest'` 且只滚一次；Android / 其它路径保持原来的 `center` + 双次滚动不变。
+
+### 2. 优化：语境灯泡移到输入框旁（仍只有一个）
+
+- **文件**：`src/components/ResultView/AiSection/AiChatBox.tsx`
+- **设计**：把唯一的灯泡从标题右侧挪到输入框左侧，与输入框同排。键盘为保输入框可见而滚动时，灯泡会一起留在视野内；不新增第二个按钮。
+
+### 3. 修复：本地词库 AI 模式未注入 enrichedContext
+
+- **文件**：`src/components/ResultView/index.tsx`
+- **问题**：`ResultView`（本地词条 + AI）渲染 `AiChatBox` 时未传 `enrichedContext`，导致该路径下灯泡永远不出现。
+- **修复**：AI 分析成功后，用释义/例句/近义词等拼出与 AiFull/Phrase 同构的 `enrichedContext`，仍只渲染一个 `AiChatBox`。
+
 ## 2026-07-20 — 单词与短语发音（音频播放）支持与配置面板集成 (v0.7.33)
 
 ### 1. 新增：单词与短语的英式 (UK) / 美式 (US) 动态发音支持
