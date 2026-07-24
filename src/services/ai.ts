@@ -663,7 +663,9 @@ function getPhrasePrompt(
 ): string {
   const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
 
-  const meaningDesc = isMono ? "English definition/explanation in simple terms" : "中文释义/翻译"
+  const meaningDesc = isMono
+    ? "English definition or complete line-by-line translation in simple terms. For multi-sentence or long paragraphs, you MUST provide full translation for ALL sentences, NOT just a summary."
+    : "中文释义与准确翻译。若输入为多句子或长段落文章，必须包含针对所有句子的完整全文翻译（可首行放一句话【主题概括】，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括。"
   const sceneDesc = isMono ? "1-3 sentences in English, explaining when to use this expression, tone, and feeling" : "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"
 
   const correctionNoteDesc = isMono
@@ -712,6 +714,7 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
+- CRITICAL — meaning completeness: For long text or multi-sentence paragraphs, "meaning" MUST contain a complete, line-by-line / sentence-by-sentence full translation of ALL content. You may put a brief 1-sentence topic summary at the very beginning (e.g., "【主题概括】..."), but you MUST follow with the full translation of every sentence. DO NOT output only a summary!
 - CRITICAL — correctForm integrity: Do NOT delete, shorten, summarize, or truncate any part of the input. If input is a long sentence or multi-sentence paragraph, correctForm must preserve ALL sentences and content — only fix actual errors word by word. correctForm is a proofread copy, NOT a rewrite or summary.
 - If the input has NO real errors, set correctForm exactly equal to the input (copy it verbatim). Only change what is genuinely wrong.
 - correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.

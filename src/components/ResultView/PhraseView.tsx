@@ -33,10 +33,15 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const queryType = useSearchStore(s => s.queryType)
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
   const [noteExpanded, setNoteExpanded] = useState(false)
+  const [headerExpanded, setHeaderExpanded] = useState(false)
+  const [meaningExpanded, setMeaningExpanded] = useState(false)
   const [playingAccent, setPlayingAccent] = useState<'uk' | 'us' | 'generic' | null>(null)
 
   const targetPhrase = phraseResult?.correctForm || phrase
   const isEnglish = detectLanguage(targetPhrase) === 'en'
+
+  const isHeaderLong = targetPhrase.length > 140 || phrase.length > 140
+  const isMeaningLong = (phraseResult?.meaning ?? '').length > 160 || (phraseResult?.meaning ?? '').includes('\n')
 
   const handlePlay = async (accent?: 'uk' | 'us') => {
     const key = accent || 'generic'
@@ -61,10 +66,12 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   // 切换到新的句子搜索时，重置折叠状态，避免上次展开的解释残留
   useEffect(() => {
     setNoteExpanded(false)
+    setHeaderExpanded(false)
+    setMeaningExpanded(false)
   }, [phrase, phraseResult?.correctForm])
 
   return (
-    <div className="px-3 py-3">
+    <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
       {/* AI badge */}
       <div className="mb-3">
         <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">
@@ -72,37 +79,67 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         </span>
       </div>
 
-      {phraseResult && phraseResult.correctForm && phraseResult.correctForm.toLowerCase() !== phrase.toLowerCase() ? (
-        <>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-snug">{phraseResult.correctForm}</h1>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
-            {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
-          </p>
-          {phraseResult.correctionNote?.trim() ? (
-            <div className="mb-2">
-              <button
-                onClick={() => setNoteExpanded(v => !v)}
-                className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
-              >
-                <svg
-                  className={`w-3 h-3 transition-transform duration-200 ${noteExpanded ? 'rotate-90' : ''}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-                <span className="font-medium">{t('phrase.whyChanged')}</span>
-              </button>
-              {noteExpanded && (
-                <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{phraseResult.correctionNote}</p>
+      {/* Header section (Correct Form + DiffText + CorrectionNote) with long text folding */}
+      <div className="mb-3">
+        <div className={isHeaderLong && !headerExpanded ? 'relative max-h-36 overflow-hidden transition-all duration-300' : ''}>
+          {phraseResult && phraseResult.correctForm && phraseResult.correctForm.toLowerCase() !== phrase.toLowerCase() ? (
+            <>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-snug break-words [overflow-wrap:anywhere] max-w-full">
+                {phraseResult.correctForm}
+              </h1>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 break-words [overflow-wrap:anywhere]">
+                {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
+              </p>
+              {phraseResult.correctionNote?.trim() ? (
+                <div className="mb-2">
+                  <button
+                    onClick={() => setNoteExpanded(v => !v)}
+                    className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
+                  >
+                    <svg
+                      className={`w-3 h-3 transition-transform duration-200 ${noteExpanded ? 'rotate-90' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="font-medium">{t('phrase.whyChanged')}</span>
+                  </button>
+                  {noteExpanded && (
+                    <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
+                        {phraseResult.correctionNote}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 leading-snug">{phraseResult?.correctForm || phrase}</h1>
-      )}
+              ) : null}
+            </>
+          ) : (
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 leading-snug break-words [overflow-wrap:anywhere] max-w-full">
+              {phraseResult?.correctForm || phrase}
+            </h1>
+          )}
+
+          {isHeaderLong && !headerExpanded && (
+            <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+          )}
+        </div>
+
+        {isHeaderLong && (
+          <button
+            onClick={() => setHeaderExpanded(v => !v)}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
+          >
+            <span>{headerExpanded ? '收起原文与订正' : '展开完整原文与订正'}</span>
+            <svg
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${headerExpanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        )}
+      </div>
 
       {/* Play buttons for Phrase/Sentence */}
       <div className="flex items-center gap-2 mb-4">
@@ -173,13 +210,34 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
               case 'dictionary':
                 return (
                   <div key={module.id} className="space-y-4">
-                    {/* 释义 */}
+                    {/* 释义与完整翻译 */}
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
                         <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">{t('phrase.meaning')}</h2>
                       </div>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{phraseResult.meaning}</p>
+                      <div className={isMeaningLong && !meaningExpanded ? 'relative max-h-36 overflow-hidden transition-all duration-300' : ''}>
+                        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                          {phraseResult.meaning}
+                        </p>
+                        {isMeaningLong && !meaningExpanded && (
+                          <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+                        )}
+                      </div>
+                      {isMeaningLong && (
+                        <button
+                          onClick={() => setMeaningExpanded(v => !v)}
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
+                        >
+                          <span>{meaningExpanded ? '收起翻译' : '展开完整翻译'}</span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${meaningExpanded ? 'rotate-180' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                     {/* 使用场景 */}
                     {usageScenes.length > 0 && (
@@ -194,7 +252,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">{s.label}</span>
                               </div>
-                              <p className="text-xs text-foreground-muted leading-relaxed font-medium">{s.description}</p>
+                              <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
                             </div>
                           ))}
                         </div>
@@ -283,3 +341,4 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
     </div>
   )
 }
+

@@ -61,7 +61,7 @@ export function DiffText({ original, corrected }: DiffTextProps) {
   const parts = useMemo(() => computeDiff(original, corrected), [original, corrected])
 
   return (
-    <span>
+    <span className="break-words [overflow-wrap:anywhere]">
       {parts.map((part, idx) => {
         if (part.type === 'equal') {
           return <span key={idx}>{part.value}</span>

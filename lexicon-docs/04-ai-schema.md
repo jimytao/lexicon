@@ -170,6 +170,7 @@ Analyze this word and return the JSON.`
 
 - 包含 `correctForm`（纠正后的正确表达）、`correctionNote`（改动原因简要说明，有改动时才有）、`meaning`、`usageScenes`、`examples`、`exercises`
 - `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
+- `meaning` 遵守完整翻译约束：面对长文本或多句段落，`meaning` 必须提供句句对应的完整中文翻译（可首行置顶【核心主题】总结，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括
 - `correctionNote` 分类标注改动类型：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调
 - 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageScenes 中说明差异

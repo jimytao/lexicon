@@ -1,15 +1,11 @@
-Fix iOS context bulb visibility and Settings↔Search freezes / black screens
-1. **Fix**: AI Chat rich-context bulb was scrolled off-screen on iOS keyboard show; use nearest scroll and move the single bulb beside the input.
-2. **Fix**: Local-dictionary AI mode never passed enrichedContext, so the bulb never appeared on that path.
-3. **Fix**: Any settingsStore update incorrectly unloaded both sql.js dictionaries (30–46MB); only activeDictionary changes invalidate caches now.
-4. **Improve**: In-flight load dedupe, epoch/gate invalidation without deadlock, and warm up only the active dictionary after first paint.
-5. **Improve**: Keep Dict/Image/Settings tabs mounted after first visit (hidden toggle) to avoid expensive remount jank.
+Fix PC text overflow, optimize AI long-text full translation prompt, and add UI text folding controls.
+1. **Fix**: Resolved text and URL overflow issues on PC/Webview platforms by enforcing `break-words` and `overflow-wrap: anywhere` across title, diff, and container elements.
+2. **Optimize**: Enhanced AI phrase/sentence query prompt rules so that long-text or multi-sentence queries require full sentence-by-sentence translation, preventing single-sentence summary shortcuts.
+3. **New**: Integrated UI gradient collapse and expand controls for long original texts and long translation results.
 
 ---
 
-修复 iOS 语境灯泡与设置切回搜索卡顿/黑屏问题
-1. 修复：AI Chat 完整语境灯泡在 iOS 键盘弹出后易被滚出视口；改为 nearest 滚动，并将唯一灯泡移至输入框旁。
-2. 修复：本地词库 AI 模式未注入 enrichedContext，导致语境灯泡在该路径下不出现。
-3. 修复：settingsStore 任意变更误卸载 sql.js 词库（30–46MB），设置页拨开关后再回搜索会强制重载；现仅在 activeDictionary 变化时卸库。
-4. 优化：词库加载 in-flight 去重、换库 epoch/gate 防死锁与重复灌库；首屏后只预热当前一本词典。
-5. 优化：底部 Dict/Image/Settings Tab 首次挂载后 hidden 保活，避免整树卸载导致的切页卡顿。
+修复 PC 平台文本溢出、优化 AI 长文本全文翻译 Prompt 与 UI 折叠展示
+1. 修复：PC 平台/Webview 长文本与 URL 溢出问题，全面添加 break-words 与 overflow-wrap 约束。
+2. 优化：更新 AI 句子查询 Prompt 规则，强制要求在长文本或多句段落查询时必须提供句句对应的完整中文翻译，解决 AI 偷懒仅返回单句总结的问题。
+3. 新增：长文本与长译文 UI 渐变折叠与展开控制，大幅改善中长段落文本在各端的排版与阅读体验。

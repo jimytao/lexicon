@@ -1,11 +1,11 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS9QaXo4U2N2MjBmV0tDcVRQcG84NzJnV3BTVUZBb0J0blpSbDBKSkt4RlVHTGI2d1YwU0tVZW10YkN3MWpJb1FJRGtOQndrL0dnK21QRENuUEcwbnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0ODg4MjEyCWZpbGU6TGV4aWNvbl8wLjcuMzZfeDY0LXNldHVwLmV4ZQpLdTlUVnFMMGV3WXh0akhjVWZBanNVV1c2RCtTOFpRaXJnRFVxTFNLT1BwZUpybSsxbXJXUkNRNS9RNE9uWHRUY2V1R0xaTDdrS2lFbjk1Njluc3dBdz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.36/Lexicon_0.7.36_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS9mZVNwNWFVNlo3U2tqTzByYi9LZWNqdUtleXozOVRSMDd1OUE4a2lvdUVYQXFOaG5zamVQaHRXdW13S0dORnVTcWxxaGovekM3WSt3YnJocjZpZnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0ODk5NzA2CWZpbGU6TGV4aWNvbl8wLjcuMzdfeDY0LXNldHVwLmV4ZQpWeE9zY2p3N3J4M0hpZW9KM05NVlJyWG5iMmt2Z2dSS2QvMVVYME5PVDNhNFp5d0J3aERSNzRmMmM4NWh5d0JKRE9STlo2UWl1VTY1Q0xDRzV4emJDdz09Cg==",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.37/Lexicon_0.7.37_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-24T10:12:00Z",
-  "version": "0.7.36",
-  "notes": "落地移动端原生 SQLite 词库并修复查询逻辑、编译与发版配置问题\n1. 新增：移动端落地 @capacitor-community/sqlite 原生词库，提供极速本地查询并自动双向 fallback 至 sql.js。\n2. 修复：重构通用执行器以返回标准对象数组，彻底修复原生端因 JSON 字典键无序而引发的字段错位与释义显示空白逻辑漏洞。\n3. 修复：修改 Package.swift 将 Windows 反斜杠改为 Unix 正斜杠，彻底解决 iOS 在 macOS 环境下的 Swift SPM 编译失败问题。\n4. 修复：修复 iOS 独特的表头行过滤逻辑在 Native 端不可达的分支死锁缺陷。\n5. 优化：优化冷启动检查，仅在主词库缺失时执行资源拷贝，解决未打包可选英英词库时每次冷启动都重新灌入 80MB 数据导致的卡顿。\n6. 优化：更新 MDX 转换脚本，在编译期递归解析并录入 @@@LINK 重定向词条，使应用能完美联想和检索复数、时态等派生变形词。"
+  "pub_date": "2026-07-24T13:30:00Z",
+  "version": "0.7.37",
+  "notes": "修复 PC 平台文本溢出、优化 AI 长文本全文翻译 Prompt 与 UI 折叠展示\n1. 修复：PC 平台/Webview 长文本与 URL 溢出问题，全面添加 break-words 与 overflow-wrap 约束。\n2. 优化：更新 AI 句子查询 Prompt 规则，强制要求在长文本或多句段落查询时必须提供句句对应的完整中文翻译，解决 AI 偷懒仅返回单句总结的问题。\n3. 新增：长文本与长译文 UI 渐变折叠与展开控制，大幅改善中长段落文本在各端的排版与阅读体验。"
 }

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-07-24 — PC 文本溢出修复、AI 长文本全文翻译 Prompt 优化与 UI 折叠展示 (v0.7.37)
+
+### 1. 修复：PC 平台/Webview 长文本与 URL 溢出问题
+- **文件**：`src/components/ResultView/PhraseView.tsx`、`src/components/ResultView/DiffText.tsx`
+- **解决**：在白字标题 `h1`、`DiffText` 以及 `PhraseView` 根容器上添加 `min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]` 样式，防止无空格 URL 或长文本撑大窗口宽度超出屏幕。
+
+### 2. 优化：AI 长文本 Prompt 规则（解决长文本偷懒单句总结问题）
+- **文件**：`src/services/ai.ts`
+- **解决**：更新 `getPhrasePrompt`，明确要求 AI 在面对长文本或多句段落时，`meaning` 必须提供**句句对应的完整中文翻译**（可首行置顶【核心主题】总结，但后文必须包含全文所有句子的完整翻译），避免 AI 仅给出单句总结。
+
+### 3. 新增：长文本/段落 UI 折叠与渐进展开机制
+- **文件**：`src/components/ResultView/PhraseView.tsx`
+- **设计**：针对长 `correctForm` / `DiffText` 区域以及长 `meaning` 翻译文本，超出设定阈值时默认限制最大展示高度并叠加淡出渐变，提供“展开全文 / 收起”交互控制，提升长文本阅读与对比体验。
+
 ## 2026-07-24 — Capacitor 原生 SQLite 双端共用存储层 (v0.7.36)
 
 ### 1. 新增：`@capacitor-community/sqlite` 适配器（iOS + Android 共用）
