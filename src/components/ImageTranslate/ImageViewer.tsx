@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, ReactNode, useState } from 'react'
+import { useT } from '../../i18n'
 
 interface Props {
   children: ReactNode
@@ -13,6 +14,7 @@ export interface ImageViewerHandle {
 }
 
 export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onScaleChange, compact, className }, ref) => {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
 
@@ -263,7 +265,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
             type="button"
             onClick={zoomOut}
             className="w-7 h-7 flex items-center justify-center rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 active:scale-95 transition-all font-bold text-base"
-            title="缩小"
+            title={t('image.zoomOut')}
           >
             －
           </button>
@@ -274,7 +276,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
             type="button"
             onClick={zoomIn}
             className="w-7 h-7 flex items-center justify-center rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 active:scale-95 transition-all font-bold text-base"
-            title="放大"
+            title={t('image.zoomIn')}
           >
             ＋
           </button>
@@ -283,7 +285,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
             type="button"
             onClick={zoomActual}
             className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-800/50 active:scale-95 transition-all"
-            title="1:1 原始分辨率"
+            title={t('image.zoomActual')}
           >
             1:1
           </button>
@@ -291,9 +293,9 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
             type="button"
             onClick={zoomFit}
             className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:scale-95 transition-all"
-            title="自适应画布大小"
+            title={t('image.zoomFit')}
           >
-            自适应
+            {t('image.zoomFitShort')}
           </button>
         </div>
       )}
@@ -301,7 +303,7 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
       {/* Zoom hint */}
       {!compact && (
         <div className="absolute bottom-3 right-3 text-[10px] text-gray-400 dark:text-gray-500 pointer-events-none select-none bg-white/70 dark:bg-gray-900/70 px-2 py-1 rounded-md">
-          鼠标滚轮平移 · Ctrl+滚轮缩放 · 双指触控捏合
+          {t('image.viewerHint')}
         </div>
       )}
     </div>

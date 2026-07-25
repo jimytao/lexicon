@@ -18,7 +18,7 @@ import { playPronunciation } from '../../services/audio'
 
 import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
-import { UserNoteEditor } from './UserNoteEditor'
+import { UserNoteEditor, openUserNotes } from './UserNoteEditor'
 
 interface PhraseViewProps {
   phrase: string
@@ -81,7 +81,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">
           {t('phrase.queryLabel')}
         </span>
-        <LexiconMemoryBadge word={targetPhrase} />
+        <LexiconMemoryBadge word={targetPhrase} onOpenNotes={openUserNotes} />
       </div>
 
       {/* Header section (Correct Form + DiffText + CorrectionNote) with long text folding */}
@@ -140,7 +140,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             onClick={() => setHeaderExpanded(v => !v)}
             className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
           >
-            <span>{headerExpanded ? '收起原文与订正' : '展开完整原文与订正'}</span>
+            <span>{headerExpanded ? t('phrase.collapseHeader') : t('phrase.expandHeader')}</span>
             <svg
               className={`w-3.5 h-3.5 transition-transform duration-200 ${headerExpanded ? 'rotate-180' : ''}`}
               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -162,7 +162,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
                   : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
               }`}
-              title="British Pronunciation (UK)"
+              title={t('audio.ukTitle')}
             >
               <span>UK</span>
               <svg className={`w-3.5 h-3.5 ${playingAccent === 'uk' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -176,7 +176,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
                   : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
               }`}
-              title="American Pronunciation (US)"
+              title={t('audio.usTitle')}
             >
               <span>US</span>
               <svg className={`w-3.5 h-3.5 ${playingAccent === 'us' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -192,9 +192,9 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
                 : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
             }`}
-            title="Pronounce"
+            title={t('audio.pronounce')}
           >
-            <span>Play</span>
+            <span>{t('audio.play')}</span>
             <svg className={`w-3.5 h-3.5 ${playingAccent === 'generic' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             </svg>
@@ -239,7 +239,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                           onClick={() => setMeaningExpanded(v => !v)}
                           className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
                         >
-                          <span>{meaningExpanded ? '收起翻译' : '展开完整翻译'}</span>
+                          <span>{meaningExpanded ? t('phrase.collapseMeaning') : t('phrase.expandMeaning')}</span>
                           <svg
                             className={`w-3.5 h-3.5 transition-transform duration-200 ${meaningExpanded ? 'rotate-180' : ''}`}
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}

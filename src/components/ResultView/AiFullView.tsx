@@ -18,6 +18,7 @@ import { detectLanguage } from '../../stores/searchStore'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { UserNoteEditor, openUserNotes } from './UserNoteEditor'
 
 interface AiFullViewProps {
   word: string
@@ -45,7 +46,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">
           {t('aifull.queryLabel')}
         </span>
-        <LexiconMemoryBadge word={word} />
+        <LexiconMemoryBadge word={aiFullResult?.correctForm || word} onOpenNotes={openUserNotes} />
       </div>
 
       {/* Word Header for Non-Success States (loading, error, idle) */}
@@ -177,6 +178,11 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                 return null
             }
           })}
+
+          <UserNoteEditor
+            word={aiFullResult.correctForm || word}
+            coreConceptText={aiFullResult.coreConcept?.image}
+          />
         </div>
       )}
     </div>

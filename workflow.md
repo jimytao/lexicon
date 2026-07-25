@@ -25,24 +25,28 @@
 > **修改顺序**：必须先完成上述所有文件的版本修改，然后再执行后续的 `npm run build` 或打包流程。否则，打包出的二进制文件内部仍可能显示旧版本号。
 
 ## 2. 准备中英双语更新日志与重大版本判定 (Release Notes & Major Flag)
-你必须在项目根目录下准备并确认中英双语的两份 Release Notes 文件，格式如下（第一行为简短摘要/标题，后续为编号更新项，可参考最新发版）：
-- **`release_notes_zh.md`**：中文更新说明。例如：
+**长期真相源是 `CHANGELOG.md`**。根目录 **不再** 常驻 `release_notes_zh.md` / `release_notes_en.md`（避免与 CHANGELOG 双轨漂移）。
+
+发版时按下列步骤**临时**生成两份说明（第一行为简短摘要/标题，后续为编号更新项），内容从本版 `CHANGELOG.md` 条目提炼：
+- **`release_notes_zh.md`**（临时）：中文更新说明。例如：
   ```markdown
   支持本地英英词典与单语言模式自动切换及中文查词路由优化
   1. 新增：牛津高阶第10版纯英英词典...
   2. 新增：旧双解词典...
   ```
-- **`release_notes_en.md`**：英文更新说明。例如：
+- **`release_notes_en.md`**（临时）：英文更新说明。例如：
   ```markdown
   Support for local English-English dictionary, monolingual mode auto-switching, and Chinese query routing optimization.
   1. **New**: Integrated the pure English-English Oxford Advanced Learner's Dictionary...
   2. **New**: Fully mined syntax and register prefixes...
   ```
 
-读取 `release_notes_zh.md` 与 `release_notes_en.md` 的全部内容，并同时填入 `version.json` 的更新说明字段中：
-- **`notes_zh`**: 读取 `release_notes_zh.md` 的内容。
-- **`notes_en`**: 读取 `release_notes_en.md` 的内容。
-- **`notes`**: 作为通用降级兜底，填入 `release_notes_zh.md` 或 `release_notes_en.md` 的内容。
+读取临时文件的全部内容，并填入 `version.json`：
+- **`notes_zh`**: `release_notes_zh.md`
+- **`notes_en`**: `release_notes_en.md`
+- **`notes`**: 通用降级兜底（优先中文或英文其一）
+
+填完 `version.json`、写完 GitHub Release description 后，**可删除**这两份临时文件，不必入库。
 
 > [!TIP]
 > **软件内部更新弹窗（UpdateModal）自适应渲染机制**：
@@ -128,11 +132,11 @@ git push origin master
 使用 GitHub CLI 自动创建 Release 并上传本地编译完成的所有 PC 和安卓端产物。
 
 **更新日志整合**：
-在创建 GitHub Release 前，需要将中英文更新日志合并进同一个临时说明文件中：
-1. 读取 `release_notes_en.md` 的英文内容。
-2. 添加一行分隔线 `\n\n---\n\n`。
-3. 读取 `release_notes_zh.md` 的中文内容。
-4. 将合并后的内容写入临时文件 `release_notes.txt`，作为 GitHub Release 的 description。
+在创建 GitHub Release 前，将本版临时中英文说明合并进同一个临时文件：
+1. 读取本轮生成的 `release_notes_en.md`。
+2. 添加分隔线 `\n\n---\n\n`。
+3. 读取本轮生成的 `release_notes_zh.md`。
+4. 写入临时文件 `release_notes.txt`，作为 GitHub Release 的 description（用完可删）。
 
 **上传前准备 (安卓重命名)**：
 为了文件名整齐，请将 `android/app/build/outputs/apk/release/` 下的各架构包重命名/拷贝为：

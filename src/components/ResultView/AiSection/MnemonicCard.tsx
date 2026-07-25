@@ -140,7 +140,7 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
   return (
     <div className="mt-1 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">Mnemonic</h2>
+        <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{t('mnemonic.heading')}</h2>
         {!mnemonic && !loading && (
           <button
             type="button"

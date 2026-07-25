@@ -4,12 +4,11 @@ import { useT } from '../../i18n'
 interface AccordionProps {
   title: string
   subtitle?: string
-  icon?: string
   defaultOpen?: boolean
   children: ReactNode
 }
 
-export function Accordion({ title, subtitle, icon, defaultOpen = false, children }: AccordionProps) {
+export function Accordion({ title, subtitle, defaultOpen = false, children }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const t = useT()
 
@@ -20,16 +19,13 @@ export function Accordion({ title, subtitle, icon, defaultOpen = false, children
         onClick={() => setIsOpen(v => !v)}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-foreground/5 transition-colors cursor-pointer text-left select-none"
       >
-        <div className="flex items-center gap-2.5">
-          {icon && <span className="text-base shrink-0">{icon}</span>}
-          <div>
-            <h3 className="text-xs font-bold text-foreground tracking-wide">{title}</h3>
-            {subtitle && <p className="text-[11px] text-foreground-muted">{subtitle}</p>}
-          </div>
+        <div className="flex-1 min-w-0 pr-3">
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          {subtitle && <p className="text-[11px] text-foreground-muted mt-0.5">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-1.5 text-foreground-muted">
+        <div className="flex items-center gap-1.5 text-foreground-muted shrink-0">
           <span className="text-[10px] font-semibold uppercase">
-            {isOpen ? (t('semantic.collapse') || 'Collapse') : (t('semantic.expand') || 'Expand')}
+            {isOpen ? t('semantic.collapse') : t('semantic.expand')}
           </span>
           <svg
             className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}

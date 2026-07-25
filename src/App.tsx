@@ -23,7 +23,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
 import { recordLookupEvent } from './services/profile'
 import { useT } from './i18n'
-import { AILearningDigestCard } from './components/AILearningDigestCard'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -218,13 +217,16 @@ export function App() {
 
       if (fromHistory) {
         const store = useResultStore.getState()
+        const currentMode = useSearchStore.getState().mode
         const cachedFull = store.getCachedAiFull(word)
         const cachedPhrase = store.getCachedPhrase(word)
         const cachedAi = store.getCachedAi(result.word)
 
         if (cachedFull) {
           setSearchSource('ai-full')
-          useSearchStore.getState().setMode('ai')
+          if (currentMode !== 'core') {
+            useSearchStore.getState().setMode('ai')
+          }
           useResultStore.getState().setAiFullResult(word, cachedFull)
           upgradeHistory(word, 'full')
         } else if (cachedPhrase) {
@@ -232,13 +234,15 @@ export function App() {
           useSearchStore.getState().setMode('ai')
           useResultStore.getState().setPhraseResult(word, cachedPhrase)
           upgradeHistory(word, 'phrase')
-        } else if (cachedAi) {
+        } else if (cachedAi && currentMode !== 'core') {
           useSearchStore.getState().setMode('ai')
           useResultStore.getState().setAiAnalysis(result.word, cachedAi)
           upgradeHistory(word, 'analyze')
-        } else if (historyAiMode === 'full') {
+        } else if (historyAiMode === 'full' || currentMode === 'core') {
           setSearchSource('ai-full')
-          useSearchStore.getState().setMode('ai')
+          if (currentMode !== 'core') {
+            useSearchStore.getState().setMode('ai')
+          }
           triggerFullLookup(word)
         } else if (historyAiMode === 'phrase') {
           setSearchSource('phrase')
@@ -258,8 +262,11 @@ export function App() {
         const cachedAi = store.getCachedAi(result.word)
 
         if (cachedFull) {
+          // Keep Core mode if user is already exploring in Mode 3; otherwise restore AI mode.
           setSearchSource('ai-full')
-          useSearchStore.getState().setMode('ai')
+          if (currentMode !== 'core') {
+            useSearchStore.getState().setMode('ai')
+          }
           useResultStore.getState().setAiFullResult(word, cachedFull)
           upgradeHistory(word, 'full')
         } else if (cachedPhrase) {
@@ -267,7 +274,7 @@ export function App() {
           useSearchStore.getState().setMode('ai')
           useResultStore.getState().setPhraseResult(word, cachedPhrase)
           upgradeHistory(word, 'phrase')
-        } else if (cachedAi) {
+        } else if (cachedAi && currentMode !== 'core') {
           useSearchStore.getState().setMode('ai')
           useResultStore.getState().setAiAnalysis(result.word, cachedAi)
           upgradeHistory(word, 'analyze')
@@ -570,20 +577,16 @@ export function App() {
                   />
                 ) : (
                   <div className="pb-32 flex flex-col gap-6">
-                    <div className="flex flex-col items-center justify-center pt-8 text-foreground-muted">
-                      <div className="w-10 h-10 mb-3 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <div className="flex flex-col items-center justify-center pt-16 text-foreground-muted">
+                      <div className="w-12 h-12 mb-4 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                         </svg>
                       </div>
-                      <p className="text-[11px] font-medium text-foreground-muted/70">{t('home.emptyPlaceholder')}</p>
+                      <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
+                        {t('home.emptyPlaceholder')}
+                      </p>
                     </div>
-                    <AILearningDigestCard
-                      onSelectCoreConcept={(concept) => {
-                        setMode('core')
-                        handleWordSelect(concept)
-                      }}
-                    />
                   </div>
                 )}
 
@@ -611,7 +614,7 @@ export function App() {
         <div className="flex items-center justify-between">
 
           <button
-            className={`flex flex-col items-center justify-center flex-1 py-2.5 rounded-2xl transition-all ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
+            className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
             onClick={() => { setView('dictionary'); scrollToTop() }}
           >
             <div className={`p-1 rounded-xl mb-0.5 transition-colors ${view === 'dictionary' ? 'bg-accent/10' : ''}`}>
@@ -619,12 +622,15 @@ export function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
               </svg>
             </div>
-            <span className={`text-[10px] font-bold ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted'}`}>Dict</span>
+            <span className={`text-[10px] font-bold ${view === 'dictionary' ? 'text-accent' : 'text-foreground-muted'}`}>{t('nav.dict')}</span>
           </button>
 
           <button
             className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all ${view === 'translate' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
-            onClick={() => setView('translate')}
+            onClick={() => {
+              setMountedViews(prev => ({ ...prev, translate: true }))
+              setView('translate')
+            }}
           >
             <div className={`p-1 rounded-xl mb-0.5 transition-colors ${view === 'translate' ? 'bg-accent/10' : ''}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={view === 'translate' ? 2.5 : 2}>
@@ -632,17 +638,18 @@ export function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <span className={`text-[10px] font-bold ${view === 'translate' ? 'text-accent' : 'text-foreground-muted'}`}>Image</span>
+            <span className={`text-[10px] font-bold ${view === 'translate' ? 'text-accent' : 'text-foreground-muted'}`}>{t('nav.image')}</span>
           </button>
 
           <button
             onClick={() => {
+              setMountedViews(prev => ({ ...prev, settings: true }))
               setView('settings')
               scrollToTop()
               setHasSeenBadge(true)
             }}
             className={`flex flex-col items-center justify-center flex-1 py-1.5 rounded-2xl transition-all relative ${view === 'settings' ? 'text-accent' : 'text-foreground-muted hover:text-foreground hover:bg-foreground/5'}`}
-            aria-label="Settings"
+            aria-label={t('nav.settings')}
           >
             <div className={`p-1 rounded-xl mb-0.5 relative transition-colors ${view === 'settings' ? 'bg-accent/10' : ''}`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -653,7 +660,7 @@ export function App() {
                 <span className="absolute top-0 right-0 w-2 h-2 bg-[#0EA5E9] rounded-full ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.4)]" />
               )}
             </div>
-            <span className={`text-[10px] font-bold ${view === 'settings' ? 'text-accent' : 'text-foreground-muted'}`}>Settings</span>
+            <span className={`text-[10px] font-bold ${view === 'settings' ? 'text-accent' : 'text-foreground-muted'}`}>{t('nav.settings')}</span>
           </button>
         </div>
       </nav>

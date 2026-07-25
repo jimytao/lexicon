@@ -1,10 +1,12 @@
 import type { UnnaturalMindModel } from '../../../types'
+import { useT } from '../../../i18n'
 
 interface UnnaturalMindModelCardProps {
   model: UnnaturalMindModel
 }
 
 export function UnnaturalMindModelCard({ model }: UnnaturalMindModelCardProps) {
+  const t = useT()
   if (!model || (!model.chineseThought && !model.nativeConcept && !model.reusablePrinciple)) {
     return null
   }
@@ -16,16 +18,15 @@ export function UnnaturalMindModelCard({ model }: UnnaturalMindModelCardProps) {
           🧠
         </div>
         <h3 className="text-xs font-bold text-amber-900 dark:text-amber-200 tracking-wide uppercase">
-          母语者思维违和感剖析 (Why it sounds unnatural)
+          {t('unnatural.title')}
         </h3>
       </div>
 
       <div className="space-y-2.5 text-xs">
-        {/* 中文思维映射 */}
         {model.chineseThought && (
           <div className="flex items-start gap-2 bg-amber-500/5 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-500/10">
             <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-              中文直译思维
+              {t('unnatural.chineseThought')}
             </span>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-medium pt-0.5">
               {model.chineseThought}
@@ -33,11 +34,10 @@ export function UnnaturalMindModelCard({ model }: UnnaturalMindModelCardProps) {
           </div>
         )}
 
-        {/* 英文心智映射 */}
         {model.nativeConcept && (
           <div className="flex items-start gap-2 bg-teal-500/5 dark:bg-teal-950/30 p-2 rounded-lg border border-teal-500/10">
             <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-200/80 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200">
-              母语心智映射
+              {t('unnatural.nativeConcept')}
             </span>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-medium pt-0.5">
               {model.nativeConcept}
@@ -45,11 +45,10 @@ export function UnnaturalMindModelCard({ model }: UnnaturalMindModelCardProps) {
           </div>
         )}
 
-        {/* 表达原则 */}
         {model.reusablePrinciple && (
           <div className="flex items-start gap-2 bg-indigo-500/5 dark:bg-indigo-950/30 p-2 rounded-lg border border-indigo-500/10">
             <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200">
-              可复用法则
+              {t('unnatural.principle')}
             </span>
             <p className="text-gray-800 dark:text-gray-200 leading-relaxed font-semibold pt-0.5">
               {model.reusablePrinciple}

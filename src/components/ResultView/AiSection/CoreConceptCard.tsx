@@ -1,10 +1,12 @@
 import type { CoreConcept } from '../../../types'
+import { useT } from '../../../i18n'
 
 interface CoreConceptCardProps {
   coreConcept?: CoreConcept
 }
 
 export function CoreConceptCard({ coreConcept }: CoreConceptCardProps) {
+  const t = useT()
   if (!coreConcept || (!coreConcept.image && !coreConcept.explanation)) {
     return null
   }
@@ -17,7 +19,7 @@ export function CoreConceptCard({ coreConcept }: CoreConceptCardProps) {
             🎯
           </div>
           <h2 className="text-xs font-bold tracking-wider text-indigo-950 dark:text-indigo-200 uppercase">
-            Core Image & Concept (核心意象)
+            {t('module.coreConcept')}
           </h2>
         </div>
       </div>

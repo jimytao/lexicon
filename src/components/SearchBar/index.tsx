@@ -7,6 +7,7 @@ import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
 import type { SuggestItem } from '../../types'
 import { normalizeQuery } from '../../utils/text'
+import { useT } from '../../i18n'
 
 interface SearchBarProps {
   onWordSelect: (word: string) => void
@@ -15,6 +16,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBarProps) {
+  const t = useT()
   const { query, suggestions, setQuery, setSuggestions } = useSearchStore()
   const { historyEnabled } = useSettingsStore()
   const { words: historyWords } = useHistoryStore()
@@ -155,7 +157,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder="Search a word or phrase…"
+            placeholder={t('search.placeholder')}
             className="flex-1 min-w-0 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50"
             onFocus={(e) => {
               setIsFocused(true)
@@ -173,7 +175,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                 type="button"
                 onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }}
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
-                aria-label="Clear search"
+                aria-label={t('search.clear')}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -193,8 +195,8 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                     ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100'
                     : 'text-foreground-muted/20 opacity-40 cursor-default'
                   }`}
-                title="Force AI Search"
-                aria-label="AI Search"
+                title={t('search.forceAi')}
+                aria-label={t('search.forceAi')}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -210,7 +212,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                     ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95 translate-x-0 opacity-100'
                     : 'bg-foreground/5 text-foreground-muted/20 translate-x-0 opacity-40 cursor-default'
                   }`}
-                aria-label="Search"
+                aria-label={t('search.submit')}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />

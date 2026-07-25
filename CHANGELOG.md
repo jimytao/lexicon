@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## 2026-07-25 — 雪藏弱项看板、Core 模式缓存修复与导航/文档对齐 (v0.8.2)
+
+### 1. 雪藏：弱项看板 UI 不进当前 App（代码保留）
+- **文件**：`src/App.tsx`、`src/components/MemoryView.tsx`、`src/components/AILearningDigestCard.tsx`
+- **决策**：看板目前非必要产品表面；**不删源码**，从导航与渲染树完全撤出。
+- **实现**：
+  - 底栏恢复 **3 Tab**：Dict / Image / Settings；`AppView` 不再包含 `memory`。
+  - `MemoryView` / `AILearningDigestCard` 文件头标注 `SHELVED`，暂不 `import` 进 `App`。
+  - 首页空态保持纯净（Book 图标 + 引导文案）；Profile 后端与 Settings `ProfileModal` **仍可用**。
+
+### 2. 修复：Core 模式下命中全量缓存 / 历史回放被强制切回 AI
+- **文件**：`src/App.tsx`、`src/components/ResultView/LexiconMemoryBadge.tsx`
+- **问题**：`handleWordSelect`（含历史回放路径）在存在 `cachedFull` 时无条件 `setMode('ai')`，用户停留在 Mode 3 时会被抢走；`LexiconMemoryBadge` 未传 `onOpenNotes` 时仍渲染可点按钮。
+- **修复**：查词与历史路径均仅在非 `core` 时切到 `ai`；Core 下无全量缓存则走 `triggerFullLookup`；Badge 无回调时降级为普通 `span`。
+
+### 3. 优化：设置行对齐、Accordion 去死 prop、底栏全量 i18n
+- **文件**：`SettingsView.tsx`、`Accordion.tsx`、`i18n/index.ts`、`App.tsx`、`CoreCognitiveView.tsx`
+- **实现**：
+  - 设置行左栏 `flex-1 min-w-0 pr-3`、描述 `text-[11px] leading-snug`、按钮 `whitespace-nowrap shrink-0`。
+  - `Accordion` 删除未使用的 `icon?` prop，禁止 trigger 再挂 emoji。
+  - 底栏标签统一 `nav.dict` / `nav.image` / `nav.settings`；各 Tab `py-1.5` 对齐。
+  - Pure Core 徽章文案精简为「Pure Core」。
+
+### 4. 文档与发版流程对齐
+- **文件**：`09-ui-ux-design-system.md`、`08-ai-learning-system-and-profile.md`、`05-components.md`、`CC-INSTRUCTIONS.md`、`CLAUDE.md`、`workflow.md`、`02-ui-design.md`
+- **实现**：
+  - 明确当前 3-Tab；看板 UI 雪藏规则写入 Agent Directives。
+  - `08` 状态改为「后端已落地 / Digest 已雪藏」；`05` 组件树与现 App 一致。
+  - `02` / `CC-INSTRUCTIONS` 纠正「Settings 抽屉」过时描述。
+  - `workflow.md`：`release_notes_*.md` 改为发版时**临时生成**（真相源 `CHANGELOG.md`），用完可删、不必入库。
+
+### 5. 补齐：全结果页笔记区 + 界面语言全量 i18n
+- **文件**：结果页组件、`SearchBar`、`SettingsView`、`ImageViewer`、`updateStore.ts`、`i18n/index.ts` 等
+- **实现**：
+  - `AiFullView` / `CoreCognitiveView` 补齐 `UserNoteEditor`；Badge 经 `openUserNotes()` 跳转笔记区。
+  - 搜索栏、历史、设置分组/表单标签、释义/例句/助记标题、Phrase 折叠、近义词语气、违和感卡片、文化语域、图片缩放控件、更新 toast/错误等全部走 `t()` / `tStatic()`。
+  - 修正 zh locale 中仍为英文的 `settings.*` 键；模式品牌名（Instant / AI Lookup / Pure Core）与 UK/US 刻意保留英文。
+
 ## 2026-07-25 — Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统实施完成 (v0.8.0)
 
 ### 1. 新增：类型定义与 SQLite 个人资产表 (`user_word_memory`)

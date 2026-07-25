@@ -26,7 +26,7 @@ export function NativeMindModelCard({ nativeMindModel }: NativeMindModelCardProp
         </div>
         <div>
           <h2 className="text-[13px] font-black text-amber-900 dark:text-amber-200 tracking-wider">
-            NATIVE MIND MODEL
+            {t('mindmodel.title')}
           </h2>
           <p className="text-[10px] font-medium text-amber-700/70 dark:text-amber-500/70">
             {t('mindmodel.subtitle')}

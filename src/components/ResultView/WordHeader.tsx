@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { detectLanguage } from '../../stores/searchStore'
 import { playPronunciation } from '../../services/audio'
+import { useT } from '../../i18n'
 
 interface WordHeaderProps {
   word: string
@@ -18,6 +19,7 @@ const POS_COLORS: Record<string, { bg: string; text: string; darkBg: string; dar
 }
 
 export function WordHeader({ word, phonetic, pos }: WordHeaderProps) {
+  const t = useT()
   const { darkMode, pronunciationAccent, autoPlayPronunciation } = useSettingsStore()
   const posList = pos.split('/').filter(Boolean)
   const isEnglish = detectLanguage(word) === 'en'
@@ -81,7 +83,7 @@ export function WordHeader({ word, phonetic, pos }: WordHeaderProps) {
                   ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
                   : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
               }`}
-              title="British Pronunciation (UK)"
+              title={t('audio.ukTitle')}
             >
               <span>UK</span>
               <svg className={`w-3.5 h-3.5 ${playingAccent === 'uk' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -95,7 +97,7 @@ export function WordHeader({ word, phonetic, pos }: WordHeaderProps) {
                   ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
                   : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
               }`}
-              title="American Pronunciation (US)"
+              title={t('audio.usTitle')}
             >
               <span>US</span>
               <svg className={`w-3.5 h-3.5 ${playingAccent === 'us' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -111,9 +113,9 @@ export function WordHeader({ word, phonetic, pos }: WordHeaderProps) {
                 ? 'bg-accent text-white border-accent animate-pulse scale-95 shadow-sm font-bold'
                 : 'bg-accent/5 hover:bg-accent/15 text-accent border-accent/10'
             }`}
-            title="Pronounce"
+            title={t('audio.pronounce')}
           >
-            <span>Play</span>
+            <span>{t('audio.play')}</span>
             <svg className={`w-3.5 h-3.5 ${playingAccent === 'generic' ? 'animate-bounce' : 'group-hover:scale-110 transition-transform'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             </svg>

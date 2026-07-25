@@ -1,11 +1,11 @@
 import { useT } from '../../../i18n'
 
-const REGISTER_CONFIG: Record<string, { label: string; color: string; darkColor: string }> = {
-  formal:    { label: 'Formal',    color: 'text-blue-600 bg-blue-50 border-blue-200',       darkColor: 'dark:text-blue-300 dark:bg-blue-900/20 dark:border-blue-700/30' },
-  informal:  { label: 'Informal',  color: 'text-emerald-600 bg-emerald-50 border-emerald-200', darkColor: 'dark:text-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-700/30' },
-  slang:     { label: 'Slang',     color: 'text-violet-600 bg-violet-50 border-violet-200', darkColor: 'dark:text-violet-300 dark:bg-violet-900/20 dark:border-violet-700/30' },
-  technical: { label: 'Technical', color: 'text-amber-600 bg-amber-50 border-amber-200',   darkColor: 'dark:text-amber-300 dark:bg-amber-900/20 dark:border-amber-700/30' },
-  neutral:   { label: 'Neutral',   color: 'text-gray-500 bg-gray-50 border-gray-200',      darkColor: 'dark:text-gray-400 dark:bg-gray-800/30 dark:border-gray-600/30' },
+const REGISTER_CONFIG: Record<string, { labelKey: string; color: string; darkColor: string }> = {
+  formal:    { labelKey: 'culture.register.formal',    color: 'text-blue-600 bg-blue-50 border-blue-200',       darkColor: 'dark:text-blue-300 dark:bg-blue-900/20 dark:border-blue-700/30' },
+  informal:  { labelKey: 'culture.register.informal',  color: 'text-emerald-600 bg-emerald-50 border-emerald-200', darkColor: 'dark:text-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-700/30' },
+  slang:     { labelKey: 'culture.register.slang',     color: 'text-violet-600 bg-violet-50 border-violet-200', darkColor: 'dark:text-violet-300 dark:bg-violet-900/20 dark:border-violet-700/30' },
+  technical: { labelKey: 'culture.register.technical', color: 'text-amber-600 bg-amber-50 border-amber-200',   darkColor: 'dark:text-amber-300 dark:bg-amber-900/20 dark:border-amber-700/30' },
+  neutral:   { labelKey: 'culture.register.neutral',   color: 'text-gray-500 bg-gray-50 border-gray-200',      darkColor: 'dark:text-gray-400 dark:bg-gray-800/30 dark:border-gray-600/30' },
 }
 
 export interface CulturalLoreData {
@@ -46,7 +46,7 @@ export function CulturalLoreCard({ lore }: CulturalLoreCardProps) {
             )}
             {registerCfg && (
               <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${registerCfg.color} ${registerCfg.darkColor}`}>
-                {registerCfg.label}
+                {t(registerCfg.labelKey)}
               </span>
             )}
           </div>
@@ -63,7 +63,7 @@ export function CulturalLoreCard({ lore }: CulturalLoreCardProps) {
         {lore.subculture && (
           <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
             <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">
-              Subculture / Lore
+              {t('culture.subculture')}
             </span>
             <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">
               {lore.subculture}

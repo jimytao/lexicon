@@ -1,14 +1,14 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXhsb05YODJiUjl5SzVoS2JqamhCOW5wS1RYdnF1OHRoUE9DdUJXTEFKTEZyeVBMUlBtSEliMlg1cS9EejNqTFpnaWx1cUJxc3FkRFlwQlNsZ0FKRkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTUzODIzCWZpbGU6TGV4aWNvbl8wLjguMV94NjQtc2V0dXAuZXhlCkdKSkZtVTg3T0cyYjdnNEtWY0tzKzVma1JFNk5vZURFMkdFYmNTamxiaVljcDU4bHlOZ1ZBLzV2T1o5bTBLSE9kNE1Sb3huc3lqbHE4d0Joc0QxVEFRPT0K",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.1/Lexicon_0.8.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTdwcEdrSDVHSWVuU3l6Sko2ZTBvbDAwMFFFTXd0NlZsZUFsNFlwTVBVdm0wbGZVdi9QRXlrUmdpK2t2WEF2Vm5NTzBaZjVscWpsaXRJRUtqYmtsUWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTU5NjY5CWZpbGU6TGV4aWNvbl8wLjguMl94NjQtc2V0dXAuZXhlCk9PK2dqUXFWbWszTGlzOFkvUHV6aFZnVk1NbFZ3dnh2L3V5MHdydmFhK0lTY2VjNmdKT3YwSVgwYmUvZEg0MCs4Z0c3dkgvNTJ6ZEx6YUNyTUUrMkFnPT0K",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.2/Lexicon_0.8.2_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-25T12:40:00Z",
-  "version": "0.8.1",
-  "notes": "UI/UX 规范化与设置界面重构\n1. 规范：引入全新《Lexicon UI/UX 工业设计规范》并写入 AI 核心准则。\n2. 重构：彻底清理 Settings 设置界面的“盒中盒”嵌套结构，去除冗余边框与内边距。\n3. 优化：统一 Toggle 交互热区大小与 Accordion 组件无缝贴合 (Flush) 视觉效果，对齐 Apple HIG 与 Fluent 2 设计语言。\n",
-  "notes_zh": "UI/UX 规范化与设置界面重构\n1. 规范：引入全新《Lexicon UI/UX 工业设计规范》并写入 AI 核心准则。\n2. 重构：彻底清理 Settings 设置界面的“盒中盒”嵌套结构，去除冗余边框与内边距。\n3. 优化：统一 Toggle 交互热区大小与 Accordion 组件无缝贴合 (Flush) 视觉效果，对齐 Apple HIG 与 Fluent 2 设计语言。\n",
-  "notes_en": "UI/UX Standardization & Settings Interface Refactoring\n1. Standard: Introduced the new \"Lexicon UI/UX Design System\" and embedded it into core AI directives.\n2. Refactoring: Cleaned up the nested \"Box-in-Box\" antipattern in Settings, removing redundant borders and padding.\n3. Optimization: Standardized Toggle interactive hitboxes and implemented perfectly flush Accordion visual effects, aligning with Apple HIG and Fluent 2 design language.\n",
+  "pub_date": "2026-07-25T06:01:47Z",
+  "version": "0.8.2",
+  "notes": "雪藏弱项看板、Core 模式修复与全界面中英 i18n\n1. 雪藏：弱项看板 UI（Memory Tab / Digest）暂不进入 App，代码保留；底栏恢复 3 Tab；Profile 设置面板仍可用。\n2. 修复：Core 模式下命中全量缓存或历史回放时不再被强制切回 AI；Memory Badge 无回调时不再显示假按钮。\n3. 优化：设置行对齐与 Accordion 规范；四路结果页统一笔记区与 Badge 跳转。\n4. 国际化：搜索、设置、结果卡片、图片缩放、更新提示等界面文案全面跟随中/英语言设置。\n5. 文档：同步 UI/组件/发版流程规范，release notes 改为发版时临时生成。\n",
+  "notes_zh": "雪藏弱项看板、Core 模式修复与全界面中英 i18n\n1. 雪藏：弱项看板 UI（Memory Tab / Digest）暂不进入 App，代码保留；底栏恢复 3 Tab；Profile 设置面板仍可用。\n2. 修复：Core 模式下命中全量缓存或历史回放时不再被强制切回 AI；Memory Badge 无回调时不再显示假按钮。\n3. 优化：设置行对齐与 Accordion 规范；四路结果页统一笔记区与 Badge 跳转。\n4. 国际化：搜索、设置、结果卡片、图片缩放、更新提示等界面文案全面跟随中/英语言设置。\n5. 文档：同步 UI/组件/发版流程规范，release notes 改为发版时临时生成。\n",
+  "notes_en": "Shelve weakness board, Core-mode fixes, and full UI i18n\n1. **Shelved**: Weakness board UI (Memory tab / Digest) is removed from the app for now; source kept. Bottom nav returns to 3 tabs. Settings Profile modal remains available.\n2. **Fixed**: Core mode no longer gets forced back to AI when full-cache or history replay hits; Memory Badge is non-interactive without a notes callback.\n3. **Improved**: Settings row alignment & Accordion rules; UserNoteEditor + badge jump wired across all result views.\n4. **i18n**: Search, Settings, result chrome, image zoom controls, and update toasts fully follow zh/en app language.\n5. **Docs**: Synced UI/component/release workflow docs; release notes are generated temporarily at release time.\n",
   "is_major": false
 }

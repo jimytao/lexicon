@@ -94,7 +94,7 @@ export function AiStatusBar({ status, error, onRetry, word, onGoToSettings }: Ai
           <div className="space-y-1 flex-1">
             <h3 className="text-sm font-bold text-rose-900 dark:text-rose-300">{t('status.error.title')}{word ? ` — "${word}"` : ''}</h3>
             <p className="text-xs leading-relaxed text-rose-800/80 dark:text-rose-400/80 font-mono select-all mt-1">
-              {error || 'Unknown network or API error'}
+              {error || t('error.unknown')}
             </p>
             <div className="flex items-center gap-3 pt-3">
               <button

@@ -26,7 +26,7 @@ export function WordGraphCard({ conceptGraph }: WordGraphCardProps) {
           </h2>
         </div>
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold border border-indigo-200/50 dark:border-indigo-800/40">
-          Mode 3 Pure Core
+          {t('mode.core')}
         </span>
       </div>
 

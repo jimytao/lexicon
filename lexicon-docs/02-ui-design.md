@@ -110,14 +110,15 @@ AI 解析板块统一在 section label 旁显示 badge：
 | adv  | `#EEEDFE` | `#3C3489` |
 | phrase | `#FAECE7` | `#712B13` |
 
-## Settings 页（抽屉式，右滑或按钮触发）
+## Settings 页（底部导航第三 Tab，全页 `SettingsView`）
 
-- AI endpoint URL 输入框
-- AI model 输入框（如 `gemini-2.0-flash`）
-- API key 输入框（password 类型，不明文显示）
-- 测试连接按钮
-- 词库状态（已加载 X 条词条）
-- 历史记录开关
+> 早期曾规划为右滑抽屉；当前实现为底部导航 `settings` Tab + Group / Accordion 布局。详见 `05-components.md` 与 `09-ui-ux-design-system.md`。
+
+- AI Provider / Endpoint / Model / API Key + 测试连接
+- 默认搜索模式（Instant / AI / Pure Core）与模组开关
+- 外观（深色模式、App 语言）
+- 历史记录、AI Cache、Profile 诊断开关与 Profile 弹窗
+- 版本与更新检测
 
 ## 颜色 token（与 Tailwind 配合使用）
 

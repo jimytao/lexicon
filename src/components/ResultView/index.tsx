@@ -17,7 +17,7 @@ import { CollocationCard } from './AiSection/CollocationCard'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
-import { UserNoteEditor } from './UserNoteEditor'
+import { UserNoteEditor, openUserNotes } from './UserNoteEditor'
 
 export { CoreCognitiveView } from './CoreCognitiveView'
 
@@ -53,7 +53,7 @@ export function ResultView({
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
       <WordHeader word={wordResult.word} phonetic={wordResult.phonetic} pos={wordResult.pos} />
       <div className="my-2">
-        <LexiconMemoryBadge word={wordResult.word} />
+        <LexiconMemoryBadge word={wordResult.word} onOpenNotes={openUserNotes} />
       </div>
 
       {/* AI Status & Loading state for AI mode */}

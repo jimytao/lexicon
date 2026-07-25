@@ -53,7 +53,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
 
   return (
     <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
-      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">Meanings</h2>
+      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">{t('meaning.heading')}</h2>
       <div className="space-y-3.5">
         {visible.map((m, i) => {
           const palette = POS_COLORS[m.pos ?? ''] ?? { bg: '#F3F4F6', text: '#374151', darkBg: '#1F2937', darkText: '#D1D5DB' }

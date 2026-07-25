@@ -11,8 +11,9 @@ import { SynonymList } from './AiSection/SynonymList'
 import { AiChatBox } from './AiSection/AiChatBox'
 import { DiffText } from './DiffText'
 import { useT } from '../../i18n'
-
 import { useSettingsStore, DEFAULT_CORE_MODULES } from '../../stores/settingsStore'
+import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { UserNoteEditor, openUserNotes } from './UserNoteEditor'
 
 interface CoreCognitiveViewProps {
   word: string
@@ -23,8 +24,6 @@ interface CoreCognitiveViewProps {
   onWordClick: (word: string) => void
   onGoToSettings?: () => void
 }
-
-import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 
 export function CoreCognitiveView({
   word,
@@ -40,13 +39,12 @@ export function CoreCognitiveView({
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
-      {/* Mode 3 Pure Core Badge */}
+      {/* Pure Core Badge */}
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-500/20 flex items-center gap-1">
-          <span>🌌</span>
-          <span>Pure Core Cognitive Mode</span>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium">
+          {t('mode.core')}
         </span>
-        <LexiconMemoryBadge word={word} />
+        <LexiconMemoryBadge word={aiFullResult?.correctForm || word} onOpenNotes={openUserNotes} />
       </div>
 
 
@@ -134,6 +132,11 @@ export function CoreCognitiveView({
                 return null
             }
           })}
+
+          <UserNoteEditor
+            word={aiFullResult.correctForm || word}
+            coreConceptText={aiFullResult.coreConcept?.image}
+          />
         </div>
       )}
     </div>

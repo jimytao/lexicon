@@ -2,9 +2,9 @@
 
 # Lexicon 智能学习系统、轻量 User Profile 与第二大脑 (Lexicon Memory) 架构规范
 
-> **状态**：已规划 / 待实施 (Phase 5 预备)  
+> **状态**：Phase 5 后端已落地；弱项看板 UI（Memory Tab / Digest）已雪藏  
 > **更新日期**：2026-07-25  
-> **适用版本**：v0.9.0+
+> **适用版本**：v0.8.x+
 
 ---
 
@@ -130,21 +130,22 @@ CREATE TABLE IF NOT EXISTS user_word_memory (
 
 ---
 
-## 6. UI/UX 落地：首页 AI Digest & 记忆档案视图
+## 6. UI/UX 落地：Digest 看板（已雪藏）与词汇记忆视图
 
-### 6.1 首页/搜索空白状态：`AILearningDigestCard`
-在未输入搜索词的初始状态下，呈现个性化学习看板：
-* **弱项诊断看板**：显示当前 Active 的 2~3 个思维弱项。
-* **💡 AI 智能推荐**：基于近期追问与搜索，给出下一步概念导引（支持一键点击跳转至 Mode 3 Core 模式探索）。
+### 6.1 `AILearningDigestCard` / `MemoryView` — **SHELVED (2026-07-25)**
+弱项看板 UI **暂不出现在 App 中**：
+* 源码保留：`src/components/AILearningDigestCard.tsx`、`src/components/MemoryView.tsx`（文件头有 SHELVED 注释）。
+* **禁止**挂到首页空态或底部第四 Tab，直至产品明确解冻。
+* Profile 后台蒸馏、Settings 内 Profile 查看/重置 **继续可用**（与看板展示解耦）。
 
-### 6.2 词汇/句子详情页：`LexiconMemoryBadge` & `UserNotesEditor`
-在词汇结果页顶部显示互动历史，并提供本地笔记编辑器与历史 AI 追问回顾。
+### 6.2 词汇/句子详情页：`LexiconMemoryBadge` & `UserNoteEditor`
+在词汇结果页顶部显示互动历史，并提供本地笔记编辑器与历史 AI 追问回顾（此部分未雪藏）。
 
 ---
 
 ## 7. 实施 Roadmap (Phase 5)
 
-7.1 创建 `src/services/profile.ts` (Profile 读写、三维数据打包与蒸馏逻辑)。  
-7.2 创建 SQLite `user_word_memory` 存储层与接口。  
-7.3 在首页/搜索空白页集成 `AILearningDigestCard.tsx`。  
-7.4 在词汇页集成 `UserNoteEditor.tsx` 与 `LexiconMemoryBadge.tsx`。
+7.1 ✅ 创建 `src/services/profile.ts` (Profile 读写、三维数据打包与蒸馏逻辑)。  
+7.2 ✅ 创建 SQLite `user_word_memory` 存储层与接口。  
+7.3 ❄️ `AILearningDigestCard` / Memory Tab — **已实现后雪藏**，不进当前 App 导航。  
+7.4 ✅ 在词汇页集成 `UserNoteEditor.tsx` 与 `LexiconMemoryBadge.tsx`。

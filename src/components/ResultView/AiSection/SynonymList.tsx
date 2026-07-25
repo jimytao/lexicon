@@ -22,18 +22,23 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
 
   const renderToneBadge = (tone?: 'positive' | 'negative' | 'neutral' | 'informal') => {
     if (!tone) return null
-    switch (tone) {
-      case 'positive':
-        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 shrink-0">🟢 褒义</span>
-      case 'negative':
-        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/40 shrink-0">🔴 贬义</span>
-      case 'informal':
-        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 shrink-0">💬 口语</span>
-      case 'neutral':
-        return <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 shrink-0">⚪ 中性</span>
-      default:
-        return null
-    }
+    const toneClass = {
+      positive: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/40',
+      negative: 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200/60 dark:border-rose-800/40',
+      informal: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/40',
+      neutral: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700',
+    }[tone]
+    const toneLabel = {
+      positive: `🟢 ${t('synonyms.tone.positive')}`,
+      negative: `🔴 ${t('synonyms.tone.negative')}`,
+      informal: `💬 ${t('synonyms.tone.colloquial')}`,
+      neutral: `⚪ ${t('synonyms.tone.neutral')}`,
+    }[tone]
+    return (
+      <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-md border shrink-0 ${toneClass}`}>
+        {toneLabel}
+      </span>
+    )
   }
 
   // Helper render for Synonyms List
@@ -56,7 +61,7 @@ export function SynonymList({ synonyms = [], antonyms = [], onSynonymClick }: Sy
           <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pt-0.5">{s.distinction}</p>
           {s.whenToUse && (
             <p className="text-[11px] text-indigo-800 dark:text-indigo-200 font-medium bg-indigo-50/60 dark:bg-indigo-950/40 px-2 py-1 rounded-lg border border-indigo-100/40 dark:border-indigo-900/30">
-              💡 适用心智：{s.whenToUse}
+              💡 {t('synonyms.whenToUse')}{s.whenToUse}
             </p>
           )}
         </div>

@@ -168,8 +168,8 @@ function ToggleRow({ label, desc, value, onChange, indent = false }: {
   return (
     <button type="button" onClick={() => onChange(!value)} className={`w-full flex items-center justify-between px-4 py-3 hover:bg-foreground/5 transition-colors cursor-pointer text-left ${indent ? 'pl-8' : ''}`}>
       <div className="flex-1 min-w-0 pr-3">
-        <span className={`font-medium text-foreground ${desc ? 'text-sm font-bold' : 'text-xs'}`}>{label}</span>
-        {desc && <p className="text-[10px] text-foreground-muted mt-0.5">{desc}</p>}
+        <span className="text-sm font-bold text-foreground block">{label}</span>
+        {desc && <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{desc}</p>}
       </div>
       <div className="flex items-center h-7 px-1 shrink-0">
         <div className={`w-8 h-[18px] rounded-full transition-all duration-300 relative ${value ? 'bg-accent' : 'bg-foreground/10'}`}>
@@ -335,17 +335,17 @@ export function SettingsView() {
   const isCacheEmpty = Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0 && Object.keys(phraseCache).length === 0
 
   // Group label i18n
-  const g1 = appLanguage === 'zh' ? 'AI 与搜索' : 'AI & Search'
-  const g2 = appLanguage === 'zh' ? '搜索行为与显示' : 'Search & Display'
-  const g3 = appLanguage === 'zh' ? '外观与偏好' : 'Appearance & Preferences'
-  const g4 = appLanguage === 'zh' ? '本地数据' : 'Local Data'
-  const g5 = appLanguage === 'zh' ? '关于' : 'About'
+  const g1 = t('settings.group.ai')
+  const g2 = t('settings.group.search')
+  const g3 = t('settings.group.appearance')
+  const g4 = t('settings.group.data')
+  const g5 = t('settings.group.about')
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-nav-safe max-h-screen overflow-y-auto">
       {/* Header */}
       <div className="px-6 pt-safe pb-4">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Settings</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('nav.settings')}</h2>
       </div>
 
       <div className="px-5 space-y-6 pb-10">
@@ -360,7 +360,6 @@ export function SettingsView() {
             <Accordion
               title={t('settings.aiProvider')}
               subtitle={currentApiKey ? `${aiProvider} · ${aiModel}` : t('settings.aiProviderDesc')}
-              icon="🔑"
               defaultOpen={!currentApiKey}
             >
               <div className="space-y-4 pt-2">
@@ -394,7 +393,7 @@ export function SettingsView() {
 
                 {/* Endpoint */}
                 <div>
-                  <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1.5">API Endpoint</label>
+                  <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1.5">{t('settings.apiEndpoint')}</label>
                   <input
                     type="text" value={aiEndpoint}
                     onChange={(e) => { setAiEndpoint(e.target.value); setAiProvider('custom') }}
@@ -406,10 +405,10 @@ export function SettingsView() {
                 {/* API Key */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest">API Key</label>
+                    <label className="text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest">{t('settings.apiKey')}</label>
                     {currentApiKey && (
                       <span className="text-[10px] font-bold text-green-500 flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Saved
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> {t('settings.keySaved')}
                       </span>
                     )}
                   </div>
@@ -431,7 +430,7 @@ export function SettingsView() {
 
                 {/* Model Selector */}
                 <div>
-                  <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1.5">Model Name</label>
+                  <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1.5">{t('settings.modelName')}</label>
                   <div className="flex gap-2">
                     <input
                       type="text" value={aiModel}
@@ -451,7 +450,7 @@ export function SettingsView() {
                   {showModelList && fetchedModels.length > 0 && (
                     <div className="mt-2 rounded-2xl border border-border bg-background shadow-2xl max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
                       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background-soft/50">
-                        <span className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{fetchedModels.length} Models</span>
+                        <span className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{t('settings.modelsCount').replace('{count}', String(fetchedModels.length))}</span>
                         <button onClick={() => setShowModelList(false)} className="text-foreground-muted hover:text-foreground cursor-pointer">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
@@ -497,7 +496,7 @@ export function SettingsView() {
             <ToggleRow label={t('settings.webSearch')} desc={t('settings.webSearchDesc')} value={webSearchEnabled} onChange={setWebSearchEnabled} />
             {webSearchEnabled && (
               <div className="px-4 pb-4">
-                <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1">Tavily API Key</label>
+                <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1">{t('settings.tavilyKey')}</label>
                 <input
                   type="password" value={tavilyApiKey}
                   onChange={(e) => setTavilyApiKey(e.target.value)}
@@ -519,7 +518,7 @@ export function SettingsView() {
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex-1 min-w-0 pr-3">
                 <span className="text-sm font-bold text-foreground">{t('settings.defaultMode')}</span>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.defaultModeDesc')}</p>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.defaultModeDesc')}</p>
               </div>
               <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border shrink-0">
                 {(['instant', 'ai', 'core'] as const).map(m => (
@@ -528,7 +527,7 @@ export function SettingsView() {
                     onClick={() => setDefaultSearchMode(m)}
                     className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${defaultSearchMode === m ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
                   >
-                    {m === 'instant' ? 'Instant' : m === 'ai' ? 'AI' : 'Core'}
+                    {m === 'instant' ? t('mode.instant') : m === 'ai' ? t('mode.ai') : t('mode.core')}
                   </button>
                 ))}
               </div>
@@ -540,7 +539,6 @@ export function SettingsView() {
             <Accordion
               title={t('settings.modulesMode2')}
               subtitle={`${modules.filter(m => m.enabled).length} ${t('settings.enabled')}`}
-              icon="🧩"
             >
               <div className="pt-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
@@ -561,7 +559,6 @@ export function SettingsView() {
             <Accordion
               title={t('settings.modulesMode3')}
               subtitle={`${coreModules.filter(m => m.enabled).length} ${t('settings.enabled')}`}
-              icon="🌌"
             >
               <div className="pt-2">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCoreModuleDragEnd}>
@@ -584,7 +581,6 @@ export function SettingsView() {
             <Accordion
               title={t('settings.monolingualMode')}
               subtitle={t('settings.monolingualDesc')}
-              icon="📖"
             >
               <div className="space-y-3 pt-2">
                 <ToggleRow label={t('settings.monolingualWord')} value={monolingualWord} onChange={setMonolingualWord} indent />
@@ -602,9 +598,9 @@ export function SettingsView() {
 
             {/* Dictionary Settings */}
             <div className="space-y-3 px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.dictionarySettings')}</span>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.dictionaryDesc')}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.dictionarySettings')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.dictionaryDesc')}</p>
               </div>
               <div className="flex items-center justify-between pl-4">
                 <span className="text-xs font-medium text-foreground">{t('settings.activeDictionary')}</span>
@@ -631,9 +627,9 @@ export function SettingsView() {
 
             {/* Pronunciation Settings */}
             <div className="space-y-3 px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.pronunciationSettings')}</span>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.pronunciationDesc')}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.pronunciationSettings')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.pronunciationDesc')}</p>
               </div>
               <div className="flex items-center justify-between pl-4">
                 <span className="text-xs font-medium text-foreground">{t('settings.pronunciationAccent')}</span>
@@ -661,11 +657,11 @@ export function SettingsView() {
           <Group>
             {/* App Language */}
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.appLanguage')}</span>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.appLanguageDesc')}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.appLanguage')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.appLanguageDesc')}</p>
               </div>
-              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border">
+              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border shrink-0">
                 {(['zh', 'en'] as const).map(lang => (
                   <button key={lang} onClick={() => setAppLanguage(lang)}
                     className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${appLanguage === lang ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
@@ -686,11 +682,11 @@ export function SettingsView() {
 
             {/* Exercise Count */}
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.exerciseCount')}</span>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.exerciseCountDesc')}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.exerciseCount')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.exerciseCountDesc')}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => setMaxExercises(Math.max(1, maxExercises - 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 cursor-pointer text-sm font-bold">-</button>
                 <span className="text-sm font-bold tabular-nums w-5 text-center">{maxExercises}</span>
                 <button onClick={() => setMaxExercises(Math.min(10, maxExercises + 1))} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-foreground hover:bg-foreground/5 cursor-pointer text-sm font-bold">+</button>
@@ -707,11 +703,11 @@ export function SettingsView() {
           <Group>
             {/* Search History */}
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.historyTracking')}</span>
-                <p className="text-[10px] text-foreground-muted">{words.length} {t('settings.historyItems')}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.historyTracking')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{words.length} {t('settings.historyItems')}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => setHistoryEnabled(!historyEnabled)} className="flex items-center h-7 px-1 cursor-pointer">
                   <div className={`w-8 h-[18px] rounded-full transition-all duration-300 relative ${historyEnabled ? 'bg-accent' : 'bg-foreground/10'}`}>
                     <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${historyEnabled ? 'translate-x-3.5' : 'translate-x-0'}`} />
@@ -720,7 +716,7 @@ export function SettingsView() {
                 <button
                   onClick={() => { if (confirm(t('settings.clearHistoryConfirm'))) clearHistory() }}
                   disabled={words.length === 0}
-                  className="px-2.5 py-1 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer uppercase"
+                  className="px-2.5 py-1 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer uppercase whitespace-nowrap shrink-0"
                 >
                   {t('settings.clearHistory')}
                 </button>
@@ -731,38 +727,40 @@ export function SettingsView() {
 
             {/* AI Learning System & User Profile Management (Phase 5) */}
             <ToggleRow
-              label={appLanguage === 'zh' ? 'AI 学习诊断 & 后台自动归纳' : 'AI Learning Profile Diagnostic'}
-              desc={appLanguage === 'zh' ? '开启后，AI 将在后台增量归纳个人弱项看板（关闭时不删除已存数据）' : 'Enable background AI diagnosis & weakness pattern summarization'}
+              label={t('settings.profileToggle')}
+              desc={t('settings.profileToggleDesc')}
               value={enableProfileDiagnostic}
               onChange={setEnableProfileDiagnostic}
             />
 
             <div className="flex items-center justify-between px-4 pb-4 pt-1">
-              <div>
-                <span className="text-xs font-medium text-foreground">
-                  {appLanguage === 'zh' ? '个人 Profile 数据管理' : 'AI Profile Data Management'}
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">
+                  {t('settings.profileManage')}
                 </span>
-                <p className="text-[10px] text-foreground-muted">
-                  {appLanguage === 'zh' ? '查看弱项看板、重置评估或清空 100 条滚动日志' : 'View weakness patterns, reset profile, or clear logs'}
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">
+                  {t('settings.profileManageDesc')}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
+                  type="button"
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="px-2.5 py-1 rounded-lg border border-accent/40 bg-accent/10 text-[10px] font-bold text-accent hover:bg-accent/20 transition-all cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg border border-border text-[10px] font-bold text-foreground hover:bg-foreground/5 transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  {appLanguage === 'zh' ? '查看 Profile' : 'View Profile'}
+                  {t('settings.profileView')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
-                    if (confirm(appLanguage === 'zh' ? '确定要重置 AI Profile 吗？清空后 AI 将重新评估。' : 'Reset AI Profile?')) {
+                    if (confirm(t('settings.profileResetConfirm'))) {
                       resetProfile()
-                      alert(appLanguage === 'zh' ? 'Profile 已重置' : 'Profile reset done')
+                      alert(t('settings.profileResetDone'))
                     }
                   }}
-                  className="px-2 py-1 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  {appLanguage === 'zh' ? '重置 Profile' : 'Reset'}
+                  {t('settings.profileReset')}
                 </button>
               </div>
             </div>
@@ -771,14 +769,14 @@ export function SettingsView() {
 
             {/* AI Cache */}
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.aiCache')}</span>
-                <p className="text-[10px] text-foreground-muted">{t('settings.aiCacheDesc')} · {cacheSize}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.aiCache')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.aiCacheDesc')} · {cacheSize}</p>
               </div>
               <button
                 onClick={() => { if (confirm(t('settings.clearCacheConfirm'))) { clearCache(); useChatStore.getState().clearAll() } }}
                 disabled={isCacheEmpty}
-                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider cursor-pointer whitespace-nowrap shrink-0"
               >
                 {t('settings.clearCache')}
               </button>
@@ -793,14 +791,14 @@ export function SettingsView() {
           <GroupHeader icon="ℹ️" label={g5} />
           <Group>
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <span className="text-sm font-bold text-foreground">{t('settings.version')}</span>
-                <p className="text-[10px] text-foreground-muted">v{currentVersion}</p>
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground block">{t('settings.version')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">v{currentVersion}</p>
               </div>
               <button
                 onClick={() => status === 'available' ? useUpdateStore.getState().openModal() : checkUpdate(true)}
                 disabled={status === 'checking'}
-                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-30 transition-all uppercase tracking-wider cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-accent hover:bg-accent/5 disabled:opacity-30 transition-all uppercase tracking-wider cursor-pointer whitespace-nowrap shrink-0"
               >
                 {status === 'checking' ? t('settings.checking') : (status === 'available' ? t('settings.viewDetails') : t('settings.checkUpdate'))}
               </button>

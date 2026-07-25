@@ -1,3 +1,8 @@
+/**
+ * SHELVED (2026-07-25): Weakness board UI is not shown in the app.
+ * Profile backend (`profile.ts` / settings Profile modal) remains active.
+ * Re-enable via MemoryView when product is ready.
+ */
 import { useState, useEffect } from 'react'
 import { getProfile } from '../services/profile'
 import type { UserLanguageProfile } from '../types'
@@ -5,9 +10,10 @@ import { useT } from '../i18n'
 
 interface AILearningDigestCardProps {
   onSelectCoreConcept: (conceptOrWord: string) => void
+  className?: string
 }
 
-export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCardProps) {
+export function AILearningDigestCard({ onSelectCoreConcept, className = "my-4" }: AILearningDigestCardProps) {
   const t = useT()
   const [profile, setProfile] = useState<UserLanguageProfile | null>(null)
 
@@ -25,7 +31,7 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
 
   if (activeWeaknesses.length === 0 && recommendations.length === 0) {
     return (
-      <div className="mx-4 my-6 p-5 rounded-3xl bg-background-soft/40 border border-border/60 shadow-sm transition-all hover:border-accent/30">
+      <div className={`p-5 rounded-3xl bg-background-soft/40 border border-border/50 shadow-sm ${className}`}>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent text-sm">
             ✨
@@ -43,7 +49,7 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
   }
 
   return (
-    <div className="mx-4 my-6 p-5 rounded-3xl bg-background-soft/60 border border-border shadow-sm space-y-4">
+    <div className={`p-5 rounded-3xl bg-background-soft/60 border border-border/60 shadow-sm space-y-4 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -95,10 +101,10 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
               <button
                 key={i}
                 onClick={() => onSelectCoreConcept(rec.conceptOrWord)}
-                className="p-3 rounded-2xl bg-accent/5 border border-accent/20 hover:border-accent hover:bg-accent/10 transition-all text-left group cursor-pointer"
+                className="p-3 rounded-2xl bg-background border border-border/60 hover:bg-foreground/5 transition-colors text-left group cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-accent group-hover:underline">
+                  <span className="text-xs font-bold text-accent">
                     {rec.conceptOrWord}
                   </span>
                 </div>

@@ -104,7 +104,7 @@ Tesseract.js（WASM OCR，嵌字模式文字定位）
 - [x] Step 15：适配所有 AI 功能（助记、练习、写作批改与问答）在单英文模式与双语模式下的提示词 (v0.7.27)
 - [x] Step 16：单词与短语的英式 (UK) / 美式 (US) 动态发音、自动发音、离线 TTS 兜底与动态播放视觉微动效集成 (v0.7.33)
 
-**最近一次重要改动**：2026-07-24，fix/feat — PC 文本溢出修复、AI 长文本全文翻译 Prompt 优化与 UI 折叠展示 (v0.7.37)：`PhraseView.tsx` 与 `DiffText.tsx` 添加 `break-words [overflow-wrap:anywhere]` 约束；`ai.ts` 的 `getPhrasePrompt` 显式指示长文本全文逐句翻译；`PhraseView.tsx` 增加标题与译文的渐变折叠/展开控件。
+**最近一次重要改动**：2026-07-25 — 雪藏弱项看板 UI（底栏 3 Tab）；四路结果页统一 `UserNoteEditor` + Badge 跳转；模式切换/笔记/Profile i18n；修 Core 历史/缓存模式抢夺；文档与 `workflow` 对齐。Settings `ProfileModal` 保留。
 
 - 存储层：组件只经 `src/services/db.ts` 的 `DBService`；禁止直接调 sql.js / Capacitor SQLite API
 - 词库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`

@@ -23,7 +23,7 @@ export function ExampleList({ examples, hideTranslation }: ExampleListProps) {
 
   return (
     <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">Examples</h2>
+      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">{t('examples.heading')}</h2>
       <div className="space-y-3">
         {visible.map((ex, i) => (
           <div key={i} className="relative pl-4 border-l-2 border-accent/20 hover:border-accent transition-colors py-1">

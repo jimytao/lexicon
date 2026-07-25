@@ -6,6 +6,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem'
 import { FileOpener } from '@capawesome-team/capacitor-file-opener'
 import { Device } from '@capacitor/device'
 import { isCapacitor, isTauri } from '../services/platform'
+import { tStatic } from '../i18n'
 
 function compareVersions(v1: string, v2: string): number {
   const sanitize = (v: string) => v.replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0)
@@ -121,7 +122,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.8.1', // Should match package.json
+      currentVersion: '0.8.2', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -205,24 +206,24 @@ export const useUpdateStore = create<UpdateState>()(
               hasSeenBadge: false,
               lastChecked: now,
               isModalOpen: force || shouldAutoShow,
-              toastMessage: force ? null : (shouldToast ? `发现新版本 ${displayVersion}` : null)
+              toastMessage: force ? null : (shouldToast ? tStatic('update.toast.newVersion', { version: displayVersion }) : null)
             })
           } else if (updateInfo && compareVersions(updateInfo.version, get().currentVersion) === 0) {
-            set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? '已是最新版本' : null })
+            set({ status: 'up-to-date', lastChecked: now, toastMessage: force ? tStatic('update.toast.upToDate') : null })
           } else if (hasUpdate === false && !data) {
             // If we couldn't even fetch manifest and tauri found nothing
-            throw new Error('无法连接到更新服务器')
+            throw new Error(tStatic('update.error.server'))
           } else {
-            set({ status: 'higher-version', lastChecked: now, toastMessage: force ? '当前版本高于云端' : null })
+            set({ status: 'higher-version', lastChecked: now, toastMessage: force ? tStatic('update.toast.higherVersion') : null })
           }
         } catch (err: any) {
           console.error('Update check failed:', err)
           if (force) {
             set({
               status: 'error',
-              error: err.message || 'Update check failed',
+              error: err.message || tStatic('update.toast.checkFailed', { message: '' }),
               lastChecked: now,
-              toastMessage: `更新检查失败: ${err.message}`
+              toastMessage: tStatic('update.toast.checkFailed', { message: err.message || '' })
             })
           } else {
             set({
@@ -334,7 +335,7 @@ export const useUpdateStore = create<UpdateState>()(
               set({
                 status: 'available',
                 progress: 0,
-                error: 'APK 文件已被系统清理，请重新下载。'
+                error: tStatic('update.error.apkCleared')
               })
               return
             }
@@ -357,13 +358,18 @@ export const useUpdateStore = create<UpdateState>()(
               window.open(releaseUrl, '_blank')
               set({
                 status: 'error',
-                error: '请在「设置 → 应用 → 特殊权限 → 安装未知应用」中为 Lexicon 开启权限，或通过已打开的浏览器页面手动安装。'
+                error: tStatic('update.error.installPermission')
               })
             }
           }
         } catch (err: any) {
           console.error('Installation failed:', err)
-          set({ status: 'error', error: `安装失败: ${err.message || '请手动在文件管理器中安装'}` })
+          set({
+            status: 'error',
+            error: tStatic('update.error.installFailed', {
+              message: err.message || tStatic('update.error.installFallback'),
+            }),
+          })
         }
       },
 

@@ -4,67 +4,27 @@
 
 ```
 <App>
-├── <SettingsDrawer />          # 右滑抽屉，全局覆盖
-├── Tab 切换栏                   # 「查词」/「图片翻译」
+├── 底部导航（3 Tab，i18n）        # Dict / Image / Settings；首次挂载后 hidden 保活
 └── <main>
     │
-    ├── (view === 'translate')
-    │   └── <ImageTranslateView />    # 图片上传 + AI 翻译 + Tesseract OCR
-    │       ├── 语言选择器（源→目标）
-    │       ├── 拖拽/点击上传区域
-    │       ├── 图片预览 + 移除按钮
-    │       ├── 翻译按钮 → AI Phase 1（OCR + 译文，无 bbox）
-    │       ├── <TranslationList />   # 翻译结果列表（可编辑译文）
-    │       ├── 「翻译列表」/「嵌字预览」模式切换
-    │       │   └── 嵌字 → Tesseract OCR 获取精确 bbox → 与 Phase 1 译文模糊匹配
-    │       ├── <ImageEditor />       # Canvas 嵌字（去原文+贴译文，forwardRef 暴露 exportBlob）
-    │       ├── <BlockOverlay />      # 交互式 bbox/polygon 编辑器
-    │       └── <ExportButton />      # 导出合成 PNG
-    │
     ├── (view === 'dictionary')
-    ├── <SearchBar />           # 始终顶部常驻
-    │   ├── input
-    │   ├── <ModeToggle />      # Instant / AI mode 切换
-    │   └── <HistoryList />     # 聚焦且无输入时显示，最近查词 + 删除/清空
+    │   ├── <SearchBar /> + <SegmentedControl />   # Instant / AI / Core
+    │   └── 条件渲染
+    │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge + UserNoteEditor)
+    │       ├── <CoreCognitiveView />  # Mode 3 Core (+ Badge + UserNoteEditor)
+    │       ├── <AiFullView />         # 词库无结果全量查词 (+ Badge + UserNoteEditor，key=correctForm)
+    │       └── <PhraseView />         # 词组/句子 (+ Badge + UserNoteEditor)
     │
-    ├── <SuggestList />         # 有输入时展开补全列表
+    ├── (view === 'translate')
+    │   └── <ImageTranslateView />
     │
-    └── (条件渲染，三选一)
-        │
-        ├── <ResultView />          # 词库有结果时渲染
-        │   ├── <WordHeader />      # 单词、音标、词性 badge（深色模式适配）
-        │   ├── <InstantSection />  # 始终渲染（L1 内容）
-        │   │   ├── <MeaningList />      # >4 条义项可折叠
-        │   │   ├── <PhrasesSection />   # 相关词组，可点击查词，>6 条折叠
-        │   │   └── <ExampleList />      # >3 条例句可折叠
-        │   └── <AiSection />       # 仅 AI mode 渲染
-        │       ├── <AiStatusBar /> # 加载中 / 错误 / 成功 状态
-        │       ├── <SemanticScene />
-        │       ├── <EtymologyCard />  # 词根 pills + story + 派生词列表
-        │       ├── <SynonymList />
-        │       ├── <PracticeSection /> # 按需生成练习
-        │       └── <AiChatBox />      # AI 问答；有 enrichedContext 时在输入框左侧显示唯一语境灯泡
-        │
-        ├── <AiFullView />          # 词库无结果 + 单词类型 → AI 全量查词
-        │   ├── "AI 查询" badge
-        │   ├── <WordHeader />      # 显示 correctForm（AI 纠正后的拼写）
-        │   ├── 拼写纠正提示         # 用户输入与 correctForm 不同时显示
-        │   ├── <MeaningList />
-        │   ├── <SemanticScene />
-        │   ├── <EtymologyCard />
-        │   ├── <SynonymList />
-        │   ├── <PracticeSection />
-        │   ├── <ExampleList />
-        │   └── <AiChatBox />      # 同上，拼 enrichedContext 注入完整语境
-        │
-        └── <PhraseView />          # 词组/句子 → AI 词组查询
-            ├── "AI 查询 · 词组/句子" badge
-            ├── 标题（correctForm 或原始输入）+ 拼写纠正提示
-            ├── 释义
-            ├── 使用场景卡片
-            ├── <ExampleList />
-            ├── <PhraseExercises />  # 内联练习（AI 返回的 exercises）
-            └── <AiChatBox />      # 同上
+    └── (view === 'settings')
+        └── <SettingsView />           # Group + Accordion + ProfileModal
+            └── <ProfileModal />       # Profile 弱项查看/重置（首页看板 Digest 已雪藏）
+
+# SHELVED（未挂载，勿接回导航）
+# ├── <MemoryView />
+# └── <AILearningDigestCard />
 ```
 
 ## Zustand Store 设计

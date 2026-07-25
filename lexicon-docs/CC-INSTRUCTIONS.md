@@ -89,7 +89,7 @@ mkdir -p scripts
 11. `SuggestList`
 12. `ModeToggle`
 13. `SearchBar`（组合 input + ModeToggle）
-14. `SettingsDrawer`
+14. `SettingsView`（历史脚手架曾写 SettingsDrawer；现行为底部 Tab 全页设置）
 15. `App`（顶层）
 
 ### Step 11：测试
@@ -190,7 +190,9 @@ export const db: DBService = {
 
 ## Agent Memory Update (Phase 5)
 
-Please note that we have introduced the Memory / Cognitive diagnostic system. When requested to work on profile tracking, review `08-ai-learning-system-and-profile.md` for architecture details.
+Profile / `user_word_memory` backend is live. When working on profile tracking, read `08-ai-learning-system-and-profile.md`.
+
+**SHELVED UI**: `MemoryView` + `AILearningDigestCard` are **not** mounted in `App.tsx`. Do not re-add a Memory tab or home digest card unless the user explicitly asks to un-shelve. Settings `ProfileModal` remains available.
 
 ## UI/UX Design System Enforcement
-Before modifying or creating ANY UI components, you MUST read `lexicon-docs/09-ui-ux-design-system.md` and strictly adhere to its rules (especially regarding Box-in-Box antipatterns and padding alignment). This ensures the app maintains an industrial, highly structured visual harmony.
+Before modifying or creating ANY UI components, you MUST read `lexicon-docs/09-ui-ux-design-system.md` and strictly adhere to its rules (especially regarding Box-in-Box antipatterns and padding alignment). This ensures the app maintains an industrial, highly structured visual harmony. Current bottom nav is **3 tabs** (Dict / Image / Settings).
