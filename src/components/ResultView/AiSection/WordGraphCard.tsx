@@ -1,79 +1,132 @@
-import type { ConceptGraph } from '../../../types'
+import { useState } from 'react'
+import type { ConceptGraph, ConceptGraphExample } from '../../../types'
 import { useT } from '../../../i18n'
+import { conceptGraphNeedsFill } from '../../../utils/aiCompleteness'
+import { SectionHeading } from '../SectionHeading'
 
 interface WordGraphCardProps {
   conceptGraph?: ConceptGraph
+  onRepairMissing?: () => Promise<void>
 }
 
-export function WordGraphCard({ conceptGraph }: WordGraphCardProps) {
+function normalizeExample(ex: string | ConceptGraphExample): ConceptGraphExample {
+  if (typeof ex === 'string') {
+    return { phrase: ex, meaning: '' }
+  }
+  return {
+    phrase: ex.phrase || '',
+    meaning: ex.meaning || '',
+    mindHint: ex.mindHint,
+  }
+}
+
+function isUseful(text?: string): text is string {
+  if (!text) return false
+  const t = text.trim()
+  return t.length > 0 && t !== 'N/A' && t !== 'null' && t !== '-'
+}
+
+export function WordGraphCard({ conceptGraph, onRepairMissing }: WordGraphCardProps) {
   const t = useT()
+  const [repairing, setRepairing] = useState(false)
+  const [repairError, setRepairError] = useState<string | null>(null)
+
   if (!conceptGraph || (!conceptGraph.rootCore && (!conceptGraph.branches || conceptGraph.branches.length === 0))) {
     return null
   }
 
   const { rootCore, branches = [] } = conceptGraph
+  const needsFill = conceptGraphNeedsFill(conceptGraph)
+
+  async function handleRepair() {
+    if (!onRepairMissing || repairing) return
+    setRepairing(true)
+    setRepairError(null)
+    try {
+      await onRepairMissing()
+    } catch (e) {
+      setRepairError((e as Error).message || t('repair.failed'))
+    } finally {
+      setRepairing(false)
+    }
+  }
 
   return (
-    <div className="mb-3.5 rounded-2xl p-4 bg-white dark:bg-gray-900/40 border border-indigo-100 dark:border-indigo-900/30 shadow-sm animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-2.5">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">
-            🕸️
-          </div>
-          <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 tracking-wider uppercase">
-            {t('graph.title')}
-          </h2>
-        </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold border border-indigo-200/50 dark:border-indigo-800/40">
-          {t('mode.core')}
-        </span>
-      </div>
+    <div className="mb-3.5">
+      <SectionHeading
+        title={t('graph.title')}
+        action={needsFill && onRepairMissing ? (
+          <button
+            type="button"
+            onClick={() => void handleRepair()}
+            disabled={repairing}
+            className="px-2.5 py-1 text-[10px] font-bold rounded-lg border border-border text-foreground hover:bg-foreground/5 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+          >
+            {repairing ? t('repair.working') : t('repair.fillMissing')}
+          </button>
+        ) : undefined}
+      />
+      {needsFill && (
+        <p className="text-[11px] text-foreground-muted mb-3 leading-snug">
+          {t('repair.graphHint')}
+        </p>
+      )}
+      {repairError && (
+        <p className="text-[11px] text-red-500 mb-3">{repairError}</p>
+      )}
 
-      {/* Root Node */}
-      <div className="flex flex-col items-center mb-6">
-        <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs shadow-md tracking-wide flex items-center gap-1.5 border border-indigo-400/30">
-          <span>🎯 {t('graph.rootCore')}</span>
-          <span>{rootCore}</span>
+      {rootCore && (
+        <div className="mb-4 px-3 py-2 rounded-xl bg-background-soft/60 border border-border/50">
+          <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50 mr-2">
+            {t('graph.rootCore')}
+          </span>
+          <span className="text-sm font-semibold text-foreground">{rootCore}</span>
         </div>
-        {/* Connector Line down */}
-        <div className="w-0.5 h-4 bg-indigo-300 dark:bg-indigo-700/60 my-1" />
-        <div className="w-3/4 max-w-md h-0.5 bg-indigo-200 dark:bg-indigo-800/50 rounded-full" />
-      </div>
+      )}
 
-      {/* Branches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {branches.map((branch, idx) => (
           <div
             key={idx}
-            className="flex flex-col rounded-xl p-3 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/80 dark:border-indigo-900/30 transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700"
+            className="flex flex-col rounded-xl p-3 bg-background-soft/40 border border-border/50"
           >
-            {/* Branch Header */}
-            <div className="mb-2 pb-1.5 border-b border-indigo-200/40 dark:border-indigo-900/40">
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400" />
-                <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                  {branch.category}
-                </h3>
-              </div>
-              {branch.explanation && branch.explanation !== 'N/A' && branch.explanation !== 'null' && (
-                <p className="text-[10px] text-indigo-800/80 dark:text-indigo-300/80 leading-snug pl-3.5">
+            <div className="mb-2 pb-1.5 border-b border-border/40">
+              <h3 className="text-xs font-bold text-foreground mb-1">
+                {branch.category}
+              </h3>
+              {isUseful(branch.explanation) && (
+                <p className="text-[10px] text-foreground-muted leading-snug">
                   {branch.explanation}
                 </p>
               )}
             </div>
 
-            {/* Examples list */}
-            <div className="space-y-1 mt-auto">
-              {branch.examples.map((ex, exIdx) => (
-                <div
-                  key={exIdx}
-                  className="px-2 py-1 rounded-lg bg-white/80 dark:bg-gray-800/60 text-xs font-medium text-gray-700 dark:text-gray-300 border border-indigo-100/50 dark:border-gray-700/50 flex items-center gap-1.5"
-                >
-                  <span className="text-[10px] text-indigo-400 font-bold">›</span>
-                  <span>{ex}</span>
-                </div>
-              ))}
+            <div className="space-y-2 mt-auto">
+              {(branch.examples || []).map((raw, exIdx) => {
+                const ex = normalizeExample(raw)
+                if (!ex.phrase) return null
+                return (
+                  <div
+                    key={exIdx}
+                    className="px-2.5 py-2 rounded-lg bg-background border border-border/40"
+                  >
+                    <p className="text-xs font-semibold text-foreground leading-snug break-words [overflow-wrap:anywhere]">
+                      {ex.phrase}
+                    </p>
+                    {isUseful(ex.meaning) && (
+                      <p className="mt-0.5 text-[11px] text-foreground-muted leading-relaxed break-words [overflow-wrap:anywhere]">
+                        {ex.meaning}
+                      </p>
+                    )}
+                    {isUseful(ex.mindHint) && (
+                      <p className="mt-1 text-[10px] leading-relaxed text-foreground-muted break-words [overflow-wrap:anywhere]">
+                        <span className="font-semibold mr-1">{t('graph.mindHint')}</span>
+                        {ex.mindHint}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         ))}

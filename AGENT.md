@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.8.4**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.8.5**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -83,7 +83,8 @@ Tauri 2（PC）
 ### 雪藏 UI（不要擅自恢复）
 
 - `MemoryView`、`AILearningDigestCard`：**源码保留，不挂载进 `App.tsx`**
-- **禁止**重新加 Memory Tab 或首页弱项看板，除非用户明确要求解封
+- `UserNoteEditor`：**源码保留，不挂载进结果页**
+- **禁止**重新加 Memory Tab、首页弱项看板或笔记编辑面板，除非用户明确要求解封
 - Settings 内 `ProfileModal` 与 Profile / `user_word_memory` **后端仍可用**
 
 ### 查词三种模式
@@ -92,11 +93,18 @@ Tauri 2（PC）
 |------|----------|----------------------|----------|
 | Instant | `instant` | Instant | 纯本地词库，零延迟，离线可用 |
 | AI Lookup | `ai` | AI Lookup | L1 立即渲染；AI 增量板块 skeleton → 淡入 |
-| Pure Core | `core` | Pure Core | 深度认知全量视图（Core UI）；依赖全量 AI schema |
+| Pure Core | `core` | Pure Core | 单词：深度认知全量视图；词组/句子：母语者心智分轨（见下表） |
 
 - 默认模式：`settingsStore.defaultSearchMode`（`instant` \| `ai` \| `core`）
-- 模式切换应**点击即生效**（有缓存恢复，无缓存立刻触发对应 lookup）；勿仅依赖可能不同步的 `useEffect`
-- 在 **Core** 下命中全量缓存 / 历史回放时，**禁止**强制切回 `ai`
+- 模式切换应**点击即生效**（Lookup / Pure Core 均有缓存恢复或立刻触发；勿仅依赖可能不同步的 `useEffect`）
+- **切回 Instant**：`cancelAi()`（abort + generation 作废）→ 有本地快照则只显示 L1（卸下 AI 展示含 Chat，缓存保留）；无本地 → `searchSource=none` 清空结果区，保留搜索框
+- **空态**：无查询且无结果时，任意默认模式都显示小书引导（`showEmptyHome`），禁止 Core 空壳抢首页
+- 在 **Core** 下命中全量缓存时，**禁止**强制切回 `ai`
+- **Instant 词库未命中**（或强制 AI）：按 `defaultSearchMode` 落入 Lookup 或 Core（默认仍是 Instant 时 → Lookup）
+- **历史双轨**：`lookupAiMode` / `coreAiMode`；历史列表双星（Lookup 琥珀 / Core 靛色）；`historyPreferCognitive`（默认 lookup）决定双轨皆有时的回放优先；**双轨皆无** → 有词库则留 Instant，OOD/词组仍落入 preferred AI
+- **AI 超时**：fetch Abort + Timeout reason 须映射为可展示 error（禁止当静默 Abort 卡住 loading）
+- **强制 AI**：旁路词库的全量路径，文案须与「点 AI Lookup = 词典+增量」区分
+- **释义补全**：全量结果缺 note/meaning 时静默重试一次；仍缺则板块「补全缺失释义」只补缺项
 
 ### 结果渲染路径
 
@@ -110,18 +118,31 @@ Tauri 2（PC）
 `resultStore` 三路结果 + 缓存：
 
 - `wordResult`（词库）
-- `aiFullResult` + `aiFullCache`
-- `phraseResult` + `phraseCache`
+- `aiFullResult` + `aiFullCache`（Lookup / Pure Core **分轨**：`q` vs `q::core`）
+- `phraseResult` + `phraseCache`（同上分轨）
 - 另有增量 `aiAnalysis` + `aiCache`
 
 历史约 100 条；AI 追问（chat）缓存 key 使用 `normalizeQuery`，须与历史 / 三路 AI 缓存配对一致。
 
-### 信息渲染顺序（AI Lookup）
+### 信息渲染顺序（出厂默认；设置可拖拽覆盖）
 
-释义 → 语义情景 → 词根词缀 → 近义词辨析 → 例句  
-（认知路径：概念 → 理解 → 溯源 → 对比 → 应用）
+**AI Lookup（理解与记忆）**  
+释义 → 轻量 coreConcept → 词根 → 助记 → 例句 → 相关词组 → 介词意象 → **释义核对练习** → Chat  
 
-四路结果页（含 AiFull / Core / Phrase 等）统一提供 `UserNoteEditor`；`LexiconMemoryBadge` 经 `openUserNotes()` 跳转笔记区；无回调时 Badge 降级为不可点 `span`。
+**Pure Core（母语者用法）**  
+nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用 → 用法场景 → 语域 → **场景造句练习** → Chat  
+
+### Lookup vs Pure Core 认知分轨
+
+| | AI Lookup | Pure Core |
+|--|-----------|-----------|
+| **角色** | 学会意思、怎么记住 | 母语者怎么想、怎么用 |
+| **单词全量** | 释义墙 + 轻量意象 + 词源/助记；无心智/概念树/搭配墙 | 心智 + 加厚用法意象 + 概念树 + 介词语组/其他词组 + 选用；**无 dictionary** |
+| **词组/句子** | 释义、场景、例句、介词意象、释义核对；`modules` | 心智置顶；释义轻量固定展示；**`corePhraseModules`**（用法场景/语域/造句练习） |
+| **练习** | `meaning-check`（输入大致意思） | `usage-output`（场景造句） |
+| **prompt 模组源** | `settings.modules` | 单词 `coreModules`；词组/句 `corePhraseModules` |
+| **中文反查 Core** | — | 短英文候选（非 dictionary 墙）+ 心智主线 |
+| 缓存 | `aiFullCache[q]` / `phraseCache[q]` | `…[q::core]` |
 
 ---
 
@@ -137,8 +158,8 @@ Tauri 2（PC）
 ### AI 调用
 
 - Instant：本地 L1 释义 / 例句；AI **不替换** L1
-- AI Lookup：AI 只提供增量（语义情景、词根词缀、近义词等）
-- Pure Core / 全量 lookup：拉取完整 schema（词根、近义、文化语域等 Core UI 所需字段）
+- AI Lookup：增量偏理解记忆（情景、词根、助记、轻量 coreConcept）；默认不拉搭配/近义墙
+- Pure Core：按 `coreModules` 拉心智/概念树/介词语组/其他词组/用法场景/语域；**不拉释义墙**
 - 必须异步，不阻塞 L1 渲染；切换词时用 `AbortController` 取消
 - Session / persist 缓存见 `resultStore`（按规范化 query）
 - 单英文模式与双语模式：助记、练习、写作批改、问答等 prompt 均需适配（见 `04-ai-schema.md`）
@@ -220,15 +241,19 @@ Tauri 2（PC）
 - [x] Pure Core（Mode 3）、设置模块化、认知模块开关
 - [x] Lexicon Memory + 轻量 User Profile 后端与 Settings `ProfileModal`
 - [x] 弱项看板 UI 雪藏；底栏恢复 3 Tab
-- [x] 四路结果页统一笔记区 + Badge 跳转；界面语言全量 i18n
+- [x] 界面语言全量 i18n；`LexiconMemoryBadge` 只读展示（`UserNoteEditor` 已雪藏）
+- [x] 词组/句子 Lookup vs Pure Core：分轨 prompt + 缓存 + Core 心智优先 UI
+- [x] 单词全量 Lookup vs Pure Core 分轨；Instant 未命中跟 `defaultSearchMode`；Lookup 点击即搜
+- [x] Instant 复位 / 空态一致 / 历史双星分轨 / 强制 AI 文案 / 释义静默重试+板块补缺
+- [x] Lookup / Core 模组学习流重组：defaults 分轨、chunks/collocations 拆分、双轨练习、Core 去 dictionary、prompt 读对应模组列表
 - [x] Core 历史 / 全量缓存不再抢夺模式；模式切换一键触发 AI（v0.8.3）
 - [x] `AGENT.md` 统一启动上下文；`workflow.md` §0 上传门禁；首页空态几何居中（v0.8.4）
 
 ### 最近一次重要改动
 
-**2026-07-25（v0.8.4）** — 首页空态 `fixed` 几何居中；`AGENT.md` + workflow §0 门禁；中英文 README 对齐三模式 / 底栏 Settings / 下载链接。
+**2026-07-25** — Lookup/Core 模组重组：理解记忆 vs 母语者用法；`chunks`=介词语组 / `collocations`=其他词组；Lookup 释义核对 vs Core 场景造句；设置两列表仍可自由拖拽。
 
-此前同日（v0.8.3）：Instant / AI Lookup → Pure Core 点击即搜；追问缓存 `normalizeQuery` 对齐。
+此前同日（v0.8.4）：首页空态居中；workflow §0；README 对齐。
 
 ### 关键实现备忘
 

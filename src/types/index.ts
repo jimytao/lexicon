@@ -74,12 +74,22 @@ export interface CoreConcept {
   explanation: string
 }
 
+/** Concept-tree leaf: phrase + required explanation (legacy caches may still be bare strings). */
+export interface ConceptGraphExample {
+  phrase: string
+  /** 中文/英文释义：这个表达是什么意思 */
+  meaning: string
+  /** Pure Core：母语者心智/意象延伸（为何从 Core 落到这个用法） */
+  mindHint?: string
+}
+
 export interface ConceptGraph {
   rootCore: string
   branches: Array<{
     category: string
     explanation?: string
-    examples: string[]
+    /** Prefer ConceptGraphExample; string kept for old cache compatibility */
+    examples: Array<string | ConceptGraphExample>
   }>
 }
 
@@ -113,13 +123,16 @@ export interface WordResult {
 
 export interface CollocationEntry {
   chunk: string   // e.g. "take the tram" / "black tea"
-  note?: string   // brief usage note (language matches monolingualWord setting)
+  /** 必填释义：短语/搭配的中文或英文意思（勿只写空泛「常用」） */
+  note?: string
   spatialExtension?: string // 空间/逻辑意象延伸 (e.g. "take off -> 掌控 + 脱离 = 飞离/突然成功")
 }
 
 export interface CollocationData {
-  chunks: CollocationEntry[]        // Verb/prep patterns using the word (语块)
-  collocations: CollocationEntry[]  // Natural word combinations (搭配)
+  /** 常用介词词组（prep+N / V+prep(+N) 等） */
+  chunks: CollocationEntry[]
+  /** 其他常用词组（adj+N、V+N、不含介词重心的搭配） */
+  collocations: CollocationEntry[]
 }
 
 export interface AiAnalysis {
@@ -151,10 +164,10 @@ export interface AiFullResult {
   pos: string
   coreConcept?: CoreConcept
   meanings: Array<{ zh: string; en: string; pos?: string; scene?: Scene; imageQuery?: string }>
-  etymology: Etymology
-  synonyms: Synonym[]
+  etymology?: Etymology
+  synonyms?: Synonym[]
   antonyms?: Antonym[]
-  examples: Example[]
+  examples?: Example[]
   mnemonic?: Mnemonic
   culturalLore?: {
     title?: string
@@ -164,6 +177,8 @@ export interface AiFullResult {
   collocations?: CollocationData
   conceptGraph?: ConceptGraph
   nativeMindModel?: NativeMindModel
+  /** Pure Core：母语者常用场景/句式（非词典释义墙） */
+  usageScenes?: Array<{ label: string; description: string }>
 }
 
 export type WordAIResult = AiFullResult
@@ -179,11 +194,18 @@ export interface PrepSpatialData {
   items: PrepSpatialItem[]
 }
 
+/** Lookup vs Pure Core cognitive track (words + phrases share this). */
+export type CognitiveMode = 'lookup' | 'core'
+/** @deprecated alias — use CognitiveMode */
+export type PhraseCognitiveMode = CognitiveMode
+
 export interface PhraseResult {
   phrase: string
   correctForm: string
   correctionNote?: string
   unnaturalMindModel?: UnnaturalMindModel
+  /** Pure Core：母语者如何理解/选用该表达（与单词 NativeMindModel 对齐） */
+  nativeMindModel?: NativeMindModel
   meaning: string
   usageScenes?: Array<{ label: string; description: string }>
   examples: Example[]

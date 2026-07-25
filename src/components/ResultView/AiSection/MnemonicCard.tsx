@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { generateMnemonic, generatePhraseMnemonic, generateSingleMnemonic } from '../../../services/ai'
 import type { Mnemonic } from '../../../types'
 import { useT } from '../../../i18n'
+import { SectionHeading } from '../SectionHeading'
 
 type MnemonicType = 'philology' | 'story' | 'smart'
 
@@ -138,22 +139,19 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
   const activeItem = mnemonic && activeType ? mnemonic[activeType] : undefined
 
   return (
-    <div className="mt-1 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{t('mnemonic.heading')}</h2>
-        {!mnemonic && !loading && (
+    <div className="mt-1 mb-3">
+      <SectionHeading
+        title={t('mnemonic.heading')}
+        action={!mnemonic && !loading ? (
           <button
             type="button"
             onClick={handleGenerate}
-            className="text-[10px] font-bold text-accent hover:text-accent-hover transition-colors flex items-center gap-1"
+            className="text-[10px] font-bold text-accent hover:text-accent-hover transition-colors cursor-pointer whitespace-nowrap"
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
             {t('mnemonic.generate')}
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Initial generation spinner */}
       {loading && !mnemonic && (

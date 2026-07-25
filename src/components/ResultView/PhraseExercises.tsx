@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { evaluateAnswer } from '../../services/ai'
 import type { Exercise } from '../../types'
 import { useT } from '../../i18n'
+import { SectionHeading } from './SectionHeading'
 
 type ExStatus = 'idle' | 'evaluating' | 'correct' | 'incorrect'
 
@@ -45,17 +46,14 @@ export function PhraseExercises({ phrase, exercises }: PhraseExercisesProps) {
 
   return (
     <div className="mb-4">
-      <div className="flex items-center gap-1.5 mb-3">
-        <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-        <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">{t('phraseEx.heading')}</h2>
-      </div>
+      <SectionHeading title={t('phraseEx.heading')} />
       <div className="space-y-3">
         {exercises.map((ex, i) => {
           const st = exStates[i]
           return (
-            <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                <span className="font-semibold text-gray-700 dark:text-gray-300 mr-1">{t('phraseEx.scenario')} {i + 1}</span>
+            <div key={i} className="rounded-xl border border-border/50 p-3">
+              <p className="text-xs text-foreground-muted mb-2">
+                <span className="font-semibold text-foreground mr-1">{t('phraseEx.scenario')} {i + 1}</span>
                 {ex.scenario}
               </p>
               <textarea

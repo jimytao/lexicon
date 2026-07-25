@@ -1,3 +1,8 @@
+/**
+ * SHELVED (2026-07-25): Not mounted in result views. Keep for a future Notes restore.
+ * DB APIs (user_notes / ai_conversations / saved_core_concept) remain intact — do not delete schema.
+ * Do not re-mount until product decides to ship personal notes again.
+ */
 import { useState, useEffect } from 'react'
 import { db } from '../../services/db'
 import type { UserWordMemory, ChatMessage } from '../../types'
@@ -5,7 +10,7 @@ import { useT } from '../../i18n'
 
 export const USER_NOTES_ELEMENT_ID = 'lexicon-user-notes'
 
-/** Expand notes panel and scroll it into view (used by LexiconMemoryBadge). */
+/** Expand notes panel and scroll it into view (kept for shelved badge / Memory restore). */
 export function openUserNotes() {
   window.dispatchEvent(new Event('lexicon:open-notes'))
   document.getElementById(USER_NOTES_ELEMENT_ID)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })

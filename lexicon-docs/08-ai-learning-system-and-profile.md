@@ -139,7 +139,8 @@ CREATE TABLE IF NOT EXISTS user_word_memory (
 * Profile 后台蒸馏、Settings 内 Profile 查看/重置 **继续可用**（与看板展示解耦）。
 
 ### 6.2 词汇/句子详情页：`LexiconMemoryBadge` & `UserNoteEditor`
-在词汇结果页顶部显示互动历史，并提供本地笔记编辑器与历史 AI 追问回顾（此部分未雪藏）。
+- `LexiconMemoryBadge`：结果页顶部只读展示已有笔记 / Q&A / Core 意象徽章。
+- `UserNoteEditor`：**SHELVED (2026-07-25)** — 源码保留，结果页不挂载；`user_notes` / 对话归档 / `saved_core_concept` 的 DB API **不动**（与 md 词库无关）。
 
 ---
 
@@ -148,4 +149,4 @@ CREATE TABLE IF NOT EXISTS user_word_memory (
 7.1 ✅ 创建 `src/services/profile.ts` (Profile 读写、三维数据打包与蒸馏逻辑)。  
 7.2 ✅ 创建 SQLite `user_word_memory` 存储层与接口。  
 7.3 ❄️ `AILearningDigestCard` / Memory Tab — **已实现后雪藏**，不进当前 App 导航。  
-7.4 ✅ 在词汇页集成 `UserNoteEditor.tsx` 与 `LexiconMemoryBadge.tsx`。
+7.4 ❄️ `UserNoteEditor` — **已实现后雪藏**；`LexiconMemoryBadge` 仍挂载（只读）。

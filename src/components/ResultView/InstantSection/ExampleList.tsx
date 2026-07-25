@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Example } from '../../../types'
 import { useT } from '../../../i18n'
 import { useSettingsStore } from '../../../stores/settingsStore'
+import { SectionHeading } from '../SectionHeading'
 
 interface ExampleListProps {
   examples: Example[]
@@ -22,8 +23,8 @@ export function ExampleList({ examples, hideTranslation }: ExampleListProps) {
   const visible = needsCollapse && !expanded ? examples.slice(0, COLLAPSE_THRESHOLD) : examples
 
   return (
-    <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-      <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">{t('examples.heading')}</h2>
+    <div className="mb-4">
+      <SectionHeading title={t('examples.heading')} />
       <div className="space-y-3">
         {visible.map((ex, i) => (
           <div key={i} className="relative pl-4 border-l-2 border-accent/20 hover:border-accent transition-colors py-1">

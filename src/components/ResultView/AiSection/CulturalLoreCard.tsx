@@ -1,4 +1,5 @@
 import { useT } from '../../../i18n'
+import { SectionHeading } from '../SectionHeading'
 
 const REGISTER_CONFIG: Record<string, { labelKey: string; color: string; darkColor: string }> = {
   formal:    { labelKey: 'culture.register.formal',    color: 'text-blue-600 bg-blue-50 border-blue-200',       darkColor: 'dark:text-blue-300 dark:bg-blue-900/20 dark:border-blue-700/30' },
@@ -27,20 +28,14 @@ export function CulturalLoreCard({ lore }: CulturalLoreCardProps) {
   const registerCfg = registerKey ? REGISTER_CONFIG[registerKey] : null
 
   return (
-    <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-        <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">
-          {t('module.culture')}
-        </h2>
-      </div>
+    <div className="mb-4">
+      <SectionHeading title={t('module.culture')} />
 
-      <div className="rounded-xl p-3.5 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/50 dark:border-indigo-800/20">
-        {/* Header row: title tag + register badge */}
+      <div className="rounded-xl p-3.5 bg-background-soft/60 border border-border/50">
         {(lore.title || registerCfg) && (
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             {lore.title && (
-              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+              <span className="text-xs font-bold text-foreground">
                 {lore.title}
               </span>
             )}
@@ -52,20 +47,18 @@ export function CulturalLoreCard({ lore }: CulturalLoreCardProps) {
           </div>
         )}
 
-        {/* Main content */}
         {lore.content && (
-          <p className="text-sm leading-relaxed text-indigo-900 dark:text-indigo-200">
+          <p className="text-sm leading-relaxed text-foreground">
             {lore.content}
           </p>
         )}
 
-        {/* Subculture note (foreign words only) */}
         {lore.subculture && (
-          <div className="mt-3 pt-3 border-t border-indigo-200/30 dark:border-indigo-800/30">
-            <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-500 dark:text-indigo-400 block mb-1">
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <span className="text-[10px] font-black tracking-widest uppercase text-foreground-muted/50 block mb-1">
               {t('culture.subculture')}
             </span>
-            <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 italic">
+            <p className="text-xs text-foreground-muted italic">
               {lore.subculture}
             </p>
           </div>

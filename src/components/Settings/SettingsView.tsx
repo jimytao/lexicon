@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { useState, useRef, useMemo } from 'react'
-import { useSettingsStore } from '../../stores/settingsStore'
+import { useSettingsStore, DEFAULT_CORE_PHRASE_MODULES } from '../../stores/settingsStore'
 import type { AppModule } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
@@ -215,9 +215,11 @@ export function SettingsView() {
     setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises,
     performanceMode, setPerformanceMode,
     defaultSearchMode, setDefaultSearchMode,
+    historyPreferCognitive, setHistoryPreferCognitive,
     triLingualExamples, setTriLingualExamples,
     modules, setModules,
     coreModules = [], setCoreModules,
+    corePhraseModules = DEFAULT_CORE_PHRASE_MODULES, setCorePhraseModules,
     appLanguage, setAppLanguage,
     monolingualWord, setMonolingualWord,
     monolingualPhrase, setMonolingualPhrase,
@@ -238,6 +240,7 @@ export function SettingsView() {
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
   const [showModelList, setShowModelList] = useState(false)
   const [hoveredModuleId, setHoveredModuleId] = useState<string | null>(null)
+  const [coreModuleScope, setCoreModuleScope] = useState<'word' | 'phrase'>('word')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
 
   type TestStatus = 'idle' | 'testing' | 'success' | 'error'
@@ -316,6 +319,14 @@ export function SettingsView() {
     if (t < 0 || t >= a.length) return
     const [m] = a.splice(index, 1); a.splice(t, 0, m); setCoreModules(a)
   }
+  function toggleCorePhraseModule(id: string) {
+    setCorePhraseModules(corePhraseModules.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m))
+  }
+  function moveCorePhraseModule(index: number, dir: 'up' | 'down') {
+    const a = [...corePhraseModules], t = dir === 'up' ? index - 1 : index + 1
+    if (t < 0 || t >= a.length) return
+    const [m] = a.splice(index, 1); a.splice(t, 0, m); setCorePhraseModules(a)
+  }
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -330,6 +341,13 @@ export function SettingsView() {
     const { active, over } = event; if (!over || active.id === over.id) return
     const oi = coreModules.findIndex(m => m.id === active.id), ni = coreModules.findIndex(m => m.id === over.id)
     if (oi < 0 || ni < 0) return; setCoreModules(arrayMove(coreModules, oi, ni))
+  }
+  function handleCorePhraseModuleDragEnd(event: DragEndEvent) {
+    const { active, over } = event; if (!over || active.id === over.id) return
+    const oi = corePhraseModules.findIndex(m => m.id === active.id)
+    const ni = corePhraseModules.findIndex(m => m.id === over.id)
+    if (oi < 0 || ni < 0) return
+    setCorePhraseModules(arrayMove(corePhraseModules, oi, ni))
   }
 
   const isCacheEmpty = Object.keys(aiCache).length === 0 && Object.keys(aiFullCache).length === 0 && Object.keys(phraseCache).length === 0
@@ -535,6 +553,31 @@ export function SettingsView() {
 
             <RowDivider />
 
+            {/* History dual-track preference */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-sm font-bold text-foreground">{t('settings.historyPrefer')}</span>
+                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.historyPreferDesc')}</p>
+              </div>
+              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border shrink-0">
+                {([
+                  { id: 'lookup' as const, label: t('settings.historyPreferLookup') },
+                  { id: 'core' as const, label: t('settings.historyPreferCore') },
+                ]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setHistoryPreferCognitive(opt.id)}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${historyPreferCognitive === opt.id ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <RowDivider />
+
             {/* Modules — Standard AI (Accordion) */}
             <Accordion
               title={t('settings.modulesMode2')}
@@ -555,23 +598,60 @@ export function SettingsView() {
               </div>
             </Accordion>
 
-            {/* Modules — Pure Core (Accordion) */}
+            {/* Modules — Pure Core Word / Phrase (Accordion) */}
             <Accordion
               title={t('settings.modulesMode3')}
-              subtitle={`${coreModules.filter(m => m.enabled).length} ${t('settings.enabled')}`}
+              subtitle={
+                coreModuleScope === 'word'
+                  ? `${coreModules.filter(m => m.enabled).length} ${t('settings.enabled')}`
+                  : `${corePhraseModules.filter(m => m.enabled).length} ${t('settings.enabled')}`
+              }
             >
-              <div className="pt-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCoreModuleDragEnd}>
-                  <SortableContext items={coreModules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-2">
-                      {coreModules.map((m, i) => (
-                        <SortableModuleRow key={m.id} module={m} index={i} total={coreModules.length}
-                          hoveredId={hoveredModuleId} onHoverChange={setHoveredModuleId}
-                          onToggle={toggleCoreModule} onMove={moveCoreModule} />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setCoreModuleScope('word')}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${coreModuleScope === 'word' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
+                  >
+                    {t('settings.modulesCoreWord')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoreModuleScope('phrase')}
+                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${coreModuleScope === 'phrase' ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
+                  >
+                    {t('settings.modulesCorePhrase')}
+                  </button>
+                </div>
+                <p className="text-[11px] text-foreground-muted leading-snug px-0.5">
+                  {coreModuleScope === 'word' ? t('settings.modulesCoreWordDesc') : t('settings.modulesCorePhraseDesc')}
+                </p>
+                {coreModuleScope === 'word' ? (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCoreModuleDragEnd}>
+                    <SortableContext items={coreModules.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-2">
+                        {coreModules.map((m, i) => (
+                          <SortableModuleRow key={m.id} module={m} index={i} total={coreModules.length}
+                            hoveredId={hoveredModuleId} onHoverChange={setHoveredModuleId}
+                            onToggle={toggleCoreModule} onMove={moveCoreModule} />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCorePhraseModuleDragEnd}>
+                    <SortableContext items={corePhraseModules.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-2">
+                        {corePhraseModules.map((m, i) => (
+                          <SortableModuleRow key={m.id} module={m} index={i} total={corePhraseModules.length}
+                            hoveredId={hoveredModuleId} onHoverChange={setHoveredModuleId}
+                            onToggle={toggleCorePhraseModule} onMove={moveCorePhraseModule} />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
               </div>
             </Accordion>
 

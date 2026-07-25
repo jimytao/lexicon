@@ -18,11 +18,18 @@ import { Keyboard } from '@capacitor/keyboard'
 import { Device } from '@capacitor/device'
 import { useUpdateStore } from './stores/updateStore'
 import { UpdateModal } from './components/Settings/UpdateModal'
-import { normalizeQuery } from './utils/text'
+import {
+  normalizeQuery,
+  cognitiveFromSearchMode,
+  preferredAiModeFromSettings,
+} from './utils/text'
+import { historyModeForTrack, resolveHistoryTrack } from './utils/historyTrack'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
 import { recordLookupEvent } from './services/profile'
 import { useT } from './i18n'
+import type { AiMode } from './stores/historyStore'
+import type { CognitiveMode } from './types'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -57,7 +64,13 @@ export function App() {
   const lastScrollTopRef = useRef(0)
   const { mode, query, setMode } = useSearchStore()
   const { darkMode, performanceMode } = useSettingsStore()
-  const { add: addHistory, upgrade: upgradeHistory } = useHistoryStore()
+  const { add: addHistory, upgrade: upgradeHistoryRaw } = useHistoryStore()
+
+  /** History upgrade always tags the current Lookup / Core track. */
+  function upgradeHistory(word: string, aiMode: AiMode, cognitive?: CognitiveMode) {
+    const track = cognitive ?? cognitiveFromSearchMode(useSearchStore.getState().mode)
+    upgradeHistoryRaw(word, aiMode, track)
+  }
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -87,7 +100,7 @@ export function App() {
 
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
-  const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery } = useAiLookup()
+  const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
 
   useEffect(() => {
@@ -161,7 +174,7 @@ export function App() {
     return () => sc.removeEventListener('scroll', handleScroll)
   }, [isKeyboardVisible, view])
 
-  /** 点击分段控件切换模式时立刻补齐 AI（含 Instant → Pure Core），不依赖 useEffect / idle 门闩 */
+  /** 点击分段控件切换模式时立刻补齐 AI（Lookup / Pure Core 均点击即搜），不依赖 useEffect / idle 门闩 */
   function handleModeChange(next: typeof mode) {
     const prev = useSearchStore.getState().mode
     if (prev === next) return
@@ -171,38 +184,52 @@ export function App() {
     const store = useResultStore.getState()
     const currentQuery = useSearchStore.getState().query
     const currentWord = store.wordResult
+    const target = (currentQuery.trim() || currentWord?.word || '').trim()
 
-    // Instant（本地结果）→ AI Lookup：补 analyze
-    if (next === 'ai' && searchSource === 'local' && currentWord) {
-      const cached = store.getCachedAi(currentWord.word)
-      if (cached) {
-        store.setAiAnalysis(currentWord.word, cached)
-        upgradeHistory(currentWord.word, 'analyze')
-      } else if (store.aiStatus !== 'loading') {
-        triggerAi(currentWord.word, currentWord.meanings, currentWord.examples.length === 0)
-        upgradeHistory(currentWord.word, 'analyze')
-      }
-    }
-
-    // → Pure Core（含 Instant 直达）：有缓存恢复，否则立刻 full/phrase
-    if (next === 'core') {
-      const target = (currentQuery.trim() || currentWord?.word || '').trim()
-      if (target) {
-        const qt = detectQueryType(target)
-        if (qt === 'phrase' || qt === 'sentence') {
-          const cachedPhrase = store.getCachedPhrase(target)
+    // → AI Lookup：本地 analyze / 词组 Lookup 分轨 / 全量 Lookup 分轨（含 Core→Lookup、Instant 直达）
+    if (next === 'ai') {
+      if (searchSource === 'local' && currentWord) {
+        const cached = store.getCachedAi(currentWord.word)
+        if (cached) {
+          store.setAiAnalysis(currentWord.word, cached)
+          upgradeHistory(currentWord.word, 'analyze')
+        } else if (store.aiStatus !== 'loading') {
+          triggerAi(currentWord.word, currentWord.meanings, currentWord.examples.length === 0)
+          upgradeHistory(currentWord.word, 'analyze')
+        }
+      } else if (searchSource === 'phrase' || (target && (detectQueryType(target) === 'phrase' || detectQueryType(target) === 'sentence'))) {
+        if (target) {
+          const cognitive = cognitiveFromSearchMode('ai')
+          const cachedPhrase = store.getCachedPhrase(target, cognitive)
           setSearchSource('phrase')
           if (cachedPhrase) {
-            store.setPhraseResult(target, cachedPhrase)
+            store.setPhraseResult(target, cachedPhrase, cognitive)
           } else {
             triggerPhraseQuery(target)
           }
           upgradeHistory(target, 'phrase')
-        } else {
-          const cachedFull = store.getCachedAiFull(target)
+        }
+      } else if (searchSource === 'ai-full' || (target && detectQueryType(target) === 'word')) {
+        // Core / Instant OOD → Lookup：有本地快照则恢复 L1+analyze，否则走 Lookup 全量分轨
+        const snap = localWordSnapshotRef.current
+        if (snap && searchSource === 'ai-full') {
+          store.setWordResult(snap.wordResult, false)
+          store.setRelatedPhrases(snap.relatedPhrases)
+          setSearchSource('local')
+          const cached = store.getCachedAi(snap.wordResult.word)
+          if (cached) {
+            store.setAiAnalysis(snap.wordResult.word, cached)
+            upgradeHistory(snap.wordResult.word, 'analyze')
+          } else {
+            triggerAi(snap.wordResult.word, snap.wordResult.meanings, snap.wordResult.examples.length === 0)
+            upgradeHistory(snap.wordResult.word, 'analyze')
+          }
+        } else if (target) {
+          const cognitive = cognitiveFromSearchMode('ai')
+          const cachedFull = store.getCachedAiFull(target, cognitive)
           setSearchSource('ai-full')
           if (cachedFull) {
-            store.setAiFullResult(target, cachedFull)
+            store.setAiFullResult(target, cachedFull, cognitive)
           } else {
             triggerFullLookup(target)
           }
@@ -211,13 +238,61 @@ export function App() {
       }
     }
 
-    // 从 ai-full 切回 Instant：恢复本地快照
-    if (next === 'instant' && searchSource === 'ai-full') {
+    // → Pure Core（含 Instant 直达）：有缓存恢复，否则立刻 full/phrase
+    if (next === 'core') {
+      if (target) {
+        const qt = detectQueryType(target)
+        if (qt === 'phrase' || qt === 'sentence') {
+          const cognitive = cognitiveFromSearchMode('core')
+          const cachedPhrase = store.getCachedPhrase(target, cognitive)
+          setSearchSource('phrase')
+          if (cachedPhrase) {
+            store.setPhraseResult(target, cachedPhrase, cognitive)
+          } else {
+            triggerPhraseQuery(target)
+          }
+          upgradeHistory(target, 'phrase')
+        } else {
+          const cognitive = cognitiveFromSearchMode('core')
+          const cachedFull = store.getCachedAiFull(target, cognitive)
+          setSearchSource('ai-full')
+          if (cachedFull) {
+            store.setAiFullResult(target, cachedFull, cognitive)
+          } else {
+            triggerFullLookup(target)
+          }
+          upgradeHistory(target, 'full')
+        }
+      }
+    }
+
+    // → Instant：有本地词典快照则只显示 L1（不加载 AI 展示，缓存保留）；否则清空结果区，保留搜索框
+    if (next === 'instant') {
+      // Abort + invalidate generation so in-flight AI cannot repopulate display
+      cancelAi()
       const snap = localWordSnapshotRef.current
       if (snap) {
         store.setWordResult(snap.wordResult, false)
         store.setRelatedPhrases(snap.relatedPhrases)
+        useResultStore.setState({
+          aiAnalysis: null,
+          aiFullResult: null,
+          phraseResult: null,
+          aiStatus: 'idle',
+          aiError: null,
+        })
         setSearchSource('local')
+      } else {
+        useResultStore.setState({
+          wordResult: null,
+          relatedPhrases: [],
+          aiAnalysis: null,
+          aiFullResult: null,
+          phraseResult: null,
+          aiStatus: 'idle',
+          aiError: null,
+        })
+        setSearchSource('none')
       }
     }
   }
@@ -226,14 +301,25 @@ export function App() {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  /** Pick Lookup vs Core track for history replay; null = Instant-only (no AI intent/cache). */
+  function resolveHistoryTrackForWord(word: string): CognitiveMode | null {
+    const store = useResultStore.getState()
+    const entry = useHistoryStore.getState().words.find((e) => normalizeQuery(e.word) === normalizeQuery(word))
+    return resolveHistoryTrack(word, {
+      prefer: useSettingsStore.getState().historyPreferCognitive,
+      entry,
+      aiCache: store.aiCache,
+      aiFullCache: store.aiFullCache,
+      phraseCache: store.phraseCache,
+    })
+  }
+
   async function handleWordSelect(word: string, fromHistory = false) {
     scrollToTop()
     localWordSnapshotRef.current = null
     const nw = normalizeQuery(word)
 
     const historyEntry = useHistoryStore.getState().words.find((e) => normalizeQuery(e.word) === nw)
-    const historyAiMode = historyEntry?.aiMode ?? null
-
 
     const { result, queryType } = await selectWord(word)
 
@@ -254,74 +340,76 @@ export function App() {
 
       if (fromHistory) {
         const store = useResultStore.getState()
-        const currentMode = useSearchStore.getState().mode
-        const cachedFull = store.getCachedAiFull(word)
-        const cachedPhrase = store.getCachedPhrase(word)
-        const cachedAi = store.getCachedAi(result.word)
+        const track = resolveHistoryTrackForWord(word)
+        if (track == null) {
+          // Instant-only history: keep L1, do not force AI chrome
+          useSearchStore.getState().setMode('instant')
+        } else {
+          const targetMode = historyModeForTrack(track, 'ai')
+          useSearchStore.getState().setMode(targetMode)
+          const cognitive = track
+          const cachedFull = store.getCachedAiFull(word, cognitive)
+          const cachedPhrase = store.getCachedPhrase(word, cognitive)
+          const cachedAi = cognitive === 'lookup' ? store.getCachedAi(result.word) : null
+          const trackHistMode = cognitive === 'core'
+            ? (historyEntry?.coreAiMode ?? null)
+            : (historyEntry?.lookupAiMode ?? null)
 
-        if (cachedFull) {
-          setSearchSource('ai-full')
-          if (currentMode !== 'core') {
-            useSearchStore.getState().setMode('ai')
+          if (cachedFull) {
+            setSearchSource('ai-full')
+            useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
+            upgradeHistory(word, 'full', cognitive)
+          } else if (cachedPhrase) {
+            setSearchSource('phrase')
+            useResultStore.getState().setPhraseResult(word, cachedPhrase, cognitive)
+            upgradeHistory(word, 'phrase', cognitive)
+          } else if (cachedAi) {
+            useResultStore.getState().setAiAnalysis(result.word, cachedAi)
+            upgradeHistory(word, 'analyze', 'lookup')
+          } else if (trackHistMode === 'phrase') {
+            setSearchSource('phrase')
+            triggerPhraseQuery(word)
+          } else if (trackHistMode === 'full' || cognitive === 'core') {
+            setSearchSource('ai-full')
+            triggerFullLookup(word)
+          } else if (trackHistMode === 'analyze') {
+            triggerAi(result.word, result.meanings, result.examples.length === 0)
+            upgradeHistory(word, 'analyze', 'lookup')
           }
-          useResultStore.getState().setAiFullResult(word, cachedFull)
-          upgradeHistory(word, 'full')
-        } else if (cachedPhrase) {
-          setSearchSource('phrase')
-          useSearchStore.getState().setMode('ai')
-          useResultStore.getState().setPhraseResult(word, cachedPhrase)
-          upgradeHistory(word, 'phrase')
-        } else if (cachedAi && currentMode !== 'core') {
-          useSearchStore.getState().setMode('ai')
-          useResultStore.getState().setAiAnalysis(result.word, cachedAi)
-          upgradeHistory(word, 'analyze')
-        } else if (historyAiMode === 'full' || currentMode === 'core') {
-          setSearchSource('ai-full')
-          if (currentMode !== 'core') {
-            useSearchStore.getState().setMode('ai')
-          }
-          triggerFullLookup(word)
-        } else if (historyAiMode === 'phrase') {
-          setSearchSource('phrase')
-          useSearchStore.getState().setMode('ai')
-          triggerPhraseQuery(word)
-        } else if (historyAiMode === 'analyze') {
-          useSearchStore.getState().setMode('ai')
-          triggerAi(result.word, result.meanings, result.examples.length === 0)
-          upgradeHistory(word, 'analyze')
         }
-        // historyAiMode === null → normal instant, no extra action
       } else {
         const store = useResultStore.getState()
         const currentMode = useSearchStore.getState().mode
-        const cachedFull = store.getCachedAiFull(word)
-        const cachedPhrase = store.getCachedPhrase(word)
+        const cognitive = cognitiveFromSearchMode(currentMode)
+        const cachedFull = store.getCachedAiFull(word, cognitive)
+        const cachedPhrase = store.getCachedPhrase(word, cognitive)
         const cachedAi = store.getCachedAi(result.word)
 
         if (cachedFull) {
-          // Keep Core mode if user is already exploring in Mode 3; otherwise restore AI mode.
           setSearchSource('ai-full')
           if (currentMode !== 'core') {
             useSearchStore.getState().setMode('ai')
           }
-          useResultStore.getState().setAiFullResult(word, cachedFull)
-          upgradeHistory(word, 'full')
+          useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
+          upgradeHistory(word, 'full', cognitive)
         } else if (cachedPhrase) {
           setSearchSource('phrase')
-          useSearchStore.getState().setMode('ai')
-          useResultStore.getState().setPhraseResult(word, cachedPhrase)
-          upgradeHistory(word, 'phrase')
+          if (currentMode !== 'core') {
+            useSearchStore.getState().setMode('ai')
+          }
+          useResultStore.getState().setPhraseResult(word, cachedPhrase, cognitive)
+          upgradeHistory(word, 'phrase', cognitive)
         } else if (cachedAi && currentMode !== 'core') {
           useSearchStore.getState().setMode('ai')
           useResultStore.getState().setAiAnalysis(result.word, cachedAi)
-          upgradeHistory(word, 'analyze')
+          upgradeHistory(word, 'analyze', 'lookup')
         } else if (currentMode === 'ai') {
           triggerAi(result.word, result.meanings, result.examples.length === 0)
-          upgradeHistory(word, 'analyze')
+          upgradeHistory(word, 'analyze', 'lookup')
         } else if (currentMode === 'core') {
           setSearchSource('ai-full')
           triggerFullLookup(word)
-          upgradeHistory(word, 'full')
+          upgradeHistory(word, 'full', 'core')
         }
       }
     } else {
@@ -329,12 +417,40 @@ export function App() {
       // Clear word result in the same sync block as setSearchSource so React 18 batches
       // them into a single render, preventing the intermediate blank/black screen flash.
       useResultStore.getState().setWordResult(null)
+
+      if (fromHistory) {
+        const track = resolveHistoryTrackForWord(word)
+        // OOD / phrase: null track still needs an AI surface — fall into settings preferred mode
+        const fallback = preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
+        useSearchStore.getState().setMode(historyModeForTrack(track, fallback))
+      } else {
+        // Instant 未命中：按设置 defaultSearchMode 落入 Lookup 或 Core
+        const currentMode = useSearchStore.getState().mode
+        if (currentMode === 'instant') {
+          const preferred = preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
+          useSearchStore.getState().setMode(preferred)
+        }
+      }
+
+      const cognitive = cognitiveFromSearchMode(useSearchStore.getState().mode)
       if (queryType === 'phrase' || queryType === 'sentence') {
         setSearchSource('phrase')
-        triggerPhraseQuery(word)
+        const cachedPhrase = useResultStore.getState().getCachedPhrase(word, cognitive)
+        if (cachedPhrase) {
+          useResultStore.getState().setPhraseResult(word, cachedPhrase, cognitive)
+        } else {
+          triggerPhraseQuery(word)
+        }
+        upgradeHistory(word, 'phrase', cognitive)
       } else {
         setSearchSource('ai-full')
-        triggerFullLookup(word)
+        const cachedFull = useResultStore.getState().getCachedAiFull(word, cognitive)
+        if (cachedFull) {
+          useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
+        } else {
+          triggerFullLookup(word)
+        }
+        upgradeHistory(word, 'full', cognitive)
       }
     }
   }
@@ -364,20 +480,23 @@ export function App() {
     }
     useSearchStore.getState().setQuery(word)
     
-    // Bypass local dictionary cache. Update mode based on current mode
+    // Bypass local dictionary cache. Instant → follow settings preferred AI mode (Lookup / Core)
     const currentMode = useSearchStore.getState().mode
-    const targetMode = currentMode === 'instant' ? 'ai' : currentMode
+    const targetMode = currentMode === 'instant'
+      ? preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
+      : currentMode
     useSearchStore.getState().setMode(targetMode)
 
     const qt = detectQueryType(word)
+    const cognitive = cognitiveFromSearchMode(targetMode)
     if (qt === 'phrase' || qt === 'sentence') {
       setSearchSource('phrase')
       triggerPhraseQuery(word)
-      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase')
+      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase', cognitive)
     } else {
       setSearchSource('ai-full')
       triggerFullLookup(word)
-      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full')
+      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full', cognitive)
     }
   }
 
@@ -534,6 +653,13 @@ export function App() {
 
   const showPhraseView = searchSource === 'phrase'
   const showAiFullView = searchSource === 'ai-full'
+  // 任意默认模式：无查询、无结果时一律显示小书空态（不被 Core 空壳抢走）
+  const showEmptyHome = searchSource === 'none'
+    && !wordResult
+    && !phraseResult
+    && !aiFullResult
+    && aiStatus === 'idle'
+    && !normalizeQuery(query)
 
   const bottomNavVisible = isBottomNavVisible || isAtTop
   const bottomNavClassName = `fixed left-1/2 z-50 glass rounded-[2rem] px-2 py-2 w-[85%] max-w-[320px] bg-background/80 backdrop-blur-2xl shadow-2xl border border-border/50 transition-all duration-300 ease-out ${bottomNavVisible || isLargeScreen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`
@@ -571,7 +697,19 @@ export function App() {
 
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <ErrorBoundary>
-                {showPhraseView ? (
+                {showEmptyHome ? (
+                  // 整屏几何居中（任意默认模式一致；不随底部菜单滚动显隐跳动）
+                  <div className="fixed inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none text-foreground-muted px-6">
+                    <div className="w-12 h-12 mb-4 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                      </svg>
+                    </div>
+                    <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
+                      {t('home.emptyPlaceholder')}
+                    </p>
+                  </div>
+                ) : showPhraseView ? (
                   <PhraseView
                     phrase={query}
                     phraseResult={phraseResult}
@@ -613,7 +751,6 @@ export function App() {
                     onGoToSettings={() => setView('settings')}
                   />
                 ) : (
-                  // 整屏几何居中（不随底部菜单滚动显隐跳动）
                   <div className="fixed inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none text-foreground-muted px-6">
                     <div className="w-12 h-12 mb-4 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

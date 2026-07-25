@@ -50,10 +50,10 @@ export function useSearch() {
       // Note: setWordResult(null) is intentionally NOT called here.
       // It is called in handleWordSelect (App.tsx) in the same synchronous
       // block as setSearchSource to avoid an intermediate blank render.
+      // History track (lookup/core) is upgraded in App after preferred mode is chosen.
       setRelatedPhrases([])
       setSuggestions([])
       setQuery(word)
-      if (historyEnabled) addToHistory(word, 'phrase')
       return { result: null, mode: 'ai' as const, queryType }
     }
 
@@ -75,7 +75,6 @@ export function useSearch() {
       setRelatedPhrases([])
       setSuggestions([])
       setQuery(word)
-      if (historyEnabled) addToHistory(word, 'phrase')
       return { result: null, mode: 'ai' as const, queryType }
     }
 
@@ -98,7 +97,6 @@ export function useSearch() {
     setRelatedPhrases([])
     setSuggestions([])
     setQuery(word)
-    if (historyEnabled) addToHistory(word, 'full')
     return { result: null, mode: 'ai' as const, queryType }
   }, [mode, historyEnabled, addToHistory, setWordResult, setRelatedPhrases, setSuggestions, setQuery, setMode])
 

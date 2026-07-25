@@ -70,6 +70,16 @@ Standalone page modules and dashboard cards (e.g. `AILearningDigestCard`) must f
 - **Row Titles**: `text-sm font-bold text-foreground block`
 - **Descriptions/Subtitles**: `text-[11px] text-foreground-muted mt-0.5 leading-snug`
 
+### Result Section Header（查词结果页板块标题）
+Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
+- **Style**: same as Group Headers (`text-[10px] font-black uppercase tracking-widest text-foreground-muted/50`)
+- **❌ DO NOT** put decorative colored dots (`w-1.5 h-1.5 rounded-full`) before titles
+- **❌ DO NOT** repeat per-section 「AI」 pills — mode is already shown once at the page top
+- **❌ DO NOT** use emoji (🎯🧠💡🧭 etc.) as section icons
+- **❌ DO NOT** give every module its own rainbow accent; body copy stays neutral `foreground` / `border`
+- **✅ Color for mode track only**: one top badge (Lookup amber / Core indigo / Phrase teal)
+- **✅ Icons only for interaction or status**: pronunciation, expand/collapse, retry, generate, delete, nav
+
 ### Alignment & Flex Rules
 - **Left Column**: Wraps in `flex-1 min-w-0 pr-3` so titles and descriptions never overlap or push right-side controls.
 - **Right Column**: Buttons, toggles, and selectors wrap in `shrink-0 flex items-center gap-2`.
@@ -106,3 +116,4 @@ When modifying or creating UI components in Lexicon:
 4. **Always** use `whitespace-nowrap shrink-0` on button elements in settings and lists.
 5. **Always** use `flex-1 min-w-0 pr-3` on row title containers to ensure clean left-aligned text layout.
 6. **Always** i18n all bottom-nav labels (`nav.dict` / `nav.image` / `nav.settings`).
+7. **Always** use `SectionHeading` (or identical typography) for result-page section titles; never reintroduce decorative dots, emoji headers, or per-module AI badges.

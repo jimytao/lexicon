@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic } from '../types'
-import { normalizeQuery } from '../utils/text'
+import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode } from '../types'
+import { normalizeQuery, cognitiveCacheKey } from '../utils/text'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -21,15 +21,15 @@ interface ResultStore {
   setRelatedPhrases: (phrases: SuggestItem[]) => void
   setAiStatus: (s: AiStatus) => void
   setAiAnalysis: (word: string, a: AiAnalysis) => void
-  setAiFullResult: (word: string, r: AiFullResult) => void
-  setPhraseResult: (key: string, r: PhraseResult) => void
+  setAiFullResult: (word: string, r: AiFullResult, cognitive?: CognitiveMode) => void
+  setPhraseResult: (key: string, r: PhraseResult, cognitive?: CognitiveMode) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
-  updateFullMnemonic: (word: string, m: Mnemonic) => void
-  updatePhraseMnemonic: (key: string, m: Mnemonic) => void
+  updateFullMnemonic: (word: string, m: Mnemonic, cognitive?: CognitiveMode) => void
+  updatePhraseMnemonic: (key: string, m: Mnemonic, cognitive?: CognitiveMode) => void
   getCachedAi: (word: string) => AiAnalysis | null
-  getCachedAiFull: (word: string) => AiFullResult | null
-  getCachedPhrase: (key: string) => PhraseResult | null
+  getCachedAiFull: (word: string, cognitive?: CognitiveMode) => AiFullResult | null
+  getCachedPhrase: (key: string, cognitive?: CognitiveMode) => PhraseResult | null
   clearCache: () => void
   clearCacheOnly: () => void
   evictCacheEntry: (key: string) => void
@@ -92,44 +92,44 @@ export const useResultStore = create<ResultStore>()(
           set({ aiCache: cache, aiAnalysis: updated })
         }
       },
-      updateFullMnemonic: (word, mnemonic) => {
-        const normalized = normalizeQuery(word)
+      updateFullMnemonic: (word, mnemonic, cognitive = 'lookup') => {
+        const cacheKey = cognitiveCacheKey(word, cognitive)
         const current = get().aiFullResult
         if (current) {
           const updated = { ...current, mnemonic }
           const cache = { ...get().aiFullCache }
-          delete cache[normalized]
-          cache[normalized] = updated
+          delete cache[cacheKey]
+          cache[cacheKey] = updated
           set({ aiFullCache: cache, aiFullResult: updated })
         }
       },
-      updatePhraseMnemonic: (key, mnemonic) => {
-        const normalized = normalizeQuery(key)
+      updatePhraseMnemonic: (key, mnemonic, cognitive = 'lookup') => {
+        const cacheKey = cognitiveCacheKey(key, cognitive)
         const current = get().phraseResult
         if (current) {
           const updated = { ...current, mnemonic }
           const cache = { ...get().phraseCache }
-          delete cache[normalized]
-          cache[normalized] = updated
+          delete cache[cacheKey]
+          cache[cacheKey] = updated
           set({ phraseCache: cache, phraseResult: updated })
         }
       },
-      setAiFullResult: (word, aiFullResult) => {
-        const normalized = normalizeQuery(word)
+      setAiFullResult: (word, aiFullResult, cognitive = 'lookup') => {
+        const cacheKey = cognitiveCacheKey(word, cognitive)
         const cache = { ...get().aiFullCache }
-        delete cache[normalized]
-        cache[normalized] = aiFullResult
+        delete cache[cacheKey]
+        cache[cacheKey] = aiFullResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) {
           delete cache[keys[0]]
         }
         set({ aiFullCache: cache, aiFullResult, aiStatus: 'success' })
       },
-      setPhraseResult: (key, phraseResult) => {
-        const normalized = normalizeQuery(key)
+      setPhraseResult: (key, phraseResult, cognitive = 'lookup') => {
+        const cacheKey = cognitiveCacheKey(key, cognitive)
         const cache = { ...get().phraseCache }
-        delete cache[normalized]
-        cache[normalized] = phraseResult
+        delete cache[cacheKey]
+        cache[cacheKey] = phraseResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) {
           delete cache[keys[0]]
@@ -151,27 +151,27 @@ export const useResultStore = create<ResultStore>()(
         }
         return null
       },
-      getCachedAiFull: (word) => {
-        const normalized = normalizeQuery(word)
+      getCachedAiFull: (word, cognitive = 'lookup') => {
+        const cacheKey = cognitiveCacheKey(word, cognitive)
         const cache = get().aiFullCache
-        if (cache[normalized]) {
+        if (cache[cacheKey]) {
           const updated = { ...cache }
-          const val = updated[normalized]
-          delete updated[normalized]
-          updated[normalized] = val
+          const val = updated[cacheKey]
+          delete updated[cacheKey]
+          updated[cacheKey] = val
           set({ aiFullCache: updated })
           return val
         }
         return null
       },
-      getCachedPhrase: (key) => {
-        const normalized = normalizeQuery(key)
+      getCachedPhrase: (key, cognitive = 'lookup') => {
+        const cacheKey = cognitiveCacheKey(key, cognitive)
         const cache = get().phraseCache
-        if (cache[normalized]) {
+        if (cache[cacheKey]) {
           const updated = { ...cache }
-          const val = updated[normalized]
-          delete updated[normalized]
-          updated[normalized] = val
+          const val = updated[cacheKey]
+          delete updated[cacheKey]
+          updated[cacheKey] = val
           set({ phraseCache: updated })
           return val
         }
@@ -187,7 +187,9 @@ export const useResultStore = create<ResultStore>()(
           const phraseCache = { ...state.phraseCache }
           delete aiCache[normalized]
           delete aiFullCache[normalized]
+          delete aiFullCache[cognitiveCacheKey(normalized, 'core')]
           delete phraseCache[normalized]
+          delete phraseCache[cognitiveCacheKey(normalized, 'core')]
           return { aiCache, aiFullCache, phraseCache }
         })
       },

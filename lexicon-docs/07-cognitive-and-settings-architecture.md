@@ -114,8 +114,33 @@ export interface WordAIResult {
 | 模式 | 名称 | 定位 | 存储/服务支持 | 核心组件 |
 |---|---|---|---|---|
 | **Mode 1** | Instant Mode | 本地速查，毫秒级响应，离线可用 | 本地 SQLite | `LocalDictView` |
-| **Mode 2** | Standard AI Mode | 传统词典 + AI 充实解析，偏向“理解与记忆” | SQLite + AI API | `StandardAIView` + 前置 `CoreConceptCard` + 扩展 `ChunksCard` / `NuanceCard` |
-| **Mode 3** | Pure Core Mode | 纯血认知搜索，偏向“如何输出使用” | AI API | `CoreCognitiveView` + `WordGraphCard` + 嵌入式 `AIChatCard` |
+| **Mode 2** | Standard AI Mode | 传统词典 + AI 充实解析，偏向“理解与记忆” | SQLite + AI API | `StandardAIView` + 前置 `CoreConceptCard` + 扩展 `ChunksCard` / `NuanceCard`；词组走 `PhraseView`（Lookup prompt / 缓存） |
+| **Mode 3** | Pure Core Mode | 纯血认知搜索，偏向“如何输出使用”与母语者心智 | AI API | 单词：`CoreCognitiveView` + `WordGraphCard` + AI Chat；**词组/句子**：同 `PhraseView` 但 Core prompt（必填 `nativeMindModel`）+ `q::core` 分轨缓存 + 心智卡片前置 |
+
+> **认知分轨（2026-07-25）**：
+> - **词组/句子**：Lookup 与 Pure Core 分轨 prompt + `q` / `q::core` 缓存。Core 主打母语心智；Lookup 主打释义/订正/场景。
+> - **单词全量**（`aiFullLookup`）：同样分轨。Lookup 要 coreConcept+理解记忆字段；Core 必填 `nativeMindModel` + `conceptGraph`。
+> - **Instant 未命中**：按设置 `defaultSearchMode` 落入 Lookup 或 Core（不再写死 Lookup）。
+> - **模式切换**：点击 Lookup 或 Pure Core 均自动触发对应搜索（有缓存则恢复）。
+
+### 3.1b 模组学习流重组（2026-07-25 已实施）
+
+| | AI Lookup (`modules`) | Pure Core (`coreModules`) |
+|--|----------------------|---------------------------|
+| 角色 | 理解与记忆 | 母语者如何用 |
+| 出厂模组 | dictionary, coreConcept(轻), etymology, mnemonic, examples, related, preposition, practice(释义核对), chat | coreConcept(厚), wordGraph, **chunks**, **collocations**, synonyms, usageScenes, culture, practice(造句), chat |
+| 明确不含 | chunks / collocations / synonyms / culture（迁 Core） | dictionary、preposition 意象、etymology、mnemonic |
+| 词组 UI | 绑 `modules` | 绑 **`corePhraseModules`**（与单词 Core 列表分离）；释义轻量固定展示 |
+| 顺序 | **可拖拽**；表中仅为出厂默认 | 单词 / 词组两套列表均可拖拽；`nativeMindModel` 视图置顶 |
+| 中文反查 | 完整 meanings | Core：2–5 个短英文候选（非释义墙） |
+| 静默重试 | collocation notes | Core：`wordGraph` 开且无 conceptGraph → 重试一次 |
+
+**chunks vs collocations**：
+- `chunks`：常用**介词词组**（prep+N / V+prep）；note 点明介词角色；可带 spatialExtension
+- `collocations`：**其他**常用词组（adj+N、V+N 等）；禁止往里塞介词语组
+
+**练习**：Lookup = `evaluateMeaningCheck`；Core = 既有场景造句。  
+**Prompt**：`aiFullLookup` / `aiPhraseQuery` 按 `cognitive` 选用 `modules` 或 `coreModules`。
 
 ### 3.2 UI 组件分层规范 (src/components/ResultView/)
 
@@ -146,10 +171,10 @@ SettingsModal
 ### 4.2 模组管理 Tab 内部设计 (Module Management)
 
 在“🧩 模组管理” Tab 内设置二级 Segment / Sub-Tabs：
-- **Sub-Tab 1：模式 2 (Standard AI) 模组配置**
-  - 控制 `CoreConceptCard`, `Meanings`, `ChunksCard`, `NuanceCard`, `EtymologyCard` 的顺序与显隐。
-- **Sub-Tab 2：模式 3 (Pure Core) 模组配置**
-  - 控制 `CoreConceptCard`, `DerivedMeanings`, `WordGraphCard`, `NativeNuances`, `AIChat` 的顺序与显隐。
+- **Sub-Tab 1：AI Lookup — 理解与记忆**（`modules`）
+  - 释义、轻量意象、词根、助记、例句、介词意象、释义核对、Chat 等；拖拽排序。
+- **Sub-Tab 2：Pure Core — 母语者用法**（`coreModules`）
+  - 用法意象、概念树、介词语组、其他词组、近义、用法场景、语域、造句练习、Chat；拖拽排序。无 dictionary。
 
 ### 4.3 空间利用率优化规则
 - 所有高级 API 调试参数、数据库路径等低频配置项，包裹在 `<Accordion title="高级参数" defaultOpen={false}>` 中。

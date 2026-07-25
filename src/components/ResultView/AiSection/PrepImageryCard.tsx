@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { generatePrepImagery, regenerateSinglePrepItem } from '../../../services/ai'
 import type { PrepSpatialData } from '../../../types'
 import { useT } from '../../../i18n'
+import { SectionHeading } from '../SectionHeading'
 
 interface PrepImageryCardProps {
   phrase: string
@@ -86,22 +87,19 @@ export function PrepImageryCard({ phrase, prepositions }: PrepImageryCardProps) 
   }
 
   return (
-    <div className="mt-1 mb-3 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest">{t('prep.heading')}</h2>
-        {!data && !loading && (
+    <div className="mt-1 mb-3">
+      <SectionHeading
+        title={t('prep.heading')}
+        action={!data && !loading ? (
           <button
             type="button"
             onClick={handleGenerate}
-            className="text-[10px] font-bold text-accent hover:text-accent-hover transition-colors flex items-center gap-1 cursor-pointer"
+            className="text-[10px] font-bold text-accent hover:text-accent-hover transition-colors cursor-pointer whitespace-nowrap"
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
             {t('prep.generate')}
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Loading State */}
       {loading && !data && (
@@ -152,9 +150,8 @@ export function PrepImageryCard({ phrase, prepositions }: PrepImageryCardProps) 
                     <p className="text-sm text-foreground leading-relaxed font-semibold mb-2">
                       {item.phraseExplanation}
                     </p>
-                    <p className="text-[11px] text-accent/80 italic font-medium flex items-center gap-1">
-                      <span>🧭</span>
-                      <span>{item.smartAssoc}</span>
+                    <p className="text-[11px] text-foreground-muted italic font-medium">
+                      {item.smartAssoc}
                     </p>
 
                     <div className="mt-4 flex items-center justify-end gap-2 text-[10px]">

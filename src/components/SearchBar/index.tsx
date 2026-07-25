@@ -6,7 +6,7 @@ import { useResultStore } from '../../stores/resultStore'
 import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
 import type { SuggestItem } from '../../types'
-import { normalizeQuery } from '../../utils/text'
+import { normalizeQuery, hasAnyAiCacheEntry } from '../../utils/text'
 import { useT } from '../../i18n'
 
 interface SearchBarProps {
@@ -38,7 +38,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   // and append history-miss items (in history but not in DB results)
   const enrichedSuggestions: (SuggestItem & { hasAiCache?: boolean; historyOnly?: boolean })[] = suggestions.map(item => ({
     ...item,
-    hasAiCache: !!(aiCache[item.word] || aiFullCache[item.word] || phraseCache[item.word]),
+    hasAiCache: hasAnyAiCacheEntry(item.word, aiCache, aiFullCache, phraseCache),
   }))
 
   // Append history-miss items that match the current prefix (not already in DB results)
@@ -52,7 +52,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         enrichedSuggestions.push({
           word: w,
           zhBrief: '',
-          hasAiCache: !!(aiCache[w] || aiFullCache[w] || phraseCache[w]),
+          hasAiCache: hasAnyAiCacheEntry(w, aiCache, aiFullCache, phraseCache),
           historyOnly: true,
         })
         if (enrichedSuggestions.length >= 20) break
@@ -195,7 +195,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                     ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100'
                     : 'text-foreground-muted/20 opacity-40 cursor-default'
                   }`}
-                title={t('search.forceAi')}
+                title={`${t('search.forceAi')} — ${t('search.forceAiHint')}`}
                 aria-label={t('search.forceAi')}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

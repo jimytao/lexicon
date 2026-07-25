@@ -1,87 +1,136 @@
-import type { CollocationData } from '../../../types'
+import { useState } from 'react'
+import type { CollocationData, CollocationEntry } from '../../../types'
 import { useT } from '../../../i18n'
+import { collocationsNeedFill } from '../../../utils/aiCompleteness'
+import { SectionHeading } from '../SectionHeading'
+
+export type CollocationCardVariant = 'all' | 'chunks' | 'collocations'
 
 interface CollocationCardProps {
   collocations?: CollocationData
+  /** Word key for repairing missing notes only */
+  word?: string
+  onRepairMissing?: () => Promise<void>
+  /** chunks=介词语组；collocations=其他常用词组；all=两栏（兼容旧调用） */
+  variant?: CollocationCardVariant
 }
 
-export function CollocationCard({ collocations }: CollocationCardProps) {
+function isUseful(text?: string): text is string {
+  if (!text) return false
+  const t = text.trim()
+  return t.length > 0 && t !== 'N/A' && t !== 'null' && t !== '-'
+}
+
+function ChunkRow({ item }: { item: CollocationEntry }) {
+  return (
+    <div className="rounded-r-xl border-l-2 border-l-border pl-3 pr-2.5 py-2.5 bg-background-soft/40">
+      <p className="text-xs font-semibold leading-snug break-words [overflow-wrap:anywhere] text-foreground">
+        {item.chunk}
+      </p>
+      {isUseful(item.note) && (
+        <p className="mt-1 text-[11px] leading-relaxed break-words [overflow-wrap:anywhere] text-foreground-muted">
+          {item.note}
+        </p>
+      )}
+      {isUseful(item.spatialExtension) && (
+        <p className="mt-1 text-[10px] leading-relaxed text-foreground-muted/80 break-words [overflow-wrap:anywhere]">
+          {item.spatialExtension}
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function CollocationCard({
+  collocations,
+  onRepairMissing,
+  variant = 'all',
+}: CollocationCardProps) {
   const t = useT()
+  const [repairing, setRepairing] = useState(false)
+  const [repairError, setRepairError] = useState<string | null>(null)
 
   if (!collocations) return null
 
-  const { chunks = [], collocations: colls = [] } = collocations
+  const chunks = variant === 'collocations' ? [] : (collocations.chunks ?? [])
+  const colls = variant === 'chunks' ? [] : (collocations.collocations ?? [])
   if (chunks.length === 0 && colls.length === 0) return null
 
-  return (
-    <div className="mb-3 rounded-xl p-3.5 bg-white dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/40 shadow-sm animate-in fade-in duration-300">
-      {/* Title Header */}
-      <div className="flex items-center justify-between mb-4 border-b border-gray-100/80 dark:border-gray-800/50 pb-3">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-            {t('collocations.heading')}
-          </h2>
-        </div>
-      </div>
+  const needsFill = collocationsNeedFill({
+    chunks,
+    collocations: colls,
+  })
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Chunks Section */}
+  async function handleRepair() {
+    if (!onRepairMissing || repairing) return
+    setRepairing(true)
+    setRepairError(null)
+    try {
+      await onRepairMissing()
+    } catch (e) {
+      setRepairError((e as Error).message || t('repair.failed'))
+    } finally {
+      setRepairing(false)
+    }
+  }
+
+  const heading =
+    variant === 'chunks'
+      ? t('collocations.headingChunks')
+      : variant === 'collocations'
+        ? t('collocations.headingCollocations')
+        : t('collocations.heading')
+
+  return (
+    <div className="mb-3">
+      <SectionHeading
+        title={heading}
+        action={needsFill && onRepairMissing ? (
+          <button
+            type="button"
+            onClick={() => void handleRepair()}
+            disabled={repairing}
+            className="shrink-0 px-2.5 py-1 text-[10px] font-bold rounded-lg border border-border text-foreground hover:bg-foreground/5 disabled:opacity-50 cursor-pointer whitespace-nowrap"
+          >
+            {repairing ? t('repair.working') : t('repair.fillMissing')}
+          </button>
+        ) : undefined}
+      />
+      {needsFill && (
+        <p className="text-[11px] text-foreground-muted mb-3 leading-snug">
+          {t('repair.collocationsHint')}
+        </p>
+      )}
+      {repairError && (
+        <p className="text-[11px] text-red-500 mb-3">{repairError}</p>
+      )}
+
+      <div className={variant === 'all' ? 'grid grid-cols-1 md:grid-cols-2 gap-5' : 'space-y-2'}>
         {chunks.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-1.5 border-b border-purple-50/50 dark:border-purple-950/20 pb-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-              <h3 className="text-xs font-bold text-purple-950 dark:text-purple-300 tracking-wider">
+          <div className="space-y-2.5">
+            {variant === 'all' && (
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50 pb-1">
                 {t('collocations.chunks')}
               </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
+            )}
+            <div className="space-y-2">
               {chunks.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="group relative px-3 py-1.5 rounded-xl border border-purple-100/60 dark:border-purple-900/30 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 transition-all duration-200 hover:bg-purple-100/80 dark:hover:bg-purple-900/60 cursor-help flex flex-col"
-                >
-                  <span className="text-xs font-semibold">{item.chunk}</span>
-                  {item.spatialExtension && item.spatialExtension !== 'N/A' && item.spatialExtension !== 'null' && (
-                    <span className="text-[10px] font-normal text-purple-700 dark:text-purple-300 mt-0.5 flex items-center gap-0.5">
-                      <span>🧭</span> {item.spatialExtension}
-                    </span>
-                  )}
-                  {item.note && item.note !== 'N/A' && item.note !== 'null' && (
-                    <span className="pointer-events-none absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
-                      {item.note}
-                    </span>
-                  )}
-                </div>
+                <ChunkRow key={idx} item={item} />
               ))}
             </div>
           </div>
         )}
 
-        {/* Collocations Section */}
         {colls.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-1.5 border-b border-teal-50/50 dark:border-teal-950/20 pb-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-              <h3 className="text-xs font-bold text-teal-950 dark:text-teal-300 tracking-wider">
+          <div className="space-y-2.5">
+            {variant === 'all' && (
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50 pb-1">
                 {t('collocations.collocations')}
               </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
+            )}
+            <div className="space-y-2">
               {colls.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="group relative px-3 py-1.5 rounded-xl border border-teal-100/60 dark:border-teal-900/30 bg-teal-50/60 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 transition-all duration-200 hover:bg-teal-100/80 dark:hover:bg-teal-900/60 cursor-help"
-                >
-                  <span className="text-xs font-semibold">{item.chunk}</span>
-                  {item.note && item.note !== 'N/A' && item.note !== 'null' && (
-                    <span className="pointer-events-none absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
-                      {item.note}
-                    </span>
-                  )}
-                </div>
+                <ChunkRow key={idx} item={item} />
               ))}
             </div>
           </div>

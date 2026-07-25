@@ -1,11 +1,29 @@
 import { detectLanguage, detectQueryType } from '../stores/searchStore'
+import {
+  normalizeCoreModules,
+  normalizeCorePhraseModules,
+  normalizeModules,
+  seedCorePhraseModulesFromCore,
+  type AppModule,
+} from '../stores/settingsStore'
+import { combineSignals } from '../utils/abortSignal'
+import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem } from '../types'
+
+/** 仅当模组出现在当前模式列表且 enabled 时才请求；不在列表 = 关闭（Lookup/Core 分轨依赖此语义） */
+function moduleEnabled(modules: ModuleFlag[], id: string): boolean {
+  return modules.some((m) => m.id === id && m.enabled)
+}
+
+type ModuleFlag = { id: string; enabled: boolean }
 
 interface AiConfig {
   endpoint: string
   model: string
   apiKey: string
-  modules: Array<{ id: string; enabled: boolean }>
+  modules: ModuleFlag[]
+  coreModules: ModuleFlag[]
+  corePhraseModules: ModuleFlag[]
   webSearchEnabled: boolean
   tavilyApiKey: string
   triLingualExamples: boolean
@@ -14,20 +32,38 @@ interface AiConfig {
   monolingualSentence: boolean
 }
 
+const DEFAULT_LOOKUP_MODULES: ModuleFlag[] = [
+  { id: 'dictionary', enabled: true },
+  { id: 'coreConcept', enabled: true },
+  { id: 'etymology', enabled: true },
+  { id: 'mnemonic', enabled: true },
+  { id: 'examples', enabled: true },
+  { id: 'related', enabled: true },
+  { id: 'preposition', enabled: true },
+  { id: 'practice', enabled: true },
+  { id: 'chat', enabled: true },
+]
+
+const DEFAULT_CORE_MODULE_FLAGS: ModuleFlag[] = [
+  { id: 'coreConcept', enabled: true },
+  { id: 'wordGraph', enabled: true },
+  { id: 'chunks', enabled: true },
+  { id: 'collocations', enabled: true },
+  { id: 'synonyms', enabled: true },
+  { id: 'usageScenes', enabled: true },
+  { id: 'culture', enabled: true },
+  { id: 'practice', enabled: true },
+  { id: 'chat', enabled: true },
+]
+
+const DEFAULT_CORE_PHRASE_MODULE_FLAGS: ModuleFlag[] = [
+  { id: 'usageScenes', enabled: true },
+  { id: 'culture', enabled: true },
+  { id: 'practice', enabled: true },
+  { id: 'chat', enabled: true },
+]
+
 function getConfig(): AiConfig {
-  const defaultModules = [
-    { id: 'dictionary', enabled: true },
-    { id: 'collocations', enabled: true },
-    { id: 'synonyms', enabled: true },
-    { id: 'etymology', enabled: true },
-    { id: 'mnemonic', enabled: true },
-    { id: 'examples', enabled: true },
-    { id: 'related', enabled: true },
-    { id: 'practice', enabled: true },
-    { id: 'culture', enabled: true },
-    { id: 'chat', enabled: true },
-    { id: 'preposition', enabled: true },
-  ]
   try {
     const stored = JSON.parse(localStorage.getItem('lexicon-settings') ?? '{}') as {
       state?: {
@@ -36,7 +72,9 @@ function getConfig(): AiConfig {
         aiModel?: string
         aiApiKeys?: Record<string, string>
         aiModels?: Record<string, string>
-        modules?: Array<{ id: string; enabled: boolean }>
+        modules?: ModuleFlag[]
+        coreModules?: ModuleFlag[]
+        corePhraseModules?: ModuleFlag[]
         webSearchEnabled?: boolean
         tavilyApiKey?: string
         triLingualExamples?: boolean
@@ -47,11 +85,23 @@ function getConfig(): AiConfig {
     }
     const s = stored.state ?? {}
     const providerId = s.aiProvider ?? ''
+    // 与 settingsStore persist merge 对齐：旧 persist 要拆 chunks、剔 Core dictionary
+    const modules = normalizeModules(
+      (s.modules?.length ? s.modules : DEFAULT_LOOKUP_MODULES) as AppModule[]
+    )
+    const coreModules = normalizeCoreModules(
+      (s.coreModules?.length ? s.coreModules : DEFAULT_CORE_MODULE_FLAGS) as AppModule[]
+    )
+    const corePhraseModules = s.corePhraseModules?.length
+      ? normalizeCorePhraseModules(s.corePhraseModules as AppModule[])
+      : seedCorePhraseModulesFromCore(coreModules)
     return {
       endpoint: s.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || '',
       model: s.aiModels?.[providerId] || s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
       apiKey: s.aiApiKeys?.[providerId] || import.meta.env.VITE_AI_API_KEY || '',
-      modules: s.modules || defaultModules,
+      modules,
+      coreModules,
+      corePhraseModules,
       webSearchEnabled: s.webSearchEnabled ?? false,
       tavilyApiKey: s.tavilyApiKey ?? '',
       triLingualExamples: s.triLingualExamples ?? false,
@@ -64,7 +114,9 @@ function getConfig(): AiConfig {
       endpoint: import.meta.env.VITE_AI_ENDPOINT ?? '',
       model: import.meta.env.VITE_AI_MODEL ?? 'gemini-2.0-flash',
       apiKey: import.meta.env.VITE_AI_API_KEY ?? '',
-      modules: defaultModules,
+      modules: normalizeModules(DEFAULT_LOOKUP_MODULES as AppModule[]),
+      coreModules: normalizeCoreModules(DEFAULT_CORE_MODULE_FLAGS as AppModule[]),
+      corePhraseModules: normalizeCorePhraseModules(DEFAULT_CORE_PHRASE_MODULE_FLAGS as AppModule[]),
       webSearchEnabled: false,
       tavilyApiKey: '',
       triLingualExamples: false,
@@ -73,6 +125,16 @@ function getConfig(): AiConfig {
       monolingualSentence: false,
     }
   }
+}
+
+/** Core 单词全量读 coreModules；Lookup 读 modules */
+function modulesForCognitive(config: AiConfig, cognitive: 'lookup' | 'core'): ModuleFlag[] {
+  return cognitive === 'core' ? config.coreModules : config.modules
+}
+
+/** Core 词组/句子读 corePhraseModules；Lookup 读 modules */
+function modulesForPhraseCognitive(config: AiConfig, cognitive: 'lookup' | 'core'): ModuleFlag[] {
+  return cognitive === 'core' ? config.corePhraseModules : config.modules
 }
 
 function getIsMono(query: string, config: AiConfig): boolean {
@@ -89,7 +151,7 @@ function getSystemPrompt(
   includeExamples: boolean = false,
   monolingualWord: boolean = false
 ): string {
-  const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+  const isEnabled = (id: string) => moduleEnabled(modules, id)
 
   const includeSemantic = isEnabled('dictionary')
   const includeExampleSchema = includeExamples && isEnabled('examples')
@@ -111,6 +173,10 @@ function getSystemPrompt(
   const antonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的对比含义、使用场景或词义强弱差异"
 
   let schema = `{\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
+
+  if (isEnabled('coreConcept')) {
+    schema += `,\n  "coreConcept": {\n    "image": "${monolingualWord ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${monolingualWord ? '1 short sentence unifying main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
+  }
   
   if (isEnabled('etymology')) {
     schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "${derivedMeaning}" }\n    ]\n  }`
@@ -120,9 +186,19 @@ function getSystemPrompt(
     schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "${synonymDistinction}"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "反义词",\n      "distinction": "${antonymDistinction}"\n    }\n  ]`
   }
 
-  if (isEnabled('collocations')) {
-    const collocationsNote = monolingualWord ? "English usage note" : "中文使用说明"
-    schema += `,\n  "collocations": {\n    "chunks": [\n      { "chunk": "Verb/prep pattern using the word (语块)", "note": "${collocationsNote}" }\n    ],\n    "collocations": [\n      { "chunk": "Natural word combination (搭配)", "note": "${collocationsNote}" }\n    ]\n  }`
+  const wantChunks = isEnabled('chunks')
+  const wantCollocations = isEnabled('collocations')
+  if (wantChunks || wantCollocations) {
+    const collocationsNote = monolingualWord
+      ? "REQUIRED: clear English meaning of this phrase (what it means), not just 'common phrase'"
+      : "必填：用中文清楚解释这个词组是什么意思（释义），禁止只写「常用」或空话"
+    const chunksPart = wantChunks
+      ? `"chunks": [\n      { "chunk": "Common PREPOSITIONAL phrase (prep+N, V+prep(+N), phrasal with prep)", "note": "${collocationsNote}" }\n    ]`
+      : `"chunks": []`
+    const colloPart = wantCollocations
+      ? `"collocations": [\n      { "chunk": "Other common phrase WITHOUT prep focus (adj+N, V+N, N+V)", "note": "${collocationsNote}" }\n    ]`
+      : `"collocations": []`
+    schema += `,\n  "collocations": {\n    ${chunksPart},\n    ${colloPart}\n  }`
   }
 
   if (includeExampleSchema) {
@@ -164,9 +240,9 @@ ${isEnabled('synonyms') ? `- synonyms: provide 3-5 words, ordered from closest t
 - synonyms distinction: 1 sentence each
 - antonyms: provide 3-5 words, ordered from most direct contrast to weaker contrast
 - antonyms distinction: 1 sentence each` : ''}
-${isEnabled('collocations') ? `- collocations.chunks: provide 4-6 common verb+noun or prep+noun patterns using this word (语块)
-- collocations.collocations: provide 4-6 natural word combinations (adj+noun, noun+verb)
-- collocations notes: 1 brief note explaining the usage/combination, in ${monolingualWord ? 'English only' : 'Chinese'}` : ''}
+${wantChunks ? `- collocations.chunks: 4-6 COMMON PREPOSITIONAL phrases only (prep+N, V+prep(+N)). Explain the preposition's role in the note.` : ''}
+${wantCollocations ? `- collocations.collocations: 4-6 OTHER common phrases (adj+N, V+N, etc). Do NOT put prepositional phrases here.` : ''}
+${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY item MUST include a clear meaning in ${monolingualWord ? 'English' : 'Chinese'}. Never use "N/A", "常用", or empty notes.` : ''}
 ${includeExampleSchema ? `- examples: provide 3-5 natural, common, learner-friendly sentences` : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
@@ -236,60 +312,55 @@ export async function analyzeWord(
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const userPrompt = buildUserPrompt(word, meanings, includeExamples, config.monolingualWord)
-
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.3,
-      messages: [
-        { role: 'system', content: getSystemPrompt(config.modules, includeExamples, config.monolingualWord) },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`AI API error ${response.status}: ${err}`)
-  }
-
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
-  const raw = data.choices?.[0]?.message?.content ?? ''
-
-  // Use the same robust cleaning as callApi
-  const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
+  const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
-    return JSON.parse(cleaned) as AiAnalysis
-  } catch { /* fall through */ }
+    const response = await fetch(`${config.endpoint}/chat/completions`, {
+      method: 'POST',
+      signal: merged,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0.3,
+        messages: [
+          { role: 'system', content: getSystemPrompt(config.modules, includeExamples, config.monolingualWord) },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    })
 
-  const objMatch = cleaned.match(/\{[\s\S]*\}/)
-  if (objMatch) {
+    if (!response.ok) {
+      const err = await response.text()
+      throw new Error(`AI API error ${response.status}: ${err}`)
+    }
+
+    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = data.choices?.[0]?.message?.content ?? ''
+
+    // Use the same robust cleaning as callApi
+    const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
+
     try {
-      return JSON.parse(objMatch[0]) as AiAnalysis
+      return JSON.parse(cleaned) as AiAnalysis
     } catch { /* fall through */ }
-  }
 
-  console.error('AI raw response:', raw)
-  throw new Error(`AI returned invalid JSON: ${cleaned.slice(0, 200)}`)
-}
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try {
+        return JSON.parse(objMatch[0]) as AiAnalysis
+      } catch { /* fall through */ }
+    }
 
-function combineSignals(userSignal?: AbortSignal, timeoutMs: number = 60000): AbortSignal {
-  const ctrl = new AbortController()
-  const tid = setTimeout(() => ctrl.abort(new DOMException('TimeoutError', 'TimeoutError')), timeoutMs)
-  if (userSignal) {
-    userSignal.addEventListener('abort', () => {
-      clearTimeout(tid)
-      ctrl.abort(userSignal.reason)
-    }, { once: true })
+    console.error('AI raw response:', raw)
+    throw new Error(`AI returned invalid JSON: ${cleaned.slice(0, 200)}`)
+  } catch (e) {
+    throw remapFetchAbortError(e, merged.reason)
+  } finally {
+    dispose()
   }
-  return ctrl.signal
 }
 
 async function callApi(
@@ -302,47 +373,53 @@ async function callApi(
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   // 60s hard cap so requests never hang indefinitely
-  const merged = combineSignals(signal, 60000)
+  const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    signal: merged,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.4,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    }),
-  })
+  try {
+    const response = await fetch(`${config.endpoint}/chat/completions`, {
+      method: 'POST',
+      signal: merged,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0.4,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    })
 
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`AI API error ${response.status}: ${err}`)
-  }
-
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
-  const raw = data.choices?.[0]?.message?.content ?? ''
-  
-  // Extract content from code fences if present
-  let cleaned = raw.trim()
-  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  if (fenceMatch) {
-    cleaned = fenceMatch[1].trim()
-  } else {
-    // If no fences, try to find the first '{' and last '}' to extract JSON
-    const firstBrace = cleaned.indexOf('{')
-    const lastBrace = cleaned.lastIndexOf('}')
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      cleaned = cleaned.slice(firstBrace, lastBrace + 1)
+    if (!response.ok) {
+      const err = await response.text()
+      throw new Error(`AI API error ${response.status}: ${err}`)
     }
+
+    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
+    const raw = data.choices?.[0]?.message?.content ?? ''
+
+    // Extract content from code fences if present
+    let cleaned = raw.trim()
+    const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+    if (fenceMatch) {
+      cleaned = fenceMatch[1].trim()
+    } else {
+      // If no fences, try to find the first '{' and last '}' to extract JSON
+      const firstBrace = cleaned.indexOf('{')
+      const lastBrace = cleaned.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1)
+      }
+    }
+    return cleaned
+  } catch (e) {
+    throw remapFetchAbortError(e, merged.reason)
+  } finally {
+    dispose()
   }
-  return cleaned
 }
 
 export async function performWebSearch(query: string, signal?: AbortSignal): Promise<string> {
@@ -507,6 +584,43 @@ export async function evaluateAnswer(
   throw new Error(`AI returned invalid JSON for evaluation`)
 }
 
+/** Lookup：核对学习者对词义的理解（中/英均可），不要求造句 */
+export async function evaluateMeaningCheck(
+  word: string,
+  meanings: Array<{ zh: string; en: string }>,
+  userGuess: string,
+  signal?: AbortSignal
+): Promise<{ correct: boolean; feedback: string }> {
+  const config = getConfig()
+  const isMono = getIsMono(word, config)
+  const meaningLines = meanings
+    .map((m, i) => `${i + 1}. ${m.zh || ''}${m.en ? ` / ${m.en}` : ''}`.trim())
+    .filter(Boolean)
+    .join('\n')
+
+  const system = isMono
+    ? `You check whether a learner roughly understands a word/phrase meaning. Return ONLY JSON: {"correct":true|false,"feedback":"..."}.
+If roughly right (core sense captured), correct=true and feedback a short confirmation (e.g. "Correct.").
+If wrong or incomplete, correct=false and feedback briefly corrects in simple English — do NOT require a full sentence from the learner.`
+    : `你核对学习者是否大致理解了词/词组的意思。只返回 JSON：{"correct":true|false,"feedback":"..."}。
+大致抓住核心义 → correct=true，feedback 简短确认（如「对」）。
+错或偏差大 → correct=false，feedback 用中文简短纠正要点。不要要求学习者造完整句。`
+
+  const userPrompt = `Word/phrase: ${word}\nReference meanings:\n${meaningLines || '(none)'}\nLearner's guess (zh or en OK): "${userGuess}"\n\nEvaluate understanding only.`
+  const cleaned = await callApi(system, userPrompt, signal)
+
+  try {
+    return JSON.parse(cleaned) as { correct: boolean; feedback: string }
+  } catch { /* fall through */ }
+  const objMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]) as { correct: boolean; feedback: string }
+    } catch { /* fall through */ }
+  }
+  throw new Error('AI returned invalid JSON for meaning check')
+}
+
 // ── AI 全量查词（词库无结果时） ──
 
 function getFullLookupPrompt(
@@ -515,10 +629,12 @@ function getFullLookupPrompt(
   webSearchResults?: string,
   isFull: boolean = true,
   triLingual: boolean = false,
-  monolingualWord: boolean = false
+  monolingualWord: boolean = false,
+  cognitive: 'lookup' | 'core' = 'lookup'
 ): string {
-  const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+  const isEnabled = (id: string) => moduleEnabled(modules, id)
   const isMono = monolingualWord && lang === 'en'
+  const isCore = cognitive === 'core'
 
   const meaningsZhDescription = isMono ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'" : "中文释义"
   const meaningsEnDescription = "English definition (or original language equivalent)"
@@ -535,10 +651,32 @@ function getFullLookupPrompt(
   const nativeEmotionalStanceDesc = isMono ? "Emotional stance and attitude" : "情感色彩与态度 (e.g. '带有 Authentic、Cool 的强烈褒义')"
   const nativeWhyChooseDesc = isMono ? "Why choose this word instead of a formal synonym" : "为什么选它而不是近义词/正式词 (心智对比)"
 
-  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "nativeMindModel": {\n    "mentalPicture": "${nativeMentalPictureDesc}",\n    "emotionalStance": "${nativeEmotionalStanceDesc}",\n    "whyChooseThisWord": "${nativeWhyChooseDesc}"\n  },\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences describing the core physical image or underlying metaphor' : '1-2句描述单词的物理或逻辑核心意象 (Core Image)'}",\n    "explanation": "${isMono ? 'how this core image unifies and derives various meanings' : '核心意象如何统领和演变出各个具体分项释义'}"\n  },\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
+  // Lookup: meanings + light coreConcept. Core: native mind + thick usage image; no dictionary wall.
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)"`
+  if (isCore) {
+    schema += `,\n  "nativeMindModel": {\n    "mentalPicture": "${nativeMentalPictureDesc}",\n    "emotionalStance": "${nativeEmotionalStanceDesc}",\n    "whyChooseThisWord": "${nativeWhyChooseDesc}"\n  }`
+  }
+
+  const wantCoreConcept = isEnabled('coreConcept') || isEnabled('dictionary') || isCore
+  if (wantCoreConcept) {
+    if (isCore) {
+      schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",\n    "explanation": "${isMono ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)' : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（比记忆锚点更细，偏「怎么用」）'}"\n  }`
+    } else {
+      schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${isMono ? '1 short sentence unifying the main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
+    }
+  }
+
+  // Lookup: full meanings. Core EN: no wall. Core ZH reverse lookup: short English candidates.
+  if (!isCore) {
+    schema += `,\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
+  } else if (lang === 'zh') {
+    schema += `,\n  "meanings": [\n    {\n      "zh": "该英文候选与中文输入的细微差别（中文，1句）",\n      "en": "English candidate word/phrase",\n      "pos": "part of speech"\n    }\n  ]`
+  } else {
+    schema += `,\n  "meanings": []`
+  }
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
-  if (isFull && isEnabled('etymology')) {
+  if (isFull && isEnabled('etymology') && !isCore) {
     schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "${derivedMeaning}" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
@@ -546,13 +684,25 @@ function getFullLookupPrompt(
     schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}", "tone": "one of: positive | negative | neutral | informal", "whenToUse": "${whenToUseDesc}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
   }
 
-  if (isFull && isEnabled('collocations')) {
-    const collocationsNote = isMono ? "English usage note" : "中文使用说明"
-    const spatialDesc = isMono ? "1 short spatial or logical metaphor (e.g. take off -> control + detach = fly/succeed)" : "空间/逻辑意象延伸 (如: take off -> 掌控 + 脱离 = 飞离/突然成功)"
-    schema += `,\n  "collocations": {\n    "chunks": [\n      { "chunk": "Verb/prep pattern using the word (语块)", "note": "${collocationsNote}", "spatialExtension": "${spatialDesc}" }\n    ],\n    "collocations": [\n      { "chunk": "Natural word combination (搭配)", "note": "${collocationsNote}" }\n    ]\n  }`
+  const wantChunks = isFull && isEnabled('chunks')
+  const wantCollocations = isFull && isEnabled('collocations')
+  if (wantChunks || wantCollocations) {
+    const collocationsNote = isMono
+      ? "REQUIRED: clear English meaning for learners"
+      : "必填：中文释义，让学习者不看原文也能懂"
+    const spatialDesc = isMono
+      ? "For prep phrases: briefly explain the preposition's spatial/logical role; omit if none"
+      : "介词语组必填倾向：点明介词在搭配里的空间/逻辑角色；没有则省略字段，勿填 N/A"
+    const chunksPart = wantChunks
+      ? `"chunks": [\n      { "chunk": "COMMON PREPOSITIONAL phrase only (prep+N, V+prep(+N))", "note": "${collocationsNote}", "spatialExtension": "${spatialDesc}" }\n    ]`
+      : `"chunks": []`
+    const colloPart = wantCollocations
+      ? `"collocations": [\n      { "chunk": "OTHER common phrase WITHOUT prep focus (adj+N, V+N, N+V)", "note": "${collocationsNote}" }\n    ]`
+      : `"collocations": []`
+    schema += `,\n  "collocations": {\n    ${chunksPart},\n    ${colloPart}\n  }`
   }
 
-  if (isEnabled('examples')) {
+  if (isEnabled('examples') && !isCore) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign && triLingual) {
       schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "中文翻译" }\n  ]`
@@ -560,6 +710,14 @@ function getFullLookupPrompt(
       const exampleZh = isMono ? "English meaning / explanation" : "中文翻译"
       schema += `,\n  "examples": [\n    { "en": "Example sentence in original language (or target language)", "zh": "${exampleZh}" }\n  ]`
     }
+  }
+
+  if (isFull && isEnabled('usageScenes') && isCore) {
+    const usLabel = isMono ? '2-4 word English scene tag' : '2-4字场景标签'
+    const usDesc = isMono
+      ? '1-2 sentences: when natives use this word, communicative job, typical sentence pattern'
+      : '1-2句：母语者何时用、完成什么交际任务、典型句式（不是翻译例句墙）'
+    schema += `,\n  "usageScenes": [\n    { "label": "${usLabel}", "description": "${usDesc}" }\n  ]`
   }
   
   if (isFull && isEnabled('culture')) {
@@ -576,18 +734,32 @@ function getFullLookupPrompt(
     }
   }
 
-  schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "explanation": "${isMono ? '1 sentence explaining why this branch derives from the root core' : '1句话解释该分支领域为何会从 Core 衍生出来'}",\n        "examples": ["${isMono ? 'phrase or example 1' : '典型表达/短语 1'}", "${isMono ? 'phrase or example 2' : '典型表达/短语 2'}"]\n      }\n    ]\n  }`
+  if (isCore && isEnabled('wordGraph')) {
+    const exMeaning = isMono
+      ? "REQUIRED: clear English meaning of this phrase"
+      : "必填：这个短语/短句的中文释义"
+    const exMind = isMono
+      ? "REQUIRED: how a native speaker's mental image / why this usage grows from the root core"
+      : "必填：母语者心智/意象——为何从根意象延伸出这个用法（1句）"
+    schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "explanation": "${isMono ? '1 sentence explaining why this branch derives from the root core' : '1句话解释该分支领域为何会从 Core 衍生出来'}",\n        "examples": [\n          {\n            "phrase": "${isMono ? 'typical phrase or short expression' : '典型表达/短语'}",\n            "meaning": "${exMeaning}",\n            "mindHint": "${exMind}"\n          }\n        ]\n      }\n    ]\n  }`
+  }
 
   schema += `\n}`
 
-  const basePrompt = isMono
-    ? `You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations.`
-    : `You are a professional English vocabulary analyst for Chinese native speakers.`
-  const multiLangPrompt = `You are a professional multi-language translator and cultural analyst. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
+  const basePrompt = isCore
+    ? (isMono
+      ? `You are a native-speaker cognitive coach for English learners. Your job is NOT dictionary lookup — remodel how learners THINK about a word so they can use it the way natives do (mental picture, emotional stance, when/why to choose it, core image network).`
+      : `你是面向中文母语者的「母语者心智教练」。任务不是传统词典释义，而是帮助学习者用母语者心智理解单词：脑中画面、情感立场、为何选用，以及核心意象如何延伸到使用网络。`)
+    : (isMono
+      ? `You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations. Focus on clear meanings, memory aids (core image, etymology, nuance), and practical understanding.`
+      : `你是面向中文母语者的英语词汇分析师。重心是「理解与记忆」：清晰释义、核心意象、词源与近义辨析，帮助记住并理解这个词。`)
+  const multiLangPrompt = isCore
+    ? `You are a cultural-cognitive coach for foreign words. Prioritize how natives conceptualize the word — social meaning, subculture nuance, and when it is the right choice.`
+    : `You are a professional multi-language translator and cultural analyst. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
 
   let prompt = `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
 
-Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} word, provide a complete analysis.
+Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} word, provide a complete analysis${isCore ? ' with native-mind priority' : ' for understanding and memory'}.
 
 ${webSearchResults ? `ADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.\n` : ''}
 
@@ -597,23 +769,30 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
-- meanings: provide the most common and practical meanings (typically 2-8, ordered strictly by frequency).
+${isCore ? `- Do NOT fill a full dictionary meanings wall for English input (meanings may be []).
+- nativeMindModel: REQUIRED. Always fill mentalPicture, emotionalStance, whyChooseThisWord.
+- coreConcept.explanation: RICH usage-oriented (how the image guides when/how to use the word).
+${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase, meaning, mindHint }; never bare strings or N/A.' : ''}
+- PRIORITY for Pure Core: nativeMindModel > coreConcept > conceptGraph > prep chunks > other collocations > usageScenes > synonyms > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency).
+- coreConcept: LIGHT memory anchor (short image + short unifying line). Do NOT invent nativeMindModel or conceptGraph.
+- PRIORITY for Lookup: coreConcept > meanings/scenes > etymology > examples.`}
 - For abbreviations, explain what each letter stands for.
-- For collocations.chunks and conceptGraph.branches, if you cannot provide a specific explanation, note, or spatialExtension (or if it doesn't need one), output "N/A" instead of leaving it empty.
 - If the input is CHINESE: 
   - correctForm: provide the best English word.
-  - meanings: provide 2-5 English alternatives with nuances.
+  ${isCore ? '- meanings: REQUIRED short list of 2-5 English candidates (en=word, zh=nuance vs input). Not a full dictionary wall.' : '- meanings: provide 2-5 English alternatives with nuances.'}
 - If the input is a FOREIGN LANGUAGE (not English/Chinese):
   - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
   - Explain the specific historical or social context behind the word.
   - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
-${isFull && isEnabled('etymology') ? `- etymology.parts: each segment must correspond to the actual letters in the target word
+${isFull && isEnabled('etymology') && !isCore ? `- etymology.parts: each segment must correspond to the actual letters in the target word
 - For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 ${isMono ? 'English' : 'Chinese'} sentence connecting anchor → root meaning)
 - For pure prefixes/suffixes: omit sourceForm, anchor, anchorNote` : ''}
-${isFull && isEnabled('collocations') ? `- collocations.chunks: provide 4-6 common verb+noun or prep+noun patterns using this word (语块)
-- collocations.collocations: provide 4-6 natural word combinations (adj+noun, noun+verb)
-- collocations notes: 1 brief note explaining the usage/combination, in ${isMono ? 'English only' : 'Chinese'}` : ''}
-- Provide 3-5 ${isFull ? 'synonyms, 3-5 antonyms, and 3-5 examples' : 'examples'}.
+${wantChunks ? `- collocations.chunks: 4-6 COMMON PREPOSITIONAL phrases ONLY. note MUST explain meaning AND the preposition's role. spatialExtension preferred for spatial/logic.` : ''}
+${wantCollocations ? `- collocations.collocations: 4-6 OTHER common phrases (no prep focus). Do NOT put prep phrases here.` : ''}
+${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY item needs clear meaning in ${isMono ? 'English' : 'Chinese'}. Never "N/A" / "常用" / empty.` : ''}
+${isFull && isEnabled('usageScenes') && isCore ? `- usageScenes: 3-5 native usage scenes / communicative jobs / typical patterns — not a translation example wall.` : ''}
+${isFull && isEnabled('synonyms') ? `- synonyms: 3-5 with tone + whenToUse; antonyms: 3-5.` : ''}
+${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences.` : ''}
 - Keep everything concise.`
 
   if (isMono) {
@@ -634,7 +813,8 @@ ${isFull && isEnabled('collocations') ? `- collocations.chunks: provide 4-6 comm
 export async function aiFullLookup(
   word: string,
   isFull: boolean = true,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  cognitive: 'lookup' | 'core' = 'lookup'
 ): Promise<AiFullResult> {
   const config = getConfig()
   const lang = detectLanguage(word)
@@ -645,19 +825,95 @@ export async function aiFullLookup(
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
 
+  const activeModules = modulesForCognitive(config, cognitive)
   const cleaned = await callApi(
-    getFullLookupPrompt(config.modules, lang, webResults, isFull, config.triLingualExamples, config.monolingualWord),
+    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, config.monolingualWord, cognitive),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
   try {
-    return JSON.parse(cleaned) as AiFullResult
+    const parsed = JSON.parse(cleaned) as AiFullResult
+    if (!parsed.meanings) parsed.meanings = []
+    if (!parsed.examples) parsed.examples = []
+    return parsed
   } catch { /* fall through */ }
   const objMatch = cleaned.match(/\{[\s\S]*\}/)
   if (objMatch) {
-    try { return JSON.parse(objMatch[0]) as AiFullResult } catch { /* fall through */ }
+    try {
+      const parsed = JSON.parse(objMatch[0]) as AiFullResult
+      if (!parsed.meanings) parsed.meanings = []
+      if (!parsed.examples) parsed.examples = []
+      return parsed
+    } catch { /* fall through */ }
   }
   throw new Error(`AI returned invalid JSON for full lookup`)
+}
+
+/** Fill only missing collocation/chunk notes — does not regenerate already-good entries. */
+export async function fillMissingCollocationNotes(
+  word: string,
+  items: Array<{ chunk: string; note?: string; spatialExtension?: string }>,
+  signal?: AbortSignal
+): Promise<Array<{ chunk: string; note: string; spatialExtension?: string }>> {
+  const config = getConfig()
+  const missing = items.filter((i) => !i.note?.trim() || i.note === 'N/A' || i.note === '常用')
+  if (missing.length === 0) return []
+
+  const isMono = config.monolingualWord
+  const system = isMono
+    ? `You fill missing meanings for English chunks/collocations. Return ONLY a JSON array. Each item: {"chunk":"...","note":"clear English meaning (REQUIRED)"}. NEVER use N/A. Do not invent new chunks — only explain the given list.`
+    : `你为英语语块/搭配补全缺失释义。只返回 JSON 数组。每项：{"chunk":"...","note":"必填中文释义"}。禁止 N/A、「常用」。不要新增语块，只解释给定列表。`
+
+  const cleaned = await callApi(
+    system,
+    `Word: ${word}\nChunks needing meaning:\n${JSON.stringify(missing.map((m) => m.chunk))}\n\nReturn the JSON array.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as Array<{ chunk: string; note: string; spatialExtension?: string }>
+  } catch { /* fall through */ }
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/)
+  if (arrMatch) {
+    try {
+      return JSON.parse(arrMatch[0]) as Array<{ chunk: string; note: string; spatialExtension?: string }>
+    } catch { /* fall through */ }
+  }
+  throw new Error('AI returned invalid JSON for collocation note fill')
+}
+
+/** Fill only missing concept-graph example meaning/mindHint fields. */
+export async function fillMissingConceptExamples(
+  word: string,
+  rootCore: string,
+  examples: Array<{ phrase: string; meaning?: string; mindHint?: string }>,
+  signal?: AbortSignal
+): Promise<Array<{ phrase: string; meaning: string; mindHint: string }>> {
+  const config = getConfig()
+  const missing = examples.filter(
+    (e) => !e.meaning?.trim() || e.meaning === 'N/A' || !e.mindHint?.trim() || e.mindHint === 'N/A'
+  )
+  if (missing.length === 0) return []
+
+  const isMono = config.monolingualWord
+  const system = isMono
+    ? `You complete native-mind explanations for concept-tree phrases. Return ONLY JSON array of {"phrase","meaning","mindHint"}. meaning=what it means; mindHint=how a native links it to root core "${rootCore}". REQUIRED fields. No N/A.`
+    : `你为概念树短语补全释义与母语心智。只返回 JSON 数组：{"phrase","meaning","mindHint"}。meaning=中文释义；mindHint=母语者如何从根意象「${rootCore}」延伸到此用法。字段必填。禁止 N/A。`
+
+  const cleaned = await callApi(
+    system,
+    `Word: ${word}\nRoot core: ${rootCore}\nPhrases needing fill:\n${JSON.stringify(missing.map((m) => m.phrase))}\n\nReturn the JSON array.`,
+    signal
+  )
+  try {
+    return JSON.parse(cleaned) as Array<{ phrase: string; meaning: string; mindHint: string }>
+  } catch { /* fall through */ }
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/)
+  if (arrMatch) {
+    try {
+      return JSON.parse(arrMatch[0]) as Array<{ phrase: string; meaning: string; mindHint: string }>
+    } catch { /* fall through */ }
+  }
+  throw new Error('AI returned invalid JSON for concept example fill')
 }
 
 // ── AI 词组/句子查询 ──
@@ -668,20 +924,45 @@ function getPhrasePrompt(
   webSearchResults?: string,
   isFull: boolean = true,
   triLingual: boolean = false,
-  isMono: boolean = false
+  isMono: boolean = false,
+  cognitive: 'lookup' | 'core' = 'lookup'
 ): string {
-  const isEnabled = (id: string) => modules.find(m => m.id === id)?.enabled !== false
+  const isEnabled = (id: string) => moduleEnabled(modules, id)
+  const isCore = cognitive === 'core'
 
   const meaningDesc = isMono
     ? "English definition or complete line-by-line translation in simple terms. For multi-sentence or long paragraphs, you MUST provide full translation for ALL sentences, NOT just a summary."
     : "中文释义与准确翻译。若输入为多句子或长段落文章，必须包含针对所有句子的完整全文翻译（可首行放一句话【主题概括】，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括。"
-  const sceneDesc = isMono ? "1-3 sentences in English, explaining when to use this expression, tone, and feeling" : "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何"
+  const sceneDesc = isMono
+    ? (isCore
+      ? "1-3 sentences in English: WHEN a native speaker reaches for this expression, what communicative job it does, and what feeling it carries"
+      : "1-3 sentences in English, explaining when to use this expression, tone, and feeling")
+    : (isCore
+      ? "1-3句口语化中文：母语者在什么意图下会选用这个表达、它完成什么交际任务、带什么语气感觉"
+      : "1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何")
 
   const correctionNoteDesc = isMono
     ? "If correctForm differs from input: 1-2 sentences in English explaining why — e.g. 'The original is understandable but unnatural; native speakers say X instead.' or 'Minor grammar error: subject-verb agreement.' Focus on the most important issue only. Skip trivial capitalization/punctuation unless it changes meaning. Omit this field if no change was made."
     : "如果 correctForm 与原文不同，用1-2句中文简要说明改动原因，分类标注（能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质性错误微调），仅提及最关键的问题。大小写/标点等只在影响意思时才提及。无改动时省略此字段。"
 
-  let schema = `{\n  "correctForm": "the corrected/standard form — fix real grammar, preposition, or spelling errors ONLY. CRITICAL: do NOT shorten, summarize, or truncate the input. If input is a long sentence or multi-sentence paragraph, keep ALL content intact and only fix actual errors. correctForm is the proofread original, not a rewrite.",\n  "correctionNote": "${correctionNoteDesc}",\n  "meaning": "${meaningDesc}",\n  "usageScenes": [\n    {\n      "label": "${isMono ? '2-4 word English context tag' : '2-4字场景标签'}",\n      "description": "${sceneDesc}"\n    }\n  ]`
+  const unnaturalDesc = isMono
+    ? `{ "chineseThought": "how a Chinese-thinking learner would frame this", "nativeConcept": "how a native speaker actually conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking/writing" }`
+    : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
+
+  const nativeMindDesc = isMono
+    ? `{ "mentalPicture": "the vivid scene/image a native speaker has when using this expression", "emotionalStance": "attitude, politeness, intensity, or social stance", "whyChooseThisWord": "why natives pick THIS wording over near-synonym alternatives" }`
+    : `{ "mentalPicture": "母语者使用该表达时脑中的画面/情景", "emotionalStance": "语气态度、礼貌度、强度或社交立场", "whyChooseThisWord": "母语者为何选这个表达而非近义说法" }`
+
+  let schema = `{\n  "correctForm": "the corrected/standard form — fix real grammar, preposition, or spelling errors ONLY. CRITICAL: do NOT shorten, summarize, or truncate the input. If input is a long sentence or multi-sentence paragraph, keep ALL content intact and only fix actual errors. correctForm is the proofread original, not a rewrite.",\n  "correctionNote": "${correctionNoteDesc}",\n  "unnaturalMindModel": ${unnaturalDesc},\n  "meaning": "${meaningDesc}"`
+
+  // Lookup：场景挂在释义区，始终要；Core：跟 corePhraseModules.usageScenes 开关
+  if (!isCore || isEnabled('usageScenes')) {
+    schema += `,\n  "usageScenes": [\n    {\n      "label": "${isMono ? '2-4 word English context tag' : '2-4字场景标签'}",\n      "description": "${sceneDesc}"\n    }\n  ]`
+  }
+
+  if (isCore) {
+    schema += `,\n  "nativeMindModel": ${nativeMindDesc}`
+  }
 
   if (isEnabled('examples')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
@@ -706,14 +987,20 @@ function getPhrasePrompt(
 
   schema += `\n}`
 
-  const basePrompt = isMono
-    ? `You are a professional English language analyst for learners who prefer English-only monolingual explanations.`
-    : `You are a professional English language analyst for Chinese native speakers.`
-  const multiLangPrompt = `You are a professional multi-language translator and cultural analyst. You specialize in "Cultural Interpretation" — explaining the social, historical, and subculture (especially ACG/Internet) context behind foreign expressions.`
+  const basePrompt = isCore
+    ? (isMono
+      ? `You are a native-speaker cognitive coach for English learners. Your job is NOT dictionary lookup — it is to remodel how learners THINK about an expression so they can use it the way natives do (mental picture, emotional stance, cultural fit, when/why to choose it).`
+      : `你是面向中文母语者的「母语者心智教练」。你的任务不是传统词典释义，而是帮助学习者用母语者的心智模式理解表达：脑中画面、情感立场、文化得体性，以及何时/为何选用这个说法。`)
+    : (isMono
+      ? `You are a professional English language analyst for learners who prefer English-only monolingual explanations.`
+      : `You are a professional English language analyst for Chinese native speakers.`)
+  const multiLangPrompt = isCore
+    ? `You are a cultural-cognitive coach for foreign expressions. Prioritize how natives conceptualize the phrase — social meaning, subculture nuance, and when it is the right choice.`
+    : `You are a professional multi-language translator and cultural analyst. You specialize in "Cultural Interpretation" — explaining the social, historical, and subculture (especially ACG/Internet) context behind foreign expressions.`
 
   let prompt = `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
 
-Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} phrase or sentence, provide a complete analysis.
+Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} phrase or sentence, provide a complete analysis${isCore ? ' with native-mind priority' : ''}.
 
 ${webSearchResults ? `ADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.\n` : ''}
 
@@ -728,15 +1015,19 @@ Rules:
 - If the input has NO real errors, set correctForm exactly equal to the input (copy it verbatim). Only change what is genuinely wrong.
 - correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.
 - unnaturalMindModel: When input sounds unnatural, un-idiomatic, or reflects Chinese-to-English translation mindset, fill unnaturalMindModel with detailed cognitive breakdown (chineseThought, nativeConcept, reusablePrinciple). Omit if input is already natural.
+${isCore ? `- nativeMindModel: REQUIRED for Pure Core. Always fill mentalPicture, emotionalStance, whyChooseThisWord — even when the input is already natural. Focus on how natives think and when they would choose this expression.
+- PRIORITY order for Pure Core: nativeMindModel > unnaturalMindModel (if any) > usageScenes (communicative intent) > meaning. Keep meaning accurate but secondary to cognitive remodeling.
+- usageScenes in Core mode must emphasize native communicative intent (what job the phrase does), not just textbook situations.` : `- Focus on clear meaning, practical usage scenes, and correction quality. nativeMindModel is NOT required for Lookup mode.`}
 - If input is CHINESE (targeting English):
   - correctForm: the most natural, complete English translation of the full input — do NOT omit any part of the Chinese.
   - correctionNote: omit (translation, not correction).
   - usageScenes: explain when to use this translation vs others.
+${isCore ? '  - nativeMindModel: explain how an English native would conceptualize the translated expression and why that wording fits.\n  - unnaturalMindModel: if a literal Chinese-style English would be tempting, contrast that transfer error with the native concept.' : ''}
 - If input is a FOREIGN LANGUAGE (not English/Chinese):
   - meaning: accurate and natural translation.
   - usageScenes: explain the specific feeling or tone of the original expression.
   - culturalLore: PRIORITY: Provide deep cultural/subculture context. Specify historical origins or social context if applicable.
-- Provide 2-4 usage scenes, 2-4 examples.
+- Provide 2-4 usage scenes${isCore ? '' : ', 2-4 examples'}.
 - Keep everything concise.
 - Never output anything outside the JSON object.`
 
@@ -760,7 +1051,8 @@ Rules:
 export async function aiPhraseQuery(
   phrase: string,
   isFull: boolean = true,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  cognitive: 'lookup' | 'core' = 'lookup'
 ): Promise<PhraseResult> {
   const config = getConfig()
   const lang = detectLanguage(phrase)
@@ -776,8 +1068,9 @@ export async function aiPhraseQuery(
     ? config.monolingualSentence
     : config.monolingualPhrase  // phraseQuery only handles phrase/sentence; fallback is phrase, not word
 
+  const activeModules = modulesForPhraseCognitive(config, cognitive)
   const cleaned = await callApi(
-    getPhrasePrompt(config.modules, lang, webResults, isFull, config.triLingualExamples, isMono),
+    getPhrasePrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, isMono, cognitive),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
   )

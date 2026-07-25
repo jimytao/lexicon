@@ -9,10 +9,10 @@
 ## 🚀 核心特性
 
 ### 1. 三种查词模式
-- **Instant**：纯本地词库，零延迟，离线可用。
-- **AI Lookup**：L1 词典立即呈现，AI 增量分析（语义情景、词根、近义、语块、文化语域等）异步淡入。
-- **Pure Core**：深度认知全量视图（Core Image、语域、词源网络等），适合精读一个词。
-- 顶部模式切换**点击即生效**（有缓存恢复，无缓存立刻发起对应查询）。
+- **Instant**：纯本地词库，零延迟，离线可用（切回 Instant 只显示 L1，AI 缓存保留）。
+- **AI Lookup**：理解与记忆——L1 立即呈现；轻量意象、词根、助记、例句、介词意象、释义核对练习与 Chat 异步淡入。
+- **Pure Core**：母语者用法——心智模型、用法意象、概念树、介词语组/其他词组、近义选用、用法场景、语域与造句练习（无释义墙）。
+- 顶部模式切换**点击即生效**（有缓存恢复，无缓存立刻发起对应查询）；历史列表双星区分 Lookup / Core 轨。
 
 ### 2. 双本地词库与智能路由
 - **多词库**：牛津高阶第 9 版中英双解（`lexicon.db`，约 5.2 万）+ 第 10 版纯英英（`lexicon_en.db`，约 8.4 万）。
@@ -21,9 +21,9 @@
 - **回退保护**：英英库缺失时安全回退双解，避免崩溃。
 
 ### 3. AI 增强与个人资产
-- 语义情景、词根词缀、近义反义、语块搭配、文化语域、随身追问、情景练习等。
+- Lookup / Core 分轨模组可在 Settings 拖拽排序与开关；随身追问、释义核对 / 场景造句练习。
 - **UK / US 发音**（含自动发音与离线 TTS 兜底）。
-- **个人笔记**与 Lexicon Memory 徽章；设置内 **AI Profile** 诊断（薄弱点归纳）。
+- Lexicon Memory 徽章（只读）；设置内 **AI Profile** 诊断（薄弱点归纳）。个人笔记编辑面板已雪藏，底层记忆数据仍保留。
 - 弱项看板 UI 当前**已雪藏**（不占用底栏）；Profile 后端仍可用。
 
 ### 4. 介词空间意象
@@ -44,12 +44,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.8.4_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.8.4_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.8.5_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.8.5_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_x64_en-US.msi)**（MSI）
 
 ### Android
-- **[Lexicon_0.8.4_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.8.4](https://github.com/jimytao/lexicon/releases/tag/v0.8.4)。
+- **[Lexicon_0.8.5_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.8.5](https://github.com/jimytao/lexicon/releases/tag/v0.8.5)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

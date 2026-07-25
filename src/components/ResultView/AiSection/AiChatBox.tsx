@@ -7,6 +7,7 @@ import { recordAiChatEvent } from '../../../services/profile'
 import type { ChatMessage } from '../../../types'
 import { normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
+import { SectionHeading } from '../SectionHeading'
 
 
 interface AiChatBoxProps {
@@ -93,10 +94,7 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
 
   return (
     <div className="mb-4">
-      <div className="flex items-center gap-1.5 mb-3">
-        <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-        <h2 className="text-xs font-semibold text-violet-900 dark:text-violet-300">{t('chat.heading')}</h2>
-      </div>
+      <SectionHeading title={t('chat.heading')} />
 
       {chatMessages.length > 0 && (
         <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
@@ -105,8 +103,8 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
               key={i}
               className={`text-sm rounded-xl px-3 py-2 ${
                 msg.role === 'user'
-                  ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-900 dark:text-violet-100 ml-8'
-                  : 'bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 mr-8'
+                  ? 'bg-accent/10 text-foreground ml-8'
+                  : 'bg-background-soft text-foreground mr-8'
               }`}
             >
               <p className="whitespace-pre-wrap text-xs leading-relaxed">{msg.content}</p>

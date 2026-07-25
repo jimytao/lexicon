@@ -1,5 +1,196 @@
 # CHANGELOG
 
+## 2026-07-26 — Lookup/Core 学习流分轨、稳定性与结果页克制 (v0.8.5)
+
+本版汇总自 v0.8.4 以来的未发布改动（详见下方同日细条目）。
+
+### 用户可见
+1. **Lookup / Pure Core 学习分工**：Lookup 偏理解记忆（释义、轻量意象、词根、助记、例句、介词意象、释义核对）；Core 偏母语用法（心智、用法意象、概念树、介词语组/其他词组、近义、场景、语域、造句练习）；Core 无 dictionary 墙。
+2. **历史双星分轨** + Instant 切回只显 L1；双轨皆无的历史词不再误切 AI。
+3. **AI 超时可恢复**：不再静默卡在 loading；Instant 取消进行中请求。
+4. **结果页视觉降噪**：统一 `SectionHeading`，去掉装饰色点 / emoji / 多余 AI 徽章。
+5. **设置**：Core 词组专用模组列表；历史回放优先轨。
+
+### 工程
+- vitest 单测基建；`combineSignals` / request gate；文档 AGENT / 04 / 05 / 07 / 09 同步。
+
+---
+
+## 2026-07-26 — 结果页视觉降噪（企业级克制）
+
+### 1. 统一板块标题
+- 新增 `SectionHeading`：`text-[10px] font-black uppercase tracking-widest`，无色点、无「AI」pill
+
+### 2. 去掉装饰噪声
+- 结果页各卡删除标题前彩色圆点、重复 AI 徽章、emoji（🎯🧠💡🧭 等）
+- `CoreConceptCard` / `NativeMindModelCard` / `WordGraphCard` / `UnnaturalMindModelCard` 去掉渐变英雄卡与装饰图标
+- 板块正文统一中性 `foreground` / `border`；模式辨识仅保留顶栏 pill
+
+### 3. 状态区克制
+- `AiStatusBar`：loading 用轻量 spinner；error 去 glow 大圆图标，按钮对齐设计系统 Primary/Secondary
+
+### 4. 文档
+- `09-ui-ux-design-system.md` 增补 Result Section Header 规则
+
+### 5. 涉及文件
+- `ResultView/SectionHeading.tsx`、各 `AiSection/*`、`PhraseView`、`CoreCognitiveView`、`MeaningList`、`PhraseExercises`、本 CHANGELOG、`09`
+
+---
+
+## 2026-07-26 — AI 超时/Instant 取消/历史 Instant 回放与 Lookup 介词意象
+
+审查修复（TDD：`npm test` / vitest）。
+
+### 1. 超时不再卡死 loading（P1）
+- `callApi` / `analyzeWord`：`combineSignals` + `dispose`；fetch 的 AbortError 若因 Timeout reason 则重抛 `TimeoutError`
+- `useAiLookup`：`classifyAiRequestError` 先认 timeout 再认 abort；全量 30s / phrase·analyze 超时进 `setAiError`
+- 抽出 `src/utils/abortSignal.ts`、`aiRequestErrors.ts`
+
+### 2. Instant 取消进行中 AI（P2）
+- `createAiRequestGate` + `shouldCommitAiDisplay`；`cancelAi()` 在切 Instant 时 abort 并作废 generation
+- 迟到结果不写回展示（避免空态被 `aiFullResult` 污染）
+
+### 3. 历史纯 Instant 不再误切 AI（P2）
+- `resolveHistoryTrack` 双轨皆无时返回 `null`；有词库 → 留 Instant；OOD/词组仍按 `defaultSearchMode` 落入 AI
+- `historyModeForTrack` 统一 mode 映射
+
+### 4. Instant 卸下 Chat；Lookup 单词补介词意象（P2）
+- `shouldShowResultAiChat`：仅 Lookup + success
+- `ResultView` / `AiFullView` 增加 `preposition` → `PrepImageryCard`（点按生成；Core 仍用 chunks）
+
+### 5. 测试基建
+- 新增 vitest（`npm test`）；用例覆盖 abort/timeout、gate、history track、Chat/prep 可见性
+
+### 6. 涉及文件
+- `ai.ts`、`useAiLookup.ts`、`App.tsx`、`ResultView`、`AiFullView`、`utils/*`、`vite.config.ts`、`package.json`、`05-components`、`AGENT.md`、本 CHANGELOG
+
+---
+
+## 2026-07-26 — Lookup/Core 边角：词组模组分轨、中文 Core 候选、wordGraph 重试
+
+拍板方案 **AAAB**（承接 07-25 模组重组后的审查项）。
+
+### 1. Core 词组专用模组列表（方案 A）
+- **新增** `corePhraseModules` / `DEFAULT_CORE_PHRASE_MODULES` / `normalizeCorePhraseModules` / `seedCorePhraseModulesFromCore`
+- 出厂：`usageScenes`、`culture`、`practice`、`chat`（心智卡仍视图置顶，不进可关列表）
+- **设置**：Pure Core 手风琴内「单词 / 词组」子 Tab，各自拖拽与开关
+- **PhraseView** + `aiPhraseQuery`：Core 读 `corePhraseModules`，不再挂单词用的 `wordGraph`/`chunks` 等空转模组
+- 升级：无 `corePhraseModules` 时从单词 `coreModules` 交集种子
+
+### 2. Core 中文反查短英文候选（方案 A）
+- `getFullLookupPrompt`：`cognitive=core` 且 `lang===zh` 时强制 2–5 条短 `meanings`（en=候选，zh=细微差别）；英文 Core 仍无释义墙
+- `CoreCognitiveView`：轻量「英文候选」块，可点击跳转查词
+
+### 3. culture 归属（方案 A）
+- 维持 **仅 Core**；Lookup 默认列表不含 culture（与 07-25 分工一致，本条确认不回迁）
+
+### 4. wordGraph 静默重试（方案 B）
+- `aiFullNeedsExplanationFill(..., { wordGraphEnabled })`
+- `wordGraph` **开**且完全无 `conceptGraph.branches` → 静默重试一次；关则不空转
+- 接线：`useAiLookup.triggerFullLookup`
+
+### 5. 涉及文件
+- `settingsStore.ts`、`SettingsView.tsx`、`ai.ts`、`PhraseView.tsx`、`CoreCognitiveView.tsx`、`useAiLookup.ts`、`aiCompleteness.ts`、`i18n`、`AGENT.md`、`07`、本 CHANGELOG
+
+---
+
+## 2026-07-25 — Lookup / Core 模组学习流重组
+
+### 1. 学习分工
+- **AI Lookup**：理解与记忆（释义、轻量意象、词根、助记、例句、介词意象、释义核对练习）
+- **Pure Core**：母语者用法（心智置顶、加厚用法意象、概念树、介词语组、其他常用词组、近义选用、用法场景、语域、场景造句练习）
+- Core **彻底去掉** dictionary 释义墙；culture 迁入 Core
+
+### 2. chunks vs collocations 拆清
+- 独立模组 id：`chunks` = 常用**介词词组**；`collocations` = **其他**常用词组
+- 可分别开关与拖拽排序；prompt/UI 标题与 note 要求分工（介词语组须点明介词角色）
+- Lookup 的 `preposition` 仍为意象理解；与 Core 介词语组清单不重复
+
+### 3. 双轨练习
+- Lookup：`meaning-check` — 输入大致意思（中/英），AI 对错与纠正
+- Core：保留场景造句 `usage-output`
+
+### 4. 设置与 prompt
+- `DEFAULT_MODULES` / `DEFAULT_CORE_MODULES` 重写；`normalizeCoreModules` 兼容旧 persist（旧合并 collocations → 拆分；剔 Core dictionary）
+- 全量查词：`cognitive=core` 时读 `coreModules`（此前误读 Lookup 列表）
+- 出厂顺序可拖拽覆盖（两模式各自列表）
+
+### 5. 审查修复（同日，重组后发现）
+- **`isEnabled` 语义**：不在当前模式列表的模组视为关闭（旧 `!== false` 会把已迁出模组仍当开启，Lookup 继续要搭配/近义/文化）
+- **`getConfig`**：读 localStorage 时走 `normalizeModules` / `normalizeCoreModules`，与设置页迁移一致
+
+### 6. 涉及文件
+- `settingsStore.ts`、`ai.ts`、`AiFullView`、`CoreCognitiveView`、`ResultView`、`PhraseView`、`CollocationCard`、`PracticeSection`、`UsageScenesCard`、`i18n`、`AGENT.md`、`04`/`07`
+
+### 7. 后续
+- 词组 Core 模组分轨 / 中文 Core 候选 / wordGraph 重试 → 见 **2026-07-26** 条目。
+
+## 2026-07-25 — Instant 复位、空态、历史双星分轨与释义补全
+
+### 1. Instant 切回：有本地则只显 L1；无本地则清空结果区
+- **文件**：`App.tsx` `handleModeChange`
+- **行为**：点 Instant 不再「假 Instant 真 AI」；AI 缓存保留，仅不在 Instant 视图加载。
+
+### 2. 空态：任意默认模式都显示小书引导
+- **文件**：`App.tsx` `showEmptyHome`
+- **行为**：默认 Pure Core 也不再抢走首页空态。
+
+### 3. 历史双星分轨 + 优先轨设置
+- **文件**：`historyStore`（`lookupAiMode` / `coreAiMode`）、`HistoryList`（琥珀=Lookup / 靛色=Core）、`settings.historyPreferCognitive`（Search Behavior 组）
+- **行为**：两轨分开记录；双轨都有时按设置优先（默认 Lookup）回放并切到对应模式。
+
+### 4. 强制 AI 文案与 Lookup 区分（方案 A）
+- **文案**：`search.forceAi` →「强制 AI 全量（旁路词库）」+ hint。
+
+### 5. 释义缺失：静默重试一次 + 板块级只补缺失
+- **文件**：`useAiLookup`、`fillMissingCollocationNotes` / `fillMissingConceptExamples`、`CollocationCard` / `WordGraphCard`
+- **行为**：全量结果缺释义时自动再拉一次；仍缺则板块按钮只补缺失项，已有释义不重写。
+
+### 6. 后续：Lookup / Core 学习流模组重组
+- 已在同日后续提交中完成（见上方「Lookup / Core 模组学习流重组」）。
+
+## 2026-07-25 — Chunks / 概念树强制释义与可见展示
+
+### 1. 修复：语块 & 搭配缺少可读释义
+- **文件**：`CollocationCard.tsx`、`src/services/ai.ts`（analyze + full lookup）
+- **问题**：`note` 只藏在 hover tooltip，且 prompt 允许 `N/A`，用户看不到短语意思。
+- **修复**：每条 chunk/搭配**始终展示释义**；prompt 强制 `note` 为清晰中文/英文意思，禁止空话/`N/A`。
+
+### 2. 增强：Pure Core 概念树例句带释义 + 母语心智
+- **文件**：`WordGraphCard.tsx`、`types` `ConceptGraphExample`、`getFullLookupPrompt`（core）
+- **实现**：`examples` 改为 `{ phrase, meaning, mindHint }`；UI 展示释义与心智提示；兼容旧缓存纯字符串。
+
+## 2026-07-25 — 单词全量分轨、Instant 回落默认模式、Lookup 点击即搜
+
+### 1. 增强：单词全量 Lookup / Pure Core 分轨（对齐词组）
+- **文件**：`src/services/ai.ts`、`useAiLookup.ts`、`resultStore.ts`、`utils/text.ts`、`App.tsx`
+- **实现**：`aiFullLookup` 增加 `cognitive`；Lookup 偏理解记忆（coreConcept，无 nativeMindModel/图谱）；Core 必填心智 + conceptGraph；缓存 `q` / `q::core` 分轨。
+
+### 2. 优化：Instant 词库未命中 → 按设置默认模式落入 Lookup 或 Core
+- **文件**：`App.tsx`、`preferredAiModeFromSettings`
+- **问题**：Instant 搜不到词时固定进 Lookup。
+- **修复**：读取 `defaultSearchMode`；设为 Pure Core 则进 Core，否则进 Lookup（默认 Instant 时也进 Lookup）。强制 AI 同理。
+
+### 3. 修复：点击 AI Lookup 与 Pure Core 一样自动触发搜索
+- **文件**：`App.tsx` `handleModeChange`
+- **实现**：Instant/Core → Lookup 时立刻 analyze / phrase Lookup / 全量 Lookup（有本地快照则恢复 L1+analyze）；不再只靠再点搜索。
+
+## 2026-07-25 — 雪藏个人笔记区 + 词组/句子 Core 与 Lookup 分轨
+
+### 1. 雪藏：结果页「Personal notes & Q&A」编辑面板
+- **文件**：`UserNoteEditor.tsx`（SHELVED）、`PhraseView` / `AiFullView` / `CoreCognitiveView` / `ResultView`、`AGENT.md`、`05` / `08`、双 README
+- **决策**：面板与 md 词库无关，只读写 SQLite `user_word_memory`；产品面暂不需要编辑入口。
+- **实现**：四路结果页卸下 `UserNoteEditor`；源码与 DB API 保留；`LexiconMemoryBadge` 改为只读展示。
+
+### 2. 增强：词组/句子 Pure Core 与 AI Lookup 拉开差距（对齐 docs/07）
+- **文件**：`src/services/ai.ts`、`useAiLookup.ts`、`resultStore.ts`、`PhraseView.tsx`、`App.tsx`、`types`、`utils/text.ts`、`07-cognitive-and-settings-architecture.md`
+- **问题**：词组/句子共用同一 `aiPhraseQuery` 与 `phraseCache`，Core 无法体现「母语者心智模式」。
+- **实现**：
+  - Lookup / Core **分轨 prompt**：Core 必填 `nativeMindModel`，优先交际意图与违和感对比；Lookup 仍以释义/订正/场景为主。
+  - 缓存 key：`q` vs `q::core`，模式切换互不覆盖。
+  - Core UI：Pure Core 徽章、心智卡片前置、场景先于释义；隐藏助记/练习。
+  - 修复历史回放强制把词组切回 AI Lookup 的问题。
+
 ## 2026-07-25 — 首页空态居中、AGENT 上下文与上传门禁 (v0.8.4)
 
 ### 1. 优化：查词首页空态整屏几何居中

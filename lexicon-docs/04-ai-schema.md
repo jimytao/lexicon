@@ -159,16 +159,28 @@ Analyze this word and return the JSON.`
 - `correction`：纠正后的句子（正确时为空）
 - 语法错误（时态、介词、句型）必须标为 incorrect；轻微拼写错误可忽略
 
-### `aiFullLookup(word, signal?)`
-词库缺失单词的全量 AI 生成。返回 `AiFullResult`。
+### `aiFullLookup(word, isFull?, signal?, cognitive?)`
+词库缺失（或 Mode 3 全量）单词的 AI 生成。返回 `AiFullResult`。`cognitive: 'lookup' | 'core'` 决定 prompt 与缓存分轨。
 
-- 包含 `correctForm`（AI 纠正后的正确拼写）、`phonetic`、`pos`、`meanings`（含 scene）、`etymology`、`synonyms`、`examples`
-- 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况
+- 共用：`correctForm`、`phonetic`、`pos`、`coreConcept`、`meanings`（含 scene）、`etymology`、`synonyms`、`examples` 等
+- **Lookup**：理解与记忆向；**不要** `nativeMindModel` / `conceptGraph`
+- **Pure Core**：必填 `nativeMindModel` + `conceptGraph`；优先级心智 > 核心意象 > 图谱 > 释义
+- **collocations 数据对象**（两模组共用 schema 父字段，设置里拆成两个可排序 id）：
+  - `chunks`：**常用介词词组** only；note 必填释义并点明介词角色；可带 `spatialExtension`
+  - `collocations`：**其他常用词组**（adj+N、V+N 等）；**禁止**往这里塞介词语组；note 同样必填
+  - 禁止 `N/A` /「常用」空话；UI 始终可见展示
+- **Lookup vs Core prompt 模组源**：`cognitive=lookup` → `settings.modules`；`cognitive=core` → `settings.coreModules`
+- **Core 单词**：不拉 meanings 释义墙；优先 nativeMindModel / 加厚 coreConcept / conceptGraph / chunks / collocations / usageScenes
+- **练习**：Lookup `evaluateMeaningCheck`（释义核对）；Core 既有场景造句 `evaluateAnswer`
+- **conceptGraph.examples**（Core）：对象 `{ phrase, meaning, mindHint }`——短语 + 释义 + 母语心智延伸；禁止只返回裸字符串
+- 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况，以及 Mode 3 对词库词的全量认知视图
 
-### `aiPhraseQuery(phrase, signal?)`
-词组/句子 AI 查询。返回 `PhraseResult`。
+### `aiPhraseQuery(phrase, isFull?, signal?, cognitive?)`
+词组/句子 AI 查询。返回 `PhraseResult`。`cognitive: 'lookup' | 'core'`（默认 `lookup`）决定 prompt 重心与缓存分轨。
 
-- 包含 `correctForm`（纠正后的正确表达）、`correctionNote`（改动原因简要说明，有改动时才有）、`meaning`、`usageScenes`、`examples`、`exercises`
+- 共用字段：`correctForm`、`correctionNote`、`unnaturalMindModel?`、`meaning`、`usageScenes`、`examples` 等
+- **Lookup**：词典式释义 / 订正 / 场景；`unnaturalMindModel` 仅在不地道时填写
+- **Pure Core**：母语者心智教练；**必填** `nativeMindModel`（mentalPicture / emotionalStance / whyChooseThisWord）；优先交际意图与违和感对比
 - `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
 - `meaning` 遵守完整翻译约束：面对长文本或多句段落，`meaning` 必须提供句句对应的完整中文翻译（可首行置顶【核心主题】总结，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括
 - `correctionNote` 分类标注改动类型：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调

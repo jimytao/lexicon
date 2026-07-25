@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTlYWEpncThoODdLSWd0cmVOcEdLcjJjWlIwOFFNTC96Vk82dHZqTUY3TE1KZnc4anBha1UyK2I5ZzBpZnRPdnlvRHdHRmZadXIwUkpuMEMyaGxTdUFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTYzODY3CWZpbGU6TGV4aWNvbl8wLjguNF94NjQtc2V0dXAuZXhlCko2a2JGM3FkZ3ZQTnM3SWRGT3gyMmRtTDR1R3ptUHlFNlVvZE0vcHZqbWhWUTlPUWZFd2U3T25HZXRVMStGYXBGd3FnV1RDOFB2UDhVNW0zV1EwREN3PT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXc1eUFnYzd0Qkx3VlFiTkxlc0ZRY1lUcGM5YjR5Z1lqekZnOFZXMHBqZk5RSURNbjBqS0lTMmxjR1FIcDhOQUN0bnF5V3NCRTZjeG5CSzF4QnhwSGdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTkwNzg0CWZpbGU6TGV4aWNvbl8wLjguNV94NjQtc2V0dXAuZXhlCm90M0Q5SEhhRUFBK01JZ1V4Zm5hVGpaaXlNdkU1MWlaZkVmOTBRRlZxMXFrWmcrVjcrRjJGRjF4UVJpaEtQakhBb3FrMlplMVdVQmpVcjhyd3BTVEF3PT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-25T07:17:58Z",
-    "version":  "0.8.4",
-    "notes":  "首页空态居中、AGENT 上下文与上传文档门禁\n1. 优化：查词首页空态整屏几何居中，不随底栏抖动。\n2. 重构：AI 启动上下文统一为 AGENT.md（CLAUDE.md 兼容跳转）。\n3. 规范：workflow 增加上传前 CHANGELOG + 双 README 门禁。\n4. 文档：中英文 README 对齐三模式、底栏 Settings 与 v0.8.4 下载链接。\n",
-    "notes_zh":  "首页空态居中、AGENT 上下文与上传文档门禁\n1. 优化：查词首页空态整屏几何居中，不随底栏抖动。\n2. 重构：AI 启动上下文统一为 AGENT.md（CLAUDE.md 兼容跳转）。\n3. 规范：workflow 增加上传前 CHANGELOG + 双 README 门禁。\n4. 文档：中英文 README 对齐三模式、底栏 Settings 与 v0.8.4 下载链接。\n",
-    "notes_en":  "Home empty-state centering, AGENT.md context, and upload doc gate\n1. **Improved**: Dictionary home empty state is viewport-centered and no longer jumps with the tab bar.\n2. **Refactored**: Canonical agent context is AGENT.md (CLAUDE.md is a compatibility stub).\n3. **Process**: workflow.md §0 requires CHANGELOG + bilingual README checks before push/release.\n4. **Docs**: READMEs updated for three modes, bottom Settings tab, and v0.8.4 download links.\n",
+    "pub_date":  "2026-07-25T14:50:00Z",
+    "version":  "0.8.5",
+    "notes":  "Lookup/Core 学习流分轨、AI 超时修复与结果页视觉克制\n1. 新增：AI Lookup 与 Pure Core 学习分工（理解记忆 vs 母语用法）；Core 词组专用模组；历史双星分轨。\n2. 修复：AI 超时不再卡死 loading；Instant 取消进行中请求；历史纯 Instant 不再误切 AI。\n3. 优化：结果页统一板块标题，去掉装饰色点/emoji/多余 AI 徽章。\n4. 工程：vitest 单测基建；文档与 Settings 模组拖拽同步。\n",
+    "notes_zh":  "Lookup/Core 学习流分轨、AI 超时修复与结果页视觉克制\n1. 新增：AI Lookup 与 Pure Core 学习分工（理解记忆 vs 母语用法）；Core 词组专用模组；历史双星分轨。\n2. 修复：AI 超时不再卡死 loading；Instant 取消进行中请求；历史纯 Instant 不再误切 AI。\n3. 优化：结果页统一板块标题，去掉装饰色点/emoji/多余 AI 徽章。\n4. 工程：vitest 单测基建；文档与 Settings 模组拖拽同步。\n",
+    "notes_en":  "Lookup/Core learning tracks, AI timeout fix, and calmer result UI\n1. **New**: Clear Lookup vs Pure Core learning split; Core phrase modules; dual-star history tracks.\n2. **Fixed**: AI timeouts no longer stick on loading; Instant cancels in-flight AI; Instant-only history no longer forces AI mode.\n3. **Improved**: Unified result section headings; removed decorative dots/emoji/redundant AI pills.\n4. **Engineering**: vitest unit tests; Settings module lists and docs synced.\n",
     "is_major":  false
 }

@@ -10,10 +10,11 @@
     ├── (view === 'dictionary')
     │   ├── <SearchBar /> + <SegmentedControl />   # Instant / AI / Core
     │   └── 条件渲染
-    │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge + UserNoteEditor)
-    │       ├── <CoreCognitiveView />  # Mode 3 Core (+ Badge + UserNoteEditor)
-    │       ├── <AiFullView />         # 词库无结果全量查词 (+ Badge + UserNoteEditor，key=correctForm)
-    │       └── <PhraseView />         # 词组/句子 (+ Badge + UserNoteEditor)
+    │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge 只读)
+    │       ├── <CoreCognitiveView />  # Mode 3 Core (+ Badge 只读)
+    │       ├── <AiFullView />         # 词库无结果全量查词 (+ Badge 只读)
+    │       └── <PhraseView />         # 词组/句子；Lookup vs Core 分轨 UI（心智优先 / 词典式）
+    │           └── 共用 <SectionHeading />  # 结果页板块标题（无色点/无 AI pill/无 emoji）
     │
     ├── (view === 'translate')
     │   └── <ImageTranslateView />
@@ -22,9 +23,10 @@
         └── <SettingsView />           # Group + Accordion + ProfileModal
             └── <ProfileModal />       # Profile 弱项查看/重置（首页看板 Digest 已雪藏）
 
-# SHELVED（未挂载，勿接回导航）
+# SHELVED（未挂载，勿接回导航 / 结果页）
 # ├── <MemoryView />
-# └── <AILearningDigestCard />
+# ├── <AILearningDigestCard />
+# └── <UserNoteEditor />              # DB API 保留；结果页不挂载
 ```
 
 ## Zustand Store 设计
@@ -188,18 +190,25 @@ export function useSearch() {
 
 ```ts
 // src/hooks/useAiLookup.ts
-// 负责：调用 AI API，管理 AbortController，写入 cache
-// 导出三个触发函数：
+// 负责：调用 AI API，管理 AbortController + generation gate，写入 cache
+// 导出：
 
 export function useAiLookup() {
   // trigger(word, meanings) — 标准 AI 分析（词库有结果时）
-  // triggerFullLookup(word) — AI 全量查词（词库无结果时）
+  // triggerFullLookup(word) — AI 全量查词（词库无结果时）；30s 超时 → setAiError
   // triggerPhraseQuery(phrase) — AI 词组/句子查询
-  // 三者共享 AbortController，互斥执行
+  // repairCollocationNotes / repairConceptExamples — 只补缺失释义
+  // cancelAi() — Instant 切回时 abort + 作废 generation，防止迟到写入
+  // 主请求共享 AbortController，互斥执行；超时与用户取消经 classifyAiRequestError 区分
 
-  return { trigger, triggerFullLookup, triggerPhraseQuery }
+  return {
+    trigger, triggerFullLookup, triggerPhraseQuery,
+    repairCollocationNotes, repairConceptExamples, cancelAi,
+  }
 }
 ```
+
+相关纯函数（可单测）：`utils/abortSignal.ts`、`aiRequestErrors.ts`、`aiRequestGate.ts`、`historyTrack.ts`、`resultAiVisibility.ts`。
 
 ## 各组件 Props 接口
 

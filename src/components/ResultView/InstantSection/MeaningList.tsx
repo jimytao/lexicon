@@ -83,13 +83,14 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                   )}
                   
                   {scenes?.[i] && (scenes[i].label || scenes[i].description) && (
-                    <div className="mt-1.5 border-l-2 border-l-accent bg-accent-soft/30 dark:bg-accent-soft/10 pl-2.5 pr-2 py-1.5 rounded-r-xl transition-all duration-300 hover:bg-accent-soft/40 dark:hover:bg-accent-soft/20">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                        <span className="text-[9px] font-bold text-accent uppercase tracking-wider">
-                          {scenes[i].label}
-                        </span>
-                      </div>
+                    <div className="mt-1.5 border-l-2 border-l-border bg-background-soft/40 pl-2.5 pr-2 py-1.5 rounded-r-xl">
+                      {scenes[i].label && (
+                        <div className="mb-0.5">
+                          <span className="text-[9px] font-bold text-foreground-muted uppercase tracking-wider">
+                            {scenes[i].label}
+                          </span>
+                        </div>
+                      )}
                       <p className="text-[11px] text-foreground-muted leading-relaxed font-medium">
                         {scenes[i].description}
                       </p>

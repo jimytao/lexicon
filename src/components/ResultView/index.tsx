@@ -15,9 +15,14 @@ import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
 import { useT } from '../../i18n'
 import { CollocationCard } from './AiSection/CollocationCard'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
-
+import { CoreConceptCard } from './AiSection/CoreConceptCard'
+import { PrepImageryCard } from './AiSection/PrepImageryCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
-import { UserNoteEditor, openUserNotes } from './UserNoteEditor'
+import { detectSpatialPreps } from '../../utils/prepDetect'
+import {
+  shouldShowPrepImageryModule,
+  shouldShowResultAiChat,
+} from '../../utils/resultAiVisibility'
 
 export { CoreCognitiveView } from './CoreCognitiveView'
 
@@ -53,7 +58,7 @@ export function ResultView({
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
       <WordHeader word={wordResult.word} phonetic={wordResult.phonetic} pos={wordResult.pos} />
       <div className="my-2">
-        <LexiconMemoryBadge word={wordResult.word} onOpenNotes={openUserNotes} />
+        <LexiconMemoryBadge word={wordResult.word} />
       </div>
 
       {/* AI Status & Loading state for AI mode */}
@@ -99,9 +104,17 @@ export function ResultView({
               )
             case 'semantic':
               return null
+            case 'coreConcept':
+              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.coreConcept && (
+                <CoreConceptCard key={module.id} coreConcept={aiAnalysis.coreConcept} variant="memory" />
+              )
+            case 'chunks':
+              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.collocations && (
+                <CollocationCard key={module.id} variant="chunks" collocations={aiAnalysis.collocations} />
+              )
             case 'collocations':
               return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.collocations && (
-                <CollocationCard key={module.id} collocations={aiAnalysis.collocations} />
+                <CollocationCard key={module.id} variant="collocations" collocations={aiAnalysis.collocations} />
               )
             case 'examples':
               return (
@@ -113,6 +126,21 @@ export function ResultView({
               return relatedPhrases.length > 0 && (
                 <PhrasesSection key={module.id} phrases={relatedPhrases} onPhraseClick={onWordClick} />
               )
+            case 'preposition': {
+              const preps = detectSpatialPreps(wordResult.word)
+              if (!shouldShowPrepImageryModule({
+                moduleEnabled: true,
+                searchMode: mode,
+                prepositions: preps,
+              })) return null
+              return (
+                <PrepImageryCard
+                  key={module.id}
+                  phrase={wordResult.word}
+                  prepositions={preps}
+                />
+              )
+            }
             case 'synonyms':
               return mode === 'ai' && aiStatus === 'success' && (aiAnalysis?.synonyms || aiAnalysis?.antonyms) && (
                 <SynonymList
@@ -137,18 +165,23 @@ export function ResultView({
               )
             case 'practice':
               return mode === 'ai' && aiStatus === 'success' && (
-                <PracticeSection key={module.id} word={wordResult.word} meanings={wordResult.meanings} />
+                <PracticeSection
+                  key={module.id}
+                  mode="meaning-check"
+                  word={wordResult.word}
+                  meanings={wordResult.meanings}
+                />
               )
             case 'culture':
               return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.culturalLore && (
                 <CulturalLoreCard key={module.id} lore={aiAnalysis.culturalLore} />
               )
             case 'chat': {
-              if (mode === 'ai' && aiStatus !== 'success') return null
+              if (!shouldShowResultAiChat(mode, aiStatus)) return null
               // Same single AiChatBox as AiFull/Phrase — only wire enrichedContext when
               // AI analysis is ready so the context bulb can appear (one bulb, no duplicate).
               const parts: string[] = []
-              if (mode === 'ai' && aiAnalysis) {
+              if (aiAnalysis) {
                 if (aiAnalysis.meanings?.length) {
                   parts.push('释义:\n' + aiAnalysis.meanings.map(m => `  · ${m.zh}`).join('\n'))
                 }
@@ -163,8 +196,10 @@ export function ResultView({
                   parts.push(`助记法 (${aiAnalysis.mnemonic.bestType}): ${best.content}`)
                 }
                 if (aiAnalysis.collocations) {
-                  const chunkList = aiAnalysis.collocations.chunks?.map(c => c.chunk).join(', ')
-                  const colloList = aiAnalysis.collocations.collocations?.map(c => c.chunk).join(', ')
+                  const fmt = (c: { chunk: string; note?: string }) =>
+                    c.note ? `${c.chunk}（${c.note}）` : c.chunk
+                  const chunkList = aiAnalysis.collocations.chunks?.map(fmt).join('；')
+                  const colloList = aiAnalysis.collocations.collocations?.map(fmt).join('；')
                   if (chunkList) parts.push(`Chunks: ${chunkList}`)
                   if (colloList) parts.push(`Collocations: ${colloList}`)
                 }
@@ -181,8 +216,6 @@ export function ResultView({
               return null
           }
         })}
-
-        <UserNoteEditor word={wordResult.word} />
       </div>
     </div>
   )

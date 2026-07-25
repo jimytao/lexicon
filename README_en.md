@@ -9,10 +9,10 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 ## 🚀 Key Features
 
 ### 1. Three lookup modes
-- **Instant**: Local dictionary only — zero latency, offline.
-- **AI Lookup**: L1 renders immediately; AI modules (scene, roots, synonyms, chunks, cultural lore, …) fade in asynchronously.
-- **Pure Core**: Full cognitive view (core image, register, etymology network, …) for deep study of one word.
-- Mode switches apply **on click** (restore cache when present; otherwise trigger the matching lookup).
+- **Instant**: Local dictionary only — zero latency, offline (switching back shows L1 only; AI cache kept).
+- **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
+- **Pure Core**: Native usage — mind model, usage image, concept tree, prep phrases / other collocations, nuance, scenes, register, and usage-output practice (no definition wall).
+- Mode switches apply **on click** (restore cache when present; otherwise trigger the matching lookup). History dual-stars mark Lookup vs Core tracks.
 
 ### 2. Dual dictionaries & smart routing
 - **Dictionaries**: OALD 9 bilingual (`lexicon.db`, ~52k) + OALD 10 English-English (`lexicon_en.db`, ~84k).
@@ -21,9 +21,9 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **Fallback**: Missing English-English DB falls back to bilingual safely.
 
 ### 3. AI extras & personal assets
-- Semantic scenes, roots, nuance, chunks, cultural lore, in-context chat, practice quizzes.
+- Lookup / Core module lists are reorderable in Settings; in-context chat; meaning-check vs usage-output practice.
 - **UK / US pronunciation** (auto-play + offline TTS fallback).
-- **Personal notes** + Lexicon Memory badges; **AI Profile** diagnostics in Settings.
+- Lexicon Memory badges (read-only); **AI Profile** diagnostics in Settings. Personal-notes editor is shelved; underlying memory data remains.
 - Weakness-board UI is **shelved** (not in the tab bar); Profile backend remains available.
 
 ### 4. Preposition spatial imagery
@@ -44,12 +44,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.8.4_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.8.4_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.8.5_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.8.5_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.8.4_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.8.4](https://github.com/jimytao/lexicon/releases/tag/v0.8.4).
+- **[Lexicon_0.8.5_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.8.5](https://github.com/jimytao/lexicon/releases/tag/v0.8.5).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

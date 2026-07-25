@@ -17,8 +17,10 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { playPronunciation } from '../../services/audio'
 
 import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
+import { NativeMindModelCard } from './AiSection/NativeMindModelCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
-import { UserNoteEditor, openUserNotes } from './UserNoteEditor'
+import { SectionHeading } from './SectionHeading'
+import { phraseCognitiveFromSearchMode } from '../../utils/text'
 
 interface PhraseViewProps {
   phrase: string
@@ -31,10 +33,21 @@ interface PhraseViewProps {
 
 export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings }: PhraseViewProps) {
   const t = useT()
-  const { modules, monolingualPhrase, monolingualSentence, pronunciationAccent, autoPlayPronunciation } = useSettingsStore()
+  const {
+    modules,
+    corePhraseModules,
+    monolingualPhrase,
+    monolingualSentence,
+    pronunciationAccent,
+    autoPlayPronunciation,
+  } = useSettingsStore()
   const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
   const usageScenes = phraseResult?.usageScenes ?? []
   const queryType = useSearchStore(s => s.queryType)
+  const searchMode = useSearchStore(s => s.mode)
+  const isCoreMode = searchMode === 'core'
+  const activeModules = isCoreMode ? corePhraseModules : modules
+  const phraseCognitive = phraseCognitiveFromSearchMode(searchMode)
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
   const [noteExpanded, setNoteExpanded] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
@@ -76,12 +89,16 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
-      {/* AI badge */}
+      {/* Mode badge */}
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">
-          {t('phrase.queryLabel')}
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+          isCoreMode
+            ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+            : 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300'
+        }`}>
+          {isCoreMode ? t('mode.core') : t('phrase.queryLabel')}
         </span>
-        <LexiconMemoryBadge word={targetPhrase} onOpenNotes={openUserNotes} />
+        <LexiconMemoryBadge word={targetPhrase} />
       </div>
 
       {/* Header section (Correct Form + DiffText + CorrectionNote) with long text folding */}
@@ -95,7 +112,8 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
               <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 break-words [overflow-wrap:anywhere]">
                 {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
               </p>
-              {(phraseResult.correctionNote?.trim() || phraseResult.unnaturalMindModel) ? (
+              {/* Lookup: fold correction note; Core surfaces mind models below header */}
+              {!isCoreMode && (phraseResult.correctionNote?.trim() || phraseResult.unnaturalMindModel) ? (
                 <div className="mb-2">
                   <button
                     onClick={() => setNoteExpanded(v => !v)}
@@ -123,6 +141,11 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   )}
                 </div>
               ) : null}
+              {isCoreMode && phraseResult.correctionNote?.trim() && (
+                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2 break-words [overflow-wrap:anywhere]">
+                  {phraseResult.correctionNote}
+                </p>
+              )}
             </>
           ) : (
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 leading-snug break-words [overflow-wrap:anywhere] max-w-full">
@@ -213,21 +236,57 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
 
       {aiStatus === 'success' && phraseResult && (
         <div className="space-y-2">
-          {modules.map((module) => {
+          {/* Pure Core: lead with native mind model + unnatural contrast */}
+          {isCoreMode && (
+            <div className="space-y-2 mb-1">
+              <NativeMindModelCard nativeMindModel={phraseResult.nativeMindModel} />
+              {phraseResult.unnaturalMindModel && (
+                <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
+              )}
+            </div>
+          )}
+
+          {/* Core 无 dictionary 模组：释义仍作固定轻量展示，不占模组位 */}
+          {isCoreMode && phraseResult.meaning && (
+            <div className="mb-2">
+              <SectionHeading title={t('phrase.meaning')} />
+              <div className={isMeaningLong && !meaningExpanded ? 'relative max-h-36 overflow-hidden transition-all duration-300' : ''}>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                  {phraseResult.meaning}
+                </p>
+                {isMeaningLong && !meaningExpanded && (
+                  <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+                )}
+              </div>
+              {isMeaningLong && (
+                <button
+                  onClick={() => setMeaningExpanded(v => !v)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:opacity-80 transition-colors cursor-pointer"
+                >
+                  <span>{meaningExpanded ? t('phrase.collapseMeaning') : t('phrase.expandMeaning')}</span>
+                  <svg
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${meaningExpanded ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {activeModules.map((module) => {
             if (!module.enabled) return null
 
             switch (module.id) {
               case 'dictionary':
+                if (isCoreMode) return null
                 return (
                   <div key={module.id} className="space-y-4">
-                    {/* 释义与完整翻译 */}
                     <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                        <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">{t('phrase.meaning')}</h2>
-                      </div>
+                      <SectionHeading title={t('phrase.meaning')} />
                       <div className={isMeaningLong && !meaningExpanded ? 'relative max-h-36 overflow-hidden transition-all duration-300' : ''}>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
                           {phraseResult.meaning}
                         </p>
                         {isMeaningLong && !meaningExpanded && (
@@ -237,7 +296,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                       {isMeaningLong && (
                         <button
                           onClick={() => setMeaningExpanded(v => !v)}
-                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:opacity-80 transition-colors cursor-pointer"
                         >
                           <span>{meaningExpanded ? t('phrase.collapseMeaning') : t('phrase.expandMeaning')}</span>
                           <svg
@@ -249,18 +308,14 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                         </button>
                       )}
                     </div>
-                    {/* 使用场景 */}
                     {usageScenes.length > 0 && (
                       <div>
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                          <h2 className="text-xs font-semibold text-teal-900 dark:text-teal-300">{t('phrase.usageScenes')}</h2>
-                        </div>
+                        <SectionHeading title={t('phrase.usageScenes')} />
                         <div className="space-y-2">
                           {usageScenes.map((s, i) => (
-                            <div key={i} className="border-l-2 border-l-teal-500 bg-teal-50/40 dark:bg-teal-950/20 pl-3.5 pr-3 py-2.5 rounded-r-xl transition-all duration-300 hover:bg-teal-50/60 dark:hover:bg-teal-950/30">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">{s.label}</span>
+                            <div key={i} className="border-l-2 border-l-border bg-background-soft/40 pl-3.5 pr-3 py-2.5 rounded-r-xl">
+                              <div className="mb-0.5">
+                                <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">{s.label}</span>
                               </div>
                               <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
                             </div>
@@ -270,6 +325,23 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                     )}
                   </div>
                 )
+              case 'usageScenes':
+                if (!isCoreMode || usageScenes.length === 0) return null
+                return (
+                  <div key={module.id}>
+                    <SectionHeading title={t('phrase.usageScenes')} />
+                    <div className="space-y-2">
+                      {usageScenes.map((s, i) => (
+                        <div key={i} className="border-l-2 border-l-border bg-background-soft/40 pl-3.5 pr-3 py-2.5 rounded-r-xl">
+                          <div className="mb-0.5">
+                            <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">{s.label}</span>
+                          </div>
+                          <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
               case 'semantic':
                 return null
               case 'culture':
@@ -277,19 +349,21 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   <CulturalLoreCard key={module.id} lore={phraseResult.culturalLore} />
                 ) : null
               case 'mnemonic':
+                if (isCoreMode) return null
                 return (
-                  <MnemonicCard 
+                  <MnemonicCard
                     key={module.id}
-                    word={phraseResult.correctForm || phrase} 
-                    initialMnemonic={phraseResult.mnemonic} 
-                    isPhrase={true} 
-                    onUpdateMnemonic={(m) => updatePhraseMnemonic(phrase, m)}
+                    word={phraseResult.correctForm || phrase}
+                    initialMnemonic={phraseResult.mnemonic}
+                    isPhrase={true}
+                    onUpdateMnemonic={(m) => updatePhraseMnemonic(phrase, m, phraseCognitive)}
                   />
                 )
               case 'examples':
+                if (isCoreMode) return null
                 return (
                   <div key={module.id}>
-                    {phraseResult.examples.length > 0 && (
+                    {(phraseResult.examples?.length ?? 0) > 0 && (
                       <ExampleList examples={phraseResult.examples} hideTranslation={hideTranslation} />
                     )}
                   </div>
@@ -298,6 +372,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 return (
                   <PracticeSection
                     key={module.id}
+                    mode={isCoreMode ? 'usage-output' : 'meaning-check'}
                     word={phraseResult.correctForm || phrase}
                     meanings={[{ zh: phraseResult.meaning, en: '' }]}
                   />
@@ -308,6 +383,9 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 if (phrase.toLowerCase() !== corrected.toLowerCase()) {
                   parts.push(`用户原始输入: "${phrase}" → 纠正为: "${corrected}"`)
                   if (phraseResult.correctionNote) parts.push(`纠正说明: ${phraseResult.correctionNote}`)
+                }
+                if (phraseResult.nativeMindModel) {
+                  parts.push(`母语心智: 画面("${phraseResult.nativeMindModel.mentalPicture}") | 情感("${phraseResult.nativeMindModel.emotionalStance}") | 为何选用("${phraseResult.nativeMindModel.whyChooseThisWord}")`)
                 }
                 if (phraseResult.unnaturalMindModel) {
                   parts.push(`思维违和感剖析: 中文直译("${phraseResult.unnaturalMindModel.chineseThought}") → 母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
@@ -351,8 +429,6 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
           })}
         </div>
       )}
-
-      <UserNoteEditor word={phraseResult?.correctForm || phrase} />
     </div>
   )
 }
