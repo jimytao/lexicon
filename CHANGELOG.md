@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## 2026-07-25 — Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统实施完成 (v0.8.0)
+
+### 1. 新增：类型定义与 SQLite 个人资产表 (`user_word_memory`)
+- **文件**：`src/types/index.ts`、`src/services/db.ops.ts`、`src/services/db.ts`、`src/services/db.web.ts`、`src/services/db.native.ts`
+- **实现**：
+  - 在 `types/index.ts` 中定义 `UserLanguageProfile`、`WeaknessPattern`、`ExplorationFocus`、`ProfileRecommendation` 与 `UserWordMemory` 接口。
+  - 在 SQLite 服务中创建 `user_word_memory` 资产表及 API（`getUserWordMemory`、`saveUserWordNote`、`saveUserWordConversation`、`saveUserWordCoreConcept`、`recordWordView`、`getAllUserWordMemories`）。
+  - 在 `db.ops.ts` 中支持 Web `localStorage` 双向持久化备份 (`lexicon-word-memory-backup`)，保证刷新或极端情况下零数据丢失。
+
+### 2. 新增：Profile 诊断服务与双路触发引擎 (`src/services/profile.ts`)
+- **文件**：`src/services/profile.ts`、`src/services/db.ops.ts`、`src/components/Settings/ProfileModal.tsx`
+- **实现**：
+  - **Gemini 高上下文 Prompt 扩容 (8,000~15,000 Tokens)**：充分利用 Gemini 2.0 Flash / Flash Lite 高上下文与低成本特性，将事件缓冲池扩展至 100 条，将单条 Q&A 解析截取扩展至 1,000 字符，输入 25~45KB 上下文进行全量蒸馏。
+  - **基于旧 Profile 的智能增删改 (Intelligent Upsert)**：诊断时将已有 `user_profile.json` 传入 AI 作为 Baseline，AI 执行**增**（加入新薄弱点/错例）、**改**（累加暴露频次 `occurrenceCount`、精细化描写与典型错例对比 `contrastExample`）、**删/剪枝**（标记克服为 `mastered`，保持 8~12 条 Active 聚焦）。
+  - **Profile 丰富度与 SQLite 20K Token 防溢流保护**：Profile 保持 1,500~3,000 Tokens 输出容量；在 `db.ops.ts` 中对 `user_word_memory` 单词历史记录设置 20K Tokens (~60,000 字符) 动态容量防护，超出自动裁剪最老 Q&A 维持资产健康。
+
+### 3. 新增：设置开关与 Profile 诊断面板 (Settings & Profile Modal)
+- **文件**：`src/stores/settingsStore.ts`、`src/components/Settings/ProfileModal.tsx`、`src/components/Settings/SettingsView.tsx`
+- **实现**：
+  - 在 `settingsStore` 中增加 `enableProfileDiagnostic` 统一主开关。
+  - 创建 `ProfileModal.tsx` 交互弹窗，展示活跃语言薄弱点 (Active Gaps)、已克服盲区 (Mastered)、探索偏好与 AI 拓词推荐，并提供手动重新蒸馏与 Profile 数据重置按钮。
+  - 在 SettingsView 中新增 AI Profile 控制专区与清空日志功能。
+
+### 4. 新增：看板与词汇资产 UI 组件 (Digest & Lexicon Memory UI)
+- **文件**：`src/components/AILearningDigestCard.tsx`、`src/components/ResultView/LexiconMemoryBadge.tsx`、`src/components/ResultView/UserNoteEditor.tsx`
+- **实现**：
+  - **AILearningDigestCard**：置于搜索空白页，展示用户 Active 弱项看板与 AI 导引推荐（支持一键跳转 Mode 3 Core 探索）。
+  - **LexiconMemoryBadge**：在结果页顶部展现查询频次、已有笔记标志、AI 追问历史条数与沉淀 Core 意象 Badge。
+  - **UserNoteEditor**：在结果页末尾提供个人笔记编辑器、Q&A 历史回顾与 Core 意象沉淀展现。
+
+### 5. 重构与逻辑加固 (Critical Fixes & Refactoring)
+- **db.native.ts 原生修复**：补齐 `db.native.ts` 中 `initUserWordMemoryTable` 缺失调用，保障 Android/Capacitor 原生 SQLite 表正确创建。
+- **AiChatBox & useAiLookup 事件联动**：在 AI 对话与短语订正完成时自动持久化到 `user_word_memory` 并触发表路径 A 诊断。
+- **健壮性防崩溃**：为 `LexiconMemoryBadge` 与 `UserNoteEditor` 中的 JSON 解析添加 try-catch 兜底保护，防止意外坏数据导致白屏。
+- **AiFullView 储存键对齐**：对齐 `AiFullView` 的 `UserNoteEditor` 存储 key 为 `correctForm`，解决拼错词场景下与 AI 追问历史无法关联的问题。
+
 ## 2026-07-25 — 深度认知体系、模式 3 (Core Mode) 与设置 UI 重构架构设计完成 (v0.8.0-plan)
 
 ### 1. 新增：深度认知架构规范文档 (`lexicon-docs/07-cognitive-and-settings-architecture.md`)
@@ -12,6 +48,7 @@
 - **微调**：设定 2,000~3,000 Tokens 黄金预算，支持单词、句子违和感剖析与 AI 追问对话的三维数据摄取。
 - **微调**：定义“路径 A (即时追问) / 路径 B (保底 12 次)”双路触发与 `unprocessed_count` 共享重置算法。
 - **微调**：增加 AI 诊断 Prompt 权重层级（AI 追问与句子订正设为 High Priority，常规查词设为 Normal Priority）。
+- **微调**：定义设置页面中的 `enableProfileDiagnostic` 统一总开关与 Profile 数据查看/清空重置控制面板。
 - **微调**：明确区分 100 条流动 Search Log 与 SQLite 永久 `user_word_memory` 资产表。
 
 ## 2026-07-24 — PC 文本溢出修复、AI 长文本全文翻译 Prompt 优化与 UI 折叠展示 (v0.7.37)

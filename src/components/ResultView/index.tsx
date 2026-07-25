@@ -16,6 +16,9 @@ import { useT } from '../../i18n'
 import { CollocationCard } from './AiSection/CollocationCard'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 
+import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { UserNoteEditor } from './UserNoteEditor'
+
 export { CoreCognitiveView } from './CoreCognitiveView'
 
 interface ResultViewProps {
@@ -49,8 +52,12 @@ export function ResultView({
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
       <WordHeader word={wordResult.word} phonetic={wordResult.phonetic} pos={wordResult.pos} />
+      <div className="my-2">
+        <LexiconMemoryBadge word={wordResult.word} />
+      </div>
 
       {/* AI Status & Loading state for AI mode */}
+
       {mode === 'ai' && (
         <div className="mb-4">
           <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={wordResult.word} />
@@ -174,7 +181,10 @@ export function ResultView({
               return null
           }
         })}
+
+        <UserNoteEditor word={wordResult.word} />
       </div>
     </div>
   )
 }
+

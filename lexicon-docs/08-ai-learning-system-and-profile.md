@@ -95,6 +95,18 @@ export interface UserLanguageProfile {
 * **自动淘汰 (Mastered Pruning)**：当某个弱项在过去 30 天内未再暴露，且用户多次正确使用时，AI 在生成新 Profile 时将其标记为 `mastered` 或从 Active 列表中移除。
 * **信息蒸馏**：旧的具体搜索词汇被抽象为 `weaknessPatterns` 描述后自动从队列清除， Profile 体积永远保持在 ~1,000 Tokens，绝不无限膨胀。
 
+### 4.4 设置开关与个人数据隐私管理 (Settings Control & Privacy Management)
+
+为了保证用户拥有对数据的绝对控制权与知情权，在设置页面中增加控制面板：
+
+1. **统一功能总开关 (`enableProfileDiagnostic`: boolean)**：
+   - **功能**：控制 AI 是否继续在后台收集查词/追问行为并发送诊断 Task。
+   - **逻辑解耦**：关闭开关**仅停止自动增量总结**，绝不删除、不重置已积累的 `user_profile.json`，也不影响 SQLite `user_word_memory` 中的笔记与收藏卡片。
+2. **个人 Profile 管理区 (Data Management Section)**：
+   - **查看当前画像 (`View Profile`)**：弹窗展示当前 Profile 的可视化卡片（展示 AI 归纳的弱项看板与探索倾向），让用户对 AI 掌握的个人情况一目了然。
+   - **重置 Profile 数据 (`Reset AI Profile`)**：危险按钮。点击后仅清空 `user_profile.json`，让 AI 重新从零开始评估你的学习状态（不影响 SQLite 词汇笔记）。
+   - **清空流动搜索日志 (`Clear Search Logs`)**：危险按钮。仅清空 100 条滚动搜索历史。
+
 ---
 
 ## 5. Lexicon Memory (个人知识库) SQLite 架构

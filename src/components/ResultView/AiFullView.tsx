@@ -17,7 +17,8 @@ import { CollocationCard } from './AiSection/CollocationCard'
 import { detectLanguage } from '../../stores/searchStore'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
-
+import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { UserNoteEditor } from './UserNoteEditor'
 
 interface AiFullViewProps {
   word: string
@@ -41,13 +42,15 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
       {/* AI badge */}
-      <div className="mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">
           {t('aifull.queryLabel')}
         </span>
+        <LexiconMemoryBadge word={word} />
       </div>
 
       {/* Word Header for Non-Success States (loading, error, idle) */}
+
       {aiStatus !== 'success' && (
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] max-w-full">{word}</h1>
@@ -177,6 +180,9 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
           })}
         </div>
       )}
+
+      <UserNoteEditor word={aiFullResult?.correctForm || word} coreConceptText={aiFullResult?.coreConcept?.explanation} />
     </div>
   )
 }
+

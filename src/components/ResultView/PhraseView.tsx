@@ -17,6 +17,8 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { playPronunciation } from '../../services/audio'
 
 import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
+import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { UserNoteEditor } from './UserNoteEditor'
 
 interface PhraseViewProps {
   phrase: string
@@ -75,10 +77,11 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
       {/* AI badge */}
-      <div className="mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">
           {t('phrase.queryLabel')}
         </span>
+        <LexiconMemoryBadge word={targetPhrase} />
       </div>
 
       {/* Header section (Correct Form + DiffText + CorrectionNote) with long text folding */}
@@ -348,7 +351,10 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
           })}
         </div>
       )}
+
+      <UserNoteEditor word={phraseResult?.correctForm || phrase} />
     </div>
   )
 }
+
 

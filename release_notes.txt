@@ -1,13 +1,15 @@
-Settings UI 5-Group Restructure & Bilingual Release Notes Support
-1. **Refactor**: Restructured Settings UI into 5 visual grouped card sections for improved layout and hierarchy.
-2. **Optimization**: Standard AI (Mode 2) and Pure Core (Mode 3) module controls now neatly reside inside collapsible accordions.
-3. **Optimization**: Software update modal (UpdateModal) now dynamically selects localized English or Chinese release notes based on App Language settings.
-4. **Fix**: Enhanced i18n label purity across all accordion handles and module row badges.
+Phase 5: Lexicon Memory & Intelligent User Profile Engine Release
+1. **New**: SQLite Personal Memory Table (`user_word_memory`) with automatic `localStorage` backup for persisting user notes, AI Q&A history, and Core concepts.
+2. **New**: High-Context Profile Induction Engine for Gemini 2.0 Flash (8K-15K Tokens context) with Intelligent Upsert (Add/Modify/Prune) logic.
+3. **New**: AI Learning Digest Dashboard (`AILearningDigestCard`) on empty search view displaying active mental gaps and Mode 3 Core recommendations.
+4. **New**: `LexiconMemoryBadge` status indicators and integrated `UserNoteEditor` at the bottom of result views.
+5. **Optimization**: Fixed native Android SQLite schema initialization and expanded 20K Token buffer protection per word record.
 
 ---
 
-Settings 界面 5 大分组卡片重构与双语更新日志支持
-1. 重构：Settings UI 全新 5 大分组卡片瀑布流布局 (AI与搜索 / 搜索行为与显示 / 外观与偏好 / 本地数据 / 关于)。
-2. 优化： Mode 2 与 Mode 3 模组管理采用手风琴折叠收纳，保持页面简洁高效。
-3. 优化：更新弹窗 (UpdateModal) 正式支持多语言说明，根据 App 语言设置动态展示中文/英文更新日志。
-4. 修复：多语言文案纯净度提升，手风琴收纳词及模组名称全面适配 i18n。
+Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统正式上线
+1. **新增**：SQLite 个人资产表 (`user_word_memory`) 与 localStorage 双向持久化，永久沉淀个人笔记、AI 追问 Q&A 历史及 Core 核心意象。
+2. **新增**：Gemini 2.0 Flash 高上下文 Profile 智能归纳引擎，支持 8K-15K Tokens 高上下文全量蒸馏与“增/改/剪枝”智能 Upsert 算法。
+3. **新增**：个人弱项看板 (`AILearningDigestCard`) 置于空白页，实时呈现 Active 认知薄弱点与 Mode 3 Core 概念导引。
+4. **新增**：`LexiconMemoryBadge` 词汇资产标识与结果页末尾 `UserNoteEditor` 笔记/Q&A 沉淀编辑器。
+5. **优化**：修复 Android 原生 SQLite 初始化，提升 Android WebView 多层级数据兼容性与内存防溢流保护。

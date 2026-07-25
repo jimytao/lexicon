@@ -211,3 +211,44 @@ export interface TextBlock {
   direction: TextDirection
   rotation?: number
 }
+
+// ── User Language Profile & Lexicon Memory (Phase 5) ──
+
+export interface WeaknessPattern {
+  id: string
+  description: string
+  sourceTrigger: string
+  track: 'vocabulary' | 'phrase_metaphor' | 'syntax_thought'
+  status: 'learning' | 'mastered'
+  occurrenceCount: number
+  contrastExample?: string
+}
+
+export interface ExplorationFocus {
+  category: string
+  searchedItems: string[]
+}
+
+export interface ProfileRecommendation {
+  conceptOrWord: string
+  reason: string
+}
+
+export interface UserLanguageProfile {
+  lastUpdated: string
+  totalDiagnosticsRun: number
+  weaknessPatterns: WeaknessPattern[]
+  recentExplorationFocus: ExplorationFocus[]
+  recommendations: ProfileRecommendation[]
+}
+
+export interface UserWordMemory {
+  word: string
+  firstSearchedAt: string
+  lastViewedAt: string
+  searchCount: number
+  userNotes?: string
+  aiConversationsJson?: string
+  savedCoreConcept?: string
+}
+

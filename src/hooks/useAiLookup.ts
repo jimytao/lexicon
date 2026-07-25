@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react'
 import { useResultStore } from '../stores/resultStore'
 import { useSearchStore } from '../stores/searchStore'
 import { analyzeWord, aiFullLookup, aiPhraseQuery } from '../services/ai'
+import { recordSentenceCorrectionEvent } from '../services/profile'
 import type { Meaning } from '../types'
 
 // AbortSignal.any() and AbortSignal.timeout() may be absent on older Android WebViews
@@ -75,6 +76,9 @@ export function useAiLookup() {
       const mode = useSearchStore.getState().mode
       const result = await aiPhraseQuery(phrase, mode === 'ai', abortRef.current.signal)
       setPhraseResult(phrase, result)
+      if (result.unnaturalMindModel || result.correctForm) {
+        recordSentenceCorrectionEvent(phrase, result.correctForm, result.unnaturalMindModel)
+      }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
       setAiError((e as Error).message)
@@ -83,3 +87,4 @@ export function useAiLookup() {
 
   return { trigger, triggerFullLookup, triggerPhraseQuery }
 }
+

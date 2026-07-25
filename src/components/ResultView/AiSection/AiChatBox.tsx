@@ -2,8 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 import { useChatStore } from '../../../stores/chatStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { askQuestion } from '../../../services/ai'
+import { db } from '../../../services/db'
+import { recordAiChatEvent } from '../../../services/profile'
 import type { ChatMessage } from '../../../types'
 import { useT } from '../../../i18n'
+
 
 interface AiChatBoxProps {
   context: string        // correctForm — also used as the storage key
@@ -59,7 +62,11 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
         richMode && enrichedContext ? enrichedContext : undefined
       )
       if (contextRef.current === requestContext) {
-        addMessage(requestContext, { role: 'assistant', content: reply })
+        const assistantMsg: ChatMessage = { role: 'assistant', content: reply }
+        addMessage(requestContext, assistantMsg)
+        const updatedAll = useChatStore.getState().getMessages(requestContext)
+        void db.saveUserWordConversation(requestContext, JSON.stringify(updatedAll))
+        recordAiChatEvent(requestContext, question, reply)
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
@@ -70,6 +77,7 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
       setLoading(false)
     }
   }
+
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {

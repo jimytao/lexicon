@@ -7,6 +7,13 @@ import {
   lookupWithRunner,
   relatedPhrasesWithRunner,
   whenSettingsHydrated,
+  initUserWordMemoryTable,
+  getUserWordMemoryWithRunner,
+  saveUserNoteWithRunner,
+  saveConversationWithRunner,
+  saveCoreConceptWithRunner,
+  recordWordViewWithRunner,
+  getAllWordMemoriesWithRunner,
   type SqlRunner,
   type SqlValue,
 } from './db.ops'
@@ -133,6 +140,7 @@ async function getDbEnZh(): Promise<Database> {
         throwDbInvalidated()
       }
       _dbEnZh = db
+      void initUserWordMemoryTable(toRunner(db))
       if (epoch !== _enzhEpoch) {
         if (_dbEnZh === db) _dbEnZh = null
         closeDb(db)
@@ -192,6 +200,7 @@ async function getDbEnEn(): Promise<Database> {
         throwDbInvalidated()
       }
       _dbEnEn = db
+      void initUserWordMemoryTable(toRunner(db))
       if (epoch !== _enenEpoch) {
         if (_dbEnEn === db) _dbEnEn = null
         closeDb(db)
@@ -245,4 +254,35 @@ export const webDB: DBService = {
     const runner = await runnerForQuery(word)
     return relatedPhrasesWithRunner(runner, word, limit)
   },
+
+  async getUserWordMemory(word) {
+    const runner = await runnerForQuery(word)
+    return getUserWordMemoryWithRunner(runner, word)
+  },
+
+  async saveUserWordNote(word, note) {
+    const runner = await runnerForQuery(word)
+    return saveUserNoteWithRunner(runner, word, note)
+  },
+
+  async saveUserWordConversation(word, conversationsJson) {
+    const runner = await runnerForQuery(word)
+    return saveConversationWithRunner(runner, word, conversationsJson)
+  },
+
+  async saveUserWordCoreConcept(word, coreConceptText) {
+    const runner = await runnerForQuery(word)
+    return saveCoreConceptWithRunner(runner, word, coreConceptText)
+  },
+
+  async recordWordView(word) {
+    const runner = await runnerForQuery(word)
+    return recordWordViewWithRunner(runner, word)
+  },
+
+  async getAllUserWordMemories() {
+    const runner = await runnerForQuery('a')
+    return getAllWordMemoriesWithRunner(runner)
+  },
 }
+

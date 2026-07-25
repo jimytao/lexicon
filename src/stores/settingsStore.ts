@@ -97,6 +97,7 @@ interface SettingsStore {
   chatRichContextDefault: boolean
   pronunciationAccent: 'uk' | 'us'
   autoPlayPronunciation: boolean
+  enableProfileDiagnostic: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -121,6 +122,7 @@ interface SettingsStore {
   setChatRichContextDefault: (v: boolean) => void
   setPronunciationAccent: (v: 'uk' | 'us') => void
   setAutoPlayPronunciation: (v: boolean) => void
+  setEnableProfileDiagnostic: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -150,6 +152,7 @@ export const useSettingsStore = create<SettingsStore>()(
       chatRichContextDefault: false,
       pronunciationAccent: 'us',
       autoPlayPronunciation: false,
+      enableProfileDiagnostic: true,
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,
@@ -199,7 +202,9 @@ export const useSettingsStore = create<SettingsStore>()(
       setChatRichContextDefault: (chatRichContextDefault) => set({ chatRichContextDefault }),
       setPronunciationAccent: (pronunciationAccent) => set({ pronunciationAccent }),
       setAutoPlayPronunciation: (autoPlayPronunciation) => set({ autoPlayPronunciation }),
+      setEnableProfileDiagnostic: (enableProfileDiagnostic) => set({ enableProfileDiagnostic }),
     }),
+
     {
       name: 'lexicon-settings',
       merge: (persisted, current) => {

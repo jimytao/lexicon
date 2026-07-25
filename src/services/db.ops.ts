@@ -1,4 +1,4 @@
-import type { SuggestItem, WordResult, Meaning, Example } from '../types'
+import type { SuggestItem, WordResult, Meaning, Example, UserWordMemory } from '../types'
 import { normalizeQuery } from '../utils/text'
 import { useSettingsStore } from '../stores/settingsStore'
 
@@ -9,6 +9,267 @@ export interface SqlRunner {
   /** Execute query and return rows as objects. No rows → empty array []. */
   exec(sql: string, params?: SqlValue[]): Promise<Record<string, SqlValue>[]>
 }
+
+export const USER_WORD_MEMORY_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS user_word_memory (
+    word TEXT PRIMARY KEY,
+    first_searched_at TIMESTAMP,
+    last_viewed_at TIMESTAMP,
+    search_count INTEGER DEFAULT 1,
+    user_notes TEXT,
+    ai_conversations_json TEXT,
+    saved_core_concept TEXT
+);
+`
+
+const LOCAL_WORD_MEMORY_KEY = 'lexicon-word-memory-backup'
+
+function getLocalWordMemoryMap(): Record<string, UserWordMemory> {
+  try {
+    const raw = localStorage.getItem(LOCAL_WORD_MEMORY_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveLocalWordMemoryMap(map: Record<string, UserWordMemory>): void {
+  try {
+    localStorage.setItem(LOCAL_WORD_MEMORY_KEY, JSON.stringify(map))
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function initUserWordMemoryTable(runner: SqlRunner): Promise<void> {
+  try {
+    await runner.exec(USER_WORD_MEMORY_TABLE_SQL)
+    const map = getLocalWordMemoryMap()
+    for (const mem of Object.values(map)) {
+      await runner.exec(
+        `INSERT INTO user_word_memory (word, first_searched_at, last_viewed_at, search_count, user_notes, ai_conversations_json, saved_core_concept)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(word) DO NOTHING`,
+        [
+          mem.word,
+          mem.firstSearchedAt,
+          mem.lastViewedAt,
+          mem.searchCount,
+          mem.userNotes || null,
+          mem.aiConversationsJson || null,
+          mem.savedCoreConcept || null,
+        ]
+      )
+    }
+  } catch (err) {
+    console.warn('[db] Failed to create user_word_memory table:', err)
+  }
+}
+
+export async function getUserWordMemoryWithRunner(
+  runner: SqlRunner,
+  word: string
+): Promise<UserWordMemory | null> {
+  const lw = normalizeQuery(word)
+  if (!lw) return null
+  try {
+    const rows = await runner.exec(
+      `SELECT word, first_searched_at, last_viewed_at, search_count, user_notes, ai_conversations_json, saved_core_concept
+       FROM user_word_memory WHERE LOWER(word) = LOWER(?)`,
+      [lw]
+    )
+    if (rows.length > 0) {
+      const row = rows[0]
+      return {
+        word: row.word as string,
+        firstSearchedAt: row.first_searched_at as string,
+        lastViewedAt: row.last_viewed_at as string,
+        searchCount: Number(row.search_count) || 1,
+        userNotes: (row.user_notes as string) || undefined,
+        aiConversationsJson: (row.ai_conversations_json as string) || undefined,
+        savedCoreConcept: (row.saved_core_concept as string) || undefined,
+      }
+    }
+  } catch {
+    /* fallback to local storage map */
+  }
+  const map = getLocalWordMemoryMap()
+  return map[lw] || null
+}
+
+export async function saveUserNoteWithRunner(
+  runner: SqlRunner,
+  word: string,
+  userNotes: string
+): Promise<void> {
+  const lw = normalizeQuery(word)
+  if (!lw) return
+  const now = new Date().toISOString()
+  const map = getLocalWordMemoryMap()
+  const existing = map[lw] || {
+    word: lw,
+    firstSearchedAt: now,
+    lastViewedAt: now,
+    searchCount: 1,
+  }
+  existing.userNotes = userNotes
+  existing.lastViewedAt = now
+  map[lw] = existing
+  saveLocalWordMemoryMap(map)
+
+  try {
+    await runner.exec(
+      `INSERT INTO user_word_memory (word, first_searched_at, last_viewed_at, search_count, user_notes)
+       VALUES (?, ?, ?, 1, ?)
+       ON CONFLICT(word) DO UPDATE SET user_notes = ?, last_viewed_at = ?`,
+      [lw, now, now, userNotes, userNotes, now]
+    )
+  } catch (err) {
+    console.warn('[db] saveUserNote SQL failed, saved to local fallback', err)
+  }
+}
+
+export async function saveConversationWithRunner(
+  runner: SqlRunner,
+  word: string,
+  aiConversationsJson: string
+): Promise<void> {
+  const lw = normalizeQuery(word)
+  if (!lw) return
+  const now = new Date().toISOString()
+
+  // 20K Token / 50KB (~60,000 chars) capacity guard per word record
+  let safeConversationsJson = aiConversationsJson
+  if (safeConversationsJson.length > 60000) {
+    try {
+      const parsed = JSON.parse(safeConversationsJson)
+      if (Array.isArray(parsed)) {
+        let trimmed = [...parsed]
+        while (JSON.stringify(trimmed).length > 60000 && trimmed.length > 1) {
+          trimmed.shift() // Drop oldest Q&A pair to fit within 20K Token budget
+        }
+        safeConversationsJson = JSON.stringify(trimmed)
+      }
+    } catch {
+      safeConversationsJson = safeConversationsJson.slice(-60000)
+    }
+  }
+
+  const map = getLocalWordMemoryMap()
+  const existing = map[lw] || {
+    word: lw,
+    firstSearchedAt: now,
+    lastViewedAt: now,
+    searchCount: 1,
+  }
+  existing.aiConversationsJson = safeConversationsJson
+  existing.lastViewedAt = now
+  map[lw] = existing
+  saveLocalWordMemoryMap(map)
+
+  try {
+    await runner.exec(
+      `INSERT INTO user_word_memory (word, first_searched_at, last_viewed_at, search_count, ai_conversations_json)
+       VALUES (?, ?, ?, 1, ?)
+       ON CONFLICT(word) DO UPDATE SET ai_conversations_json = ?, last_viewed_at = ?`,
+      [lw, now, now, safeConversationsJson, safeConversationsJson, now]
+    )
+  } catch (err) {
+    console.warn('[db] saveConversation SQL failed, saved to local fallback', err)
+  }
+}
+
+export async function saveCoreConceptWithRunner(
+  runner: SqlRunner,
+  word: string,
+  savedCoreConcept: string
+): Promise<void> {
+  const lw = normalizeQuery(word)
+  if (!lw) return
+  const now = new Date().toISOString()
+  const map = getLocalWordMemoryMap()
+  const existing = map[lw] || {
+    word: lw,
+    firstSearchedAt: now,
+    lastViewedAt: now,
+    searchCount: 1,
+  }
+  existing.savedCoreConcept = savedCoreConcept
+  existing.lastViewedAt = now
+  map[lw] = existing
+  saveLocalWordMemoryMap(map)
+
+  try {
+    await runner.exec(
+      `INSERT INTO user_word_memory (word, first_searched_at, last_viewed_at, search_count, saved_core_concept)
+       VALUES (?, ?, ?, 1, ?)
+       ON CONFLICT(word) DO UPDATE SET saved_core_concept = ?, last_viewed_at = ?`,
+      [lw, now, now, savedCoreConcept, savedCoreConcept, now]
+    )
+  } catch (err) {
+    console.warn('[db] saveCoreConcept SQL failed, saved to local fallback', err)
+  }
+}
+
+export async function recordWordViewWithRunner(
+  runner: SqlRunner,
+  word: string
+): Promise<UserWordMemory> {
+  const lw = normalizeQuery(word)
+  const now = new Date().toISOString()
+  const map = getLocalWordMemoryMap()
+  const existing = map[lw] || {
+    word: lw,
+    firstSearchedAt: now,
+    lastViewedAt: now,
+    searchCount: 0,
+  }
+  existing.searchCount = (existing.searchCount || 0) + 1
+  existing.lastViewedAt = now
+  map[lw] = existing
+  saveLocalWordMemoryMap(map)
+
+  try {
+    await runner.exec(
+      `INSERT INTO user_word_memory (word, first_searched_at, last_viewed_at, search_count)
+       VALUES (?, ?, ?, 1)
+       ON CONFLICT(word) DO UPDATE SET search_count = search_count + 1, last_viewed_at = ?`,
+      [lw, now, now, now]
+    )
+  } catch (err) {
+    console.warn('[db] recordWordView SQL failed, saved to local fallback', err)
+  }
+  return existing
+}
+
+export async function getAllWordMemoriesWithRunner(
+  runner: SqlRunner
+): Promise<UserWordMemory[]> {
+  try {
+    const rows = await runner.exec(
+      `SELECT word, first_searched_at, last_viewed_at, search_count, user_notes, ai_conversations_json, saved_core_concept
+       FROM user_word_memory ORDER BY last_viewed_at DESC`
+    )
+    if (rows.length > 0) {
+      return rows.map((row) => ({
+        word: row.word as string,
+        firstSearchedAt: row.first_searched_at as string,
+        lastViewedAt: row.last_viewed_at as string,
+        searchCount: Number(row.search_count) || 1,
+        userNotes: (row.user_notes as string) || undefined,
+        aiConversationsJson: (row.ai_conversations_json as string) || undefined,
+        savedCoreConcept: (row.saved_core_concept as string) || undefined,
+      }))
+    }
+  } catch {
+    /* fallback to local storage map */
+  }
+  const map = getLocalWordMemoryMap()
+  return Object.values(map).sort(
+    (a, b) => new Date(b.lastViewedAt).getTime() - new Date(a.lastViewedAt).getTime()
+  )
+}
+
 
 /** Route query text to bilingual vs monolingual dictionary (shared by web + native). */
 export function resolveDictionaryTarget(queryText: string): DictionaryTarget {

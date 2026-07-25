@@ -1,13 +1,13 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXo1UjV5OTJNR3BXaE1HbktUdVZZNkE4azk0TGFNRFREUWN4MFZhRmxZczd6bW5vZm9ianU0bmtrbEFDR09PUm0zY2NYVy9DTlNCWVdWRlRmekRMblFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTA3ODA4CWZpbGU6TGV4aWNvbl8wLjcuMzlfeDY0LXNldHVwLmV4ZQpWdnhiVjN6d3BranB6eTd3R3k5c3MvOFB0cStPMi9hZzZOTS9LTGgvL291c201WWxzNXlQZW1JeHprSHpkK1ptVVhyQzUxSnZqSkpnZFhKelhKQmtBZz09Cg==",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.7.39/Lexicon_0.7.39_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS8rS2psU2owa2p5TGVJN0JuVjVzcFdyanJkNW1OYUkwaFY0WVp0OHRXVGpZM0J0Q3Evb2lUbVFPbGp4UlRVUlVrWHpUNS96MnQ0bk5YWlRXUGV3MHcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTQ3NDcyCWZpbGU6TGV4aWNvbl8wLjguMF94NjQtc2V0dXAuZXhlCmtLcnVyVlFMT3ZHaHVGQTJaL0FCeGdySU1TTk1LVXR6czYrckV3eC9jT1cvYUhMWU1Fc3h2SStHa3ZhdzRuS24zOGd1blNxRThsWTJlQ1duR0NWeURBPT0K",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.0/Lexicon_0.8.0_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-25T01:43:00Z",
-  "version": "0.7.39",
-  "notes": "Settings 界面 5 大分组卡片重构与双语更新日志支持\n1. 重构：Settings UI 全新 5 大分组卡片瀑布流布局 (AI与搜索 / 搜索行为与显示 / 外观与偏好 / 本地数据 / 关于)。\n2. 优化： Mode 2 与 Mode 3 模组管理采用手风琴折叠收纳，保持页面简洁高效。\n3. 优化：更新弹窗 (UpdateModal) 正式支持多语言说明，根据 App 语言设置动态展示中文/英文更新日志。\n4. 修复：多语言文案纯净度提升，手风琴收纳词及模组名称全面适配 i18n。",
-  "notes_zh": "Settings 界面 5 大分组卡片重构与双语更新日志支持\n1. 重构：Settings UI 全新 5 大分组卡片瀑布流布局 (AI与搜索 / 搜索行为与显示 / 外观与偏好 / 本地数据 / 关于)。\n2. 优化： Mode 2 与 Mode 3 模组管理采用手风琴折叠收纳，保持页面简洁高效。\n3. 优化：更新弹窗 (UpdateModal) 正式支持多语言说明，根据 App 语言设置动态展示中文/英文更新日志。\n4. 修复：多语言文案纯净度提升，手风琴收纳词及模组名称全面适配 i18n。",
-  "notes_en": "Settings UI 5-Group Restructure & Bilingual Release Notes Support\n1. **Refactor**: Restructured Settings UI into 5 visual grouped card sections for improved layout and hierarchy.\n2. **Optimization**: Standard AI (Mode 2) and Pure Core (Mode 3) module controls now neatly reside inside collapsible accordions.\n3. **Optimization**: Software update modal (UpdateModal) now dynamically selects localized English or Chinese release notes based on App Language settings.\n4. **Fix**: Enhanced i18n label purity across all accordion handles and module row badges."
+  "pub_date": "2026-07-25T12:40:00Z",
+  "version": "0.8.0",
+  "notes": "Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统正式上线\n1. 新增：SQLite 个人资产表 (user_word_memory) 与 localStorage 双向持久化，永久沉淀个人笔记、AI 追问 Q&A 历史及 Core 核心意象。\n2. 新增：Gemini 2.0 Flash 高上下文 Profile 智能归纳引擎，支持 8K-15K Tokens 高上下文全量蒸馏与“增/改/剪枝”智能 Upsert 算法。\n3. 新增：个人弱项看板 (AILearningDigestCard) 置于空白页，实时呈现 Active 认知薄弱点与 Mode 3 Core 概念导引。\n4. 新增：LexiconMemoryBadge 词汇资产标识与结果页末尾 UserNoteEditor 笔记/Q&A 沉淀编辑器。\n5. 优化：修复 Android 原生 SQLite 初始化，提升 Android WebView 多层级数据兼容性与内存防溢流保护。",
+  "notes_zh": "Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统正式上线\n1. 新增：SQLite 个人资产表 (user_word_memory) 与 localStorage 双向持久化，永久沉淀个人笔记、AI 追问 Q&A 历史及 Core 核心意象。\n2. 新增：Gemini 2.0 Flash 高上下文 Profile 智能归纳引擎，支持 8K-15K Tokens 高上下文全量蒸馏与“增/改/剪枝”智能 Upsert 算法。\n3. 新增：个人弱项看板 (AILearningDigestCard) 置于空白页，实时呈现 Active 认知薄弱点与 Mode 3 Core 概念导引。\n4. 新增：LexiconMemoryBadge 词汇资产标识与结果页末尾 UserNoteEditor 笔记/Q&A 沉淀编辑器。\n5. 优化：修复 Android 原生 SQLite 初始化，提升 Android WebView 多层级数据兼容性与内存防溢流保护。",
+  "notes_en": "Phase 5: Lexicon Memory & Intelligent User Profile Engine Release\n1. New: SQLite Personal Memory Table (user_word_memory) with automatic localStorage backup for persisting user notes, AI Q&A history, and Core concepts.\n2. New: High-Context Profile Induction Engine for Gemini 2.0 Flash (8K-15K Tokens context) with Intelligent Upsert (Add/Modify/Prune) logic.\n3. New: AI Learning Digest Dashboard (AILearningDigestCard) on empty search view displaying active mental gaps and Mode 3 Core recommendations.\n4. New: LexiconMemoryBadge status indicators and integrated UserNoteEditor at the bottom of result views.\n5. Optimization: Fixed native Android SQLite schema initialization and expanded 20K Token buffer protection per word record."
 }

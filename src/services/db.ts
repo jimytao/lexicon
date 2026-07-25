@@ -1,4 +1,4 @@
-import type { SuggestItem, WordResult } from '../types'
+import type { SuggestItem, WordResult, UserWordMemory } from '../types'
 import { isCapacitor } from './platform'
 
 export interface DBService {
@@ -8,6 +8,13 @@ export interface DBService {
   lookup(word: string): Promise<WordResult | null>
   /** 查以 word 开头的词组短语，用于结果页展示 */
   getRelatedPhrases(word: string, limit?: number): Promise<SuggestItem[]>
+  /** Lexicon Memory 资产表 API (Phase 5) */
+  getUserWordMemory(word: string): Promise<UserWordMemory | null>
+  saveUserWordNote(word: string, note: string): Promise<void>
+  saveUserWordConversation(word: string, conversationsJson: string): Promise<void>
+  saveUserWordCoreConcept(word: string, coreConceptText: string): Promise<void>
+  recordWordView(word: string): Promise<UserWordMemory>
+  getAllUserWordMemories(): Promise<UserWordMemory[]>
 }
 
 type DbModule = {
@@ -53,9 +60,18 @@ export const db: DBService = {
   suggest: (prefix, limit) => loadImpl().then((i) => i.suggest(prefix, limit)),
   lookup: (word) => loadImpl().then((i) => i.lookup(word)),
   getRelatedPhrases: (word, limit) => loadImpl().then((i) => i.getRelatedPhrases(word, limit)),
+  getUserWordMemory: (word) => loadImpl().then((i) => i.getUserWordMemory(word)),
+  saveUserWordNote: (word, note) => loadImpl().then((i) => i.saveUserWordNote(word, note)),
+  saveUserWordConversation: (word, conversationsJson) =>
+    loadImpl().then((i) => i.saveUserWordConversation(word, conversationsJson)),
+  saveUserWordCoreConcept: (word, coreConceptText) =>
+    loadImpl().then((i) => i.saveUserWordCoreConcept(word, coreConceptText)),
+  recordWordView: (word) => loadImpl().then((i) => i.recordWordView(word)),
+  getAllUserWordMemories: () => loadImpl().then((i) => i.getAllUserWordMemories()),
 }
 
 export async function warmupDictionary(): Promise<void> {
   await loadImpl()
   if (_warmup) await _warmup()
 }
+

@@ -24,6 +24,9 @@ import { useUpdateStore } from '../../stores/updateStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useT } from '../../i18n'
 import { Accordion } from './Accordion'
+import { ProfileModal } from './ProfileModal'
+import { resetProfile } from '../../services/profile'
+
 
 interface ProviderDef {
   id: string
@@ -224,6 +227,7 @@ export function SettingsView() {
     chatRichContextDefault, setChatRichContextDefault,
     pronunciationAccent, setPronunciationAccent,
     autoPlayPronunciation, setAutoPlayPronunciation,
+    enableProfileDiagnostic, setEnableProfileDiagnostic,
   } = useSettingsStore()
 
   const { status, checkUpdate, currentVersion } = useUpdateStore()
@@ -234,6 +238,8 @@ export function SettingsView() {
   const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
   const [showModelList, setShowModelList] = useState(false)
   const [hoveredModuleId, setHoveredModuleId] = useState<string | null>(null)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+
   type TestStatus = 'idle' | 'testing' | 'success' | 'error'
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
   const [testMessage, setTestMessage] = useState('')
@@ -721,6 +727,46 @@ export function SettingsView() {
 
             <RowDivider />
 
+            {/* AI Learning System & User Profile Management (Phase 5) */}
+            <ToggleRow
+              label={appLanguage === 'zh' ? 'AI 学习诊断 & 后台自动归纳' : 'AI Learning Profile Diagnostic'}
+              desc={appLanguage === 'zh' ? '开启后，AI 将在后台增量归纳个人弱项看板（关闭时不删除已存数据）' : 'Enable background AI diagnosis & weakness pattern summarization'}
+              value={enableProfileDiagnostic}
+              onChange={setEnableProfileDiagnostic}
+            />
+
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <span className="text-xs font-medium text-foreground">
+                  {appLanguage === 'zh' ? '个人 Profile 数据管理' : 'AI Profile Data Management'}
+                </span>
+                <p className="text-[10px] text-foreground-muted">
+                  {appLanguage === 'zh' ? '查看弱项看板、重置评估或清空 100 条滚动日志' : 'View weakness patterns, reset profile, or clear logs'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg border border-accent/40 bg-accent/10 text-[10px] font-bold text-accent hover:bg-accent/20 transition-all cursor-pointer"
+                >
+                  {appLanguage === 'zh' ? '查看 Profile' : 'View Profile'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(appLanguage === 'zh' ? '确定要重置 AI Profile 吗？清空后 AI 将重新评估。' : 'Reset AI Profile?')) {
+                      resetProfile()
+                      alert(appLanguage === 'zh' ? 'Profile 已重置' : 'Profile reset done')
+                    }
+                  }}
+                  className="px-2 py-1 rounded-lg border border-border text-[10px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer"
+                >
+                  {appLanguage === 'zh' ? '重置 Profile' : 'Reset'}
+                </button>
+              </div>
+            </div>
+
+            <RowDivider />
+
             {/* AI Cache */}
             <div className="flex items-center justify-between">
               <div>
@@ -761,6 +807,9 @@ export function SettingsView() {
         </div>
 
       </div>
+
+      <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
     </div>
   )
 }
+

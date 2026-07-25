@@ -23,6 +23,9 @@ interface CoreCognitiveViewProps {
   onGoToSettings?: () => void
 }
 
+import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { UserNoteEditor } from './UserNoteEditor'
+
 export function CoreCognitiveView({
   word,
   aiFullResult,
@@ -43,7 +46,9 @@ export function CoreCognitiveView({
           <span>🌌</span>
           <span>Pure Core Cognitive Mode</span>
         </span>
+        <LexiconMemoryBadge word={word} />
       </div>
+
 
       {/* Header for Loading / Error states */}
       {aiStatus !== 'success' && (
@@ -129,6 +134,9 @@ export function CoreCognitiveView({
           })}
         </div>
       )}
+
+      <UserNoteEditor word={word} coreConceptText={aiFullResult?.coreConcept?.explanation} />
     </div>
   )
 }
+
