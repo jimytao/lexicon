@@ -5,6 +5,7 @@ import { askQuestion } from '../../../services/ai'
 import { db } from '../../../services/db'
 import { recordAiChatEvent } from '../../../services/profile'
 import type { ChatMessage } from '../../../types'
+import { normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
 
 
@@ -17,8 +18,11 @@ const EMPTY_MESSAGES: ChatMessage[] = []
 
 export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
   const t = useT()
+  const chatKey = normalizeQuery(context) || context
   // Subscribe to this specific word's messages — React re-renders whenever they change
-  const chatMessages = useChatStore(s => s.messagesByWord[context] ?? EMPTY_MESSAGES)
+  const chatMessages = useChatStore(s =>
+    s.messagesByWord[chatKey] ?? s.messagesByWord[context] ?? EMPTY_MESSAGES
+  )
   const addMessage = useChatStore(s => s.addMessage)
   const chatRichContextDefault = useSettingsStore(s => s.chatRichContextDefault)
 
@@ -42,9 +46,10 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const requestContext = context
+    const storageKey = normalizeQuery(requestContext) || requestContext
 
     const userMsg: ChatMessage = { role: 'user', content: question }
-    addMessage(requestContext, userMsg)
+    addMessage(storageKey, userMsg)
     setInput('')
     setLoading(true)
 
@@ -54,7 +59,7 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
 
     try {
       // Read latest messages at send time (includes the one just added above)
-      const allMessages = useChatStore.getState().getMessages(requestContext)
+      const allMessages = useChatStore.getState().getMessages(storageKey)
       const reply = await askQuestion(
         requestContext,
         allMessages,
@@ -63,15 +68,15 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
       )
       if (contextRef.current === requestContext) {
         const assistantMsg: ChatMessage = { role: 'assistant', content: reply }
-        addMessage(requestContext, assistantMsg)
-        const updatedAll = useChatStore.getState().getMessages(requestContext)
-        void db.saveUserWordConversation(requestContext, JSON.stringify(updatedAll))
-        recordAiChatEvent(requestContext, question, reply)
+        addMessage(storageKey, assistantMsg)
+        const updatedAll = useChatStore.getState().getMessages(storageKey)
+        void db.saveUserWordConversation(storageKey, JSON.stringify(updatedAll))
+        recordAiChatEvent(storageKey, question, reply)
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
       if (contextRef.current === requestContext) {
-        addMessage(requestContext, { role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` })
+        addMessage(storageKey, { role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` })
       }
     } finally {
       setLoading(false)

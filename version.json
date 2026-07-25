@@ -1,14 +1,14 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTdwcEdrSDVHSWVuU3l6Sko2ZTBvbDAwMFFFTXd0NlZsZUFsNFlwTVBVdm0wbGZVdi9QRXlrUmdpK2t2WEF2Vm5NTzBaZjVscWpsaXRJRUtqYmtsUWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTU5NjY5CWZpbGU6TGV4aWNvbl8wLjguMl94NjQtc2V0dXAuZXhlCk9PK2dqUXFWbWszTGlzOFkvUHV6aFZnVk1NbFZ3dnh2L3V5MHdydmFhK0lTY2VjNmdKT3YwSVgwYmUvZEg0MCs4Z0c3dkgvNTJ6ZEx6YUNyTUUrMkFnPT0K",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.2/Lexicon_0.8.2_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXd5ek5mTHg3SCtMQzdYZVVtVm5KY1d0VThrK1cxZXZhczlDVFhQeFJrbC9iWTdyTUNyZzlqaytFU1Q4bGxHMGlGYVlrQ2dDVC8ycUgvSWtEZThreHdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTYxOTM5CWZpbGU6TGV4aWNvbl8wLjguM194NjQtc2V0dXAuZXhlCm54bGl2azRBMEN2SmROKzEzYWE1ZW51U2JHUi9VYmRuSEE1OExkVytFTzR2ZTdnMEZBUkFCZFg3Wm5uVWdhZWJYVjd3QzRScUNoUzlXN1c0Nis4MUFBPT0K",
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.3/Lexicon_0.8.3_x64-setup.exe"
     }
   },
-  "pub_date": "2026-07-25T06:01:47Z",
-  "version": "0.8.2",
-  "notes": "雪藏弱项看板、Core 模式修复与全界面中英 i18n\n1. 雪藏：弱项看板 UI（Memory Tab / Digest）暂不进入 App，代码保留；底栏恢复 3 Tab；Profile 设置面板仍可用。\n2. 修复：Core 模式下命中全量缓存或历史回放时不再被强制切回 AI；Memory Badge 无回调时不再显示假按钮。\n3. 优化：设置行对齐与 Accordion 规范；四路结果页统一笔记区与 Badge 跳转。\n4. 国际化：搜索、设置、结果卡片、图片缩放、更新提示等界面文案全面跟随中/英语言设置。\n5. 文档：同步 UI/组件/发版流程规范，release notes 改为发版时临时生成。\n",
-  "notes_zh": "雪藏弱项看板、Core 模式修复与全界面中英 i18n\n1. 雪藏：弱项看板 UI（Memory Tab / Digest）暂不进入 App，代码保留；底栏恢复 3 Tab；Profile 设置面板仍可用。\n2. 修复：Core 模式下命中全量缓存或历史回放时不再被强制切回 AI；Memory Badge 无回调时不再显示假按钮。\n3. 优化：设置行对齐与 Accordion 规范；四路结果页统一笔记区与 Badge 跳转。\n4. 国际化：搜索、设置、结果卡片、图片缩放、更新提示等界面文案全面跟随中/英语言设置。\n5. 文档：同步 UI/组件/发版流程规范，release notes 改为发版时临时生成。\n",
-  "notes_en": "Shelve weakness board, Core-mode fixes, and full UI i18n\n1. **Shelved**: Weakness board UI (Memory tab / Digest) is removed from the app for now; source kept. Bottom nav returns to 3 tabs. Settings Profile modal remains available.\n2. **Fixed**: Core mode no longer gets forced back to AI when full-cache or history replay hits; Memory Badge is non-interactive without a notes callback.\n3. **Improved**: Settings row alignment & Accordion rules; UserNoteEditor + badge jump wired across all result views.\n4. **i18n**: Search, Settings, result chrome, image zoom controls, and update toasts fully follow zh/en app language.\n5. **Docs**: Synced UI/component/release workflow docs; release notes are generated temporarily at release time.\n",
-  "is_major": false
+  "pub_date": "2026-07-25T06:38:43Z",
+  "version": "0.8.3",
+  "notes": "模式切换一键触发 AI：Instant / Lookup 均可直达 Pure Core\n1. 修复：从 Instant 或 AI Lookup 点击 Pure Core 即可自动启动搜索（有缓存直接恢复）。\n2. 修复：AI Lookup 补全分析不再被错误的 idle 状态挡住。\n3. 优化：Core / 全量查词始终返回完整认知字段（词根、近义、文化等）。\n4. 优化：AI 追问记录与历史/缓存 key 对齐，最近 100 条历史回放可正确找回。\n",
+  "notes_zh": "模式切换一键触发 AI：Instant / Lookup 均可直达 Pure Core\n1. 修复：从 Instant 或 AI Lookup 点击 Pure Core 即可自动启动搜索（有缓存直接恢复）。\n2. 修复：AI Lookup 补全分析不再被错误的 idle 状态挡住。\n3. 优化：Core / 全量查词始终返回完整认知字段（词根、近义、文化等）。\n4. 优化：AI 追问记录与历史/缓存 key 对齐，最近 100 条历史回放可正确找回。\n",
+  "notes_en": "One-tap AI on mode switch: Instant / Lookup can jump straight into Pure Core\n1. **Fixed**: Tapping Pure Core from Instant or AI Lookup auto-starts search (or restores cache).\n2. **Fixed**: Switching to AI Lookup after Instant reliably triggers analysis (no idle-state gate).\n3. **Improved**: Full / Core lookups always request the complete cognitive schema.\n4. **Improved**: AI follow-up chat keys align with history/cache normalization for the last 100 entries.\n",
+  "is_major": true
 }

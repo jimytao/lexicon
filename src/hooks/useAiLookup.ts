@@ -1,6 +1,5 @@
 import { useRef, useCallback } from 'react'
 import { useResultStore } from '../stores/resultStore'
-import { useSearchStore } from '../stores/searchStore'
 import { analyzeWord, aiFullLookup, aiPhraseQuery } from '../services/ai'
 import { recordSentenceCorrectionEvent } from '../services/profile'
 import type { Meaning } from '../types'
@@ -50,8 +49,8 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const mode = useSearchStore.getState().mode
-      const result = await aiFullLookup(word, mode === 'ai', combined)
+      // Full schema for all callers (AI Lookup / Pure Core / Instant OOD) — Core UI needs etymology/synonyms/culture etc.
+      const result = await aiFullLookup(word, true, combined)
       setAiFullResult(word, result)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
@@ -73,8 +72,7 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const mode = useSearchStore.getState().mode
-      const result = await aiPhraseQuery(phrase, mode === 'ai', abortRef.current.signal)
+      const result = await aiPhraseQuery(phrase, true, abortRef.current.signal)
       setPhraseResult(phrase, result)
       if (result.unnaturalMindModel || result.correctForm) {
         recordSentenceCorrectionEvent(phrase, result.correctForm, result.unnaturalMindModel)

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-07-25 — 模式切换一键触发 AI 与历史缓存配对加固 (v0.8.3) 【重大更新】
+
+### 1. 修复：Instant / AI Lookup → Pure Core 点击即可启动搜索
+- **文件**：`src/App.tsx`、`src/hooks/useAiLookup.ts`
+- **问题**：模式切换依赖 `aiStatus === 'idle'`，Instant 查完再切 AI 后 `status` 已是 success，再点 Pure Core 不会触发；且仅靠 `useEffect` 偶发不同步。
+- **修复**：分段控件改为 `handleModeChange` 点击即处理——有缓存恢复，无缓存立刻 `triggerFullLookup` / `triggerPhraseQuery` / `triggerAi`；Instant 与 AI Lookup 均可直达 Core。
+- **附带**：全量 lookup / phrase 始终拉完整 schema（Core UI 需要词根、近义、文化等字段）。
+
+### 2. 优化：AI 追问缓存 key 与历史/结果缓存对齐
+- **文件**：`src/stores/chatStore.ts`、`src/components/ResultView/AiSection/AiChatBox.tsx`
+- **实现**：chat 存储 key 统一 `normalizeQuery`，与历史 100 条、三路 AI 缓存配对一致；历史回放后追问记录可正确找回。
+
 ## 2026-07-25 — 雪藏弱项看板、Core 模式缓存修复与导航/文档对齐 (v0.8.2)
 
 ### 1. 雪藏：弱项看板 UI 不进当前 App（代码保留）

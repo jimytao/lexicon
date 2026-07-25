@@ -161,29 +161,66 @@ export function App() {
     return () => sc.removeEventListener('scroll', handleScroll)
   }, [isKeyboardVisible, view])
 
-  // 切换到 AI 或 Core mode 时，若处于 local 状态且尚未分析，自动触发
-  const prevModeRef = useRef(mode)
-  useEffect(() => {
-    if (prevModeRef.current !== 'ai' && mode === 'ai' && searchSource === 'local' && wordResult && aiStatus === 'idle') {
-      triggerAi(wordResult.word, wordResult.meanings, wordResult.examples.length === 0)
-      upgradeHistory(wordResult.word, 'analyze')
+  /** 点击分段控件切换模式时立刻补齐 AI（含 Instant → Pure Core），不依赖 useEffect / idle 门闩 */
+  function handleModeChange(next: typeof mode) {
+    const prev = useSearchStore.getState().mode
+    if (prev === next) return
+
+    setMode(next)
+
+    const store = useResultStore.getState()
+    const currentQuery = useSearchStore.getState().query
+    const currentWord = store.wordResult
+
+    // Instant（本地结果）→ AI Lookup：补 analyze
+    if (next === 'ai' && searchSource === 'local' && currentWord) {
+      const cached = store.getCachedAi(currentWord.word)
+      if (cached) {
+        store.setAiAnalysis(currentWord.word, cached)
+        upgradeHistory(currentWord.word, 'analyze')
+      } else if (store.aiStatus !== 'loading') {
+        triggerAi(currentWord.word, currentWord.meanings, currentWord.examples.length === 0)
+        upgradeHistory(currentWord.word, 'analyze')
+      }
     }
-    if (prevModeRef.current !== 'core' && mode === 'core' && query && aiStatus === 'idle') {
-      setSearchSource('ai-full')
-      triggerFullLookup(query)
-      upgradeHistory(query, 'full')
+
+    // → Pure Core（含 Instant 直达）：有缓存恢复，否则立刻 full/phrase
+    if (next === 'core') {
+      const target = (currentQuery.trim() || currentWord?.word || '').trim()
+      if (target) {
+        const qt = detectQueryType(target)
+        if (qt === 'phrase' || qt === 'sentence') {
+          const cachedPhrase = store.getCachedPhrase(target)
+          setSearchSource('phrase')
+          if (cachedPhrase) {
+            store.setPhraseResult(target, cachedPhrase)
+          } else {
+            triggerPhraseQuery(target)
+          }
+          upgradeHistory(target, 'phrase')
+        } else {
+          const cachedFull = store.getCachedAiFull(target)
+          setSearchSource('ai-full')
+          if (cachedFull) {
+            store.setAiFullResult(target, cachedFull)
+          } else {
+            triggerFullLookup(target)
+          }
+          upgradeHistory(target, 'full')
+        }
+      }
     }
+
     // 从 ai-full 切回 Instant：恢复本地快照
-    if (prevModeRef.current !== 'instant' && mode === 'instant' && searchSource === 'ai-full') {
+    if (next === 'instant' && searchSource === 'ai-full') {
       const snap = localWordSnapshotRef.current
       if (snap) {
-        useResultStore.getState().setWordResult(snap.wordResult, false)
-        useResultStore.getState().setRelatedPhrases(snap.relatedPhrases)
+        store.setWordResult(snap.wordResult, false)
+        store.setRelatedPhrases(snap.relatedPhrases)
         setSearchSource('local')
       }
     }
-    prevModeRef.current = mode
-  }, [mode, query])
+  }
 
   function scrollToTop() {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -528,7 +565,7 @@ export function App() {
                       onForceAi={handleForceAi}
                     />
                   </div>
-                  <SegmentedControl mode={mode} onModeChange={setMode} />
+                  <SegmentedControl mode={mode} onModeChange={handleModeChange} />
                 </div>
               </div>
 
