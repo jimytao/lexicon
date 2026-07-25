@@ -1,8 +1,8 @@
-# CC-INSTRUCTIONS — 给 Claude Code 的具体执行指令
+# CC-INSTRUCTIONS — 历史初始化步骤与持续 Agent 指令
 
-> 这份文件是专门给 Claude Code（终端 AI 编程助手）读的。
-> 人类开发者：Julian（中文母语，英语学习者，有 React/Vite/Roo Code 经验）。
-> 请在开始任何任务前先读完 README.md 和对应的文档文件。
+> **权威启动上下文已迁至根目录 [`AGENT.md`](../AGENT.md)。**  
+> 本文件保留：① 项目初始化 Step 1–12 的历史档案（勿重复执行脚手架）；② 少量仍有效的持续指令（文末 Phase 5 / UI 规范）。  
+> 人类开发者：Julian。开始任务前先读 `AGENT.md`，再读本目录对应设计文档。
 
 ---
 

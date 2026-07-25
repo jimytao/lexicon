@@ -1,14 +1,14 @@
 {
-  "platforms": {
-    "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXd5ek5mTHg3SCtMQzdYZVVtVm5KY1d0VThrK1cxZXZhczlDVFhQeFJrbC9iWTdyTUNyZzlqaytFU1Q4bGxHMGlGYVlrQ2dDVC8ycUgvSWtEZThreHdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTYxOTM5CWZpbGU6TGV4aWNvbl8wLjguM194NjQtc2V0dXAuZXhlCm54bGl2azRBMEN2SmROKzEzYWE1ZW51U2JHUi9VYmRuSEE1OExkVytFTzR2ZTdnMEZBUkFCZFg3Wm5uVWdhZWJYVjd3QzRScUNoUzlXN1c0Nis4MUFBPT0K",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.3/Lexicon_0.8.3_x64-setup.exe"
-    }
-  },
-  "pub_date": "2026-07-25T06:38:43Z",
-  "version": "0.8.3",
-  "notes": "模式切换一键触发 AI：Instant / Lookup 均可直达 Pure Core\n1. 修复：从 Instant 或 AI Lookup 点击 Pure Core 即可自动启动搜索（有缓存直接恢复）。\n2. 修复：AI Lookup 补全分析不再被错误的 idle 状态挡住。\n3. 优化：Core / 全量查词始终返回完整认知字段（词根、近义、文化等）。\n4. 优化：AI 追问记录与历史/缓存 key 对齐，最近 100 条历史回放可正确找回。\n",
-  "notes_zh": "模式切换一键触发 AI：Instant / Lookup 均可直达 Pure Core\n1. 修复：从 Instant 或 AI Lookup 点击 Pure Core 即可自动启动搜索（有缓存直接恢复）。\n2. 修复：AI Lookup 补全分析不再被错误的 idle 状态挡住。\n3. 优化：Core / 全量查词始终返回完整认知字段（词根、近义、文化等）。\n4. 优化：AI 追问记录与历史/缓存 key 对齐，最近 100 条历史回放可正确找回。\n",
-  "notes_en": "One-tap AI on mode switch: Instant / Lookup can jump straight into Pure Core\n1. **Fixed**: Tapping Pure Core from Instant or AI Lookup auto-starts search (or restores cache).\n2. **Fixed**: Switching to AI Lookup after Instant reliably triggers analysis (no idle-state gate).\n3. **Improved**: Full / Core lookups always request the complete cognitive schema.\n4. **Improved**: AI follow-up chat keys align with history/cache normalization for the last 100 entries.\n",
-  "is_major": true
+    "platforms":  {
+                      "windows-x86_64":  {
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTlYWEpncThoODdLSWd0cmVOcEdLcjJjWlIwOFFNTC96Vk82dHZqTUY3TE1KZnc4anBha1UyK2I5ZzBpZnRPdnlvRHdHRmZadXIwUkpuMEMyaGxTdUFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTYzODY3CWZpbGU6TGV4aWNvbl8wLjguNF94NjQtc2V0dXAuZXhlCko2a2JGM3FkZ3ZQTnM3SWRGT3gyMmRtTDR1R3ptUHlFNlVvZE0vcHZqbWhWUTlPUWZFd2U3T25HZXRVMStGYXBGd3FnV1RDOFB2UDhVNW0zV1EwREN3PT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.4/Lexicon_0.8.4_x64-setup.exe"
+                                         }
+                  },
+    "pub_date":  "2026-07-25T07:17:58Z",
+    "version":  "0.8.4",
+    "notes":  "首页空态居中、AGENT 上下文与上传文档门禁\n1. 优化：查词首页空态整屏几何居中，不随底栏抖动。\n2. 重构：AI 启动上下文统一为 AGENT.md（CLAUDE.md 兼容跳转）。\n3. 规范：workflow 增加上传前 CHANGELOG + 双 README 门禁。\n4. 文档：中英文 README 对齐三模式、底栏 Settings 与 v0.8.4 下载链接。\n",
+    "notes_zh":  "首页空态居中、AGENT 上下文与上传文档门禁\n1. 优化：查词首页空态整屏几何居中，不随底栏抖动。\n2. 重构：AI 启动上下文统一为 AGENT.md（CLAUDE.md 兼容跳转）。\n3. 规范：workflow 增加上传前 CHANGELOG + 双 README 门禁。\n4. 文档：中英文 README 对齐三模式、底栏 Settings 与 v0.8.4 下载链接。\n",
+    "notes_en":  "Home empty-state centering, AGENT.md context, and upload doc gate\n1. **Improved**: Dictionary home empty state is viewport-centered and no longer jumps with the tab bar.\n2. **Refactored**: Canonical agent context is AGENT.md (CLAUDE.md is a compatibility stub).\n3. **Process**: workflow.md §0 requires CHANGELOG + bilingual README checks before push/release.\n4. **Docs**: READMEs updated for three modes, bottom Settings tab, and v0.8.4 download links.\n",
+    "is_major":  false
 }

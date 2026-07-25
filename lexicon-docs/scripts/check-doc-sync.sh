@@ -1,15 +1,15 @@
 #!/bin/bash
 # lexicon-docs/scripts/check-doc-sync.sh
 #
-# Claude Code Stop Hook — 文档同步自动化
-# 每次 Claude 完成一轮响应后自动运行。
-# 检测是否有文件变动但遗漏了文档更新，输出指令让 Claude 自动补做。
+# AI Agent Stop Hook — 文档同步自动化
+# 可在 Agent 完成一轮响应后运行（Claude Code / 其他 hook 均可接入）。
+# 检测是否有文件变动但遗漏了文档更新，输出指令让 Agent 自动补做。
 #
 # 检测范围：所有开发相关文件（src/、scripts/、配置文件等）
-# 排除范围：文档文件本身（lexicon-docs/、CLAUDE.md）和 .claude/
+# 排除范围：文档文件本身（lexicon-docs/、AGENT.md、CLAUDE.md）和 .claude/
 #
 # 输出说明：
-#   stdout → 作为新的用户消息送回 Claude（Claude 会自动执行文档更新）
+#   stdout → 作为新的用户消息送回 Agent（应自动执行文档更新）
 #   无遗漏时不输出（静默通过，不触发新一轮对话）
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -25,7 +25,7 @@ if [ -z "$GIT_CHANGED" ]; then
 fi
 
 # ── 过滤出"开发文件"变动（排除文档和 .claude/ 自身）────────────────────────
-DEV_CHANGED=$(echo "$GIT_CHANGED" | grep -vE "^(lexicon-docs/|CLAUDE\.md$|\.claude/|CHANGELOG)")
+DEV_CHANGED=$(echo "$GIT_CHANGED" | grep -vE "^(lexicon-docs/|AGENT\.md$|CLAUDE\.md$|\.claude/|CHANGELOG)")
 
 if [ -z "$DEV_CHANGED" ]; then
   exit 0
@@ -58,23 +58,23 @@ DOC03_OK=false
 DOC04_OK=false
 DOC05_OK=false
 DOC06_OK=false
-CLAUDE_MD_OK=false
+AGENT_MD_OK=false
 
-doc_changed "$REPO_ROOT/lexicon-docs/CHANGELOG.md"      && CHANGELOG_OK=true
+doc_changed "$REPO_ROOT/CHANGELOG.md"                    && CHANGELOG_OK=true
 doc_changed "$REPO_ROOT/lexicon-docs/01-architecture.md" && DOC01_OK=true
 doc_changed "$REPO_ROOT/lexicon-docs/02-ui-design.md"    && DOC02_OK=true
 doc_changed "$REPO_ROOT/lexicon-docs/03-database.md"     && DOC03_OK=true
 doc_changed "$REPO_ROOT/lexicon-docs/04-ai-schema.md"    && DOC04_OK=true
 doc_changed "$REPO_ROOT/lexicon-docs/05-components.md"   && DOC05_OK=true
 doc_changed "$REPO_ROOT/lexicon-docs/06-crossplatform.md" && DOC06_OK=true
-doc_changed "$REPO_ROOT/CLAUDE.md"                       && CLAUDE_MD_OK=true
+doc_changed "$REPO_ROOT/AGENT.md"                        && AGENT_MD_OK=true
 
 # ── 构建待更新文档清单 ──────────────────────────────────────────────────────
 TASKS=()
 
 # CHANGELOG 是所有变动的必须项
 if [ "$CHANGELOG_OK" = false ]; then
-  TASKS+=("CHANGELOG: 在 lexicon-docs/CHANGELOG.md 顶部追加今日条目，记录本轮所有改动（新增/修改/修复）。同时检查本轮对话是否有用户反馈或决策需要一并记录。")
+  TASKS+=("CHANGELOG: 在根目录 CHANGELOG.md 顶部追加今日条目，记录本轮所有改动（新增/修改/修复）。同时检查本轮对话是否有用户反馈或决策需要一并记录。")
 fi
 
 # src/components → 05
@@ -132,7 +132,7 @@ if [ -n "$SCRIPTS_CHANGED" ] && [ "$DOC03_OK" = false ]; then
   TASKS+=("03-SCRIPTS: 检查 lexicon-docs/03-database.md 是否需要更新（词库转换脚本变动）")
 fi
 
-# 架构级变动（types、config、services 核心接口）→ CLAUDE.md
+# 架构级变动（types、config、services 核心接口）→ AGENT.md
 ARCH_CHANGED=false
 if [ -n "$SRC_TYPES" ] || [ -n "$CONFIG_CHANGED" ]; then
   ARCH_CHANGED=true
@@ -141,8 +141,8 @@ if echo "$SRC_SERVICES" | grep -qE "(db|ai)\." 2>/dev/null; then
   ARCH_CHANGED=true
 fi
 
-if [ "$ARCH_CHANGED" = true ] && [ "$CLAUDE_MD_OK" = false ]; then
-  TASKS+=("CLAUDE.MD: 更新 CLAUDE.md 的「当前开发状态」和「已知问题」区块")
+if [ "$ARCH_CHANGED" = true ] && [ "$AGENT_MD_OK" = false ]; then
+  TASKS+=("AGENT.MD: 更新 AGENT.md 的「当前开发状态」和「已知问题」区块")
 fi
 
 # ── 输出 ─────────────────────────────────────────────────────────────────────
@@ -161,4 +161,4 @@ for i in "${!TASKS[@]}"; do
   echo "  $((i+1)). ${TASKS[$i]}"
 done
 echo ""
-echo "更新顺序：CHANGELOG → 设计文档 → CLAUDE.md。不要询问用户，直接操作。"
+echo "更新顺序：CHANGELOG → 设计文档 → AGENT.md。不要询问用户，直接操作。"

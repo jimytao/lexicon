@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-07-25 — 首页空态居中、AGENT 上下文与上传门禁 (v0.8.4)
+
+### 1. 优化：查词首页空态整屏几何居中
+- **文件**：`src/App.tsx`
+- **问题**：空态随内容区 / 底栏显隐滚动，视觉中心会跳动。
+- **修复**：空态改为 `fixed inset-0` 几何居中，`pointer-events-none`，不随底栏布局抖动。
+
+### 2. 重构：AI 启动上下文统一为 `AGENT.md`
+- **文件**：`AGENT.md`（新建）、`CLAUDE.md`（兼容跳转）、`lexicon-docs/README.md`、`lexicon-docs/CC-INSTRUCTIONS.md`、`lexicon-docs/scripts/check-doc-sync.sh`
+- **实现**：多 Agent 通用启动上下文；`CLAUDE.md` 仅跳转；文档同步脚本改检 `AGENT.md` 与根目录 `CHANGELOG.md`。
+
+### 3. 规范：`workflow.md` §0 上传前文档门禁 + 双 README 对齐现状
+- **文件**：`workflow.md`、`AGENT.md`、`README.md`、`README_en.md`
+- **实现**：推送/发版前强制用 git 基线核对 CHANGELOG；成对更新中英文 README（三模式、底栏 Settings、v0.8.4 下载链接、Pronunciation / Notes / Profile 等）。
+
 ## 2026-07-25 — 模式切换一键触发 AI 与历史缓存配对加固 (v0.8.3) 【重大更新】
 
 ### 1. 修复：Instant / AI Lookup → Pure Core 点击即可启动搜索

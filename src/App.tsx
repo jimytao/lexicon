@@ -613,17 +613,16 @@ export function App() {
                     onGoToSettings={() => setView('settings')}
                   />
                 ) : (
-                  <div className="pb-32 flex flex-col gap-6">
-                    <div className="flex flex-col items-center justify-center pt-16 text-foreground-muted">
-                      <div className="w-12 h-12 mb-4 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                        </svg>
-                      </div>
-                      <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
-                        {t('home.emptyPlaceholder')}
-                      </p>
+                  // 整屏几何居中（不随底部菜单滚动显隐跳动）
+                  <div className="fixed inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none text-foreground-muted px-6">
+                    <div className="w-12 h-12 mb-4 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                      </svg>
                     </div>
+                    <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
+                      {t('home.emptyPlaceholder')}
+                    </p>
                   </div>
                 )}
 

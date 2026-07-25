@@ -1,6 +1,128 @@
 # Lexicon 自动发布工作流 (AI Agent Workflow)
 
-这是一份写给 AI Agent 的标准操作程序 (SOP)。当你被要求“发布新版本”或“执行发版工作流”时，请严格按照以下步骤进行操作（请确保在终端中有足够的权限执行这些命令，如果没有，请提示人类用户手动执行或授权）。
+这是一份写给 AI Agent 的标准操作程序 (SOP)。
+
+**触发场景（任一即适用）：**
+- 用户要求「发布新版本 / 执行发版工作流」
+- 用户要求「上传代码 / push / 推送到远程」
+- 用户要求「做完这轮改动后提交并推送」
+
+请严格按顺序执行。终端权限不足时，提示人类授权后再继续。  
+**未完成下方「0. 上传前文档门禁」之前，禁止 `git push`、禁止创建 Release、禁止上传二进制产物。**
+
+---
+
+## 0. 上传前文档门禁（强制，不可跳过）
+
+> 目的：把「自上次成功推送到远程以来」的真实代码改动，与对外文档对齐。  
+> 漏更 `CHANGELOG.md`、或中英文 README 仍写已删除/已过时功能，视为发版/上传失败。
+
+### 0.1 锚定「上次上传」基线
+
+在仓库根目录执行（PowerShell / bash 均可）。先刷新远程，再取基线：
+
+```powershell
+git fetch origin
+
+# 当前分支跟踪的远程尖端（最常用：上次 push 成功后的点）
+$BASE = "origin/$(git rev-parse --abbrev-ref HEAD)"
+git rev-parse $BASE
+```
+
+若当前是**正式发版**且存在版本 tag，改用「上一正式版 tag」作基线（与上一 Release 对齐）：
+
+```powershell
+git fetch origin --tags
+$BASE = git describe --tags --abbrev=0
+# 例：$BASE = "v0.8.2"
+```
+
+> 基线变量下文统一写作 `$BASE`。不要用「凭感觉回忆改了什么」代替 git 输出。
+
+### 0.2 列出上次上传之后的全部改动（精确命令）
+
+```powershell
+# A. 提交列表（理解「做了什么」）
+git log $BASE..HEAD --oneline --no-merges
+
+# B. 文件级变更统计
+git diff $BASE...HEAD --stat
+
+# C. 未提交工作区（若即将连同未提交改动一起上传，必须一并纳入检查）
+git status --short
+git diff --stat
+git diff --cached --stat
+```
+
+必读范围：
+- `src/` 下所有出现在上述 diff 中的路径
+- 若改了导航 / 模式 / 设置 / 下载链接相关，额外打开 `App.tsx`、设置与搜索相关组件核对现状
+
+### 0.3 核对并补全 `CHANGELOG.md`（精确步骤）
+
+```powershell
+# 打开变更日志顶部（Agent：用 Read 工具读文件前 80～120 行）
+# 路径：仓库根目录 CHANGELOG.md
+```
+
+**验收标准（必须全部满足）：**
+
+1. 对 `git log $BASE..HEAD` 里**每一条用户可感知的改动**（新功能、行为变更、删除/雪藏功能、重要 bugfix、跨平台/发版相关），`CHANGELOG.md` 顶部都有对应条目。  
+2. 条目写在**文件最上方**（日期 + 简短标题；发版则带 `vX.Y.Z`）。  
+3. 每条写清：**改了哪些文件 / 解决什么问题或新增什么能力**（与仓库现有 CHANGELOG 文风一致）。  
+4. 若 diff 里有改动但 CHANGELOG 未写 → **立刻补写**，然后重新自检本小节。  
+5. 纯文档笔误、仅本地构建缓存、与产品无关的噪声可省略；**功能增减不得省略**。
+
+**禁止：** 用空话「杂项优化」吞掉多个独立功能；雪藏/删除的功能必须在 CHANGELOG 写明「已雪藏 / 已移除」，避免 README 与真实产品相反。
+
+### 0.4 核对并更新中英文 README（强制双文件）
+
+对外说明有两份，必须**成对**检查，内容语义对齐（不是机翻逐字，但功能点集合必须一致）：
+
+| 文件 | 语言 |
+|------|------|
+| `README.md` | 中文 |
+| `README_en.md` | 英文 |
+
+```powershell
+# 确认两文件都在、且本次是否已纳入提交意图
+git status --short -- README.md README_en.md
+
+# 对照「上次上传后」这两份是否被改过（未改不代表不用改——功能变了就得改）
+git diff $BASE...HEAD --stat -- README.md README_en.md
+```
+
+**逐项核对清单（Agent 必须显式过一遍，缺一项就改文件）：**
+
+| # | 检查项 | 不通过时怎么做 |
+|---|--------|----------------|
+| 1 | **核心特性**是否仍描述已删除或已雪藏的功能（例如弱项看板 Memory Tab、已下线入口） | 从两份 README 删除或改为「已雪藏/暂未开放」 |
+| 2 | **新增用户可见功能**是否已写入特性列表（模式、笔记、Profile、发音等） | 中英文同步补充 |
+| 3 | **查词模式名称**是否与产品一致：`Instant` / `AI Lookup` / `Pure Core`（勿再写过时的「仅 AI mode」） | 改正文与配置 AI 小节 |
+| 4 | **设置入口**是否与现状一致（当前为底栏 **Settings Tab 全页**，不是右上角抽屉） | 改「配置 AI」操作步骤 |
+| 5 | **底栏导航**描述是否为 3 Tab：Dict / Image / Settings | 改正文 |
+| 6 | **下载链接版本号**是否指向即将发布 / 已发布的 `vX.Y.Z`（发版时必改；普通 push 若未发版可暂留旧链接，但不得指向不存在的文件） | 同步改 Windows / Android 链接与 Releases tag 链接 |
+| 7 | **技术栈版本**（如 Vite / Capacitor / Tauri）是否与 `package.json` 严重不符 | 小幅更正 |
+| 8 | 中英文两份的**功能点集合一致**（一侧有、另一侧无 → 补齐） | 成对编辑 |
+
+改完后再次确认：
+
+```powershell
+git diff -- README.md README_en.md
+```
+
+### 0.5 门禁通过条件（Checklist）
+
+Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前，必须能对用户简短确认：
+
+- [ ] `$BASE` 已锚定，且已阅读 `git log $BASE..HEAD` 与相关 diff  
+- [ ] `CHANGELOG.md` 已覆盖上次上传以来的功能增减与重要修复  
+- [ ] `README.md` 与 `README_en.md` 已按 0.4 清单校对，无「文档承诺了 App 里没有的功能」  
+- [ ] 若本次是发版：README 下载链接版本号已改为新版本 `X.X.X`
+
+**任一未勾选 → 停在本节补文档，不得上传。**
+
+---
 
 ## 1. 自动滚动版本号 (Version Bumping)
 除非用户明确指定了目标版本，否则默认进行**小版本号（Patch）滚动**（例如从 `0.7.5` 升级到 `0.7.6`）。
@@ -121,7 +243,9 @@ iOS 端无须本地编译！本仓库配置了 GitHub Actions (`.github/workflow
 **Android APK 签名**：确保 APK 已经通过 `apksigner` 与本地 Release Keystore 完成签名。密码请查阅本地 `.env.release`。
 
 ## 5. 代码提交与推送 (Git Commit & Push)
-确保所有版本文件（包含更新后的 `version.json`，确保包含最新的签名信息）已保存。
+**前置**：§0 门禁已通过（CHANGELOG + 双 README 已对齐本次改动）。
+
+确保所有版本文件（包含更新后的 `version.json`，确保包含最新的签名信息）已保存。发版提交应包含本轮文档更新（`CHANGELOG.md`、`README.md`、`README_en.md` 等）。
 ```bash
 git add .
 git commit -m "Release vX.X.X"
