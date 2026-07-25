@@ -26,6 +26,7 @@
 | `lexicon-docs/06-crossplatform.md` | Capacitor/Tauri 跨平台相关任务 |
 | `lexicon-docs/07-cognitive-and-settings-architecture.md` | 深度认知体系、模式 3 (Core Mode) 与设置 UI 重构 |
 | `lexicon-docs/08-ai-learning-system-and-profile.md` | 智能学习系统、轻量 User Profile 与第二大脑 (Lexicon Memory) |
+| `lexicon-docs/09-ui-ux-design-system.md` | UI/UX 设计规范、组件间距、视觉对齐相关任务 |
 
 ## 当前技术栈
 

@@ -531,7 +531,11 @@ function getFullLookupPrompt(
   const synonymDistinction = isMono ? "English nuance explanation" : "与主词的差异"
   const antonymDistinction = isMono ? "English nuance explanation" : "与主词的对比差异"
 
-  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences describing the core physical image or underlying metaphor' : '1-2句描述单词的物理或逻辑核心意象 (Core Image)'}",\n    "explanation": "${isMono ? 'how this core image unifies and derives various meanings' : '核心意象如何统领和演变出各个具体分项释义'}"\n  },\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
+  const nativeMentalPictureDesc = isMono ? "Mental picture or sensory details when native speakers use this word" : "母语者说到此词时脑海里的真实画面与感官细节 (e.g. '地下酒吧、卧室开发者、DIY精神')"
+  const nativeEmotionalStanceDesc = isMono ? "Emotional stance and attitude" : "情感色彩与态度 (e.g. '带有 Authentic、Cool 的强烈褒义')"
+  const nativeWhyChooseDesc = isMono ? "Why choose this word instead of a formal synonym" : "为什么选它而不是近义词/正式词 (心智对比)"
+
+  let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)",\n  "nativeMindModel": {\n    "mentalPicture": "${nativeMentalPictureDesc}",\n    "emotionalStance": "${nativeEmotionalStanceDesc}",\n    "whyChooseThisWord": "${nativeWhyChooseDesc}"\n  },\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences describing the core physical image or underlying metaphor' : '1-2句描述单词的物理或逻辑核心意象 (Core Image)'}",\n    "explanation": "${isMono ? 'how this core image unifies and derives various meanings' : '核心意象如何统领和演变出各个具体分项释义'}"\n  },\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
   if (isFull && isEnabled('etymology')) {
@@ -572,7 +576,7 @@ function getFullLookupPrompt(
     }
   }
 
-  schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "examples": ["${isMono ? 'phrase or example 1' : '典型表达/短语 1'}", "${isMono ? 'phrase or example 2' : '典型表达/短语 2'}"]\n      }\n    ]\n  }`
+  schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "explanation": "${isMono ? '1 sentence explaining why this branch derives from the root core' : '1句话解释该分支领域为何会从 Core 衍生出来'}",\n        "examples": ["${isMono ? 'phrase or example 1' : '典型表达/短语 1'}", "${isMono ? 'phrase or example 2' : '典型表达/短语 2'}"]\n      }\n    ]\n  }`
 
   schema += `\n}`
 
@@ -595,6 +599,7 @@ ${schema}
 Rules:
 - meanings: provide the most common and practical meanings (typically 2-8, ordered strictly by frequency).
 - For abbreviations, explain what each letter stands for.
+- For collocations.chunks and conceptGraph.branches, if you cannot provide a specific explanation, note, or spatialExtension (or if it doesn't need one), output "N/A" instead of leaving it empty.
 - If the input is CHINESE: 
   - correctForm: provide the best English word.
   - meanings: provide 2-5 English alternatives with nuances.

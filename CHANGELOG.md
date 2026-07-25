@@ -36,6 +36,14 @@
 - **健壮性防崩溃**：为 `LexiconMemoryBadge` 与 `UserNoteEditor` 中的 JSON 解析添加 try-catch 兜底保护，防止意外坏数据导致白屏。
 - **AiFullView 储存键对齐**：对齐 `AiFullView` 的 `UserNoteEditor` 存储 key 为 `correctForm`，解决拼错词场景下与 AI 追问历史无法关联的问题。
 
+### 6. 优化：非英语/小语种过滤、图片翻译隔离与首页看板 i18n 多语言国际化
+- **文件**：`src/i18n/index.ts`、`src/components/AILearningDigestCard.tsx`、`src/services/profile.ts`、`src/App.tsx`
+- **实现**：
+  - **非英语/小语种智能过滤**：利用 `detectLanguage` 在 `profile.ts` 中拦截日文 (`ja`)、韩文 (`ko`) 及其他非中/英小语种查询，不计入 `lookup`、`sentence` 与 `chat` 学习事件；同时在 Prompt 中增加 Scope Filter，指示 AI 忽略非英语学习内容。
+  - **图片翻译隔离**：确认图片翻译 (`ImageTranslateView`) 纯粹用于文本翻译，隔离不计入 Lexicon 第二大脑的查词与事件诊断。
+  - **看板 i18n 国际化**：`AILearningDigestCard` 全面引入 `useT()`，根据 App 语言设置（`appLanguage === 'en'` / `'zh'`）动态无缝切换中英文标题、描述、空白页引导文案与 Mode 3 Core 导航按钮。
+  - **首页布局防遮挡优化**：优化 `App.tsx` 首页空白状态 (`!query`) 的 Bottom Padding (`pb-32`) 与图标高度，彻底解决底部悬浮 Nav 导航胶囊遮挡文字与内容挤压无法下滑的视觉 Bug。
+
 ## 2026-07-25 — 深度认知体系、模式 3 (Core Mode) 与设置 UI 重构架构设计完成 (v0.8.0-plan)
 
 ### 1. 新增：深度认知架构规范文档 (`lexicon-docs/07-cognitive-and-settings-architecture.md`)

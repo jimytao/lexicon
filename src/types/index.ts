@@ -78,6 +78,7 @@ export interface ConceptGraph {
   rootCore: string
   branches: Array<{
     category: string
+    explanation?: string
     examples: string[]
   }>
 }
@@ -138,6 +139,12 @@ export interface AiAnalysis {
   conceptGraph?: ConceptGraph
 }
 
+export interface NativeMindModel {
+  mentalPicture: string
+  emotionalStance: string
+  whyChooseThisWord: string
+}
+
 export interface AiFullResult {
   correctForm: string
   phonetic: string
@@ -156,6 +163,7 @@ export interface AiFullResult {
   }
   collocations?: CollocationData
   conceptGraph?: ConceptGraph
+  nativeMindModel?: NativeMindModel
 }
 
 export type WordAIResult = AiFullResult

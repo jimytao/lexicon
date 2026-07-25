@@ -1,5 +1,6 @@
 import type { UserLanguageProfile, UnnaturalMindModel } from '../types'
 import { useSettingsStore } from '../stores/settingsStore'
+import { detectLanguage } from '../stores/searchStore'
 
 export interface DiagnosticEvent {
   type: 'lookup' | 'sentence' | 'chat'
@@ -188,8 +189,19 @@ ${
 Instruction: Execute an "Intelligent Upsert (智能增删改)" on the baseline profile using the above incremental learner events. Return ONLY the complete updated UserLanguageProfile JSON object according to the schema.
 `
 
+    const appLang = settings.appLanguage || 'zh'
+    const langRule = appLang === 'en'
+      ? 'Output language: Write all weakness descriptions and recommendation reasons in simple, clear English.'
+      : 'Output language: Write all weakness descriptions and recommendation reasons in Chinese.'
+
     const systemPrompt = `You are an expert cognitive linguistics AI profile analyzer designed for high-context models (e.g. Gemini 2.0 Flash / Flash Lite).
 Your task is to perform an "Intelligent Upsert (智能增删改)" on the baseline user language profile using rich incremental events.
+
+CRITICAL SCOPE & LANGUAGE FILTER:
+Lexicon is strictly an English learning software for Chinese/English speakers.
+Analyze ONLY English learning patterns (English vocabulary, phrasal verbs, English syntax/thought, and Chinese-to-English translation transfers).
+If any event is related to non-English learning languages (e.g. Japanese, Korean, French, etc.), COMPLETELY IGNORE IT and do NOT add it as a weakness pattern or recommendation.
+${langRule}
 
 Intelligent Upsert Rules:
 1. BASELINE OVERWRITE: Take the existing user_profile.json as baseline. Modify and return an updated complete UserLanguageProfile JSON.
@@ -197,14 +209,14 @@ Intelligent Upsert Rules:
 3. MODIFY (改): If a weakness pattern recurs, increment its occurrenceCount, refine its description, and provide/update its contrastExample (e.g. "My eyesight is deep -> My vision is poor / I'm short-sighted").
 4. DELETE/PRUNE (删/剪枝): Mark resolved or overcome items as status: "mastered". Maintain between 8 and 12 active items (status: "learning"). Prune stale/minor active items if active count exceeds 12.
 5. RECENT FOCUS: Synthesize 2~4 active exploration categories in recentExplorationFocus.
-6. RECOMMENDATIONS: Provide 3~5 high-value, deep recommendations with 1-sentence Chinese explanations directly linked to active weakness patterns or recent searches.
+6. RECOMMENDATIONS: Provide 3~5 high-value, deep recommendations with 1-sentence explanations directly linked to active weakness patterns or recent searches.
 
 Schema requirements:
 {
   "weaknessPatterns": [
     {
       "id": "weakness_1",
-      "description": "Short Chinese description of the language gap/mistake pattern (e.g. 习惯用 deep 抽象视力度数)",
+      "description": "Short description of the language gap/mistake pattern (e.g. 习惯用 deep 抽象视力度数)",
       "sourceTrigger": "Source trigger details (e.g. 句子订正: My eyesight is deep / AI 追问)",
       "track": "vocabulary" | "phrase_metaphor" | "syntax_thought",
       "status": "learning" | "mastered",
@@ -221,7 +233,7 @@ Schema requirements:
   "recommendations": [
     {
       "conceptOrWord": "Recommended word or spatial concept (e.g. beyond, across)",
-      "reason": "1 sentence Chinese reason linking to recent weakness/searches"
+      "reason": "1 sentence reason linking to recent weakness/searches"
     }
   ]
 }
@@ -296,6 +308,10 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
 }
 
 export function recordLookupEvent(word: string, coreConcept?: string): void {
+  // Non-English learning language filter guard
+  const lang = detectLanguage(word)
+  if (lang === 'ja' || lang === 'ko' || lang === 'other') return
+
   const events = getPendingEvents()
   events.push({
     type: 'lookup',
@@ -316,6 +332,10 @@ export function recordSentenceCorrectionEvent(
   correction: string,
   unnaturalMindModel?: UnnaturalMindModel
 ): void {
+  // Non-English learning language filter guard
+  const lang = detectLanguage(original)
+  if (lang === 'ja' || lang === 'ko' || lang === 'other') return
+
   const events = getPendingEvents()
   events.push({
     type: 'sentence',
@@ -334,6 +354,10 @@ export function recordAiChatEvent(
   userQuestion: string,
   aiAnswer: string
 ): void {
+  // Non-English learning language filter guard
+  const lang = detectLanguage(wordOrContext)
+  if (lang === 'ja' || lang === 'ko' || lang === 'other') return
+
   const events = getPendingEvents()
   events.push({
     type: 'chat',

@@ -18,7 +18,6 @@ import { detectLanguage } from '../../stores/searchStore'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
-import { UserNoteEditor } from './UserNoteEditor'
 
 interface AiFullViewProps {
   word: string
@@ -180,8 +179,6 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
           })}
         </div>
       )}
-
-      <UserNoteEditor word={aiFullResult?.correctForm || word} coreConceptText={aiFullResult?.coreConcept?.explanation} />
     </div>
   )
 }

@@ -1,13 +1,14 @@
 {
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMS8rS2psU2owa2p5TGVJN0JuVjVzcFdyanJkNW1OYUkwaFY0WVp0OHRXVGpZM0J0Q3Evb2lUbVFPbGp4UlRVUlVrWHpUNS96MnQ0bk5YWlRXUGV3MHcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTQ3NDcyCWZpbGU6TGV4aWNvbl8wLjguMF94NjQtc2V0dXAuZXhlCmtLcnVyVlFMT3ZHaHVGQTJaL0FCeGdySU1TTk1LVXR6czYrckV3eC9jT1cvYUhMWU1Fc3h2SStHa3ZhdzRuS24zOGd1blNxRThsWTJlQ1duR0NWeURBPT0K",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXhsb05YODJiUjl5SzVoS2JqamhCOW5wS1RYdnF1OHRoUE9DdUJXTEFKTEZyeVBMUlBtSEliMlg1cS9EejNqTFpnaWx1cUJxc3FkRFlwQlNsZ0FKRkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTUzODIzCWZpbGU6TGV4aWNvbl8wLjguMV94NjQtc2V0dXAuZXhlCkdKSkZtVTg3T0cyYjdnNEtWY0tzKzVma1JFNk5vZURFMkdFYmNTamxiaVljcDU4bHlOZ1ZBLzV2T1o5bTBLSE9kNE1Sb3huc3lqbHE4d0Joc0QxVEFRPT0K",
       "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.0/Lexicon_0.8.0_x64-setup.exe"
     }
   },
   "pub_date": "2026-07-25T12:40:00Z",
-  "version": "0.8.0",
-  "notes": "Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统正式上线\n1. 新增：SQLite 个人资产表 (user_word_memory) 与 localStorage 双向持久化，永久沉淀个人笔记、AI 追问 Q&A 历史及 Core 核心意象。\n2. 新增：Gemini 2.0 Flash 高上下文 Profile 智能归纳引擎，支持 8K-15K Tokens 高上下文全量蒸馏与“增/改/剪枝”智能 Upsert 算法。\n3. 新增：个人弱项看板 (AILearningDigestCard) 置于空白页，实时呈现 Active 认知薄弱点与 Mode 3 Core 概念导引。\n4. 新增：LexiconMemoryBadge 词汇资产标识与结果页末尾 UserNoteEditor 笔记/Q&A 沉淀编辑器。\n5. 优化：修复 Android 原生 SQLite 初始化，提升 Android WebView 多层级数据兼容性与内存防溢流保护。",
-  "notes_zh": "Phase 5: Lexicon 第二大脑与轻量 User Profile 智能归纳系统正式上线\n1. 新增：SQLite 个人资产表 (user_word_memory) 与 localStorage 双向持久化，永久沉淀个人笔记、AI 追问 Q&A 历史及 Core 核心意象。\n2. 新增：Gemini 2.0 Flash 高上下文 Profile 智能归纳引擎，支持 8K-15K Tokens 高上下文全量蒸馏与“增/改/剪枝”智能 Upsert 算法。\n3. 新增：个人弱项看板 (AILearningDigestCard) 置于空白页，实时呈现 Active 认知薄弱点与 Mode 3 Core 概念导引。\n4. 新增：LexiconMemoryBadge 词汇资产标识与结果页末尾 UserNoteEditor 笔记/Q&A 沉淀编辑器。\n5. 优化：修复 Android 原生 SQLite 初始化，提升 Android WebView 多层级数据兼容性与内存防溢流保护。",
-  "notes_en": "Phase 5: Lexicon Memory & Intelligent User Profile Engine Release\n1. New: SQLite Personal Memory Table (user_word_memory) with automatic localStorage backup for persisting user notes, AI Q&A history, and Core concepts.\n2. New: High-Context Profile Induction Engine for Gemini 2.0 Flash (8K-15K Tokens context) with Intelligent Upsert (Add/Modify/Prune) logic.\n3. New: AI Learning Digest Dashboard (AILearningDigestCard) on empty search view displaying active mental gaps and Mode 3 Core recommendations.\n4. New: LexiconMemoryBadge status indicators and integrated UserNoteEditor at the bottom of result views.\n5. Optimization: Fixed native Android SQLite schema initialization and expanded 20K Token buffer protection per word record."
+  "version": "0.8.1",
+  "notes": "UI/UX 规范化与设置界面重构\n1. 规范：引入全新《Lexicon UI/UX 工业设计规范》并写入 AI 核心准则。\n2. 重构：彻底清理 Settings 设置界面的“盒中盒”嵌套结构，去除冗余边框与内边距。\n3. 优化：统一 Toggle 交互热区大小与 Accordion 组件无缝贴合 (Flush) 视觉效果，对齐 Apple HIG 与 Fluent 2 设计语言。\n",
+  "notes_zh": "UI/UX 规范化与设置界面重构\n1. 规范：引入全新《Lexicon UI/UX 工业设计规范》并写入 AI 核心准则。\n2. 重构：彻底清理 Settings 设置界面的“盒中盒”嵌套结构，去除冗余边框与内边距。\n3. 优化：统一 Toggle 交互热区大小与 Accordion 组件无缝贴合 (Flush) 视觉效果，对齐 Apple HIG 与 Fluent 2 设计语言。\n",
+  "notes_en": "UI/UX Standardization & Settings Interface Refactoring\n1. Standard: Introduced the new \"Lexicon UI/UX Design System\" and embedded it into core AI directives.\n2. Refactoring: Cleaned up the nested \"Box-in-Box\" antipattern in Settings, removing redundant borders and padding.\n3. Optimization: Standardized Toggle interactive hitboxes and implemented perfectly flush Accordion visual effects, aligning with Apple HIG and Fluent 2 design language.\n",
+  "is_major": false
 }

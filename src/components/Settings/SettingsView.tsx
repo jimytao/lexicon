@@ -166,17 +166,17 @@ function ToggleRow({ label, desc, value, onChange, indent = false }: {
   label: string; desc?: string; value: boolean; onChange: (v: boolean) => void; indent?: boolean
 }) {
   return (
-    <div className={`flex items-center justify-between ${indent ? 'pl-2' : ''}`}>
+    <button type="button" onClick={() => onChange(!value)} className={`w-full flex items-center justify-between px-4 py-3 hover:bg-foreground/5 transition-colors cursor-pointer text-left ${indent ? 'pl-8' : ''}`}>
       <div className="flex-1 min-w-0 pr-3">
         <span className={`font-medium text-foreground ${desc ? 'text-sm font-bold' : 'text-xs'}`}>{label}</span>
         {desc && <p className="text-[10px] text-foreground-muted mt-0.5">{desc}</p>}
       </div>
-      <button onClick={() => onChange(!value)} className="flex items-center h-7 px-1 cursor-pointer shrink-0">
+      <div className="flex items-center h-7 px-1 shrink-0">
         <div className={`w-8 h-[18px] rounded-full transition-all duration-300 relative ${value ? 'bg-accent' : 'bg-foreground/10'}`}>
           <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${value ? 'translate-x-3.5' : 'translate-x-0'}`} />
         </div>
-      </button>
-    </div>
+      </div>
+    </button>
   )
 }
 
@@ -194,7 +194,7 @@ function GroupHeader({ icon, label }: { icon: string; label: string }) {
 // ── Group Wrapper ──────────────────────────────────────────────────────────────
 function Group({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-background-soft/20 px-4 py-4 space-y-4">
+    <div className="rounded-2xl border border-border/50 bg-background-soft/20 py-2 overflow-hidden flex flex-col">
       {children}
     </div>
   )
@@ -202,7 +202,7 @@ function Group({ children }: { children: React.ReactNode }) {
 
 // ── Row Divider (inside group) ─────────────────────────────────────────────────
 function RowDivider() {
-  return <div className="border-t border-border/30" />
+  return <div className="border-t border-border/30 mx-4" />
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -496,7 +496,7 @@ export function SettingsView() {
             {/* Web Search */}
             <ToggleRow label={t('settings.webSearch')} desc={t('settings.webSearchDesc')} value={webSearchEnabled} onChange={setWebSearchEnabled} />
             {webSearchEnabled && (
-              <div className="pl-2">
+              <div className="px-4 pb-4">
                 <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1">Tavily API Key</label>
                 <input
                   type="password" value={tavilyApiKey}
@@ -516,7 +516,7 @@ export function SettingsView() {
           <GroupHeader icon="🔍" label={g2} />
           <Group>
             {/* Default Search Mode */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <div className="flex-1 min-w-0 pr-3">
                 <span className="text-sm font-bold text-foreground">{t('settings.defaultMode')}</span>
                 <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.defaultModeDesc')}</p>
@@ -601,12 +601,12 @@ export function SettingsView() {
             <RowDivider />
 
             {/* Dictionary Settings */}
-            <div className="space-y-3">
+            <div className="space-y-3 px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.dictionarySettings')}</span>
                 <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.dictionaryDesc')}</p>
               </div>
-              <div className="flex items-center justify-between pl-2">
+              <div className="flex items-center justify-between pl-4">
                 <span className="text-xs font-medium text-foreground">{t('settings.activeDictionary')}</span>
                 <select
                   value={activeDictionary} disabled={autoSwitchDictionary}
@@ -617,7 +617,7 @@ export function SettingsView() {
                   <option value="lexicon_en.db">{t('settings.dictEnEn')}</option>
                 </select>
               </div>
-              <div className="flex items-center justify-between pl-2">
+              <div className="flex items-center justify-between pl-4">
                 <span className="text-xs font-medium text-foreground">{t('settings.autoSwitchDictionary')}</span>
                 <button onClick={() => setAutoSwitchDictionary(!autoSwitchDictionary)} className="flex items-center h-7 px-1 cursor-pointer">
                   <div className={`w-8 h-[18px] rounded-full transition-all duration-300 relative ${autoSwitchDictionary ? 'bg-accent' : 'bg-foreground/10'}`}>
@@ -630,12 +630,12 @@ export function SettingsView() {
             <RowDivider />
 
             {/* Pronunciation Settings */}
-            <div className="space-y-3">
+            <div className="space-y-3 px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.pronunciationSettings')}</span>
                 <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.pronunciationDesc')}</p>
               </div>
-              <div className="flex items-center justify-between pl-2">
+              <div className="flex items-center justify-between pl-4">
                 <span className="text-xs font-medium text-foreground">{t('settings.pronunciationAccent')}</span>
                 <select
                   value={pronunciationAccent}
@@ -646,7 +646,9 @@ export function SettingsView() {
                   <option value="uk">{t('settings.accentUk')}</option>
                 </select>
               </div>
-              <ToggleRow label={t('settings.autoPlayPronunciation')} value={autoPlayPronunciation} onChange={setAutoPlayPronunciation} indent />
+              <div className="pl-4 -mx-4 -mb-3">
+                <ToggleRow label={t('settings.autoPlayPronunciation')} value={autoPlayPronunciation} onChange={setAutoPlayPronunciation} />
+              </div>
             </div>
           </Group>
         </div>
@@ -658,7 +660,7 @@ export function SettingsView() {
           <GroupHeader icon="🎨" label={g3} />
           <Group>
             {/* App Language */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.appLanguage')}</span>
                 <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.appLanguageDesc')}</p>
@@ -683,7 +685,7 @@ export function SettingsView() {
             <RowDivider />
 
             {/* Exercise Count */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.exerciseCount')}</span>
                 <p className="text-[10px] text-foreground-muted mt-0.5">{t('settings.exerciseCountDesc')}</p>
@@ -704,7 +706,7 @@ export function SettingsView() {
           <GroupHeader icon="🗄️" label={g4} />
           <Group>
             {/* Search History */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.historyTracking')}</span>
                 <p className="text-[10px] text-foreground-muted">{words.length} {t('settings.historyItems')}</p>
@@ -735,7 +737,7 @@ export function SettingsView() {
               onChange={setEnableProfileDiagnostic}
             />
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between px-4 pb-4 pt-1">
               <div>
                 <span className="text-xs font-medium text-foreground">
                   {appLanguage === 'zh' ? '个人 Profile 数据管理' : 'AI Profile Data Management'}
@@ -768,7 +770,7 @@ export function SettingsView() {
             <RowDivider />
 
             {/* AI Cache */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.aiCache')}</span>
                 <p className="text-[10px] text-foreground-muted">{t('settings.aiCacheDesc')} · {cacheSize}</p>
@@ -790,7 +792,7 @@ export function SettingsView() {
         <div>
           <GroupHeader icon="ℹ️" label={g5} />
           <Group>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-foreground">{t('settings.version')}</span>
                 <p className="text-[10px] text-foreground-muted">v{currentVersion}</p>

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getProfile } from '../services/profile'
 import type { UserLanguageProfile } from '../types'
+import { useT } from '../i18n'
 
 interface AILearningDigestCardProps {
   onSelectCoreConcept: (conceptOrWord: string) => void
 }
 
 export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCardProps) {
+  const t = useT()
   const [profile, setProfile] = useState<UserLanguageProfile | null>(null)
 
   useEffect(() => {
@@ -29,13 +31,12 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
             ✨
           </div>
           <div>
-            <h3 className="text-sm font-bold text-foreground">Lexicon 第二大脑 & 个人弱项看板</h3>
-            <p className="text-[11px] text-foreground-muted">高价值 AI 追问与查词行为的智能增量诊断</p>
+            <h3 className="text-sm font-bold text-foreground">{t('digest.title')}</h3>
+            <p className="text-[11px] text-foreground-muted">{t('digest.desc')}</p>
           </div>
         </div>
         <p className="text-xs text-foreground-muted/80 leading-relaxed mt-2 pl-1">
-          当前尚未积累足够学习行为。在搜索中使用 <strong className="text-foreground">AI 追问</strong> 或{' '}
-          <strong className="text-foreground">句子/表达订正</strong> 后，系统将自动生成专属认知弱项看板与概念引导。
+          {t('digest.emptyState')}
         </p>
       </div>
     )
@@ -48,14 +49,16 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
         <div className="flex items-center gap-2.5">
           <span className="text-base">🧠</span>
           <div>
-            <h3 className="text-xs font-bold text-foreground tracking-tight">AI 学习诊断 & 弱项看板</h3>
+            <h3 className="text-xs font-bold text-foreground tracking-tight">{t('digest.title')}</h3>
             <p className="text-[10px] text-foreground-muted">
-              {profile?.totalDiagnosticsRun ? `第 ${profile.totalDiagnosticsRun} 次增量总结` : '个性化智能归纳'}
+              {profile?.totalDiagnosticsRun
+                ? t('digest.runCount').replace('{count}', String(profile.totalDiagnosticsRun))
+                : t('digest.personalized')}
             </p>
           </div>
         </div>
         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-          Active Gaps ({activeWeaknesses.length})
+          {t('digest.activeGaps')} ({activeWeaknesses.length})
         </span>
       </div>
 
@@ -84,7 +87,7 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
         <div className="pt-2 border-t border-border/40">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-black text-foreground-muted/60 uppercase tracking-widest">
-              💡 AI 概念拓展推荐 (点击切换 Mode 3 Core 探索)
+              {t('digest.recommendTitle')}
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -98,7 +101,6 @@ export function AILearningDigestCard({ onSelectCoreConcept }: AILearningDigestCa
                   <span className="text-xs font-bold text-accent group-hover:underline">
                     {rec.conceptOrWord}
                   </span>
-                  <span className="text-[10px] text-accent font-bold">Mode 3 Core →</span>
                 </div>
                 <p className="text-[10px] text-foreground-muted mt-1 line-clamp-2 leading-relaxed">
                   {rec.reason}

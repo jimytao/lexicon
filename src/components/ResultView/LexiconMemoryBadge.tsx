@@ -35,10 +35,6 @@ export function LexiconMemoryBadge({ word, onOpenNotes }: LexiconMemoryBadgeProp
 
   return (
     <div className="flex items-center gap-2 flex-wrap text-[10px]">
-      <span className="px-2.5 py-1 rounded-xl bg-background-soft border border-border text-foreground-muted font-medium flex items-center gap-1">
-        <span>👁️</span> {memory.searchCount || 1} 次查询
-      </span>
-
       {memory.userNotes && (
         <button
           onClick={onOpenNotes}

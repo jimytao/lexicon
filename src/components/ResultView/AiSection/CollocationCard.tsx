@@ -44,12 +44,12 @@ export function CollocationCard({ collocations }: CollocationCardProps) {
                   className="group relative px-3 py-1.5 rounded-xl border border-purple-100/60 dark:border-purple-900/30 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 transition-all duration-200 hover:bg-purple-100/80 dark:hover:bg-purple-900/60 cursor-help flex flex-col"
                 >
                   <span className="text-xs font-semibold">{item.chunk}</span>
-                  {item.spatialExtension && (
+                  {item.spatialExtension && item.spatialExtension !== 'N/A' && item.spatialExtension !== 'null' && (
                     <span className="text-[10px] font-normal text-purple-700 dark:text-purple-300 mt-0.5 flex items-center gap-0.5">
                       <span>🧭</span> {item.spatialExtension}
                     </span>
                   )}
-                  {item.note && (
+                  {item.note && item.note !== 'N/A' && item.note !== 'null' && (
                     <span className="pointer-events-none absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
                       {item.note}
                     </span>
@@ -76,7 +76,7 @@ export function CollocationCard({ collocations }: CollocationCardProps) {
                   className="group relative px-3 py-1.5 rounded-xl border border-teal-100/60 dark:border-teal-900/30 bg-teal-50/60 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 transition-all duration-200 hover:bg-teal-100/80 dark:hover:bg-teal-900/60 cursor-help"
                 >
                   <span className="text-xs font-semibold">{item.chunk}</span>
-                  {item.note && (
+                  {item.note && item.note !== 'N/A' && item.note !== 'null' && (
                     <span className="pointer-events-none absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-[10px] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
                       {item.note}
                     </span>

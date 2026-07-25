@@ -162,6 +162,7 @@ npx tsx scripts/mdx-to-sqlite.ts --input ./oald9.mdx --output ./public/lexicon.d
 // 临时 mock，Step 12 完成后删除
 export const db: DBService = {
   async suggest(prefix) {
+
     const words = ['satisfaction', 'satisfy', 'satisfactory', 'satisfying', 'satiate']
     return words
       .filter(w => w.startsWith(prefix.toLowerCase()))
@@ -186,3 +187,10 @@ export const db: DBService = {
   async getHistory() { return [] },
 }
 ```
+
+## Agent Memory Update (Phase 5)
+
+Please note that we have introduced the Memory / Cognitive diagnostic system. When requested to work on profile tracking, review `08-ai-learning-system-and-profile.md` for architecture details.
+
+## UI/UX Design System Enforcement
+Before modifying or creating ANY UI components, you MUST read `lexicon-docs/09-ui-ux-design-system.md` and strictly adhere to its rules (especially regarding Box-in-Box antipatterns and padding alignment). This ensures the app maintains an industrial, highly structured visual harmony.

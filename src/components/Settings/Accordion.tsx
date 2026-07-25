@@ -14,7 +14,7 @@ export function Accordion({ title, subtitle, icon, defaultOpen = false, children
   const t = useT()
 
   return (
-    <div className="rounded-2xl border border-border bg-background-soft/60 dark:bg-background-soft/30 overflow-hidden transition-all duration-200">
+    <div className="flex flex-col w-full transition-all duration-200">
       <button
         type="button"
         onClick={() => setIsOpen(v => !v)}

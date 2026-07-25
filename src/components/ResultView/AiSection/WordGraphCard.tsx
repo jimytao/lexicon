@@ -1,10 +1,12 @@
 import type { ConceptGraph } from '../../../types'
+import { useT } from '../../../i18n'
 
 interface WordGraphCardProps {
   conceptGraph?: ConceptGraph
 }
 
 export function WordGraphCard({ conceptGraph }: WordGraphCardProps) {
+  const t = useT()
   if (!conceptGraph || (!conceptGraph.rootCore && (!conceptGraph.branches || conceptGraph.branches.length === 0))) {
     return null
   }
@@ -20,7 +22,7 @@ export function WordGraphCard({ conceptGraph }: WordGraphCardProps) {
             🕸️
           </div>
           <h2 className="text-xs font-bold text-gray-800 dark:text-gray-200 tracking-wider uppercase">
-            Word Relationship & Concept Tree (词汇概念树状图谱)
+            {t('graph.title')}
           </h2>
         </div>
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold border border-indigo-200/50 dark:border-indigo-800/40">
@@ -31,7 +33,7 @@ export function WordGraphCard({ conceptGraph }: WordGraphCardProps) {
       {/* Root Node */}
       <div className="flex flex-col items-center mb-6">
         <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs shadow-md tracking-wide flex items-center gap-1.5 border border-indigo-400/30">
-          <span>🎯 根意象:</span>
+          <span>🎯 {t('graph.rootCore')}</span>
           <span>{rootCore}</span>
         </div>
         {/* Connector Line down */}
@@ -47,11 +49,18 @@ export function WordGraphCard({ conceptGraph }: WordGraphCardProps) {
             className="flex flex-col rounded-xl p-3 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/80 dark:border-indigo-900/30 transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-700"
           >
             {/* Branch Header */}
-            <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-indigo-200/40 dark:border-indigo-900/40">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400" />
-              <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                {branch.category}
-              </h3>
+            <div className="mb-2 pb-1.5 border-b border-indigo-200/40 dark:border-indigo-900/40">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400" />
+                <h3 className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                  {branch.category}
+                </h3>
+              </div>
+              {branch.explanation && branch.explanation !== 'N/A' && branch.explanation !== 'null' && (
+                <p className="text-[10px] text-indigo-800/80 dark:text-indigo-300/80 leading-snug pl-3.5">
+                  {branch.explanation}
+                </p>
+              )}
             </div>
 
             {/* Examples list */}

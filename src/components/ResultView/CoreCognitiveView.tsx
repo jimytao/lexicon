@@ -3,6 +3,7 @@ import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { MeaningList } from './InstantSection/MeaningList'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
+import { NativeMindModelCard } from './AiSection/NativeMindModelCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { WordGraphCard } from './AiSection/WordGraphCard'
 import { CollocationCard } from './AiSection/CollocationCard'
@@ -24,7 +25,6 @@ interface CoreCognitiveViewProps {
 }
 
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
-import { UserNoteEditor } from './UserNoteEditor'
 
 export function CoreCognitiveView({
   word,
@@ -78,6 +78,8 @@ export function CoreCognitiveView({
               {t('aifull.youEntered')} <DiffText original={word} corrected={aiFullResult.correctForm} />
             </p>
           )}
+
+          <NativeMindModelCard nativeMindModel={aiFullResult.nativeMindModel} />
 
           {coreModules.map((module) => {
             if (!module.enabled) return null
@@ -134,8 +136,6 @@ export function CoreCognitiveView({
           })}
         </div>
       )}
-
-      <UserNoteEditor word={word} coreConceptText={aiFullResult?.coreConcept?.explanation} />
     </div>
   )
 }

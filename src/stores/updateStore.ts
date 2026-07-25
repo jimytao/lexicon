@@ -121,7 +121,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.8.0', // Should match package.json
+      currentVersion: '0.8.1', // Should match package.json
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -283,68 +283,25 @@ export const useUpdateStore = create<UpdateState>()(
 
             const filename = `lexicon-${rawVersion}.apk`
 
-            // Fetch with streaming progress tracking
-            const response = await fetch(apkUrl)
-            if (!response.ok) throw new Error(`下载失败 (HTTP ${response.status})`)
-
-            const contentLength = +(response.headers.get('Content-Length') || 0)
-            const reader = response.body?.getReader()
-            if (!reader) throw new Error('无法读取下载流')
-
             // Delete any previous partial download first
             await Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {})
 
-            // --- Chunked write to avoid base64 OOM on large APKs (20-50MB) ---
-            // Converting entire APK to base64 in WebView memory would require ~70MB RAM
-            // and crash on Android 9 low-memory devices. Instead we accumulate 1MB
-            // chunks and appendFile progressively so memory stays bounded.
-            const CHUNK_SIZE = 1 * 1024 * 1024 // 1 MB
-            let receivedLength = 0
-            let pendingBytes: Uint8Array[] = []
-            let pendingSize = 0
-            let isFirstChunk = true
+            // Track download progress natively
+            const progressListener = await Filesystem.addListener('progress', (status) => {
+              if (status.url === apkUrl && status.contentLength > 0) {
+                set({ progress: Math.round((status.bytes / status.contentLength) * 100) })
+              }
+            })
 
-            const flushChunk = async (bytes: Uint8Array[]) => {
-              const blob = new Blob(bytes)
-              const base64chunk = await new Promise<string>((resolve, reject) => {
-                const fr = new FileReader()
-                fr.onloadend = () => {
-                  const result = fr.result as string
-                  // Strip the data:...;base64, prefix
-                  resolve(result.substring(result.indexOf(',') + 1))
-                }
-                fr.onerror = () => reject(fr.error)
-                fr.readAsDataURL(blob)
+            try {
+              await Filesystem.downloadFile({
+                url: apkUrl,
+                path: filename,
+                directory: Directory.Cache,
+                progress: true,
               })
-              if (isFirstChunk) {
-                await Filesystem.writeFile({ path: filename, data: base64chunk, directory: Directory.Cache })
-                isFirstChunk = false
-              } else {
-                await Filesystem.appendFile({ path: filename, data: base64chunk, directory: Directory.Cache })
-              }
-            }
-
-            while (true) {
-              const { done, value } = await reader.read()
-              if (done) break
-              pendingBytes.push(value)
-              pendingSize += value.length
-              receivedLength += value.length
-
-              if (contentLength > 0) {
-                set({ progress: Math.round((receivedLength / contentLength) * 100) })
-              }
-
-              if (pendingSize >= CHUNK_SIZE) {
-                await flushChunk(pendingBytes)
-                pendingBytes = []
-                pendingSize = 0
-              }
-            }
-
-            // Flush remaining bytes
-            if (pendingBytes.length > 0) {
-              await flushChunk(pendingBytes)
+            } finally {
+              await progressListener.remove()
             }
 
             set({ status: 'ready', progress: 100 })
