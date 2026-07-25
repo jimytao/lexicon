@@ -15,7 +15,7 @@
 - **`src-tauri/Cargo.toml`**: `version = "X.X.X"`
 
 ### 更新检测 (Manifest)
-- **`version.json`**: `"version": "X.X.X"`
+- **`version.json`**: `"version": "X.X.X"` 以及 `platforms["windows-x86_64"].url` 中的下载链接版本号（确保指向 `.../download/vX.X.X/Lexicon_X.X.X_x64-setup.exe`，避免下载旧版本与新签名不匹配导致签名校验失败）。
 
 ### 移动端 (Mobile)
 - **Android**: 修改 `android/app/build.gradle`，自增 `versionCode` 并更新 `versionName` 为新的 "X.X.X"。

@@ -2,7 +2,7 @@
   "platforms": {
     "windows-x86_64": {
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXhsb05YODJiUjl5SzVoS2JqamhCOW5wS1RYdnF1OHRoUE9DdUJXTEFKTEZyeVBMUlBtSEliMlg1cS9EejNqTFpnaWx1cUJxc3FkRFlwQlNsZ0FKRkFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTUzODIzCWZpbGU6TGV4aWNvbl8wLjguMV94NjQtc2V0dXAuZXhlCkdKSkZtVTg3T0cyYjdnNEtWY0tzKzVma1JFNk5vZURFMkdFYmNTamxiaVljcDU4bHlOZ1ZBLzV2T1o5bTBLSE9kNE1Sb3huc3lqbHE4d0Joc0QxVEFRPT0K",
-      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.0/Lexicon_0.8.0_x64-setup.exe"
+      "url": "https://github.com/jimytao/lexicon/releases/download/v0.8.1/Lexicon_0.8.1_x64-setup.exe"
     }
   },
   "pub_date": "2026-07-25T12:40:00Z",
