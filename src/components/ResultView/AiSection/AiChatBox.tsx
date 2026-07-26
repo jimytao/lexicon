@@ -7,6 +7,7 @@ import { recordAiChatEvent } from '../../../services/profile'
 import type { ChatMessage } from '../../../types'
 import { normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
+import { AI_CHAT_COMPOSER_LAYOUT } from '../../../utils/aiChatComposerLayout'
 import { SectionHeading } from '../SectionHeading'
 
 
@@ -125,7 +126,7 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
         </div>
       )}
 
-      <div className="flex gap-2 items-center">
+      <div className={AI_CHAT_COMPOSER_LAYOUT.row}>
         {/* Rich context toggle — beside input so iOS keyboard scroll cannot push it off-screen.
             Still a single button; only rendered when enrichedContext exists. */}
         {enrichedContext && (
@@ -134,7 +135,7 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
             onClick={() => setRichMode(v => !v)}
             title={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
             aria-label={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
-            className={`flex items-center justify-center w-9 h-9 shrink-0 rounded-full transition-all duration-200 ${
+            className={`${AI_CHAT_COMPOSER_LAYOUT.bulb} transition-all duration-200 ${
               richMode
                 ? 'bg-violet-500 text-white shadow-sm shadow-violet-300/40 dark:shadow-violet-700/30'
                 : 'text-violet-400 dark:text-violet-500 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-violet-200/60 dark:border-violet-800/50'
@@ -152,12 +153,12 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder')}
           disabled={loading}
-          className="flex-1 text-sm border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 outline-none focus:border-violet-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 disabled:opacity-60"
+          className={AI_CHAT_COMPOSER_LAYOUT.input}
         />
         <button
           onClick={handleSend}
           disabled={loading || !input.trim()}
-          className="text-xs px-3 py-2 rounded-xl bg-violet-500 text-white hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+          className={AI_CHAT_COMPOSER_LAYOUT.send}
         >
           {t('chat.send')}
         </button>

@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.8.5**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.8.6**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -251,9 +251,9 @@ nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介�
 
 ### 最近一次重要改动
 
-**2026-07-25** — Lookup/Core 模组重组：理解记忆 vs 母语者用法；`chunks`=介词语组 / `collocations`=其他词组；Lookup 释义核对 vs Core 场景造句；设置两列表仍可自由拖拽。
+**2026-07-26 (v0.8.6)** — 窄屏 UI：Chat Send 防裁切；去掉「N AI follow-ups」徽章（保留底部 Chat）；设置多选项 ChoiceRow（说明独占下一行）。
 
-此前同日（v0.8.4）：首页空态居中；workflow §0；README 对齐。
+此前（v0.8.5）：Lookup/Core 学习流分轨；AI 超时修复；结果页视觉克制。
 
 ### 关键实现备忘
 

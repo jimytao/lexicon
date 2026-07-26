@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS user_word_memory (
 * Profile 后台蒸馏、Settings 内 Profile 查看/重置 **继续可用**（与看板展示解耦）。
 
 ### 6.2 词汇/句子详情页：`LexiconMemoryBadge` & `UserNoteEditor`
-- `LexiconMemoryBadge`：结果页顶部只读展示已有笔记 / Q&A / Core 意象徽章。
+- `LexiconMemoryBadge`：结果页顶部只读展示已有笔记 / Core 意象徽章（**不再**展示「N AI follow-ups」计数徽章；追问仍由底部 `AiChatBox` 提供，历史仍写入 `aiConversationsJson`）。
 - `UserNoteEditor`：**SHELVED (2026-07-25)** — 源码保留，结果页不挂载；`user_notes` / 对话归档 / `saved_core_concept` 的 DB API **不动**（与 md 词库无关）。
 
 ---

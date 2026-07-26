@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXc1eUFnYzd0Qkx3VlFiTkxlc0ZRY1lUcGM5YjR5Z1lqekZnOFZXMHBqZk5RSURNbjBqS0lTMmxjR1FIcDhOQUN0bnF5V3NCRTZjeG5CSzF4QnhwSGdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0OTkwNzg0CWZpbGU6TGV4aWNvbl8wLjguNV94NjQtc2V0dXAuZXhlCm90M0Q5SEhhRUFBK01JZ1V4Zm5hVGpaaXlNdkU1MWlaZkVmOTBRRlZxMXFrWmcrVjcrRjJGRjF4UVJpaEtQakhBb3FrMlplMVdVQmpVcjhyd3BTVEF3PT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.5/Lexicon_0.8.5_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXhjN1dmOVNiWHM0M21qRzFlbDljTGRzSFhVVHh4TFVyaGxpSyt5MUd2Y21oemZ3L0R5UU95QWdKME44akd4YUdyQ0REZmlwTXBITEU4OGtISXkxWndBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDM4MzkyCWZpbGU6TGV4aWNvbl8wLjguNl94NjQtc2V0dXAuZXhlCngrcDFCSWZrL2Z3dFV1aklqRGt0VW9DejFwNEJGZW5zYXVTWUgwU1VkNzJDYWJUdkpzWURSYlQ5U3VKNzkxYm5sRkoxaStFU1dVMmx3RFY1dHB0dUNnPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.6/Lexicon_0.8.6_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-25T14:50:00Z",
-    "version":  "0.8.5",
-    "notes":  "Lookup/Core 学习流分轨、AI 超时修复与结果页视觉克制\n1. 新增：AI Lookup 与 Pure Core 学习分工（理解记忆 vs 母语用法）；Core 词组专用模组；历史双星分轨。\n2. 修复：AI 超时不再卡死 loading；Instant 取消进行中请求；历史纯 Instant 不再误切 AI。\n3. 优化：结果页统一板块标题，去掉装饰色点/emoji/多余 AI 徽章。\n4. 工程：vitest 单测基建；文档与 Settings 模组拖拽同步。\n",
-    "notes_zh":  "Lookup/Core 学习流分轨、AI 超时修复与结果页视觉克制\n1. 新增：AI Lookup 与 Pure Core 学习分工（理解记忆 vs 母语用法）；Core 词组专用模组；历史双星分轨。\n2. 修复：AI 超时不再卡死 loading；Instant 取消进行中请求；历史纯 Instant 不再误切 AI。\n3. 优化：结果页统一板块标题，去掉装饰色点/emoji/多余 AI 徽章。\n4. 工程：vitest 单测基建；文档与 Settings 模组拖拽同步。\n",
-    "notes_en":  "Lookup/Core learning tracks, AI timeout fix, and calmer result UI\n1. **New**: Clear Lookup vs Pure Core learning split; Core phrase modules; dual-star history tracks.\n2. **Fixed**: AI timeouts no longer stick on loading; Instant cancels in-flight AI; Instant-only history no longer forces AI mode.\n3. **Improved**: Unified result section headings; removed decorative dots/emoji/redundant AI pills.\n4. **Engineering**: vitest unit tests; Settings module lists and docs synced.\n",
+    "pub_date":  "2026-07-26T04:00:02Z",
+    "version":  "0.8.6",
+    "notes":  "窄屏 UI 修复：Chat Send、去 follow-ups 徽章、设置 ChoiceRow\n1. 修复：窄屏底部 AI Chat 的 Send 按钮不再被裁切。\n2. 优化：结果页去掉「N AI follow-ups」计数徽章；底部 AI Chat 提问保留。\n3. 优化：设置页 Default Search Mode / History Prefer / App Language 改为标题+按钮一行、说明独占下一整行。\n",
+    "notes_zh":  "窄屏 UI 修复：Chat Send、去 follow-ups 徽章、设置 ChoiceRow\n1. 修复：窄屏底部 AI Chat 的 Send 按钮不再被裁切。\n2. 优化：结果页去掉「N AI follow-ups」计数徽章；底部 AI Chat 提问保留。\n3. 优化：设置页 Default Search Mode / History Prefer / App Language 改为标题+按钮一行、说明独占下一整行。\n",
+    "notes_en":  "Narrow-screen UI: Chat Send, remove follow-ups badge, Settings ChoiceRow\n1. **Fixed**: AI Chat Send button no longer clipped on narrow phones.\n2. **Improved**: Removed the “N AI follow-ups” count badge; bottom AI Chat remains.\n3. **Improved**: Settings multi-option rows (Default Search Mode / History Prefer / App Language) use title+controls on one row and a full-width description below.\n",
     "is_major":  false
 }

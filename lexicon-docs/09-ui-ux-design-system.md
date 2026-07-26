@@ -81,9 +81,10 @@ Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
 - **✅ Icons only for interaction or status**: pronunciation, expand/collapse, retry, generate, delete, nav
 
 ### Alignment & Flex Rules
-- **Left Column**: Wraps in `flex-1 min-w-0 pr-3` so titles and descriptions never overlap or push right-side controls.
+- **Left Column** (ToggleRow / single action): Wraps in `flex-1 min-w-0 pr-3` so titles and descriptions never overlap or push right-side controls.
 - **Right Column**: Buttons, toggles, and selectors wrap in `shrink-0 flex items-center gap-2`.
 - **Button Text**: All right-side action buttons MUST include `whitespace-nowrap` to prevent awkward multi-line button text wrapping.
+- **Multi-option ChoiceRow** (2+ pill selectors, e.g. Default Search Mode): **Do not** put title + long description in a narrow left column beside a wide pill group. Use scheme 1 — row 1: title + controls; row 2: full-width description (`SETTINGS_CHOICE_ROW_LAYOUT` / `ChoiceRow` in `SettingsView`).
 
 ---
 
@@ -96,6 +97,11 @@ Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
 ### `ToggleRow`
 - **Purpose**: Binary state toggle.
 - **Padding & Layout**: `w-full flex items-center justify-between px-4 py-3 hover:bg-foreground/5`
+
+### `ChoiceRow` (Settings multi-option)
+- **Purpose**: Segmented / pill selectors with 2+ options (Default Search Mode, History Prefer, App Language).
+- **Layout (scheme 1)**: `flex-col` — title + controls on the first row; description on a second full-width row.
+- **Contract**: `src/utils/settingsChoiceRowLayout.ts` (`SETTINGS_CHOICE_ROW_LAYOUT`).
 
 ### `Accordion` (Settings Menu)
 - **Purpose**: Hides secondary complexity without adding visual clutter.

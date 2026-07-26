@@ -23,6 +23,7 @@ import { testConnection } from '../../services/ai'
 import { useUpdateStore } from '../../stores/updateStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useT } from '../../i18n'
+import { SETTINGS_CHOICE_ROW_LAYOUT } from '../../utils/settingsChoiceRowLayout'
 import { Accordion } from './Accordion'
 import { ProfileModal } from './ProfileModal'
 import { resetProfile } from '../../services/profile'
@@ -177,6 +178,28 @@ function ToggleRow({ label, desc, value, onChange, indent = false }: {
         </div>
       </div>
     </button>
+  )
+}
+
+/** Multi-option row: title + controls on row 1; full-width description on row 2. */
+function ChoiceRow({
+  label,
+  desc,
+  children,
+}: {
+  label: string
+  desc?: string
+  children: React.ReactNode
+}) {
+  const L = SETTINGS_CHOICE_ROW_LAYOUT
+  return (
+    <div className={L.root}>
+      <div className={L.titleRow}>
+        <span className={L.title}>{label}</span>
+        {children}
+      </div>
+      {desc && <p className={L.desc}>{desc}</p>}
+    </div>
   )
 }
 
@@ -533,33 +556,26 @@ export function SettingsView() {
           <GroupHeader icon="🔍" label={g2} />
           <Group>
             {/* Default Search Mode */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex-1 min-w-0 pr-3">
-                <span className="text-sm font-bold text-foreground">{t('settings.defaultMode')}</span>
-                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.defaultModeDesc')}</p>
-              </div>
-              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border shrink-0">
+            <ChoiceRow label={t('settings.defaultMode')} desc={t('settings.defaultModeDesc')}>
+              <div className={SETTINGS_CHOICE_ROW_LAYOUT.controls}>
                 {(['instant', 'ai', 'core'] as const).map(m => (
                   <button
                     key={m}
+                    type="button"
                     onClick={() => setDefaultSearchMode(m)}
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${defaultSearchMode === m ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
+                    className={SETTINGS_CHOICE_ROW_LAYOUT.optionButton(defaultSearchMode === m)}
                   >
                     {m === 'instant' ? t('mode.instant') : m === 'ai' ? t('mode.ai') : t('mode.core')}
                   </button>
                 ))}
               </div>
-            </div>
+            </ChoiceRow>
 
             <RowDivider />
 
             {/* History dual-track preference */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex-1 min-w-0 pr-3">
-                <span className="text-sm font-bold text-foreground">{t('settings.historyPrefer')}</span>
-                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.historyPreferDesc')}</p>
-              </div>
-              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border shrink-0">
+            <ChoiceRow label={t('settings.historyPrefer')} desc={t('settings.historyPreferDesc')}>
+              <div className={SETTINGS_CHOICE_ROW_LAYOUT.controls}>
                 {([
                   { id: 'lookup' as const, label: t('settings.historyPreferLookup') },
                   { id: 'core' as const, label: t('settings.historyPreferCore') },
@@ -568,13 +584,13 @@ export function SettingsView() {
                     key={opt.id}
                     type="button"
                     onClick={() => setHistoryPreferCognitive(opt.id)}
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${historyPreferCognitive === opt.id ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
+                    className={SETTINGS_CHOICE_ROW_LAYOUT.optionButton(historyPreferCognitive === opt.id)}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
-            </div>
+            </ChoiceRow>
 
             <RowDivider />
 
@@ -736,21 +752,20 @@ export function SettingsView() {
           <GroupHeader icon="🎨" label={g3} />
           <Group>
             {/* App Language */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex-1 min-w-0 pr-3">
-                <span className="text-sm font-bold text-foreground block">{t('settings.appLanguage')}</span>
-                <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.appLanguageDesc')}</p>
-              </div>
-              <div className="flex items-center gap-1 bg-foreground/5 p-1 rounded-xl border border-border shrink-0">
+            <ChoiceRow label={t('settings.appLanguage')} desc={t('settings.appLanguageDesc')}>
+              <div className={SETTINGS_CHOICE_ROW_LAYOUT.controls}>
                 {(['zh', 'en'] as const).map(lang => (
-                  <button key={lang} onClick={() => setAppLanguage(lang)}
-                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${appLanguage === lang ? 'bg-accent text-white shadow-sm' : 'text-foreground-muted hover:text-foreground'}`}
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setAppLanguage(lang)}
+                    className={SETTINGS_CHOICE_ROW_LAYOUT.optionButton(appLanguage === lang)}
                   >
                     {lang === 'zh' ? '中文' : 'English'}
                   </button>
                 ))}
               </div>
-            </div>
+            </ChoiceRow>
 
             <RowDivider />
             <ToggleRow label={t('settings.darkMode')} desc={t('settings.darkModeDesc')} value={darkMode} onChange={setDarkMode} />

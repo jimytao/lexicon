@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 2026-07-26 — 窄屏 UI：Chat Send、去 follow-ups 徽章、设置 ChoiceRow (v0.8.6)
+
+### 用户可见
+1. **AI Chat Send 不再被裁切**：窄屏（如小米 6X）底部追问行给输入框 `min-w-0`，Send 完整可见。
+2. **去掉结果页「N AI follow-ups」徽章**：保留底部 AI Chat 提问；笔记 / Core 意象徽章仍可显示。
+3. **设置多选项行（方案 1）**：Default Search Mode / History Prefer / App Language 改为「标题+按钮」一行、说明独占下一整行，避免说明被挤成竖条。
+
+### 工程
+- TDD：`memoryBadgeVisibility` / `aiChatComposerLayout` / `settingsChoiceRowLayout` 契约单测 + 组件接线断言。
+- 文档：`09` ChoiceRow 规则；`08` Badge 范围说明。
+
+### 涉及文件
+- `AiChatBox.tsx`、`LexiconMemoryBadge.tsx`、`SettingsView.tsx`
+- `src/utils/{memoryBadgeVisibility,aiChatComposerLayout,settingsChoiceRowLayout}.ts` (+ `.test.ts`)
+- `CHANGELOG.md`、`lexicon-docs/08`、`09`
+
+---
+
 ## 2026-07-26 — Lookup/Core 学习流分轨、稳定性与结果页克制 (v0.8.5)
 
 本版汇总自 v0.8.4 以来的未发布改动（详见下方同日细条目）。
