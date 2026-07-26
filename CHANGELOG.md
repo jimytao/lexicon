@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 2026-07-27 — 合并双轨 AI 一次出参 + 中文 Core 翻译修复 (v0.9.0)
+
+### 用户可见
+1. **一次搜索，两页数据**：输入词/句后 AI 单次调用同时返回「理解」(AI Lookup) 和「用法」(Pure Core) 两套数据；切换标签页为**瞬间翻页**，不再触发第二次 AI 请求。
+2. **中文输入 Core 模式修复**：输入中文（如「美丽」）在 Pure Core 下，AI 现在明确知道目标是**找到最地道的英文对应词**并以母语者心智教授用法，而非分析该中文词本身。
+3. **Bypass 按钮统一语义**：无论当前处于哪个模式，Bypass（⭐ 按钮）始终跳过词典直接触发 AI 合并搜索，自动落地到 AI Lookup 标签。
+4. **Instant 词库外自动升级**：Instant 模式下输入词库里没有的词/短语/句子，自动触发合并 AI 搜索并切换到 AI Lookup 标签。
+
+### 架构
+- **旧**：mode='ai' → aiFullLookup('lookup'); mode='core' → aiFullLookup('core') — 两次独立请求，无上下文联动
+- **新**：mode='ai' 或 'core' → aiCombinedLookup(word) — 单次请求，返回 `{ lookup: AiFullResult, core: AiFullResult }`；一级缓存键 `word::combined`
+
+### TDD
+- `src/utils/combinedResult.test.ts`（13 用例）：combinedCacheKey / splitCombinedJson / reconstructFromLegacy / isValidCombinedAiResult
+- `src/services/aiCombinedPrompt.test.ts`（11 用例）：prompt 结构、中文输入规则置顶断言、feelAnchor/emotionalTone、conceptGraph
+
+### 涉及文件
+- `src/types/index.ts`：新增 `CombinedAiResult`、`CombinedPhraseResult`
+- `src/utils/combinedResult.ts` [NEW]：combinedCacheKey / splitCombinedJson / reconstructFromLegacy / isValidCombinedAiResult
+- `src/services/aiCombinedPrompt.ts` [NEW]：buildCombinedWordPrompt / buildCombinedPhrasePrompt（中文规则在 Rules 首位）
+- `src/services/ai.ts`：新增 `aiCombinedLookup` / `aiCombinedPhraseQuery`
+- `src/stores/resultStore.ts`：新增 combinedCache / combinedPhraseCache / setCombinedResult / getCachedCombined（含旧缓存重建）
+- `src/hooks/useAiLookup.ts`：新增 triggerCombinedLookup / triggerCombinedPhraseQuery
+- `src/App.tsx`：handleModeChange / handleWordSelect / handleForceAi 全部改为合并调用；标签切换为纯视图翻转
+
+---
+
 ## 2026-07-26 — 词组 Meaning / Usage Contexts 纠偏与订正折叠解耦 (v0.8.9)
 
 ### 用户可见

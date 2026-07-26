@@ -9,7 +9,9 @@ import {
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
-import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem } from '../types'
+import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
+import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
+import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult } from '../types'
 
 /** 仅当模组出现在当前模式列表且 enabled 时才请求；不在列表 = 关闭（Lookup/Core 分轨依赖此语义） */
 function moduleEnabled(modules: ModuleFlag[], id: string): boolean {
@@ -1769,3 +1771,102 @@ Rules:
   }
   throw new Error('AI returned invalid JSON for single preposition item')
 }
+
+// ── Combined Lookup+Core (v0.9.0) ────────────────────────────────────────────
+
+/**
+ * Single AI call that returns both Lookup (understand) and Core (use it) data.
+ * The two mode-tab views are populated from this one response.
+ */
+export async function aiCombinedLookup(
+  word: string,
+  isFull: boolean = true,
+  signal?: AbortSignal
+): Promise<CombinedAiResult> {
+  const config = getConfig()
+  const lang = detectLanguage(word)
+
+  const webResults = await performWebSearch(word, signal)
+
+  const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
+  const langName = langNames[lang] || 'Foreign Language'
+
+  const prompt = buildCombinedWordPrompt({
+    lookupModules: config.modules,
+    coreModules: config.coreModules,
+    lang,
+    webSearchResults: webResults,
+    isFull,
+    triLingual: config.triLingualExamples,
+    monolingualWord: config.monolingualWord,
+  })
+
+  const userMessage = lang === 'zh'
+    ? `The user typed Chinese: “${word}”\n\nFind the best English equivalent and return the combined JSON.`
+    : `${langName}: ${word}\n\nAnalyze and return the combined JSON.`
+
+  const cleaned = await callApi(prompt, userMessage, signal)
+
+  try {
+    return splitCombinedJson(cleaned)
+  } catch {
+    // Fallback: try extracting from raw
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      return splitCombinedJson(objMatch[0])
+    }
+  }
+  throw new Error('AI returned invalid JSON for combined lookup')
+}
+
+/**
+ * Single AI call for phrase/sentence — returns both Lookup and Core phrase results.
+ */
+export async function aiCombinedPhraseQuery(
+  phrase: string,
+  isFull: boolean = true,
+  signal?: AbortSignal
+): Promise<CombinedPhraseResult> {
+  const config = getConfig()
+  const lang = detectLanguage(phrase)
+
+  const webResults = await performWebSearch(phrase, signal)
+
+  const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
+  const langName = langNames[lang] || 'Foreign Language'
+
+  const qType = detectQueryType(phrase)
+  const isMono = qType === 'sentence'
+    ? config.monolingualSentence
+    : config.monolingualPhrase
+
+  const phraseQueryType = qType === 'sentence' ? 'sentence' : 'phrase'
+
+  const prompt = buildCombinedPhrasePrompt({
+    lookupModules: config.modules,
+    coreModules: config.corePhraseModules,
+    lang,
+    webSearchResults: webResults,
+    isFull,
+    triLingual: config.triLingualExamples,
+    isMono,
+    queryType: phraseQueryType,
+  })
+
+  const userMessage = lang === 'zh'
+    ? `The user typed Chinese: “${phrase}”\n\nProvide English translation + combined JSON.`
+    : `${langName}: ${phrase}\n\nAnalyze and return the combined JSON.`
+
+  const cleaned = await callApi(prompt, userMessage, signal)
+
+  try {
+    return splitCombinedPhraseJson(cleaned, phrase)
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      return splitCombinedPhraseJson(objMatch[0], phrase)
+    }
+  }
+  throw new Error('AI returned invalid JSON for combined phrase query')
+}
+

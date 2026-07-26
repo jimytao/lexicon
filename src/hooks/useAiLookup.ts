@@ -6,6 +6,8 @@ import {
   analyzeWord,
   aiFullLookup,
   aiPhraseQuery,
+  aiCombinedLookup,
+  aiCombinedPhraseQuery,
   fillMissingCollocationNotes,
   fillMissingConceptExamples,
 } from '../services/ai'
@@ -74,6 +76,7 @@ export function useAiLookup() {
   const {
     setAiStatus, setAiAnalysis, setAiFullResult, setPhraseResult, setAiError,
     getCachedAi, getCachedAiFull, getCachedPhrase,
+    setCombinedResult, setCombinedPhraseResult, getCachedCombined, getCachedCombinedPhrase,
   } = useResultStore()
   const abortRef = useRef<AbortController | null>(null)
   const gateRef = useRef(createAiRequestGate())
@@ -206,6 +209,72 @@ export function useAiLookup() {
     }
   }, [getCachedPhrase, setPhraseResult, setAiStatus, setAiError])
 
+  /** v0.9.0: Combined AI call — fetches Lookup + Core in one round-trip. */
+  const triggerCombinedLookup = useCallback(async (word: string) => {
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+    const token = gateRef.current.begin()
+
+    const cached = getCachedCombined(word)
+    if (cached) {
+      if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
+        setCombinedResult(word, cached)
+      }
+      return
+    }
+
+    const { signal: combined, dispose } = combineSignals(abortRef.current.signal, 30_000)
+
+    setAiStatus('loading')
+    try {
+      const result = await aiCombinedLookup(word, true, combined)
+      dispose()
+      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
+      setCombinedResult(word, result)
+    } catch (e) {
+      dispose()
+      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
+      const kind = classifyAiRequestError(e, combined.reason)
+      if (kind === 'abort') return
+      if (kind === 'timeout') {
+        setAiError(`「${word}」较为生僻，AI 30 秒内未能解析，建议直接向 AI 提问`)
+        return
+      }
+      setAiError(errorMessage(e))
+    }
+  }, [getCachedCombined, setCombinedResult, setAiStatus, setAiError])
+
+  /** v0.9.0: Combined phrase AI call — fetches Lookup + Core phrase results in one round-trip. */
+  const triggerCombinedPhraseQuery = useCallback(async (phrase: string) => {
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+    const token = gateRef.current.begin()
+
+    const cached = getCachedCombinedPhrase(phrase)
+    if (cached) {
+      if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
+        setCombinedPhraseResult(phrase, cached)
+      }
+      return
+    }
+
+    setAiStatus('loading')
+    try {
+      const result = await aiCombinedPhraseQuery(phrase, true, abortRef.current.signal)
+      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
+      setCombinedPhraseResult(phrase, result)
+    } catch (e) {
+      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
+      const kind = classifyAiRequestError(e, abortRef.current?.signal.reason)
+      if (kind === 'abort') return
+      if (kind === 'timeout') {
+        setAiError(`「${phrase}」请求超时，请重试或检查网络`)
+        return
+      }
+      setAiError(errorMessage(e))
+    }
+  }, [getCachedCombinedPhrase, setCombinedPhraseResult, setAiStatus, setAiError])
+
   /** Repair only missing collocation notes on current full result (keeps good notes). */
   const repairCollocationNotes = useCallback(async (word: string) => {
     const cognitive = cognitiveFromSearchMode(useSearchStore.getState().mode)
@@ -277,6 +346,8 @@ export function useAiLookup() {
     trigger,
     triggerFullLookup,
     triggerPhraseQuery,
+    triggerCombinedLookup,
+    triggerCombinedPhraseQuery,
     repairCollocationNotes,
     repairConceptExamples,
     cancelAi,

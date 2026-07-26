@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode } from '../types'
+import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode, CombinedAiResult, CombinedPhraseResult } from '../types'
 import { normalizeQuery, cognitiveCacheKey } from '../utils/text'
+import { combinedCacheKey, reconstructFromLegacy, reconstructPhraseFromLegacy } from '../utils/combinedResult'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -11,11 +12,18 @@ interface ResultStore {
   aiAnalysis: AiAnalysis | null
   aiFullResult: AiFullResult | null
   phraseResult: PhraseResult | null
+  /** v0.9.0: active combined result (both lookup + core populated from one AI call) */
+  combinedResult: CombinedAiResult | null
+  /** v0.9.0: active combined phrase result */
+  combinedPhraseResult: CombinedPhraseResult | null
   aiStatus: AiStatus
   aiError: string | null
   aiCache: Record<string, AiAnalysis>
   aiFullCache: Record<string, AiFullResult>
   phraseCache: Record<string, PhraseResult>
+  /** v0.9.0: single combined cache (replaces separate lookup/core caches for new searches) */
+  combinedCache: Record<string, CombinedAiResult>
+  combinedPhraseCache: Record<string, CombinedPhraseResult>
 
   setWordResult: (r: WordResult | null, clearAi?: boolean) => void
   setRelatedPhrases: (phrases: SuggestItem[]) => void
@@ -23,6 +31,9 @@ interface ResultStore {
   setAiAnalysis: (word: string, a: AiAnalysis) => void
   setAiFullResult: (word: string, r: AiFullResult, cognitive?: CognitiveMode) => void
   setPhraseResult: (key: string, r: PhraseResult, cognitive?: CognitiveMode) => void
+  /** v0.9.0: store combined result and update active display */
+  setCombinedResult: (word: string, r: CombinedAiResult) => void
+  setCombinedPhraseResult: (phrase: string, r: CombinedPhraseResult) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
   updateFullMnemonic: (word: string, m: Mnemonic, cognitive?: CognitiveMode) => void
@@ -30,6 +41,9 @@ interface ResultStore {
   getCachedAi: (word: string) => AiAnalysis | null
   getCachedAiFull: (word: string, cognitive?: CognitiveMode) => AiFullResult | null
   getCachedPhrase: (key: string, cognitive?: CognitiveMode) => PhraseResult | null
+  /** v0.9.0: get combined result from cache (with legacy fallback reconstruction) */
+  getCachedCombined: (word: string) => CombinedAiResult | null
+  getCachedCombinedPhrase: (phrase: string) => CombinedPhraseResult | null
   clearCache: () => void
   clearCacheOnly: () => void
   evictCacheEntry: (key: string) => void
@@ -46,11 +60,15 @@ export const useResultStore = create<ResultStore>()(
       aiAnalysis: null,
       aiFullResult: null,
       phraseResult: null,
+      combinedResult: null,
+      combinedPhraseResult: null,
       aiStatus: 'idle',
       aiError: null,
       aiCache: {},
       aiFullCache: {},
       phraseCache: {},
+      combinedCache: {},
+      combinedPhraseCache: {},
 
       setWordResult: (wordResult, clearAi = true) => {
         if (clearAi) {
@@ -137,6 +155,83 @@ export const useResultStore = create<ResultStore>()(
         set({ phraseCache: cache, phraseResult, aiStatus: 'success' })
       },
       setAiError: (aiError) => set({ aiError, aiStatus: 'error' }),
+
+      // v0.9.0: combined cache
+      setCombinedResult: (word, combinedResult) => {
+        const key = combinedCacheKey(word)
+        const cache = { ...get().combinedCache }
+        delete cache[key]
+        cache[key] = combinedResult
+        const keys = Object.keys(cache)
+        if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
+        // Also set the individual lookup/core views for legacy compatibility
+        set({
+          combinedCache: cache,
+          combinedResult,
+          aiFullResult: combinedResult.lookup,
+          aiStatus: 'success',
+        })
+      },
+      setCombinedPhraseResult: (phrase, combinedPhraseResult) => {
+        const key = combinedCacheKey(phrase)
+        const cache = { ...get().combinedPhraseCache }
+        delete cache[key]
+        cache[key] = combinedPhraseResult
+        const keys = Object.keys(cache)
+        if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
+        set({
+          combinedPhraseCache: cache,
+          combinedPhraseResult,
+          phraseResult: combinedPhraseResult.lookup,
+          aiStatus: 'success',
+        })
+      },
+      getCachedCombined: (word) => {
+        const key = combinedCacheKey(word)
+        const cache = get().combinedCache
+        if (cache[key]) {
+          const updated = { ...cache }
+          const val = updated[key]
+          delete updated[key]
+          updated[key] = val
+          set({ combinedCache: updated })
+          return val
+        }
+        // Legacy fallback: reconstruct from old separate caches if available
+        const n = normalizeQuery(word)
+        const legacyLookup = get().aiFullCache[n] ?? null
+        const legacyCore = get().aiFullCache[cognitiveCacheKey(n, 'core')] ?? null
+        if (legacyLookup || legacyCore) {
+          return reconstructFromLegacy(
+            legacyLookup ?? legacyCore!,
+            legacyCore
+          )
+        }
+        return null
+      },
+      getCachedCombinedPhrase: (phrase) => {
+        const key = combinedCacheKey(phrase)
+        const cache = get().combinedPhraseCache
+        if (cache[key]) {
+          const updated = { ...cache }
+          const val = updated[key]
+          delete updated[key]
+          updated[key] = val
+          set({ combinedPhraseCache: updated })
+          return val
+        }
+        // Legacy fallback
+        const n = normalizeQuery(phrase)
+        const legacyLookup = get().phraseCache[n] ?? null
+        const legacyCore = get().phraseCache[cognitiveCacheKey(n, 'core')] ?? null
+        if (legacyLookup || legacyCore) {
+          return reconstructPhraseFromLegacy(
+            legacyLookup ?? legacyCore!,
+            legacyCore
+          )
+        }
+        return null
+      },
       getCachedAi: (word) => {
         const normalized = normalizeQuery(word)
         const cache = get().aiCache
@@ -177,8 +272,8 @@ export const useResultStore = create<ResultStore>()(
         }
         return null
       },
-      clearCache: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, aiStatus: 'idle', aiError: null }),
-      clearCacheOnly: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {} }),
+      clearCache: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null }),
+      clearCacheOnly: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {} }),
       evictCacheEntry: (key) => {
         const normalized = normalizeQuery(key)
         set((state) => {
@@ -190,10 +285,14 @@ export const useResultStore = create<ResultStore>()(
           delete aiFullCache[cognitiveCacheKey(normalized, 'core')]
           delete phraseCache[normalized]
           delete phraseCache[cognitiveCacheKey(normalized, 'core')]
-          return { aiCache, aiFullCache, phraseCache }
+          const combinedCache = { ...state.combinedCache }
+          const combinedPhraseCache = { ...state.combinedPhraseCache }
+          delete combinedCache[combinedCacheKey(normalized)]
+          delete combinedPhraseCache[combinedCacheKey(normalized)]
+          return { aiCache, aiFullCache, phraseCache, combinedCache, combinedPhraseCache }
         })
       },
-      reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, aiStatus: 'idle', aiError: null }),
+      reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null }),
     }),
     { 
       name: 'lexicon-results',
@@ -201,6 +300,8 @@ export const useResultStore = create<ResultStore>()(
         aiCache: state.aiCache,
         aiFullCache: state.aiFullCache,
         phraseCache: state.phraseCache,
+        combinedCache: state.combinedCache,
+        combinedPhraseCache: state.combinedPhraseCache,
       })
     }
   )

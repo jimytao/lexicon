@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTA5MWk0TzA2TmlPcjVrOHpYaGd1aE5lN0JkT2RtcTM3RTNNY055ZVJqMTEwd3djR0ZLR2V0U2FHQTdhelRvU284M1k1M245aHNBN3l4ZERaNlRSRVFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDY1NzM2CWZpbGU6TGV4aWNvbl8wLjguOV94NjQtc2V0dXAuZXhlClE3NC9rdFFpb0tnQitzK0FEMmVNb3Avb0sxNktBR2pscldFbmVocWZQTEN1M1lZdWtnMi8wQVV4QitDZENVMjhicC96ZFpBOGNJTkxkNXpoSUhpMkNBPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBSeTNOOUl0eGtFSExVbmdTN1FvQ2FrK0x3eTlVS1Bxc3NoYjlHUHpSY0Y0a3dzL2U1S1NMR2NFd2pzTTYzQW9oZ3I5azVGVDIxZmVaNUFWVEN4emc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDc3NzUwCWZpbGU6TGV4aWNvbl8wLjkuMF94NjQtc2V0dXAuZXhlCkcvY3VLa0IrTlhuTTJ0RHVCM21ObW5XSlozZUtJbUdPMEVtWndYdEx2bGd2RkFDb25Lb0szWEg4Nmthb1BLT1Y2bnZNWFdKTmc1anJseWZvNlJBUUJnPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-26T11:39:26Z",
-    "version":  "0.8.9",
-    "notes":  "词组释义与用法场景职责纠偏；订正标题与「为什么这么改」独立折叠\n1. 优化：短词组 Meaning 只保留短释义；情景 / 俚语 / 母语选用意图放到 Usage Contexts（含开场白 usageIntro）\n2. 优化：长句 / 段落 Meaning 仍要求完整逐句翻译，不受短词组规则误伤\n3. 修复：超长订正标题独立折叠；黄色「为什么这么改？」不再被一起裁切\n",
-    "notes_zh":  "词组释义与用法场景职责纠偏；订正标题与「为什么这么改」独立折叠\n1. 优化：短词组 Meaning 只保留短释义；情景 / 俚语 / 母语选用意图放到 Usage Contexts（含开场白 usageIntro）\n2. 优化：长句 / 段落 Meaning 仍要求完整逐句翻译，不受短词组规则误伤\n3. 修复：超长订正标题独立折叠；黄色「为什么这么改？」不再被一起裁切\n",
-    "notes_en":  "Phrase Meaning vs Usage Contexts ownership; independent fold for corrected title vs “why changed”\n1. **Improved**: Short phrases keep Meaning as a gloss; situational / slang / native-intent copy moves to Usage Contexts (with usageIntro blurb)\n2. **Improved**: Long sentences / paragraphs still require full line-by-line translation in Meaning\n3. **Fix**: Long corrected titles fold on their own; amber “why changed” is no longer clipped with them\n",
+    "pub_date":  "2026-07-26T14:58:01Z",
+    "version":  "0.9.0",
+    "notes":  "合并双轨 AI 一次出参 + 中文 Core 翻译修复\n1. 新增：一次搜索，两页数据——输入词/句后 AI 单次调用同时返回「理解」(AI Lookup) 和「用法」(Pure Core) 两套数据，标签页秒切无延迟。\n2. 修复：中文输入 Core 模式——输入中文（如「美丽」）时 AI 明确寻找最地道的英文对应词并以母语者心智教授用法。\n3. 优化：Bypass 按钮（⭐）统一跳过词典直接触发 AI 合并搜索并落地到 AI Lookup 标签。\n4. 优化：Instant 模式输入词库外词/短语/句子时，自动触发合并 AI 搜索。\n",
+    "notes_zh":  "合并双轨 AI 一次出参 + 中文 Core 翻译修复\n1. 新增：一次搜索，两页数据——输入词/句后 AI 单次调用同时返回「理解」(AI Lookup) 和「用法」(Pure Core) 两套数据，标签页秒切无延迟。\n2. 修复：中文输入 Core 模式——输入中文（如「美丽」）时 AI 明确寻找最地道的英文对应词并以母语者心智教授用法。\n3. 优化：Bypass 按钮（⭐）统一跳过词典直接触发 AI 合并搜索并落地到 AI Lookup 标签。\n4. 优化：Instant 模式输入词库外词/短语/句子时，自动触发合并 AI 搜索。\n",
+    "notes_en":  "Combined Dual-Track AI Single Request + Chinese Core Translation Fix\n1. **New**: Single Search, Instant Two-Tab View — AI generates both Lookup and Pure Core data in a single request for zero-latency tab switching.\n2. **Fix**: Chinese Query in Core Mode — Inputting Chinese words (e.g., \"美丽\") in Pure Core explicitly guides AI to find authentic English counterparts and teach usage from a native perspective.\n3. **Improved**: Bypass button (⭐) uniformly skips local dictionary to run combined AI lookup directly into the Lookup tab.\n4. **Improved**: Out-of-dictionary queries in Instant mode automatically trigger combined AI search.\n",
     "is_major":  false
 }

@@ -9,16 +9,16 @@
 ## 🚀 核心特性
 
 ### 1. 三种查词模式
-- **Instant**：纯本地词库，零延迟，离线可用（切回 Instant 只显示 L1，AI 缓存保留）。
+- **Instant**：纯本地词库，零延迟，离线可用（词库外输入自动触发 AI 合并搜索）。
 - **AI Lookup**：理解与记忆——L1 立即呈现；轻量意象、词根、助记、例句、介词意象、释义核对练习与 Chat 异步淡入。
 - **Pure Core**：母语者用法——用法意象（含感觉锚/情绪底色）、概念树、介词语组/其他词组（尾缀类词可空）、近义与**选用对照**、用法场景、语域与造句练习（无释义墙；模组均可拖拽排序）。
+- **合并双轨出参**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套数据，标签页**瞬间翻页**零延迟；Bypass 按钮（⭐）一键触发合并 AI 搜索。
 - **词组/句子**：短词组 Meaning 只留短释义；情景与母语选用意图在 **Usage Contexts**（含开场白）；超长订正标题与「为什么这么改」各自独立折叠。
-- 顶部模式切换**点击即生效**（有缓存恢复，无缓存立刻发起对应查询）；历史列表双星区分 Lookup / Core 轨。
 
 ### 2. 双本地词库与智能路由
 - **多词库**：牛津高阶第 9 版中英双解（`lexicon.db`，约 5.2 万）+ 第 10 版纯英英（`lexicon_en.db`，约 8.4 万）。
 - **单语热切换**：单词 / 短语可独立开启单语模式，自动在英英与双解间切换并调整排版。
-- **中文反向路由**：输入中文时路由至双解库做反向匹配，命中后与英文主体、AI 分析与缓存对齐。
+- **中文反向路由与 Core 修复**：输入中文时路由至双解库反向匹配；Pure Core 模式明确寻找地道英文对应词并以母语者心智教授用法。
 - **回退保护**：英英库缺失时安全回退双解，避免崩溃。
 
 ### 3. AI 增强与个人资产
@@ -45,12 +45,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.8.9_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.8.9_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.9.0_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.9.0_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64_en-US.msi)**（MSI）
 
 ### Android
-- **[Lexicon_0.8.9_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.8.9](https://github.com/jimytao/lexicon/releases/tag/v0.8.9)。
+- **[Lexicon_0.9.0_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.9.0](https://github.com/jimytao/lexicon/releases/tag/v0.9.0)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

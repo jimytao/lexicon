@@ -9,16 +9,16 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 ## 🚀 Key Features
 
 ### 1. Three lookup modes
-- **Instant**: Local dictionary only — zero latency, offline (switching back shows L1 only; AI cache kept).
+- **Instant**: Local dictionary only — zero latency, offline (out-of-dict queries auto-trigger combined AI search).
 - **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
 - **Pure Core**: Native usage — usage image (feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms plus **word-choice contrast**, scenes, register, and usage-output practice (no definition wall; modules are reorderable).
+- **Combined Dual-Track Results**: Single AI request generates both Lookup and Pure Core data for instant zero-latency tab switching; Bypass button (⭐) triggers combined AI search.
 - **Phrases / sentences**: Short phrases keep Meaning as a gloss; situational / native-intent copy lives under **Usage Contexts** (with an intro blurb); long corrected titles and “why changed” fold independently.
-- Mode switches apply **on click** (restore cache when present; otherwise trigger the matching lookup). History dual-stars mark Lookup vs Core tracks.
 
 ### 2. Dual dictionaries & smart routing
 - **Dictionaries**: OALD 9 bilingual (`lexicon.db`, ~52k) + OALD 10 English-English (`lexicon_en.db`, ~84k).
 - **Monolingual hot-swap**: Independent word/phrase toggles; UI reflows and hides redundant Chinese when needed.
-- **Chinese reverse routing**: Chinese queries map via the bilingual DB; AI analysis and caches bind to the English headword.
+- **Chinese reverse routing & Core fix**: Chinese queries map via the bilingual DB; Pure Core explicitly guides AI to find authentic English counterparts and teach usage from a native perspective.
 - **Fallback**: Missing English-English DB falls back to bilingual safely.
 
 ### 3. AI extras & personal assets
@@ -45,12 +45,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.8.9_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.8.9_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.0_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.0_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.8.9_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.8.9](https://github.com/jimytao/lexicon/releases/tag/v0.8.9).
+- **[Lexicon_0.9.0_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.0](https://github.com/jimytao/lexicon/releases/tag/v0.9.0).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

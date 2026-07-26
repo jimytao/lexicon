@@ -238,6 +238,25 @@ export interface PhraseResult {
 
 export type PhraseAnalysisResult = PhraseResult
 
+/**
+ * Combined AI result carrying both Lookup ("understand") and Core ("use it") data
+ * from a single AI call. Tab buttons switch between the two views without a new call.
+ */
+export interface CombinedAiResult {
+  /** AI Lookup view — meanings, etymology, examples, memory aids */
+  lookup: AiFullResult
+  /** Pure Core view — native-mind image, concept graph, usage scenes */
+  core: AiFullResult
+}
+
+/**
+ * Combined phrase/sentence result for phrase-type queries.
+ */
+export interface CombinedPhraseResult {
+  lookup: PhraseResult
+  core: PhraseResult
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string

@@ -98,9 +98,9 @@ export function App() {
     lastScrollTopRef.current = 0
   }, [view])
 
-  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, aiStatus, aiError } = useResultStore()
+  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
-  const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery, cancelAi } = useAiLookup()
+  const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery, triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
 
   useEffect(() => {
@@ -186,84 +186,42 @@ export function App() {
     const currentWord = store.wordResult
     const target = (currentQuery.trim() || currentWord?.word || '').trim()
 
-    // → AI Lookup：本地 analyze / 词组 Lookup 分轨 / 全量 Lookup 分轨（含 Core→Lookup、Instant 直达）
-    if (next === 'ai') {
-      if (searchSource === 'local' && currentWord) {
-        const cached = store.getCachedAi(currentWord.word)
-        if (cached) {
-          store.setAiAnalysis(currentWord.word, cached)
-          upgradeHistory(currentWord.word, 'analyze')
-        } else if (store.aiStatus !== 'loading') {
-          triggerAi(currentWord.word, currentWord.meanings, currentWord.examples.length === 0)
-          upgradeHistory(currentWord.word, 'analyze')
-        }
-      } else if (searchSource === 'phrase' || (target && (detectQueryType(target) === 'phrase' || detectQueryType(target) === 'sentence'))) {
-        if (target) {
-          const cognitive = cognitiveFromSearchMode('ai')
-          const cachedPhrase = store.getCachedPhrase(target, cognitive)
-          setSearchSource('phrase')
-          if (cachedPhrase) {
-            store.setPhraseResult(target, cachedPhrase, cognitive)
-          } else {
-            triggerPhraseQuery(target)
-          }
-          upgradeHistory(target, 'phrase')
-        }
-      } else if (searchSource === 'ai-full' || (target && detectQueryType(target) === 'word')) {
-        // Core / Instant OOD → Lookup：有本地快照则恢复 L1+analyze，否则走 Lookup 全量分轨
-        const snap = localWordSnapshotRef.current
-        if (snap && searchSource === 'ai-full') {
-          store.setWordResult(snap.wordResult, false)
-          store.setRelatedPhrases(snap.relatedPhrases)
-          setSearchSource('local')
-          const cached = store.getCachedAi(snap.wordResult.word)
-          if (cached) {
-            store.setAiAnalysis(snap.wordResult.word, cached)
-            upgradeHistory(snap.wordResult.word, 'analyze')
-          } else {
-            triggerAi(snap.wordResult.word, snap.wordResult.meanings, snap.wordResult.examples.length === 0)
-            upgradeHistory(snap.wordResult.word, 'analyze')
-          }
-        } else if (target) {
-          const cognitive = cognitiveFromSearchMode('ai')
-          const cachedFull = store.getCachedAiFull(target, cognitive)
-          setSearchSource('ai-full')
-          if (cachedFull) {
-            store.setAiFullResult(target, cachedFull, cognitive)
-          } else {
-            triggerFullLookup(target)
-          }
-          upgradeHistory(target, 'full')
-        }
+    // → AI Lookup (local word): still uses analyze path
+    if (next === 'ai' && searchSource === 'local' && currentWord) {
+      const cached = store.getCachedAi(currentWord.word)
+      if (cached) {
+        store.setAiAnalysis(currentWord.word, cached)
+        upgradeHistory(currentWord.word, 'analyze')
+      } else if (store.aiStatus !== 'loading') {
+        triggerAi(currentWord.word, currentWord.meanings, currentWord.examples.length === 0)
+        upgradeHistory(currentWord.word, 'analyze')
       }
+      return
     }
 
-    // → Pure Core（含 Instant 直达）：有缓存恢复，否则立刻 full/phrase
-    if (next === 'core') {
-      if (target) {
-        const qt = detectQueryType(target)
-        if (qt === 'phrase' || qt === 'sentence') {
-          const cognitive = cognitiveFromSearchMode('core')
-          const cachedPhrase = store.getCachedPhrase(target, cognitive)
-          setSearchSource('phrase')
-          if (cachedPhrase) {
-            store.setPhraseResult(target, cachedPhrase, cognitive)
-          } else {
-            triggerPhraseQuery(target)
-          }
-          upgradeHistory(target, 'phrase')
+    // → AI or Core (OOD / phrase / ai-full): combined call — tab flip is a view-only switch if cached
+    if ((next === 'ai' || next === 'core') && target) {
+      const qt = detectQueryType(target)
+      if (qt === 'phrase' || qt === 'sentence') {
+        setSearchSource('phrase')
+        const cached = store.getCachedCombinedPhrase(target)
+        if (cached) {
+          store.setCombinedPhraseResult(target, cached)
         } else {
-          const cognitive = cognitiveFromSearchMode('core')
-          const cachedFull = store.getCachedAiFull(target, cognitive)
-          setSearchSource('ai-full')
-          if (cachedFull) {
-            store.setAiFullResult(target, cachedFull, cognitive)
-          } else {
-            triggerFullLookup(target)
-          }
-          upgradeHistory(target, 'full')
+          triggerCombinedPhraseQuery(target)
         }
+        upgradeHistory(target, 'phrase')
+      } else {
+        setSearchSource('ai-full')
+        const cached = store.getCachedCombined(target)
+        if (cached) {
+          store.setCombinedResult(target, cached)
+        } else {
+          triggerCombinedLookup(target)
+        }
+        upgradeHistory(target, 'full')
       }
+      return
     }
 
     // → Instant：有本地词典快照则只显示 L1（不加载 AI 展示，缓存保留）；否则清空结果区，保留搜索框
@@ -278,6 +236,8 @@ export function App() {
           aiAnalysis: null,
           aiFullResult: null,
           phraseResult: null,
+          combinedResult: null,
+          combinedPhraseResult: null,
           aiStatus: 'idle',
           aiError: null,
         })
@@ -289,6 +249,8 @@ export function App() {
           aiAnalysis: null,
           aiFullResult: null,
           phraseResult: null,
+          combinedResult: null,
+          combinedPhraseResult: null,
           aiStatus: 'idle',
           aiError: null,
         })
@@ -380,36 +342,33 @@ export function App() {
       } else {
         const store = useResultStore.getState()
         const currentMode = useSearchStore.getState().mode
-        const cognitive = cognitiveFromSearchMode(currentMode)
-        const cachedFull = store.getCachedAiFull(word, cognitive)
-        const cachedPhrase = store.getCachedPhrase(word, cognitive)
-        const cachedAi = store.getCachedAi(result.word)
 
-        if (cachedFull) {
+        if (currentMode === 'ai' || currentMode === 'core') {
+          // Combined path: check combined cache first; if missing fire a combined call
           setSearchSource('ai-full')
-          if (currentMode !== 'core') {
-            useSearchStore.getState().setMode('ai')
+          const cachedCombined = store.getCachedCombined(word)
+          if (cachedCombined) {
+            store.setCombinedResult(word, cachedCombined)
+            upgradeHistory(word, 'full')
+          } else {
+            triggerCombinedLookup(word)
+            upgradeHistory(word, 'full')
           }
-          useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
-          upgradeHistory(word, 'full', cognitive)
-        } else if (cachedPhrase) {
-          setSearchSource('phrase')
-          if (currentMode !== 'core') {
+        } else {
+          // Instant / legacy path
+          const cognitive = cognitiveFromSearchMode(currentMode)
+          const cachedFull = store.getCachedAiFull(word, cognitive)
+          const cachedAi = store.getCachedAi(result.word)
+
+          if (cachedFull) {
+            setSearchSource('ai-full')
+            useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
+            upgradeHistory(word, 'full', cognitive)
+          } else if (cachedAi) {
             useSearchStore.getState().setMode('ai')
+            useResultStore.getState().setAiAnalysis(result.word, cachedAi)
+            upgradeHistory(word, 'analyze', 'lookup')
           }
-          useResultStore.getState().setPhraseResult(word, cachedPhrase, cognitive)
-          upgradeHistory(word, 'phrase', cognitive)
-        } else if (cachedAi && currentMode !== 'core') {
-          useSearchStore.getState().setMode('ai')
-          useResultStore.getState().setAiAnalysis(result.word, cachedAi)
-          upgradeHistory(word, 'analyze', 'lookup')
-        } else if (currentMode === 'ai') {
-          triggerAi(result.word, result.meanings, result.examples.length === 0)
-          upgradeHistory(word, 'analyze', 'lookup')
-        } else if (currentMode === 'core') {
-          setSearchSource('ai-full')
-          triggerFullLookup(word)
-          upgradeHistory(word, 'full', 'core')
         }
       }
     } else {
@@ -424,33 +383,31 @@ export function App() {
         const fallback = preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
         useSearchStore.getState().setMode(historyModeForTrack(track, fallback))
       } else {
-        // Instant 未命中：按设置 defaultSearchMode 落入 Lookup 或 Core
+        // Instant 未命中：switch to 'ai' and use combined call
         const currentMode = useSearchStore.getState().mode
         if (currentMode === 'instant') {
-          const preferred = preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
-          useSearchStore.getState().setMode(preferred)
+          useSearchStore.getState().setMode('ai')
         }
       }
 
-      const cognitive = cognitiveFromSearchMode(useSearchStore.getState().mode)
       if (queryType === 'phrase' || queryType === 'sentence') {
         setSearchSource('phrase')
-        const cachedPhrase = useResultStore.getState().getCachedPhrase(word, cognitive)
+        const cachedPhrase = useResultStore.getState().getCachedCombinedPhrase(word)
         if (cachedPhrase) {
-          useResultStore.getState().setPhraseResult(word, cachedPhrase, cognitive)
+          useResultStore.getState().setCombinedPhraseResult(word, cachedPhrase)
         } else {
-          triggerPhraseQuery(word)
+          triggerCombinedPhraseQuery(word)
         }
-        upgradeHistory(word, 'phrase', cognitive)
+        upgradeHistory(word, 'phrase', 'lookup')
       } else {
         setSearchSource('ai-full')
-        const cachedFull = useResultStore.getState().getCachedAiFull(word, cognitive)
+        const cachedFull = useResultStore.getState().getCachedCombined(word)
         if (cachedFull) {
-          useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
+          useResultStore.getState().setCombinedResult(word, cachedFull)
         } else {
-          triggerFullLookup(word)
+          triggerCombinedLookup(word)
         }
-        upgradeHistory(word, 'full', cognitive)
+        upgradeHistory(word, 'full', 'lookup')
       }
     }
   }
@@ -479,24 +436,19 @@ export function App() {
       localWordSnapshotRef.current = null
     }
     useSearchStore.getState().setQuery(word)
-    
-    // Bypass local dictionary cache. Instant → follow settings preferred AI mode (Lookup / Core)
-    const currentMode = useSearchStore.getState().mode
-    const targetMode = currentMode === 'instant'
-      ? preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
-      : currentMode
-    useSearchStore.getState().setMode(targetMode)
+
+    // Always switch to 'ai' and fire a combined call (covers both Lookup + Core in one round-trip)
+    useSearchStore.getState().setMode('ai')
 
     const qt = detectQueryType(word)
-    const cognitive = cognitiveFromSearchMode(targetMode)
     if (qt === 'phrase' || qt === 'sentence') {
       setSearchSource('phrase')
-      triggerPhraseQuery(word)
-      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase', cognitive)
+      triggerCombinedPhraseQuery(word)
+      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase', 'lookup')
     } else {
       setSearchSource('ai-full')
-      triggerFullLookup(word)
-      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full', cognitive)
+      triggerCombinedLookup(word)
+      if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full', 'lookup')
     }
   }
 
@@ -717,7 +669,7 @@ export function App() {
                 ) : mode === 'core' ? (
                   <CoreCognitiveView
                     word={query}
-                    aiFullResult={aiFullResult}
+                    aiFullResult={combinedResult?.core ?? aiFullResult}
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}
@@ -727,7 +679,7 @@ export function App() {
                 ) : showAiFullView ? (
                   <AiFullView
                     word={query}
-                    aiFullResult={aiFullResult}
+                    aiFullResult={combinedResult?.lookup ?? aiFullResult}
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}
