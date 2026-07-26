@@ -354,9 +354,9 @@ export const nativeDB: DBService = {
     return saveUserNoteWithRunner(runner, word, note)
   },
 
-  async saveUserWordConversation(word, conversationsJson) {
+  async saveUserWordConversation(word, conversationsJson, cognitive) {
     const runner = await runnerForQuery(word)
-    return saveConversationWithRunner(runner, word, conversationsJson)
+    return saveConversationWithRunner(runner, word, conversationsJson, cognitive)
   },
 
   async saveUserWordCoreConcept(word, coreConceptText) {

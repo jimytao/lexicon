@@ -225,7 +225,7 @@ export function CoreCognitiveView({
                   parts.push(`语域/文化: ${aiFullResult.culturalLore.content}`)
                 }
                 const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} enrichedContext={enrichedContext} />
+                return <AiChatBox key={module.id} context={corrected} cognitive="core" enrichedContext={enrichedContext} />
               }
               default:
                 return null

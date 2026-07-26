@@ -23,7 +23,7 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 ### 3. AI extras & personal assets
 - Lookup / Core module lists are reorderable in Settings; in-context chat; meaning-check vs usage-output practice.
 - **UK / US pronunciation** (auto-play + offline TTS fallback).
-- Lexicon Memory badges (read-only: notes / Core concept; **no** AI follow-up count badge — bottom AI Chat remains); **AI Profile** diagnostics in Settings. Personal-notes editor is shelved; underlying memory data remains.
+- Lexicon Memory badges (read-only: notes / Core concept; **no** AI follow-up count badge — bottom AI Chat remains); AI follow-ups are stored on separate **Lookup / Pure Core** tracks; **AI Profile** diagnostics in Settings. Personal-notes editor is shelved; underlying memory data remains.
 - Weakness-board UI is **shelved** (not in the tab bar); Profile backend remains available.
 
 ### 4. Preposition spatial imagery
@@ -44,12 +44,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.8.6_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.6/Lexicon_0.8.6_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.8.6_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.6/Lexicon_0.8.6_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.8.7_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.8.7_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.8.6_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.6/Lexicon_0.8.6_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.8.6](https://github.com/jimytao/lexicon/releases/tag/v0.8.6).
+- **[Lexicon_0.8.7_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.8.7](https://github.com/jimytao/lexicon/releases/tag/v0.8.7).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

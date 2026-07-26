@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { db } from '../../services/db'
 import type { UserWordMemory, ChatMessage } from '../../types'
+import { flattenAiConversations, parseAiConversationsBuckets } from '../../utils/aiConversations'
 import { useT } from '../../i18n'
 
 export const USER_NOTES_ELEMENT_ID = 'lexicon-user-notes'
@@ -61,15 +62,9 @@ export function UserNoteEditor({ word, coreConceptText }: UserNoteEditorProps) {
     setTimeout(() => setIsSaved(false), 2000)
   }
 
-  const conversations: ChatMessage[] = (() => {
-    try {
-      return memory?.aiConversationsJson
-        ? (JSON.parse(memory.aiConversationsJson) as ChatMessage[])
-        : []
-    } catch {
-      return []
-    }
-  })()
+  const conversations: ChatMessage[] = memory?.aiConversationsJson
+    ? flattenAiConversations(parseAiConversationsBuckets(memory.aiConversationsJson))
+    : []
 
   const qaRounds = conversations.filter((m) => m.role === 'user').length
 

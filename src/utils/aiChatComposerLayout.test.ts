@@ -33,4 +33,9 @@ describe('AiChatBox wiring', () => {
     // Legacy bug: className="flex-1 text-sm border ..." without min-w-0
     expect(chatSrc).not.toMatch(/className="flex-1 text-sm border/)
   })
+
+  it('requires cognitive prop for Lookup/Core dual-track storage', () => {
+    expect(chatSrc).toContain('cognitive: CognitiveMode')
+    expect(chatSrc).toContain('cognitiveCacheKey')
+  })
 })

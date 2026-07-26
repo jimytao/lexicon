@@ -8,7 +8,20 @@
 - 用户要求「做完这轮改动后提交并推送」
 
 请严格按顺序执行。终端权限不足时，提示人类授权后再继续。  
-**未完成下方「0. 上传前文档门禁」之前，禁止 `git push`、禁止创建 Release、禁止上传二进制产物。**
+**未完成下方「0. 上传前文档门禁」之前，禁止 `git push`、禁止创建 Release、禁止上传二进制产物。**  
+**正式发版时：未通过 §3.5 / `Assert-ReleaseGates.ps1` 之前，禁止 `git push`、禁止打 tag、禁止 `gh release`。**
+
+### 发版脚本（优先调用，勿手写易错环境变量）
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/release/Load-ReleaseEnv.ps1` | 从 `.env.release` 加载密钥；设置 **正确的** Tauri / Android 签名环境变量 |
+| `scripts/release/Sign-TauriBundle.ps1` | 构建后若无 `.sig` 则补签（自动清除冲突 env） |
+| `scripts/release/Write-VersionJson.ps1` | 无 BOM 写入 `version.json`（signature 来自 `.sig`） |
+| `scripts/release/Prepare-AndroidApks.ps1` | 把 Gradle APK 拷成 Release 文件名 |
+| `scripts/release/Assert-ReleaseGates.ps1` | **硬门禁**：缺 `.sig` / BOM / signature 不一致 / URL 版本错 → exit 1 |
+
+密钥模板：根目录 `.env.release.example` → 复制为 `.env.release`（已 gitignore）。
 
 ---
 
@@ -182,118 +195,222 @@ Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前
 - **特殊指令**：只有当用户明确强调“这是重大版本”或要求“弹出大窗口提醒”时，才在 `version.json` 中设置 `"is_major": true`。
 
 ## 3. 本地编译构建 (Local Compilation)
-执行以下命令来编译各平台软件：
 
-**Windows PC (Tauri)**
-在根目录执行打包命令：
-```bash
-# 确保设置了签名环境变量（请从本地 .env.release 中获取）
-$env:TAURI_SIGNING_PRIVATE_KEY = "src-tauri/lexicon.key"
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $YOUR_SECRET_PASSWORD
-npm run tauri:build
+下文把版本号写作 `$V`（如 `0.8.6`，**无**前缀 `v`）。Agent 必须用真实版本替换。
+
+### 3.0 环境变量约定（唯一真相源）
+
+| `.env.release` 字段 | 进程环境变量 | 用途 |
+|---------------------|--------------|------|
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 同名 | `src-tauri/lexicon.key` 密码 |
+| （脚本设置） | `TAURI_SIGNING_PRIVATE_KEY_PATH` | **私钥文件绝对路径**（推荐唯一方式） |
+| `ANDROID_KEYSTORE_PASSWORD` | → `KEYSTORE_PASSWORD` | `android/app/build.gradle` |
+| `ANDROID_KEY_PASSWORD` | → `KEY_PASSWORD` | 同上 |
+
+**禁止 / 易错（曾导致补签与更新失败）：**
+
+| 错误做法 | 后果 |
+|----------|------|
+| `$env:TAURI_SIGNING_PRIVATE_KEY = "src-tauri/lexicon.key"`（把**路径**当私钥内容） | 签名静默失败，**不生成 `.sig`** |
+| 同时设置 `TAURI_SIGNING_PRIVATE_KEY`（内容）与 `--private-key-path` / `TAURI_SIGNING_PRIVATE_KEY_PATH` | CLI 报 conflict，补签失败 |
+| 使用已废弃名 `TAURI_PRIVATE_KEY` | 当前 Tauri CLI **不认**，等于没设签名 |
+| 手写 `version.json` 用 `Set-Content -Encoding UTF8` | 写入 **UTF-8 BOM**，更新器解析失败 |
+| `platforms` 里放 android/ios 空 signature | Tauri 校验整个 JSON 失败 |
+| `.env.release` 的 `ANDROID_*` 未映射到 `KEYSTORE_PASSWORD` | Gradle 可能用到错误默认密码 |
+
+**正确加载（每次构建前必跑）：**
+
+```powershell
+# 仓库根目录
+. .\scripts\release\Load-ReleaseEnv.ps1
+# 此后：KEY_PATH 已设；TAURI_SIGNING_PRIVATE_KEY 已清除；Android KEY* 已映射
 ```
-> [!IMPORTANT]
-> **私钥信息**：
-> - **位置**：`src-tauri/lexicon.key`
-> - **密码**：请查询本地 `.env.release` 文件中的 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 字段。
-> - **手动签名**：
->   `npx tauri signer sign -f src-tauri/lexicon.key -p <PASSWORD> <EXE_PATH>`
 
-> [!WARNING]
-> **`TAURI_SIGNING_PRIVATE_KEY` 的值必须是私钥文件的完整内容（base64 字符串），而不是文件路径字符串。**
-> 如果你把它设置为文件路径（如 `"src-tauri/lexicon.key"`），Tauri 会将路径字符串本身当作 base64 私钥来解析，导致签名静默失败、不生成 `.sig` 文件。
-> 正确做法是先读取文件内容：
-> ```powershell
-> $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content "src-tauri/lexicon.key" -Raw
-> ```
-> 如果 `npm run tauri:build` 完成后在 `src-tauri/target/release/bundle/nsis/` 目录下**没有生成 `.sig` 文件**，说明签名失败，需要用上方的手动签名命令补签。
+### 3.1 Windows PC (Tauri)
 
-**Android (Capacitor / Gradle)**
-构建前确保前端产物已同步，然后进入 `android` 目录执行 Gradle 任务：
-```bash
+```powershell
+$V = "X.X.X"   # 例：0.8.6
+. .\scripts\release\Load-ReleaseEnv.ps1
+npm run tauri:build
+
+# 若构建未产出 .sig → 补签（脚本会再清冲突 env）
+.\scripts\release\Sign-TauriBundle.ps1 -Version $V
+
+# 硬断言：exe 旁必须有 .sig
+$sig = "src-tauri/target/release/bundle/nsis/Lexicon_${V}_x64-setup.exe.sig"
+if (-not (Test-Path $sig)) { throw "NO .sig — STOP. Do not write version.json or push." }
+```
+
+产物期望路径：
+- `src-tauri/target/release/bundle/nsis/Lexicon_${V}_x64-setup.exe` + `.sig`
+- `src-tauri/target/release/bundle/msi/Lexicon_${V}_x64_en-US.msi`
+
+> 私钥文件：`src-tauri/lexicon.key`（gitignore）。密码只来自 `.env.release`，**禁止**把密码写进 `workflow.md` / CHANGELOG / 提交信息。
+
+### 3.2 Android (Capacitor / Gradle)
+
+```powershell
+$V = "X.X.X"
+. .\scripts\release\Load-ReleaseEnv.ps1   # 映射 KEYSTORE_PASSWORD / KEY_PASSWORD
 npm run build
 npx cap copy android
 cd android
-./gradlew assembleRelease
+.\gradlew.bat assembleRelease   # macOS/Linux: ./gradlew assembleRelease
 cd ..
+.\scripts\release\Prepare-AndroidApks.ps1 -Version $V
 ```
-这将在 `android/app/build/outputs/apk/release/` 下生成通用的 Universal APK 和针对不同架构的拆分 APK（ABI splits，例如 arm64-v8a 等）。
 
-**iOS (云端自动构建)**
-iOS 端无须本地编译！本仓库配置了 GitHub Actions (`.github/workflows/ios-build.yml`)。只要在后续步骤中推送到带有 `v*` 前缀的 tag（如 `v0.7.6`），云端服务器就会自动拉取最新代码，执行构建并自动将生成的 `.ipa` 文件附加到最新的 GitHub Release 中。
+Gradle 在 `signingConfigs.release` 中签名；输出在 `android/app/build/outputs/apk/release/`，脚本会拷到仓库根目录的 `Lexicon_${V}_*_signed.apk`（供 `gh release upload`）。
+
+### 3.3 iOS（云端）
+
+无需本地编译。推送 tag `v$V` 后，`.github/workflows/ios-build.yml` 自动构建并把 `Lexicon.ipa` 挂到该 Release。
+
+### 3.5 构建后硬门禁（正式发版必跑）
+
+在写完 `version.json`、准备好 5 个 APK 根目录拷贝之后、**任何 push / tag / gh release 之前**：
+
+```powershell
+.\scripts\release\Assert-ReleaseGates.ps1 -Version $V
+# exit 1 → 立刻停，禁止上传
+```
+
+---
 
 ## 4. 签名与更新检测文件同步 (Signing & Version Manifest)
-**Windows 签名同步**：Tauri 在打包时会自动使用本地环境变量（如 `TAURI_PRIVATE_KEY`）生成 `.sig` 签名文件。请**务必**读取生成的最新签名文件（例如 `src-tauri/target/release/bundle/nsis/Lexicon_X.X.X_x64-setup.exe.sig`）的文本内容，并将该长字符串更新到根目录 `version.json` 中的 `platforms["windows-x86_64"].signature` 字段。
 
-> [!WARNING]
-> **写入 `version.json` 时必须使用无 BOM 的 UTF-8 编码。**
-> PowerShell 的 `[System.IO.File]::WriteAllText(path, content, [System.Text.Encoding]::UTF8)` 以及 `Set-Content -Encoding UTF8` **默认会添加 UTF-8 BOM（EF BB BF）**。
-> Tauri 更新器使用 Rust 的 `serde_json` 解析 `version.json`，该解析器**严格不接受 BOM**，会静默失败导致 `check()` 返回 `null`，最终用户看到"下载错误"。
-> 正确写法（PowerShell）：
-> ```powershell
-> $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-> [System.IO.File]::WriteAllText("version.json", $content, $utf8NoBom)
-> ```
-> 写入后可用以下命令验证：
-> ```powershell
-> $b = [System.IO.File]::ReadAllBytes("version.json")
-> if ($b[0] -eq 0xEF) { Write-Error "BOM detected! Fix before pushing." }
-> ```
+### 4.1 写入 `version.json`（唯一推荐方式）
 
-**Android APK 签名**：确保 APK 已经通过 `apksigner` 与本地 Release Keystore 完成签名。密码请查阅本地 `.env.release`。
+先有临时 `release_notes_zh.md` / `release_notes_en.md`（§2），再：
+
+```powershell
+$V = "X.X.X"
+.\scripts\release\Write-VersionJson.ps1 -Version $V
+# 自动：从 .sig 读 signature；url 指向 v$V；UTF-8 **无 BOM**；is_major=false；仅 windows-x86_64
+```
+
+**禁止**手写把 `signature` 留成 `PLACEHOLDER` 就 push。  
+**禁止**在 `platforms` 中加入 android / ios。
+
+### 4.2 手写时的 BOM 规则（仅应急）
+
+若必须手写 JSON：
+
+```powershell
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText("$PWD\version.json", $content, $utf8NoBom)
+$b = [System.IO.File]::ReadAllBytes("$PWD\version.json")
+if ($b[0] -eq 0xEF) { throw "BOM detected! Fix before pushing." }
+```
+
+`Set-Content -Encoding UTF8` 与 `[Text.Encoding]::UTF8` **默认带 BOM**，会导致用户端更新检测静默失败。
+
+### 4.3 同步后自检
+
+```powershell
+$sigText = (Get-Content "src-tauri/target/release/bundle/nsis/Lexicon_${V}_x64-setup.exe.sig" -Raw).Trim()
+$m = Get-Content version.json -Raw | ConvertFrom-Json
+if ($m.platforms.'windows-x86_64'.signature.Trim() -ne $sigText) { throw "signature mismatch" }
+if ($m.version -ne $V) { throw "version mismatch" }
+```
+
+或直接再跑一遍 `Assert-ReleaseGates.ps1`。
 
 ## 5. 代码提交与推送 (Git Commit & Push)
-**前置**：§0 门禁已通过（CHANGELOG + 双 README 已对齐本次改动）。
 
-确保所有版本文件（包含更新后的 `version.json`，确保包含最新的签名信息）已保存。发版提交应包含本轮文档更新（`CHANGELOG.md`、`README.md`、`README_en.md` 等）。
-```bash
-git add .
-git commit -m "Release vX.X.X"
+**前置（全部满足才能继续）：**
+1. §0 文档门禁已通过  
+2. `.\scripts\release\Assert-ReleaseGates.ps1 -Version $V` 已 **exit 0**  
+3. 工作区含更新后的 `version.json`（真实 signature，非 PLACEHOLDER）
+
+**不要** `git add .` 一把梭：临时 `release_notes*.md` / `release_notes.txt`、根目录 `*.apk` / `*.exe` 不应入库（后两者已在 `.gitignore`；notes 仍可能被误加）。
+
+```powershell
+$V = "X.X.X"
+.\scripts\release\Assert-ReleaseGates.ps1 -Version $V
+if ($LASTEXITCODE -ne 0) { throw "gates failed — abort commit/push" }
+
+# 显式 add 发版相关源码与文档（按本次实际改动调整）
+git add package.json version.json AGENT.md CHANGELOG.md README.md README_en.md `
+  src/stores/updateStore.ts src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock `
+  android/app/build.gradle ios/App/App.xcodeproj/project.pbxproj
+# …以及本轮功能改动的 src/、lexicon-docs/ 等
+
+git commit -m "Release v$V"
 git push origin master
+
+# tag 必须在 commit 之后创建再推送（触发 iOS Actions）
+git tag "v$V"
+git push origin "v$V"
 ```
 
 ## 6. 创建 GitHub Release 并上传全架构产物
-使用 GitHub CLI 自动创建 Release 并上传本地编译完成的所有 PC 和安卓端产物。
 
-**更新日志整合**：
-在创建 GitHub Release 前，将本版临时中英文说明合并进同一个临时文件：
-1. 读取本轮生成的 `release_notes_en.md`。
-2. 添加分隔线 `\n\n---\n\n`。
-3. 读取本轮生成的 `release_notes_zh.md`。
-4. 写入临时文件 `release_notes.txt`，作为 GitHub Release 的 description（用完可删）。
+**前置**：§5 已 push；`Assert-ReleaseGates.ps1` 仍为通过状态；APK 已在仓库根目录。
 
-**上传前准备 (安卓重命名)**：
-为了文件名整齐，请将 `android/app/build/outputs/apk/release/` 下的各架构包重命名/拷贝为：
-- `Lexicon_X.X.X_universal_signed.apk` (通用包)
-- `Lexicon_X.X.X_arm64-v8a_signed.apk`
-- `Lexicon_X.X.X_armeabi-v7a_signed.apk`
-- `Lexicon_X.X.X_x86_signed.apk`
-- `Lexicon_X.X.X_x86_64_signed.apk`
+**更新日志整合**（临时，勿 commit）：
 
-**执行上传命令**：
-```bash
-# 1. 创建 Release 标签和说明（使用整合后的中英文说明文件 release_notes.txt）
-gh release create vX.X.X -t "Lexicon vX.X.X" -F release_notes.txt
-
-# 2. 上传 Windows 产物 (exe 和 msi)
-gh release upload vX.X.X src-tauri/target/release/bundle/nsis/Lexicon_X.X.X_x64-setup.exe
-gh release upload vX.X.X src-tauri/target/release/bundle/msi/Lexicon_X.X.X_x64_en-US.msi
-
-# 3. 上传 Android 全架构产物 (5个文件)
-gh release upload vX.X.X Lexicon_X.X.X_universal_signed.apk Lexicon_X.X.X_arm64-v8a_signed.apk Lexicon_X.X.X_armeabi-v7a_signed.apk Lexicon_X.X.X_x86_signed.apk Lexicon_X.X.X_x86_64_signed.apk
+```powershell
+$V = "X.X.X"
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$en = (Get-Content release_notes_en.md -Raw).TrimEnd()
+$zh = (Get-Content release_notes_zh.md -Raw).TrimEnd()
+[System.IO.File]::WriteAllText("$PWD\release_notes.txt", "$en`n`n---`n`n$zh`n", $utf8NoBom)
 ```
-*(注意：请根据当前版本号 X.X.X 动态调整文件名)*
+
+**执行上传**（tag 已存在时用 `gh release create`；若 tag 已由 §5 推送，create 会挂到该 tag）：
+
+```powershell
+$V = "X.X.X"
+gh release create "v$V" -t "Lexicon v$V" -F release_notes.txt `
+  "src-tauri/target/release/bundle/nsis/Lexicon_${V}_x64-setup.exe" `
+  "src-tauri/target/release/bundle/msi/Lexicon_${V}_x64_en-US.msi" `
+  "Lexicon_${V}_universal_signed.apk" `
+  "Lexicon_${V}_arm64-v8a_signed.apk" `
+  "Lexicon_${V}_armeabi-v7a_signed.apk" `
+  "Lexicon_${V}_x86_signed.apk" `
+  "Lexicon_${V}_x86_64_signed.apk"
+```
+
+若 Release 已用空资产创建，可改为 `gh release upload "v$V" ...`。
 
 ## 7. 最终核验 (Final Verification)
-- 检查 `version.json` 中的 `version` 是否正确。
-- 检查 `version.json` 中的 `signature` 是否确实替换为了最新编译出的 Tauri 签名。
-- 检查 GitHub Release 是否创建成功，并且包含了本地上传的 `.exe` 和 `.apk` 文件。
-- 检查 GitHub Actions 是否已成功触发并正在构建 iOS `.ipa`。
-- 一切无误后，发版流程结束，向人类用户汇报成功。
+
+Agent 必须用命令核对，不能只「口头检查」：
+
+```powershell
+$V = "X.X.X"
+# 本地门禁（构建产物仍在时）
+.\scripts\release\Assert-ReleaseGates.ps1 -Version $V
+
+# 远程资产
+gh release view "v$V" --json assets --jq '.assets[].name'
+# 期望至少含：x64-setup.exe、x64_en-US.msi、5 个 apk；稍后出现 Lexicon.ipa
+
+# iOS Actions
+gh run list --workflow=ios-build.yml --limit 1
+# 失败则排查 Actions 日志，勿声称发版完成
+```
+
+核对清单：
+- [ ] `version.json` 的 `version` / `url` / `signature` 与本版 `.sig` 一致，无 BOM，`is_major` 符合用户意图（默认 false）  
+- [ ] GitHub Release 含 Windows + Android 产物  
+- [ ] iOS workflow 成功且 `Lexicon.ipa` 已挂上（或已向用户说明仍在构建）  
+- [ ] 向用户回报 Release URL  
+
+全部通过后进入 §8 清理。
 
 ## 8. 清理本地构建产物 (Cleanup)
-在确认 GitHub Release 已成功发布且所有平台产物（Windows EXE/MSI, Android APKs）已完整上传后，**务必**执行清理操作以释放本地空间：
+在确认 GitHub Release 已成功发布且所有平台产物（Windows EXE/MSI, Android APKs；建议等 iOS `.ipa` 也挂上）已完整上传后，**务必**清理：
 
-- **删除所有发布产物**：删除根目录下以及各编译目录（如 `src-tauri/target/release/bundle/` 和 `android/app/build/outputs/apk/release/`）中生成的所有 `.exe`, `.msi`, `.apk` 及 `.sig` 文件。
-- **清理编译缓存**：执行 `cd android && ./gradlew clean` 以清理安卓编译产物，并建议清理 `src-tauri/target` 目录以彻底释放空间。
-- **保持环境整洁**：确保工作区内没有任何已发布的二进制安装包残留，仅保留源码。
+```powershell
+$V = "X.X.X"
+Remove-Item "Lexicon_${V}_*.apk" -Force -ErrorAction SilentlyContinue
+Remove-Item release_notes.txt, release_notes_zh.md, release_notes_en.md -Force -ErrorAction SilentlyContinue
+cd android; .\gradlew.bat clean; cd ..
+# 建议彻底释放空间（下次 tauri:build 会较慢）：
+Remove-Item -Recurse -Force src-tauri\target -ErrorAction SilentlyContinue
+```
+
+- **保持环境整洁**：工作区不残留已发布二进制；临时 release notes **不要** commit。  
+- **密钥**：`.env.release` / `*.key` / `*.keystore` 永不入库。

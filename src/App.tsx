@@ -597,15 +597,11 @@ export function App() {
               scrollable.style.paddingBottom = `${targetPadding}px`
               scrollable.dataset.kbPadded = 'true'
 
-              // iOS: use nearest (not center) so Chat header / context bulb above the
-              // input is not scrolled out of the visible viewport. Android / others
-              // keep the existing center + double-scroll behavior unchanged.
-              if (isIos) {
-                setTimeout(() => activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 50)
-              } else {
-                setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
-                setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)
-              }
+              // Center + double-scroll: first pass after padding, second after keyboard
+              // animation settles (iOS timing varies). The rich-context bulb sits beside
+              // the input (same row), so centering no longer scrolls it off-screen.
+              setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50)
+              setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)
             }
           }
 

@@ -67,21 +67,19 @@ interface ResultStore {
   aiAnalysis: AiAnalysis | null
   aiFullResult: AiFullResult | null      // AI 全量查词结果（词库缺失时）
   phraseResult: PhraseResult | null      // AI 词组/句子查询结果
-  chatMessages: ChatMessage[]            // AI 问答对话历史（切换查询时清空）
+  // chat 已迁至 chatStore（persist lexicon-chat）；key = cognitiveCacheKey(word, lookup|core)
   aiStatus: AiStatus
   aiError: string | null
   aiCache: Map<string, AiAnalysis>
   aiFullCache: Map<string, AiFullResult>
   phraseCache: Map<string, PhraseResult>
 
-  setWordResult: (r: WordResult | null) => void  // 同时重置 aiFullResult/phraseResult/chatMessages
+  setWordResult: (r: WordResult | null) => void  // 同时重置 aiFullResult/phraseResult
   setRelatedPhrases: (phrases: SuggestItem[]) => void
   setAiStatus: (s: AiStatus) => void
   setAiAnalysis: (word: string, a: AiAnalysis) => void
   setAiFullResult: (word: string, r: AiFullResult) => void
   setPhraseResult: (key: string, r: PhraseResult) => void
-  setChatMessages: (msgs: ChatMessage[]) => void
-  addChatMessage: (msg: ChatMessage) => void
   setAiError: (e: string) => void
   getCachedAi: (word: string) => AiAnalysis | null
   getCachedAiFull: (word: string) => AiFullResult | null
@@ -316,8 +314,9 @@ interface SkeletonBlockProps {
   → 返回 correctForm="it's good for me to do" + 释义/场景/例句/练习
   → 大字显示正确形式，小字标注用户输入错误
 
-用户在 AiChatBox 提问
+用户在 AiChatBox 提问（props: context + cognitive）
   → askQuestion(context, history) [1-3s]
-  → 回答追加到 chatMessages（气泡展示）
-  → 切换查询时 chatMessages 清空
+  → 回答写入 chatStore[cognitiveCacheKey]（Lookup / Core 分轨，persist）
+  → 成功后双写 user_word_memory.ai_conversations_json 对应桶 + Profile chat 事件
 ```
+

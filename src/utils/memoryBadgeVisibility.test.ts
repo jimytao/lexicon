@@ -40,6 +40,20 @@ describe('countUserQaMessages', () => {
     ).toBe(2)
   })
 
+  it('counts across lookup/core buckets', () => {
+    expect(
+      countUserQaMessages(
+        JSON.stringify({
+          lookup: [{ role: 'user', content: 'a' }],
+          core: [
+            { role: 'user', content: 'b' },
+            { role: 'assistant', content: 'c' },
+          ],
+        }),
+      ),
+    ).toBe(2)
+  })
+
   it('tolerates bad JSON', () => {
     expect(countUserQaMessages('{not-json')).toBe(0)
   })

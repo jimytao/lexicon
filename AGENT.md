@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.8.6**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.8.7**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -122,7 +122,7 @@ Tauri 2（PC）
 - `phraseResult` + `phraseCache`（同上分轨）
 - 另有增量 `aiAnalysis` + `aiCache`
 
-历史约 100 条；AI 追问（chat）缓存 key 使用 `normalizeQuery`，须与历史 / 三路 AI 缓存配对一致。
+历史约 100 条；AI 追问（chat）缓存 key 使用 `cognitiveCacheKey`（Lookup=`q`，Pure Core=`q::core`），与 AI 结果缓存分轨一致；词面仍用 `normalizeQuery`。
 
 ### 信息渲染顺序（出厂默认；设置可拖拽覆盖）
 
@@ -224,7 +224,7 @@ nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介�
 
 **上传 / 发版门禁**：凡 `git push`、正式发版或用户要求「上传代码」，必须先执行根目录 `workflow.md` 的 **§0 上传前文档门禁**（用 git 锚定上次远程基线 → 补全 CHANGELOG → 校对中英文 README）。未通过门禁不得推送。
 
-发版相关：Release Notes 以 `CHANGELOG.md` 为真相源；`release_notes_zh.md` / `release_notes_en.md` 仅发版时**临时生成**，用完可删、不必入库（见 `workflow.md`）。
+发版相关：Release Notes 以 `CHANGELOG.md` 为真相源；临时 notes 用完可删。签名 / `version.json` **必须**走 `scripts/release/*.ps1`（`Load-ReleaseEnv` → 构建 → `Sign-TauriBundle` → `Write-VersionJson` → `Assert-ReleaseGates`），禁止把路径塞进 `TAURI_SIGNING_PRIVATE_KEY`、禁止 BOM、禁止未通过门禁就 push（详见 `workflow.md` §3–§4）。
 
 ---
 
@@ -319,7 +319,7 @@ nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介�
 | AI JSON 解析失败 | `ai.ts` 打原始返回；对照 `04-ai-schema.md` |
 | Core 被切回 AI Lookup | 历史 / 缓存路径是否在 `mode === 'core'` 时仍 `setMode('ai')` |
 | 模式切换不触发请求 | 是否只靠 `aiStatus === 'idle'`；应走点击时的 `handleModeChange` |
-| 追问记录对不上历史 | chat key 是否 `normalizeQuery` |
+| 追问记录对不上历史 | chat key 是否 `cognitiveCacheKey`（Lookup/Core 分轨） |
 | UI 风格漂移 | 未读 `09-ui-ux-design-system.md`；设置是否又做成抽屉 |
 | 误加第四个底栏 Tab | 看板已雪藏；勿恢复 Memory Tab |
 
@@ -332,5 +332,5 @@ nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介�
 | `AGENT.md` | **本文件** — 全 Agent 权威启动上下文 |
 | `CLAUDE.md` | 兼容跳转 → `AGENT.md` |
 | `CHANGELOG.md` | 变更日志（文档与发版真相源之一） |
-| `workflow.md` | 发版 / 上传 SOP（含 §0 文档门禁） |
+| `workflow.md` | 发版 / 上传 SOP（§0 文档门禁 + §3–4 签名硬门禁；脚本见 `scripts/release/`） |
 | `README.md` / `README_en.md` | 人类用户向说明 |

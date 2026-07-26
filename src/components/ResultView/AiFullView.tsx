@@ -217,7 +217,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   parts.push(`文化背景: ${aiFullResult.culturalLore.content}`)
                 }
                 const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} enrichedContext={enrichedContext} />
+                return <AiChatBox key={module.id} context={corrected} cognitive="lookup" enrichedContext={enrichedContext} />
               }
               default:
                 return null

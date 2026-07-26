@@ -1,3 +1,5 @@
+import { flattenAiConversations, parseAiConversationsBuckets } from './aiConversations'
+
 /** Which LexiconMemoryBadge chips are allowed to render. */
 export type MemoryBadgeKind = 'notes' | 'qaFollowUps' | 'coreSaved'
 
@@ -19,13 +21,10 @@ export function getVisibleMemoryBadges(signals: MemoryBadgeSignals): MemoryBadge
   return visible
 }
 
+/** Counts user turns across Lookup + Core conversation buckets (legacy array OK). */
 export function countUserQaMessages(aiConversationsJson: string | null | undefined): number {
   if (!aiConversationsJson) return 0
-  try {
-    return (JSON.parse(aiConversationsJson) as { role?: string }[])
-      .filter((m) => m.role === 'user')
-      .length
-  } catch {
-    return 0
-  }
+  return flattenAiConversations(parseAiConversationsBuckets(aiConversationsJson)).filter(
+    (m) => m.role === 'user',
+  ).length
 }

@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXhjN1dmOVNiWHM0M21qRzFlbDljTGRzSFhVVHh4TFVyaGxpSyt5MUd2Y21oemZ3L0R5UU95QWdKME44akd4YUdyQ0REZmlwTXBITEU4OGtISXkxWndBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDM4MzkyCWZpbGU6TGV4aWNvbl8wLjguNl94NjQtc2V0dXAuZXhlCngrcDFCSWZrL2Z3dFV1aklqRGt0VW9DejFwNEJGZW5zYXVTWUgwU1VkNzJDYWJUdkpzWURSYlQ5U3VKNzkxYm5sRkoxaStFU1dVMmx3RFY1dHB0dUNnPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.6/Lexicon_0.8.6_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXp6MHpYTEhzWG5qQVFCNEh2RXZKWjFTMW1UN01SYVZFZWRNd1hSRVBnMDUwamtkcVVGK2ZVTzVDWnJiWmhySGRSUU5saXExNnd5NkVLdmExYkJpL1FBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDQyMDIzCWZpbGU6TGV4aWNvbl8wLjguN194NjQtc2V0dXAuZXhlCitzQkJTVzVjYjNPUmUzczVrTXArNWhRTHFOem1ENXFmS2w2Y1lubUZZcXpGbDFWb0twT1BNT2tOS09MRVlkWEcyU1RneGY3RnFoU25YeHlQY01zUER3PT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-26T04:00:02Z",
-    "version":  "0.8.6",
-    "notes":  "窄屏 UI 修复：Chat Send、去 follow-ups 徽章、设置 ChoiceRow\n1. 修复：窄屏底部 AI Chat 的 Send 按钮不再被裁切。\n2. 优化：结果页去掉「N AI follow-ups」计数徽章；底部 AI Chat 提问保留。\n3. 优化：设置页 Default Search Mode / History Prefer / App Language 改为标题+按钮一行、说明独占下一整行。\n",
-    "notes_zh":  "窄屏 UI 修复：Chat Send、去 follow-ups 徽章、设置 ChoiceRow\n1. 修复：窄屏底部 AI Chat 的 Send 按钮不再被裁切。\n2. 优化：结果页去掉「N AI follow-ups」计数徽章；底部 AI Chat 提问保留。\n3. 优化：设置页 Default Search Mode / History Prefer / App Language 改为标题+按钮一行、说明独占下一整行。\n",
-    "notes_en":  "Narrow-screen UI: Chat Send, remove follow-ups badge, Settings ChoiceRow\n1. **Fixed**: AI Chat Send button no longer clipped on narrow phones.\n2. **Improved**: Removed the “N AI follow-ups” count badge; bottom AI Chat remains.\n3. **Improved**: Settings multi-option rows (Default Search Mode / History Prefer / App Language) use title+controls on one row and a full-width description below.\n",
+    "pub_date":  "2026-07-26T05:02:24Z",
+    "version":  "0.8.7",
+    "notes":  "AI 追问 Lookup/Core 分轨、修复 iOS 键盘遮挡输入框，并加固发版签名门禁\n1. 新增：AI 追问按 Lookup / Pure Core 分轨保存，互不覆盖；旧记录自动迁入 Lookup\n2. 修复：iOS 弹出键盘时追问输入框不再被挡住（恢复居中双次滚动）\n3. 工程：发版脚本与签名硬门禁（`scripts/release/`），避免签名失败与 version.json BOM\n",
+    "notes_zh":  "AI 追问 Lookup/Core 分轨、修复 iOS 键盘遮挡输入框，并加固发版签名门禁\n1. 新增：AI 追问按 Lookup / Pure Core 分轨保存，互不覆盖；旧记录自动迁入 Lookup\n2. 修复：iOS 弹出键盘时追问输入框不再被挡住（恢复居中双次滚动）\n3. 工程：发版脚本与签名硬门禁（`scripts/release/`），避免签名失败与 version.json BOM\n",
+    "notes_en":  "AI follow-ups split by Lookup/Core, iOS keyboard occlusion fix, and stricter release signing gates\n1. **New**: AI follow-up chats are stored on separate Lookup / Pure Core tracks (legacy arrays migrate to Lookup)\n2. **Fix**: iOS virtual keyboard no longer hides the AI chat input (restore center + double scrollIntoView)\n3. **Engineering**: release scripts and hard gates under `scripts/release/` to prevent missing `.sig` / UTF-8 BOM in `version.json`\n",
     "is_major":  false
 }

@@ -410,7 +410,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   parts.push(`文化背景: ${phraseResult.culturalLore.content}`)
                 }
                 const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} enrichedContext={enrichedContext} />
+                return <AiChatBox key={module.id} context={corrected} cognitive={phraseCognitive} enrichedContext={enrichedContext} />
               }
               case 'preposition': {
                 const preps = detectSpatialPreps(phraseResult.correctForm || phrase)

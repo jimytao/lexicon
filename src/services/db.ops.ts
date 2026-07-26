@@ -1,5 +1,10 @@
-import type { SuggestItem, WordResult, Meaning, Example, UserWordMemory } from '../types'
+import type { ChatMessage, CognitiveMode, SuggestItem, WordResult, Meaning, Example, UserWordMemory } from '../types'
 import { normalizeQuery } from '../utils/text'
+import {
+  parseAiConversationsBuckets,
+  setBucketMessages,
+  stringifyAiConversationsBuckets,
+} from '../utils/aiConversations'
 import { useSettingsStore } from '../stores/settingsStore'
 
 export type SqlValue = string | number | null | Uint8Array
@@ -132,38 +137,45 @@ export async function saveUserNoteWithRunner(
 export async function saveConversationWithRunner(
   runner: SqlRunner,
   word: string,
-  aiConversationsJson: string
+  trackMessagesJson: string,
+  cognitive: CognitiveMode = 'lookup',
 ): Promise<void> {
   const lw = normalizeQuery(word)
   if (!lw) return
   const now = new Date().toISOString()
 
-  // 20K Token / 50KB (~60,000 chars) capacity guard per word record
-  let safeConversationsJson = aiConversationsJson
-  if (safeConversationsJson.length > 60000) {
-    try {
-      const parsed = JSON.parse(safeConversationsJson)
-      if (Array.isArray(parsed)) {
-        let trimmed = [...parsed]
-        while (JSON.stringify(trimmed).length > 60000 && trimmed.length > 1) {
-          trimmed.shift() // Drop oldest Q&A pair to fit within 20K Token budget
-        }
-        safeConversationsJson = JSON.stringify(trimmed)
-      }
-    } catch {
-      safeConversationsJson = safeConversationsJson.slice(-60000)
-    }
+  let trackMessages: ChatMessage[] = []
+  try {
+    const parsed: unknown = JSON.parse(trackMessagesJson)
+    if (Array.isArray(parsed)) trackMessages = parsed as ChatMessage[]
+  } catch {
+    return
   }
 
+  // Prefer SQL (then local backup) so updating one track does not wipe the other
+  const prior = await getUserWordMemoryWithRunner(runner, lw)
   const map = getLocalWordMemoryMap()
-  const existing = map[lw] || {
+  const existing = map[lw] || prior || {
     word: lw,
     firstSearchedAt: now,
     lastViewedAt: now,
     searchCount: 1,
   }
+
+  const priorJson = prior?.aiConversationsJson ?? existing.aiConversationsJson
+  const buckets = parseAiConversationsBuckets(priorJson)
+  const merged = setBucketMessages(buckets, cognitive, trackMessages)
+  // 20K Token / 50KB (~60,000 chars) capacity guard per word record
+  const safeConversationsJson = stringifyAiConversationsBuckets(merged, 60000)
+
   existing.aiConversationsJson = safeConversationsJson
   existing.lastViewedAt = now
+  if (prior) {
+    existing.firstSearchedAt = prior.firstSearchedAt || existing.firstSearchedAt
+    existing.searchCount = prior.searchCount || existing.searchCount
+    if (prior.userNotes) existing.userNotes = prior.userNotes
+    if (prior.savedCoreConcept) existing.savedCoreConcept = prior.savedCoreConcept
+  }
   map[lw] = existing
   saveLocalWordMemoryMap(map)
 

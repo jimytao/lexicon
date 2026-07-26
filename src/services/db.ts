@@ -1,4 +1,4 @@
-import type { SuggestItem, WordResult, UserWordMemory } from '../types'
+import type { CognitiveMode, SuggestItem, WordResult, UserWordMemory } from '../types'
 import { isCapacitor } from './platform'
 
 export interface DBService {
@@ -11,7 +11,11 @@ export interface DBService {
   /** Lexicon Memory 资产表 API (Phase 5) */
   getUserWordMemory(word: string): Promise<UserWordMemory | null>
   saveUserWordNote(word: string, note: string): Promise<void>
-  saveUserWordConversation(word: string, conversationsJson: string): Promise<void>
+  saveUserWordConversation(
+    word: string,
+    conversationsJson: string,
+    cognitive?: CognitiveMode,
+  ): Promise<void>
   saveUserWordCoreConcept(word: string, coreConceptText: string): Promise<void>
   recordWordView(word: string): Promise<UserWordMemory>
   getAllUserWordMemories(): Promise<UserWordMemory[]>
@@ -62,8 +66,8 @@ export const db: DBService = {
   getRelatedPhrases: (word, limit) => loadImpl().then((i) => i.getRelatedPhrases(word, limit)),
   getUserWordMemory: (word) => loadImpl().then((i) => i.getUserWordMemory(word)),
   saveUserWordNote: (word, note) => loadImpl().then((i) => i.saveUserWordNote(word, note)),
-  saveUserWordConversation: (word, conversationsJson) =>
-    loadImpl().then((i) => i.saveUserWordConversation(word, conversationsJson)),
+  saveUserWordConversation: (word, conversationsJson, cognitive) =>
+    loadImpl().then((i) => i.saveUserWordConversation(word, conversationsJson, cognitive)),
   saveUserWordCoreConcept: (word, coreConceptText) =>
     loadImpl().then((i) => i.saveUserWordCoreConcept(word, coreConceptText)),
   recordWordView: (word) => loadImpl().then((i) => i.recordWordView(word)),

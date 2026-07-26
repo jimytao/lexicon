@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-07-26 — AI 追问 Lookup/Core 分轨、iOS 键盘避让与发版硬门禁 (v0.8.7)
+
+### 用户可见
+1. **AI 追问分轨**：Lookup 与 Pure Core 各自保留对话历史（UI `cognitiveCacheKey`：`q` / `q::core`）；Memory 表 `ai_conversations_json` 按 `lookup` / `core` 分桶，更新一轨不再覆盖另一轨；旧版纯数组自动迁入 Lookup。
+2. **修复 iOS 键盘遮挡追问输入框**：恢复 `scrollIntoView({ block: 'center' })` + 双次滚动（语境灯泡已在输入框同排，不再需要 `nearest`）。
+
+### 工程
+1. **发版 SOP 硬门禁**：`workflow.md` 统一 `TAURI_SIGNING_PRIVATE_KEY_PATH`；新增 `scripts/release/`（`Load-ReleaseEnv` / `Sign-TauriBundle` / `Write-VersionJson` / `Prepare-AndroidApks` / `Assert-ReleaseGates`）；`.env.release.example`；临时 notes 进 gitignore。
+2. **TDD**：`aiConversations` 分桶解析/序列化单测；徽章计数与 Chat 分轨接线断言。
+3. **文档**：`AGENT.md`、`05`、`08` 同步分轨与发版脚本约定。
+
+### 涉及文件
+- `App.tsx`、`AiChatBox.tsx`、`chatStore.ts`、`db*.ts`、`aiConversations.ts`、`profile.ts`、`UserNoteEditor.tsx`、各 Result 视图
+- `workflow.md`、`scripts/release/*`、`.env.release.example`、`.gitignore`、`AGENT.md`、`lexicon-docs/05`、`08`、本 CHANGELOG
+
+---
+
 ## 2026-07-26 — 窄屏 UI：Chat Send、去 follow-ups 徽章、设置 ChoiceRow (v0.8.6)
 
 ### 用户可见

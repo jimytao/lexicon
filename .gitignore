@@ -47,6 +47,11 @@ app-icon.png
 # Local Secrets
 .env.release
 
+# Temporary release notes (generated during workflow; do not commit)
+/release_notes.txt
+/release_notes_zh.md
+/release_notes_en.md
+
 # Release Binaries
 *.apk
 *.exe

@@ -4,26 +4,31 @@ import { useSettingsStore } from '../../../stores/settingsStore'
 import { askQuestion } from '../../../services/ai'
 import { db } from '../../../services/db'
 import { recordAiChatEvent } from '../../../services/profile'
-import type { ChatMessage } from '../../../types'
-import { normalizeQuery } from '../../../utils/text'
+import type { ChatMessage, CognitiveMode } from '../../../types'
+import { cognitiveCacheKey, normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
 import { AI_CHAT_COMPOSER_LAYOUT } from '../../../utils/aiChatComposerLayout'
 import { SectionHeading } from '../SectionHeading'
 
 
 interface AiChatBoxProps {
-  context: string        // correctForm — also used as the storage key
+  context: string        // correctForm — display / askQuestion context (not storage key alone)
+  cognitive: CognitiveMode
   enrichedContext?: string
 }
 
 const EMPTY_MESSAGES: ChatMessage[] = []
 
-export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
+export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProps) {
   const t = useT()
-  const chatKey = normalizeQuery(context) || context
-  // Subscribe to this specific word's messages — React re-renders whenever they change
+  const chatKey = cognitiveCacheKey(context, cognitive)
+  const legacyLookupKey = cognitive === 'lookup' ? (normalizeQuery(context) || context) : null
+  // Subscribe to this track's messages — React re-renders whenever they change
   const chatMessages = useChatStore(s =>
-    s.messagesByWord[chatKey] ?? s.messagesByWord[context] ?? EMPTY_MESSAGES
+    s.messagesByWord[chatKey]
+      ?? (legacyLookupKey && legacyLookupKey !== chatKey ? s.messagesByWord[legacyLookupKey] : undefined)
+      ?? (cognitive === 'lookup' ? s.messagesByWord[context] : undefined)
+      ?? EMPTY_MESSAGES
   )
   const addMessage = useChatStore(s => s.addMessage)
   const chatRichContextDefault = useSettingsStore(s => s.chatRichContextDefault)
@@ -33,8 +38,10 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
   const [richMode, setRichMode] = useState(chatRichContextDefault)
   const abortRef = useRef<AbortController | null>(null)
   const contextRef = useRef(context)
+  const cognitiveRef = useRef(cognitive)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   contextRef.current = context
+  cognitiveRef.current = cognitive
 
   // Keep richMode in sync when the user changes the default in Settings
   useEffect(() => {
@@ -48,10 +55,11 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const requestContext = context
-    const storageKey = normalizeQuery(requestContext) || requestContext
+    const requestCognitive = cognitive
+    const wordKey = normalizeQuery(requestContext) || requestContext
 
     const userMsg: ChatMessage = { role: 'user', content: question }
-    addMessage(storageKey, userMsg)
+    addMessage(wordKey, userMsg, requestCognitive)
     setInput('')
     setLoading(true)
 
@@ -61,24 +69,24 @@ export function AiChatBox({ context, enrichedContext }: AiChatBoxProps) {
 
     try {
       // Read latest messages at send time (includes the one just added above)
-      const allMessages = useChatStore.getState().getMessages(storageKey)
+      const allMessages = useChatStore.getState().getMessages(wordKey, requestCognitive)
       const reply = await askQuestion(
         requestContext,
         allMessages,
         abortRef.current.signal,
         richMode && enrichedContext ? enrichedContext : undefined
       )
-      if (contextRef.current === requestContext) {
+      if (contextRef.current === requestContext && cognitiveRef.current === requestCognitive) {
         const assistantMsg: ChatMessage = { role: 'assistant', content: reply }
-        addMessage(storageKey, assistantMsg)
-        const updatedAll = useChatStore.getState().getMessages(storageKey)
-        void db.saveUserWordConversation(storageKey, JSON.stringify(updatedAll))
-        recordAiChatEvent(storageKey, question, reply)
+        addMessage(wordKey, assistantMsg, requestCognitive)
+        const updatedAll = useChatStore.getState().getMessages(wordKey, requestCognitive)
+        void db.saveUserWordConversation(wordKey, JSON.stringify(updatedAll), requestCognitive)
+        recordAiChatEvent(wordKey, question, reply, requestCognitive)
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      if (contextRef.current === requestContext) {
-        addMessage(storageKey, { role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` })
+      if (contextRef.current === requestContext && cognitiveRef.current === requestCognitive) {
+        addMessage(wordKey, { role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` }, requestCognitive)
       }
     } finally {
       setLoading(false)

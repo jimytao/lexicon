@@ -1,4 +1,4 @@
-import type { UserLanguageProfile, UnnaturalMindModel } from '../types'
+import type { CognitiveMode, UserLanguageProfile, UnnaturalMindModel } from '../types'
 import { useSettingsStore } from '../stores/settingsStore'
 import { detectLanguage } from '../stores/searchStore'
 
@@ -9,6 +9,8 @@ export interface DiagnosticEvent {
   unnaturalMindModel?: UnnaturalMindModel
   userQuestion?: string
   aiAnswer?: string
+  /** Lookup vs Pure Core track for AI follow-up events */
+  cognitive?: CognitiveMode
   timestamp: string
 }
 
@@ -168,7 +170,7 @@ ${
             ? `- [Sentence Correction]: Original: "${e.wordOrContext}" | Corrected: "${e.details || ''}" | unnaturalMindModel: ${JSON.stringify(
                 e.unnaturalMindModel || {}
               )}`
-            : `- [AI Follow-up Q&A]: Context: "${e.wordOrContext}" | User Question: "${
+            : `- [AI Follow-up Q&A${e.cognitive === 'core' ? ' / Pure Core' : e.cognitive === 'lookup' ? ' / Lookup' : ''}]: Context: "${e.wordOrContext}" | User Question: "${
                 e.userQuestion || ''
               }" | AI Detailed Answer: "${(e.aiAnswer || '').slice(0, 1000)}"`
         )
@@ -352,7 +354,8 @@ export function recordSentenceCorrectionEvent(
 export function recordAiChatEvent(
   wordOrContext: string,
   userQuestion: string,
-  aiAnswer: string
+  aiAnswer: string,
+  cognitive: CognitiveMode = 'lookup',
 ): void {
   // Non-English learning language filter guard
   const lang = detectLanguage(wordOrContext)
@@ -364,6 +367,7 @@ export function recordAiChatEvent(
     wordOrContext,
     userQuestion,
     aiAnswer,
+    cognitive,
     timestamp: new Date().toISOString(),
   })
   savePendingEvents(events)

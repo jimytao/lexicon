@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS user_word_memory (
     last_viewed_at TIMESTAMP,
     search_count INTEGER DEFAULT 1,
     user_notes TEXT,                  -- 用户个人笔记
-    ai_conversations_json TEXT,       -- 用户在该词下发起的所有 AI 追问 Q&A (JSON)
+    ai_conversations_json TEXT,       -- Lookup/Core 分桶 Q&A：`{"lookup":ChatMessage[],"core":ChatMessage[]}`；旧版纯数组视为 lookup
     saved_core_concept TEXT           -- 沉淀的核心 AI Core 解释
 );
 ```
@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS user_word_memory (
 ### 6.2 词汇/句子详情页：`LexiconMemoryBadge` & `UserNoteEditor`
 - `LexiconMemoryBadge`：结果页顶部只读展示已有笔记 / Core 意象徽章（**不再**展示「N AI follow-ups」计数徽章；追问仍由底部 `AiChatBox` 提供，历史仍写入 `aiConversationsJson`）。
 - `UserNoteEditor`：**SHELVED (2026-07-25)** — 源码保留，结果页不挂载；`user_notes` / 对话归档 / `saved_core_concept` 的 DB API **不动**（与 md 词库无关）。
+- **AI 追问分轨**：UI `chatStore` 与结果缓存一致，用 `cognitiveCacheKey`（`q` / `q::core`）。Memory 表仍以 `word` 为锚，`ai_conversations_json` 内按 `lookup` / `core` 分桶，避免跨模式覆盖；Profile `chat` 事件可带 `cognitive` 归因。
 
 ---
 

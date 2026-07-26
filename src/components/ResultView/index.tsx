@@ -209,7 +209,7 @@ export function ResultView({
               }
               const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
               return (
-                <AiChatBox key={module.id} context={wordResult.word} enrichedContext={enrichedContext} />
+                <AiChatBox key={module.id} context={wordResult.word} cognitive="lookup" enrichedContext={enrichedContext} />
               )
             }
             default:
