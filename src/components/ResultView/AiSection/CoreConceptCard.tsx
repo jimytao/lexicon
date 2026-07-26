@@ -4,13 +4,21 @@ import { SectionHeading } from '../SectionHeading'
 
 interface CoreConceptCardProps {
   coreConcept?: CoreConcept
-  /** memory=Lookup 轻量锚点；usage=Core 用法意象 */
+  /** memory=Lookup 轻量锚点；usage=Core 用法意象（可含 feelAnchor / emotionalTone） */
   variant?: 'memory' | 'usage'
 }
 
 export function CoreConceptCard({ coreConcept, variant = 'memory' }: CoreConceptCardProps) {
   const t = useT()
-  if (!coreConcept || (!coreConcept.image && !coreConcept.explanation)) {
+  if (
+    !coreConcept
+    || (
+      !coreConcept.image
+      && !coreConcept.explanation
+      && !coreConcept.feelAnchor
+      && !coreConcept.emotionalTone
+    )
+  ) {
     return null
   }
 
@@ -29,6 +37,18 @@ export function CoreConceptCard({ coreConcept, variant = 'memory' }: CoreConcept
         {coreConcept.explanation && (
           <p className="text-xs text-foreground-muted leading-relaxed">
             {coreConcept.explanation}
+          </p>
+        )}
+        {variant === 'usage' && coreConcept.feelAnchor && (
+          <p className="text-[11px] text-foreground-muted leading-relaxed">
+            <span className="font-semibold text-foreground/80 mr-1">{t('coreConcept.feelAnchor')}</span>
+            {coreConcept.feelAnchor}
+          </p>
+        )}
+        {variant === 'usage' && coreConcept.emotionalTone && (
+          <p className="text-[11px] text-foreground-muted leading-relaxed">
+            <span className="font-semibold text-foreground/80 mr-1">{t('coreConcept.emotionalTone')}</span>
+            {coreConcept.emotionalTone}
           </p>
         )}
       </div>

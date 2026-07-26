@@ -2,11 +2,19 @@ import { useState } from 'react'
 import type { ConceptGraph, ConceptGraphExample } from '../../../types'
 import { useT } from '../../../i18n'
 import { conceptGraphNeedsFill } from '../../../utils/aiCompleteness'
+import {
+  conceptGraphHasVisibleContent,
+  shouldShowConceptGraphEmptyState,
+} from '../../../utils/coreMindsetPipeline'
 import { SectionHeading } from '../SectionHeading'
 
 interface WordGraphCardProps {
   conceptGraph?: ConceptGraph
+  /** 模组已开启时由父级传入 true；用于空态判断 */
+  wordGraphEnabled?: boolean
   onRepairMissing?: () => Promise<void>
+  /** 完全无图时的重拉（区别于只补缺失例句） */
+  onRetryGenerate?: () => void
 }
 
 function normalizeExample(ex: string | ConceptGraphExample): ConceptGraphExample {
@@ -26,16 +34,44 @@ function isUseful(text?: string): text is string {
   return t.length > 0 && t !== 'N/A' && t !== 'null' && t !== '-'
 }
 
-export function WordGraphCard({ conceptGraph, onRepairMissing }: WordGraphCardProps) {
+export function WordGraphCard({
+  conceptGraph,
+  wordGraphEnabled = true,
+  onRepairMissing,
+  onRetryGenerate,
+}: WordGraphCardProps) {
   const t = useT()
   const [repairing, setRepairing] = useState(false)
   const [repairError, setRepairError] = useState<string | null>(null)
 
-  if (!conceptGraph || (!conceptGraph.rootCore && (!conceptGraph.branches || conceptGraph.branches.length === 0))) {
+  const showEmpty = shouldShowConceptGraphEmptyState({ wordGraphEnabled, conceptGraph })
+  const hasContent = conceptGraphHasVisibleContent(conceptGraph)
+
+  if (!wordGraphEnabled) {
     return null
   }
 
-  const { rootCore, branches = [] } = conceptGraph
+  if (showEmpty || !hasContent) {
+    return (
+      <div className="mb-3.5">
+        <SectionHeading title={t('graph.title')} />
+        <p className="text-[11px] text-foreground-muted mb-3 leading-snug">
+          {t('repair.graphEmpty')}
+        </p>
+        {onRetryGenerate && (
+          <button
+            type="button"
+            onClick={onRetryGenerate}
+            className="px-2.5 py-1 text-[10px] font-bold rounded-lg border border-border text-foreground hover:bg-foreground/5 cursor-pointer whitespace-nowrap"
+          >
+            {t('repair.retryGraph')}
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  const { rootCore, branches = [] } = conceptGraph!
   const needsFill = conceptGraphNeedsFill(conceptGraph)
 
   async function handleRepair() {

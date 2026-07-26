@@ -1,4 +1,5 @@
 import type { AiFullResult, CollocationData, CollocationEntry, ConceptGraph, ConceptGraphExample } from '../types'
+import { conceptGraphHasVisibleContent } from './coreMindsetPipeline'
 
 function useful(text?: string): boolean {
   if (!text) return false
@@ -26,6 +27,15 @@ export function conceptGraphNeedsFill(graph?: ConceptGraph | null): boolean {
   return graph.branches.some((b) => (b.examples ?? []).some(conceptExampleNeedsFill))
 }
 
+function coreConceptHasAnchor(result: AiFullResult): boolean {
+  const cc = result.coreConcept
+  if (useful(cc?.feelAnchor) || useful(cc?.emotionalTone)) return true
+  if (useful(cc?.image) || useful(cc?.explanation)) return true
+  // legacy cache
+  if (useful(result.nativeMindModel?.mentalPicture)) return true
+  return false
+}
+
 export interface AiFullFillOptions {
   /** Pure Core：wordGraph 模组是否开启；开启且完全无图时触发静默重试 */
   wordGraphEnabled?: boolean
@@ -39,10 +49,10 @@ export function aiFullNeedsExplanationFill(
 ): boolean {
   if (collocationsNeedFill(result.collocations)) return true
   if (cognitive === 'core') {
-    if (!result.nativeMindModel?.mentalPicture?.trim()) return true
+    if (!coreConceptHasAnchor(result)) return true
     const wordGraphOn = opts?.wordGraphEnabled !== false
     if (wordGraphOn) {
-      if (!result.conceptGraph?.branches?.length) return true
+      if (!conceptGraphHasVisibleContent(result.conceptGraph)) return true
       if (conceptGraphNeedsFill(result.conceptGraph)) return true
     } else if (conceptGraphNeedsFill(result.conceptGraph)) {
       return true

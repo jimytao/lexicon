@@ -11,9 +11,9 @@
     │   ├── <SearchBar /> + <SegmentedControl />   # Instant / AI / Core
     │   └── 条件渲染
     │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge 只读)
-    │       ├── <CoreCognitiveView />  # Mode 3 Core (+ Badge 只读)
+    │       ├── <CoreCognitiveView />  # Mode 3 Core（Usage Image + WordGraph + WordChoice…；无置顶 NativeMind）
     │       ├── <AiFullView />         # 词库无结果全量查词 (+ Badge 只读)
-    │       └── <PhraseView />         # 词组/句子；Lookup vs Core 分轨 UI（心智优先 / 词典式）
+    │       └── <PhraseView />         # 词组/句子；Lookup vs Core 分轨（Core：感觉/情绪附释义；wordChoice 可拖）
     │           └── 共用 <SectionHeading />  # 结果页板块标题（无色点/无 AI pill/无 emoji）
     │
     ├── (view === 'translate')

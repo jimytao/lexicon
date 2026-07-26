@@ -50,6 +50,7 @@ const DEFAULT_CORE_MODULE_FLAGS: ModuleFlag[] = [
   { id: 'chunks', enabled: true },
   { id: 'collocations', enabled: true },
   { id: 'synonyms', enabled: true },
+  { id: 'wordChoice', enabled: true },
   { id: 'usageScenes', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
@@ -58,6 +59,7 @@ const DEFAULT_CORE_MODULE_FLAGS: ModuleFlag[] = [
 
 const DEFAULT_CORE_PHRASE_MODULE_FLAGS: ModuleFlag[] = [
   { id: 'usageScenes', enabled: true },
+  { id: 'wordChoice', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
   { id: 'chat', enabled: true },
@@ -647,20 +649,19 @@ function getFullLookupPrompt(
   const synonymDistinction = isMono ? "English nuance explanation" : "与主词的差异"
   const antonymDistinction = isMono ? "English nuance explanation" : "与主词的对比差异"
 
-  const nativeMentalPictureDesc = isMono ? "Mental picture or sensory details when native speakers use this word" : "母语者说到此词时脑海里的真实画面与感官细节 (e.g. '地下酒吧、卧室开发者、DIY精神')"
-  const nativeEmotionalStanceDesc = isMono ? "Emotional stance and attitude" : "情感色彩与态度 (e.g. '带有 Authentic、Cool 的强烈褒义')"
-  const nativeWhyChooseDesc = isMono ? "Why choose this word instead of a formal synonym" : "为什么选它而不是近义词/正式词 (心智对比)"
-
-  // Lookup: meanings + light coreConcept. Core: native mind + thick usage image; no dictionary wall.
+  // Lookup: meanings + light coreConcept. Core: thick usage image + feel/emotion anchors; no dictionary wall.
   let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)"`
-  if (isCore) {
-    schema += `,\n  "nativeMindModel": {\n    "mentalPicture": "${nativeMentalPictureDesc}",\n    "emotionalStance": "${nativeEmotionalStanceDesc}",\n    "whyChooseThisWord": "${nativeWhyChooseDesc}"\n  }`
-  }
 
   const wantCoreConcept = isEnabled('coreConcept') || isEnabled('dictionary') || isCore
   if (wantCoreConcept) {
     if (isCore) {
-      schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",\n    "explanation": "${isMono ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)' : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（比记忆锚点更细，偏「怎么用」）'}"\n  }`
+      const feelDesc = isMono
+        ? '1 short line: sensory feel / atmosphere only (NOT a full scene; do not repeat explanation)'
+        : '1句短感觉锚：氛围/体感即可，禁止写成长场景，勿重复 explanation'
+      const emotionDesc = isMono
+        ? '1 short line: emotional tone when natives use this word'
+        : '1句情绪底色：母语者用此词时的情感态度'
+      schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",\n    "explanation": "${isMono ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)' : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（比记忆锚点更细，偏「怎么用」）'}",\n    "feelAnchor": "${feelDesc}",\n    "emotionalTone": "${emotionDesc}"\n  }`
     } else {
       schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${isMono ? '1 short sentence unifying the main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
     }
@@ -682,6 +683,16 @@ function getFullLookupPrompt(
   if (isFull && isEnabled('synonyms')) {
     const whenToUseDesc = isMono ? "1 sentence in English: when and why native speakers choose this specific word" : "1句中文：母语者在何时及为何使用该词 (如: slim -> 表示夸奖优雅的瘦)"
     schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}", "tone": "one of: positive | negative | neutral | informal", "whenToUse": "${whenToUseDesc}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
+  }
+
+  if (isCore && isEnabled('wordChoice')) {
+    const vsDesc = isMono
+      ? 'near-synonym word (prefer ones listed in synonyms[])'
+      : '近义词（优先使用 synonyms[] 中出现的词）'
+    const reasonDesc = isMono
+      ? '1 sentence: when to still pick the HEADWORD over this near-synonym'
+      : '1句：何时仍选主词而非该近义词'
+    schema += `,\n  "wordChoiceContrast": [{ "vs": "${vsDesc}", "reason": "${reasonDesc}" }]`
   }
 
   const wantChunks = isFull && isEnabled('chunks')
@@ -770,11 +781,12 @@ ${schema}
 
 Rules:
 ${isCore ? `- Do NOT fill a full dictionary meanings wall for English input (meanings may be []).
-- nativeMindModel: REQUIRED. Always fill mentalPicture, emotionalStance, whyChooseThisWord.
-- coreConcept.explanation: RICH usage-oriented (how the image guides when/how to use the word).
-${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase, meaning, mindHint }; never bare strings or N/A.' : ''}
-- PRIORITY for Pure Core: nativeMindModel > coreConcept > conceptGraph > prep chunks > other collocations > usageScenes > synonyms > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency).
-- coreConcept: LIGHT memory anchor (short image + short unifying line). Do NOT invent nativeMindModel or conceptGraph.
+- Do NOT invent nativeMindModel (legacy). Put feel into coreConcept.feelAnchor and emotion into coreConcept.emotionalTone.
+- coreConcept.explanation: RICH usage-oriented (how the image guides when/how to use the word). feelAnchor must NOT repeat the same scene prose.
+${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase, meaning, mindHint }; never bare strings or N/A. mindHint = how this phrase grows from rootCore only (not whole-word emotion).' : ''}
+${isEnabled('wordChoice') ? '- wordChoiceContrast: REQUIRED 3-5 rows. vs MUST prefer synonyms[].word; reason = when to still pick the headword (structured contrast, not a long essay).' : ''}
+- PRIORITY for Pure Core: coreConcept > conceptGraph > prep chunks > other collocations > synonyms > wordChoiceContrast > usageScenes > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency).
+- coreConcept: LIGHT memory anchor (short image + short unifying line). Do NOT invent nativeMindModel, conceptGraph, or wordChoiceContrast.
 - PRIORITY for Lookup: coreConcept > meanings/scenes > etymology > examples.`}
 - For abbreviations, explain what each letter stands for.
 - If the input is CHINESE: 
@@ -787,9 +799,14 @@ ${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase,
 ${isFull && isEnabled('etymology') && !isCore ? `- etymology.parts: each segment must correspond to the actual letters in the target word
 - For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 ${isMono ? 'English' : 'Chinese'} sentence connecting anchor → root meaning)
 - For pure prefixes/suffixes: omit sourceForm, anchor, anchorNote` : ''}
-${wantChunks ? `- collocations.chunks: 4-6 COMMON PREPOSITIONAL phrases ONLY. note MUST explain meaning AND the preposition's role. spatialExtension preferred for spatial/logic.` : ''}
-${wantCollocations ? `- collocations.collocations: 4-6 OTHER common phrases (no prep focus). Do NOT put prep phrases here.` : ''}
-${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY item needs clear meaning in ${isMono ? 'English' : 'Chinese'}. Never "N/A" / "常用" / empty.` : ''}
+${wantChunks ? (isCore
+    ? `- collocations.chunks: For ordinary content words, 4-6 COMMON PREPOSITIONAL phrases ONLY. note MUST explain meaning AND the preposition's role. spatialExtension preferred for spatial/logic.`
+    : `- collocations.chunks: 4-6 COMMON PREPOSITIONAL phrases ONLY. note MUST explain meaning AND the preposition's role. spatialExtension preferred for spatial/logic.`) : ''}
+${wantCollocations ? (isCore
+    ? `- collocations.collocations: For ordinary content words, 4-6 OTHER common phrases (no prep focus). Do NOT put prep phrases here.`
+    : `- collocations.collocations: 4-6 OTHER common phrases (no prep focus). Do NOT put prep phrases here.`) : ''}
+${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY non-empty item needs clear meaning in ${isMono ? 'English' : 'Chinese'}. Never "N/A" / "常用" / empty notes on real items.` : ''}
+${isCore && (wantChunks || wantCollocations) ? `- SKIP collocations when redundant with conceptGraph (Pure Core rule C): If the headword is a discourse particle / tag-question remnant / sentence-final tag / interjection (e.g. innit, eh) and the only natural "phrases" would be sentence frames that merely repeat conceptGraph examples (It's …, innit? / …, innit!), return "chunks": [] and "collocations": []. Do NOT invent filler frames. Ordinary content words (nouns/verbs/adjectives like shrug, sheen) MUST still fill collocations normally.` : ''}
 ${isFull && isEnabled('usageScenes') && isCore ? `- usageScenes: 3-5 native usage scenes / communicative jobs / typical patterns — not a translation example wall.` : ''}
 ${isFull && isEnabled('synonyms') ? `- synonyms: 3-5 with tone + whenToUse; antonyms: 3-5.` : ''}
 ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences.` : ''}
@@ -949,10 +966,6 @@ function getPhrasePrompt(
     ? `{ "chineseThought": "how a Chinese-thinking learner would frame this", "nativeConcept": "how a native speaker actually conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking/writing" }`
     : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
 
-  const nativeMindDesc = isMono
-    ? `{ "mentalPicture": "the vivid scene/image a native speaker has when using this expression", "emotionalStance": "attitude, politeness, intensity, or social stance", "whyChooseThisWord": "why natives pick THIS wording over near-synonym alternatives" }`
-    : `{ "mentalPicture": "母语者使用该表达时脑中的画面/情景", "emotionalStance": "语气态度、礼貌度、强度或社交立场", "whyChooseThisWord": "母语者为何选这个表达而非近义说法" }`
-
   let schema = `{\n  "correctForm": "the corrected/standard form — fix real grammar, preposition, or spelling errors ONLY. CRITICAL: do NOT shorten, summarize, or truncate the input. If input is a long sentence or multi-sentence paragraph, keep ALL content intact and only fix actual errors. correctForm is the proofread original, not a rewrite.",\n  "correctionNote": "${correctionNoteDesc}",\n  "unnaturalMindModel": ${unnaturalDesc},\n  "meaning": "${meaningDesc}"`
 
   // Lookup：场景挂在释义区，始终要；Core：跟 corePhraseModules.usageScenes 开关
@@ -961,7 +974,23 @@ function getPhrasePrompt(
   }
 
   if (isCore) {
-    schema += `,\n  "nativeMindModel": ${nativeMindDesc}`
+    const feelDesc = isMono
+      ? '1 short line: sensory feel / atmosphere (not a long scene)'
+      : '1句短感觉锚（氛围/体感，勿写长场景）'
+    const emotionDesc = isMono
+      ? '1 short line: emotional / social stance'
+      : '1句情绪底色/社交态度'
+    schema += `,\n  "feelAnchor": "${feelDesc}",\n  "emotionalTone": "${emotionDesc}"`
+  }
+
+  if (isCore && isEnabled('wordChoice')) {
+    const vsDesc = isMono
+      ? 'near-synonym or alternate wording'
+      : '近义说法或替代表达'
+    const reasonDesc = isMono
+      ? '1 sentence: when to still pick THIS wording'
+      : '1句：何时仍选这个表达'
+    schema += `,\n  "wordChoiceContrast": [{ "vs": "${vsDesc}", "reason": "${reasonDesc}" }]`
   }
 
   if (isEnabled('examples')) {
@@ -1015,14 +1044,15 @@ Rules:
 - If the input has NO real errors, set correctForm exactly equal to the input (copy it verbatim). Only change what is genuinely wrong.
 - correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.
 - unnaturalMindModel: When input sounds unnatural, un-idiomatic, or reflects Chinese-to-English translation mindset, fill unnaturalMindModel with detailed cognitive breakdown (chineseThought, nativeConcept, reusablePrinciple). Omit if input is already natural.
-${isCore ? `- nativeMindModel: REQUIRED for Pure Core. Always fill mentalPicture, emotionalStance, whyChooseThisWord — even when the input is already natural. Focus on how natives think and when they would choose this expression.
-- PRIORITY order for Pure Core: nativeMindModel > unnaturalMindModel (if any) > usageScenes (communicative intent) > meaning. Keep meaning accurate but secondary to cognitive remodeling.
-- usageScenes in Core mode must emphasize native communicative intent (what job the phrase does), not just textbook situations.` : `- Focus on clear meaning, practical usage scenes, and correction quality. nativeMindModel is NOT required for Lookup mode.`}
+${isCore ? `- Do NOT invent nativeMindModel (legacy). Fill feelAnchor + emotionalTone instead.
+${isEnabled('wordChoice') ? '- wordChoiceContrast: REQUIRED 2-4 structured vs/reason rows (not a long whyChoose essay).' : ''}
+- PRIORITY order for Pure Core: feelAnchor/emotionalTone > unnaturalMindModel (if any) > usageScenes > wordChoiceContrast > meaning. Keep meaning accurate but secondary to cognitive remodeling.
+- usageScenes in Core mode must emphasize native communicative intent (what job the phrase does), not just textbook situations.` : `- Focus on clear meaning, practical usage scenes, and correction quality. nativeMindModel / wordChoiceContrast are NOT required for Lookup mode.`}
 - If input is CHINESE (targeting English):
   - correctForm: the most natural, complete English translation of the full input — do NOT omit any part of the Chinese.
   - correctionNote: omit (translation, not correction).
   - usageScenes: explain when to use this translation vs others.
-${isCore ? '  - nativeMindModel: explain how an English native would conceptualize the translated expression and why that wording fits.\n  - unnaturalMindModel: if a literal Chinese-style English would be tempting, contrast that transfer error with the native concept.' : ''}
+${isCore ? '  - feelAnchor/emotionalTone: how an English native would feel/stance the translated expression.\n  - unnaturalMindModel: if a literal Chinese-style English would be tempting, contrast that transfer error with the native concept.' : ''}
 - If input is a FOREIGN LANGUAGE (not English/Chinese):
   - meaning: accurate and natural translation.
   - usageScenes: explain the specific feeling or tone of the original expression.

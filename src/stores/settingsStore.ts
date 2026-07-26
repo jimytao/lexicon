@@ -22,25 +22,27 @@ export const DEFAULT_MODULES: AppModule[] = [
   { id: 'chat',        label: 'AI Chat',              enabled: true },
 ]
 
-/** Pure Core 单词出厂模组 — 顺序可拖拽覆盖；nativeMindModel 视图置顶不在此列表 */
+/** Pure Core 单词出厂模组 — P1 顺序可拖拽覆盖（含选用对照 wordChoice） */
 export const DEFAULT_CORE_MODULES: AppModule[] = [
-  { id: 'coreConcept',  label: 'Usage Image',           enabled: true },
-  { id: 'wordGraph',    label: 'Concept Tree Graph',    enabled: true },
-  { id: 'chunks',       label: 'Prep Phrases',          enabled: true },
-  { id: 'collocations', label: 'Other Collocations',    enabled: true },
-  { id: 'synonyms',     label: 'Synonyms & Nuances',    enabled: true },
-  { id: 'usageScenes',  label: 'Usage Scenes',          enabled: true },
-  { id: 'culture',      label: 'Cultural Context',      enabled: true },
-  { id: 'practice',     label: 'Usage Practice',        enabled: true },
-  { id: 'chat',         label: 'AI Chat Follow-up',     enabled: true },
+  { id: 'coreConcept',  label: 'Usage Image',            enabled: true },
+  { id: 'wordGraph',    label: 'Concept Tree Graph',     enabled: true },
+  { id: 'chunks',       label: 'Prep Phrases',           enabled: true },
+  { id: 'collocations', label: 'Other Collocations',     enabled: true },
+  { id: 'synonyms',     label: 'Synonyms & Nuances',     enabled: true },
+  { id: 'wordChoice',   label: 'Word Choice Contrast',   enabled: true },
+  { id: 'usageScenes',  label: 'Usage Scenes',           enabled: true },
+  { id: 'culture',      label: 'Cultural Context',       enabled: true },
+  { id: 'practice',     label: 'Usage Practice',         enabled: true },
+  { id: 'chat',         label: 'AI Chat Follow-up',      enabled: true },
 ]
 
 /** Pure Core 词组/句子出厂模组（与单词列表分离，避免开了却无 UI） */
 export const DEFAULT_CORE_PHRASE_MODULES: AppModule[] = [
-  { id: 'usageScenes', label: 'Usage Scenes',       enabled: true },
-  { id: 'culture',     label: 'Cultural Context',   enabled: true },
-  { id: 'practice',    label: 'Usage Practice',     enabled: true },
-  { id: 'chat',        label: 'AI Chat Follow-up',  enabled: true },
+  { id: 'usageScenes', label: 'Usage Scenes',         enabled: true },
+  { id: 'wordChoice',  label: 'Word Choice Contrast', enabled: true },
+  { id: 'culture',     label: 'Cultural Context',     enabled: true },
+  { id: 'practice',    label: 'Usage Practice',       enabled: true },
+  { id: 'chat',        label: 'AI Chat Follow-up',    enabled: true },
 ]
 
 function insertMissingDefaults(

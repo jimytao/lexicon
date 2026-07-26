@@ -163,14 +163,15 @@ Analyze this word and return the JSON.`
 词库缺失（或 Mode 3 全量）单词的 AI 生成。返回 `AiFullResult`。`cognitive: 'lookup' | 'core'` 决定 prompt 与缓存分轨。
 
 - 共用：`correctForm`、`phonetic`、`pos`、`coreConcept`、`meanings`（含 scene）、`etymology`、`synonyms`、`examples` 等
-- **Lookup**：理解与记忆向；**不要** `nativeMindModel` / `conceptGraph`
-- **Pure Core**：必填 `nativeMindModel` + `conceptGraph`；优先级心智 > 核心意象 > 图谱 > 释义
+- **Lookup**：理解与记忆向；**不要** `nativeMindModel` / `conceptGraph` / `wordChoiceContrast`
+- **Pure Core**：必填加厚 `coreConcept`（含 `feelAnchor` / `emotionalTone`）+ `conceptGraph`；`wordChoice` 开时必填 `wordChoiceContrast`；优先级 coreConcept > 图谱 > 搭配 > 近义 > 选用对照
 - **collocations 数据对象**（两模组共用 schema 父字段，设置里拆成两个可排序 id）：
   - `chunks`：**常用介词词组** only；note 必填释义并点明介词角色；可带 `spatialExtension`
   - `collocations`：**其他常用词组**（adj+N、V+N 等）；**禁止**往这里塞介词语组；note 同样必填
   - 禁止 `N/A` /「常用」空话；UI 始终可见展示
 - **Lookup vs Core prompt 模组源**：`cognitive=lookup` → `settings.modules`；`cognitive=core` → `settings.coreModules`
-- **Core 单词**：不拉 meanings 释义墙；优先 nativeMindModel / 加厚 coreConcept / conceptGraph / chunks / collocations / usageScenes
+- **Core 单词**：不拉 meanings 释义墙；优先加厚 coreConcept（feelAnchor/emotionalTone）/ conceptGraph / chunks / collocations / synonyms / wordChoiceContrast / usageScenes；旧 `nativeMindModel` 仅缓存兼容
+- **搭配规则 C**：discourse particle / tag-question / 句末尾缀 / 感叹词（如 innit）若搭配只会重复 conceptGraph 句架 → `chunks`/`collocations` 返回空数组；普通实词仍正常填搭配
 - **练习**：Lookup `evaluateMeaningCheck`（释义核对）；Core 既有场景造句 `evaluateAnswer`
 - **conceptGraph.examples**（Core）：对象 `{ phrase, meaning, mindHint }`——短语 + 释义 + 母语心智延伸；禁止只返回裸字符串
 - 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况，以及 Mode 3 对词库词的全量认知视图
@@ -180,7 +181,7 @@ Analyze this word and return the JSON.`
 
 - 共用字段：`correctForm`、`correctionNote`、`unnaturalMindModel?`、`meaning`、`usageScenes`、`examples` 等
 - **Lookup**：词典式释义 / 订正 / 场景；`unnaturalMindModel` 仅在不地道时填写
-- **Pure Core**：母语者心智教练；**必填** `nativeMindModel`（mentalPicture / emotionalStance / whyChooseThisWord）；优先交际意图与违和感对比
+- **Pure Core**：母语者心智教练；**必填** `feelAnchor` / `emotionalTone`；`wordChoice` 开时填 `wordChoiceContrast`；优先交际意图与违和感对比（旧 nativeMindModel 不再要求）
 - `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
 - `meaning` 遵守完整翻译约束：面对长文本或多句段落，`meaning` 必须提供句句对应的完整中文翻译（可首行置顶【核心主题】总结，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括
 - `correctionNote` 分类标注改动类型：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调

@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.8.7**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.8.8**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -130,15 +130,16 @@ Tauri 2（PC）
 释义 → 轻量 coreConcept → 词根 → 助记 → 例句 → 相关词组 → 介词意象 → **释义核对练习** → Chat  
 
 **Pure Core（母语者用法）**  
-nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用 → 用法场景 → 语域 → **场景造句练习** → Chat  
+加厚 coreConcept（含 feelAnchor / emotionalTone）→ 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用 → **选用对照 (`wordChoice`)** → 用法场景 → 语域 → **场景造句练习** → Chat  
+（以上模组均可在设置中拖拽/开关；旧 `nativeMindModel` 仅作缓存兼容映射。**搭配规则 C**：innit 类尾缀若只会重复概念树句架，AI 可返回空搭配，UI 不展示空卡；实词仍正常出搭配。）
 
 ### Lookup vs Pure Core 认知分轨
 
 | | AI Lookup | Pure Core |
 |--|-----------|-----------|
 | **角色** | 学会意思、怎么记住 | 母语者怎么想、怎么用 |
-| **单词全量** | 释义墙 + 轻量意象 + 词源/助记；无心智/概念树/搭配墙 | 心智 + 加厚用法意象 + 概念树 + 介词语组/其他词组 + 选用；**无 dictionary** |
-| **词组/句子** | 释义、场景、例句、介词意象、释义核对；`modules` | 心智置顶；释义轻量固定展示；**`corePhraseModules`**（用法场景/语域/造句练习） |
+| **单词全量** | 释义墙 + 轻量意象 + 词源/助记；无概念树/搭配墙/选用对照 | 加厚用法意象（感觉锚+情绪底色）+ 概念树 + 介词语组/其他词组 + 近义 + 选用对照；**无 dictionary** |
+| **词组/句子** | 释义、场景、例句、介词意象、释义核对；`modules` | 释义轻量固定展示（可附感觉/情绪）；**`corePhraseModules`**（用法场景/选用对照/语域/造句练习） |
 | **练习** | `meaning-check`（输入大致意思） | `usage-output`（场景造句） |
 | **prompt 模组源** | `settings.modules` | 单词 `coreModules`；词组/句 `corePhraseModules` |
 | **中文反查 Core** | — | 短英文候选（非 dictionary 墙）+ 心智主线 |
@@ -251,9 +252,9 @@ nativeMindModel（置顶）→ 加厚 coreConcept → 概念树 → **常用介�
 
 ### 最近一次重要改动
 
-**2026-07-26 (v0.8.6)** — 窄屏 UI：Chat Send 防裁切；去掉「N AI follow-ups」徽章（保留底部 Chat）；设置多选项 ChoiceRow（说明独占下一行）。
+**2026-07-26 (v0.8.8)** — Pure Core 心智流水线：感觉锚/情绪并入 Core Image；可拖拽选用对照；概念树空态；innit 类词搭配可空（规则 C）。
 
-此前（v0.8.5）：Lookup/Core 学习流分轨；AI 超时修复；结果页视觉克制。
+此前（v0.8.7）：AI 追问 Lookup/Core 分轨；iOS 键盘避让；发版硬门禁。
 
 ### 关键实现备忘
 

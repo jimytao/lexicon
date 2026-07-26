@@ -115,25 +115,25 @@ export interface WordAIResult {
 |---|---|---|---|---|
 | **Mode 1** | Instant Mode | 本地速查，毫秒级响应，离线可用 | 本地 SQLite | `LocalDictView` |
 | **Mode 2** | Standard AI Mode | 传统词典 + AI 充实解析，偏向“理解与记忆” | SQLite + AI API | `StandardAIView` + 前置 `CoreConceptCard` + 扩展 `ChunksCard` / `NuanceCard`；词组走 `PhraseView`（Lookup prompt / 缓存） |
-| **Mode 3** | Pure Core Mode | 纯血认知搜索，偏向“如何输出使用”与母语者心智 | AI API | 单词：`CoreCognitiveView` + `WordGraphCard` + AI Chat；**词组/句子**：同 `PhraseView` 但 Core prompt（必填 `nativeMindModel`）+ `q::core` 分轨缓存 + 心智卡片前置 |
+| **Mode 3** | Pure Core Mode | 纯血认知搜索，偏向“如何输出使用”与母语者心智 | AI API | 单词：`CoreCognitiveView` + `WordGraphCard` + `WordChoiceCard` + AI Chat；**词组/句子**：同 `PhraseView` + Core prompt（`feelAnchor`/`emotionalTone`/`wordChoiceContrast`）+ `q::core` 分轨缓存 |
 
 > **认知分轨（2026-07-25）**：
-> - **词组/句子**：Lookup 与 Pure Core 分轨 prompt + `q` / `q::core` 缓存。Core 主打母语心智；Lookup 主打释义/订正/场景。
-> - **单词全量**（`aiFullLookup`）：同样分轨。Lookup 要 coreConcept+理解记忆字段；Core 必填 `nativeMindModel` + `conceptGraph`。
+> - **词组/句子**：Lookup 与 Pure Core 分轨 prompt + `q` / `q::core` 缓存。Core 主打母语选用心智；Lookup 主打释义/订正/场景。
+> - **单词全量**（`aiFullLookup`）：同样分轨。Lookup 要 coreConcept+理解记忆字段；Core 必填加厚 `coreConcept`（含 feelAnchor/emotionalTone）+ `conceptGraph`；选用对照走 `wordChoiceContrast`。
 > - **Instant 未命中**：按设置 `defaultSearchMode` 落入 Lookup 或 Core（不再写死 Lookup）。
 > - **模式切换**：点击 Lookup 或 Pure Core 均自动触发对应搜索（有缓存则恢复）。
 
-### 3.1b 模组学习流重组（2026-07-25 已实施）
+### 3.1b 模组学习流重组（2026-07-25 已实施；2026-07-26 心智流水线）
 
 | | AI Lookup (`modules`) | Pure Core (`coreModules`) |
 |--|----------------------|---------------------------|
 | 角色 | 理解与记忆 | 母语者如何用 |
-| 出厂模组 | dictionary, coreConcept(轻), etymology, mnemonic, examples, related, preposition, practice(释义核对), chat | coreConcept(厚), wordGraph, **chunks**, **collocations**, synonyms, usageScenes, culture, practice(造句), chat |
-| 明确不含 | chunks / collocations / synonyms / culture（迁 Core） | dictionary、preposition 意象、etymology、mnemonic |
-| 词组 UI | 绑 `modules` | 绑 **`corePhraseModules`**（与单词 Core 列表分离）；释义轻量固定展示 |
-| 顺序 | **可拖拽**；表中仅为出厂默认 | 单词 / 词组两套列表均可拖拽；`nativeMindModel` 视图置顶 |
+| 出厂模组 | dictionary, coreConcept(轻), etymology, mnemonic, examples, related, preposition, practice(释义核对), chat | coreConcept(厚+感觉锚/情绪), wordGraph, **chunks**, **collocations**, synonyms, **wordChoice**, usageScenes, culture, practice(造句), chat |
+| 明确不含 | chunks / collocations / synonyms / culture / wordChoice（迁 Core） | dictionary、preposition 意象、etymology、mnemonic；**不再置顶 nativeMindModel** |
+| 词组 UI | 绑 `modules` | 绑 **`corePhraseModules`**（含 wordChoice）；释义轻量固定展示，可附感觉/情绪 |
+| 顺序 | **可拖拽**；表中仅为出厂默认 | 单词 / 词组两套列表均可拖拽（含 wordChoice） |
 | 中文反查 | 完整 meanings | Core：2–5 个短英文候选（非释义墙） |
-| 静默重试 | collocation notes | Core：`wordGraph` 开且无 conceptGraph → 重试一次 |
+| 静默重试 | collocation notes | Core：`wordGraph` 开且无可见 conceptGraph → 重试一次；UI 空态可手动重拉 |
 
 **chunks vs collocations**：
 - `chunks`：常用**介词词组**（prep+N / V+prep）；note 点明介词角色；可带 spatialExtension
@@ -147,8 +147,9 @@ export interface WordAIResult {
 * **`CoreConceptCard.tsx`** [NEW]: 渲染词汇的核心意象。
 * **`NuanceMindModelCard.tsx`** [NEW/MODIFY]: 渲染近义词辨析，带 `Tone Badge`（褒/贬/中性）与 `WhenToUse` 心理图景。
 * **`SpatialExtensionCard.tsx`** [NEW/MODIFY]: 渲染 Chunks 的空间延伸比喻。
-* **`WordGraphCard.tsx`** [NEW]: 渲染 Mode 3 专用的概念分支树/网络图。
-* **`UnnaturalMindModelCard.tsx`** [NEW]: 渲染句子订正中的“母语者思维违和感”。
+* **`WordGraphCard.tsx`**: 渲染 Mode 3 概念树；无图时显示空态+重试（禁止静默消失）。
+* **`WordChoiceCard.tsx`**: L2 选用对照（vs / reason）；独立可拖拽模组。
+* **`UnnaturalMindModelCard.tsx`**: 渲染句子订正中的“母语者思维违和感”。
 
 ---
 

@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXp6MHpYTEhzWG5qQVFCNEh2RXZKWjFTMW1UN01SYVZFZWRNd1hSRVBnMDUwamtkcVVGK2ZVTzVDWnJiWmhySGRSUU5saXExNnd5NkVLdmExYkJpL1FBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDQyMDIzCWZpbGU6TGV4aWNvbl8wLjguN194NjQtc2V0dXAuZXhlCitzQkJTVzVjYjNPUmUzczVrTXArNWhRTHFOem1ENXFmS2w2Y1lubUZZcXpGbDFWb0twT1BNT2tOS09MRVlkWEcyU1RneGY3RnFoU25YeHlQY01zUER3PT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXdKeG5HYnJTU2dDY3o5NDR0SGMyTHV5MjVjcDcwdHdBSXREZUlLdmhjK3YrMWZnaFgwcDZFRlJiaks1UjlWeElGdDFyRUZiM1Q1dlBlSHcwOUlwUGdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDQ2Mzg2CWZpbGU6TGV4aWNvbl8wLjguOF94NjQtc2V0dXAuZXhlCmk1RG9qamxnMFdRVVgzMkFPUGlUWVRaYUY3L3cxMlRVTXhDU2pBenNQTkV5clRLQ1R6ZEgyNFBpQ1FDT0EwVUJ5SUFIYStNSE5JeTR3bTczY3IwQ0RRPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-26T05:02:24Z",
-    "version":  "0.8.7",
-    "notes":  "AI 追问 Lookup/Core 分轨、修复 iOS 键盘遮挡输入框，并加固发版签名门禁\n1. 新增：AI 追问按 Lookup / Pure Core 分轨保存，互不覆盖；旧记录自动迁入 Lookup\n2. 修复：iOS 弹出键盘时追问输入框不再被挡住（恢复居中双次滚动）\n3. 工程：发版脚本与签名硬门禁（`scripts/release/`），避免签名失败与 version.json BOM\n",
-    "notes_zh":  "AI 追问 Lookup/Core 分轨、修复 iOS 键盘遮挡输入框，并加固发版签名门禁\n1. 新增：AI 追问按 Lookup / Pure Core 分轨保存，互不覆盖；旧记录自动迁入 Lookup\n2. 修复：iOS 弹出键盘时追问输入框不再被挡住（恢复居中双次滚动）\n3. 工程：发版脚本与签名硬门禁（`scripts/release/`），避免签名失败与 version.json BOM\n",
-    "notes_en":  "AI follow-ups split by Lookup/Core, iOS keyboard occlusion fix, and stricter release signing gates\n1. **New**: AI follow-up chats are stored on separate Lookup / Pure Core tracks (legacy arrays migrate to Lookup)\n2. **Fix**: iOS virtual keyboard no longer hides the AI chat input (restore center + double scrollIntoView)\n3. **Engineering**: release scripts and hard gates under `scripts/release/` to prevent missing `.sig` / UTF-8 BOM in `version.json`\n",
+    "pub_date":  "2026-07-26T06:14:54Z",
+    "version":  "0.8.8",
+    "notes":  "Pure Core 心智流水线重组：选用对照、概念树空态、尾缀词搭配可空\n1. 新增：感觉锚 / 情绪底色并入用法意象；「为何选这个」改为可拖拽「选用对照」（近义逐条 vs）\n2. 优化：Pure Core 出厂顺序改为 Core → 概念树 → 搭配 → 近义 → 选用对照 → 场景…（设置可拖）\n3. 修复：概念树未返回时显示空态与重试，不再整块消失\n4. 优化：innit 类尾缀若搭配只会重复概念树句架，则不生成空搭配卡；实词仍正常出搭配\n",
+    "notes_zh":  "Pure Core 心智流水线重组：选用对照、概念树空态、尾缀词搭配可空\n1. 新增：感觉锚 / 情绪底色并入用法意象；「为何选这个」改为可拖拽「选用对照」（近义逐条 vs）\n2. 优化：Pure Core 出厂顺序改为 Core → 概念树 → 搭配 → 近义 → 选用对照 → 场景…（设置可拖）\n3. 修复：概念树未返回时显示空态与重试，不再整块消失\n4. 优化：innit 类尾缀若搭配只会重复概念树句架，则不生成空搭配卡；实词仍正常出搭配\n",
+    "notes_en":  "Pure Core mindset pipeline: word-choice contrast, concept-tree empty state, skip redundant collocations\n1. **New**: Feel anchor / emotional tone live on Usage Image; “why this word” is a draggable Word Choice Contrast module (vs near-synonyms)\n2. **Improved**: Default Pure Core order is Core → concept tree → collocations → synonyms → word choice → scenes… (reorderable in Settings)\n3. **Fix**: Missing concept trees show an empty state with retry instead of disappearing\n4. **Improved**: Tag particles like innit skip collocation cards when they would only repeat tree sentence frames; content words still get collocations\n",
     "is_major":  false
 }

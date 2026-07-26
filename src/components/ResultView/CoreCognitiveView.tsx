@@ -2,11 +2,12 @@ import type { AiFullResult } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
-import { NativeMindModelCard } from './AiSection/NativeMindModelCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { WordGraphCard } from './AiSection/WordGraphCard'
+import { WordChoiceCard } from './AiSection/WordChoiceCard'
 import { CollocationCard } from './AiSection/CollocationCard'
 import { SynonymList } from './AiSection/SynonymList'
+import { migrateNativeMindToCoreFields } from '../../utils/coreMindsetPipeline'
 import { AiChatBox } from './AiSection/AiChatBox'
 import { DiffText } from './DiffText'
 import { useT } from '../../i18n'
@@ -44,6 +45,13 @@ export function CoreCognitiveView({
   const repairKey = aiFullResult?.correctForm || word
   const isChineseQuery = detectLanguage(word) === 'zh'
   const zhCandidates = isChineseQuery ? (aiFullResult?.meanings ?? []) : []
+  const migratedMind = aiFullResult
+    ? migrateNativeMindToCoreFields({
+        coreConcept: aiFullResult.coreConcept,
+        nativeMindModel: aiFullResult.nativeMindModel,
+        wordChoiceContrast: aiFullResult.wordChoiceContrast,
+      })
+    : {}
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
@@ -108,8 +116,6 @@ export function CoreCognitiveView({
             </div>
           )}
 
-          <NativeMindModelCard nativeMindModel={aiFullResult.nativeMindModel} />
-
           {coreModules.map((module) => {
             if (!module.enabled) return null
 
@@ -118,7 +124,7 @@ export function CoreCognitiveView({
                 return (
                   <CoreConceptCard
                     key={module.id}
-                    coreConcept={aiFullResult.coreConcept}
+                    coreConcept={migratedMind.coreConcept ?? aiFullResult.coreConcept}
                     variant="usage"
                   />
                 )
@@ -126,8 +132,10 @@ export function CoreCognitiveView({
                 return (
                   <WordGraphCard
                     key={module.id}
+                    wordGraphEnabled
                     conceptGraph={aiFullResult.conceptGraph}
                     onRepairMissing={() => repairConceptExamples(repairKey)}
+                    onRetryGenerate={onRetry}
                   />
                 )
               case 'chunks':
@@ -159,6 +167,14 @@ export function CoreCognitiveView({
                     onSynonymClick={onWordClick}
                   />
                 )
+              case 'wordChoice':
+                return (
+                  <WordChoiceCard
+                    key={module.id}
+                    wordChoiceContrast={migratedMind.wordChoiceContrast ?? aiFullResult.wordChoiceContrast}
+                    whyChooseFallback={migratedMind.whyChooseFallback}
+                  />
+                )
               case 'usageScenes':
                 return (
                   <UsageScenesCard
@@ -188,11 +204,21 @@ export function CoreCognitiveView({
               case 'chat': {
                 const corrected = aiFullResult.correctForm || word
                 const parts: string[] = []
-                if (aiFullResult.nativeMindModel) {
-                  parts.push(`母语心智: 画面("${aiFullResult.nativeMindModel.mentalPicture}") | 情感("${aiFullResult.nativeMindModel.emotionalStance}") | 为何选用("${aiFullResult.nativeMindModel.whyChooseThisWord}")`)
+                const cc = migratedMind.coreConcept ?? aiFullResult.coreConcept
+                if (cc?.image || cc?.feelAnchor || cc?.emotionalTone) {
+                  parts.push(
+                    `用法意象: "${cc?.image || ''}" — ${cc?.explanation || ''}`
+                    + (cc?.feelAnchor ? ` | 感觉锚: ${cc.feelAnchor}` : '')
+                    + (cc?.emotionalTone ? ` | 情绪底色: ${cc.emotionalTone}` : ''),
+                  )
                 }
-                if (aiFullResult.coreConcept?.image) {
-                  parts.push(`用法意象: "${aiFullResult.coreConcept.image}" — ${aiFullResult.coreConcept.explanation || ''}`)
+                const contrast = migratedMind.wordChoiceContrast ?? aiFullResult.wordChoiceContrast
+                if (contrast?.length) {
+                  parts.push(
+                    '选用对照:\n' + contrast.map((r) => `  · vs ${r.vs}: ${r.reason}`).join('\n'),
+                  )
+                } else if (migratedMind.whyChooseFallback) {
+                  parts.push(`选用说明: ${migratedMind.whyChooseFallback}`)
                 }
                 if (aiFullResult.conceptGraph?.branches?.length) {
                   parts.push('延伸分支领域:\n' + aiFullResult.conceptGraph.branches.map((b) => {

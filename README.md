@@ -11,7 +11,7 @@
 ### 1. 三种查词模式
 - **Instant**：纯本地词库，零延迟，离线可用（切回 Instant 只显示 L1，AI 缓存保留）。
 - **AI Lookup**：理解与记忆——L1 立即呈现；轻量意象、词根、助记、例句、介词意象、释义核对练习与 Chat 异步淡入。
-- **Pure Core**：母语者用法——心智模型、用法意象、概念树、介词语组/其他词组、近义选用、用法场景、语域与造句练习（无释义墙）。
+- **Pure Core**：母语者用法——用法意象（含感觉锚/情绪底色）、概念树、介词语组/其他词组（尾缀类词可空）、近义与**选用对照**、用法场景、语域与造句练习（无释义墙；模组均可拖拽排序）。
 - 顶部模式切换**点击即生效**（有缓存恢复，无缓存立刻发起对应查询）；历史列表双星区分 Lookup / Core 轨。
 
 ### 2. 双本地词库与智能路由
@@ -44,12 +44,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.8.7_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.8.7_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.8.8_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.8.8_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_x64_en-US.msi)**（MSI）
 
 ### Android
-- **[Lexicon_0.8.7_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.7/Lexicon_0.8.7_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.8.7](https://github.com/jimytao/lexicon/releases/tag/v0.8.7)。
+- **[Lexicon_0.8.8_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.8.8](https://github.com/jimytao/lexicon/releases/tag/v0.8.8)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

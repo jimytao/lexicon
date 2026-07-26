@@ -17,10 +17,11 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { playPronunciation } from '../../services/audio'
 
 import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
-import { NativeMindModelCard } from './AiSection/NativeMindModelCard'
+import { WordChoiceCard } from './AiSection/WordChoiceCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 import { SectionHeading } from './SectionHeading'
 import { phraseCognitiveFromSearchMode } from '../../utils/text'
+import { migrateNativeMindToCoreFields } from '../../utils/coreMindsetPipeline'
 
 interface PhraseViewProps {
   phrase: string
@@ -234,15 +235,23 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         </div>
       )}
 
-      {aiStatus === 'success' && phraseResult && (
+      {aiStatus === 'success' && phraseResult && (() => {
+        const phraseMind = migrateNativeMindToCoreFields({
+          coreConcept: {
+            image: '',
+            explanation: '',
+            feelAnchor: phraseResult.feelAnchor,
+            emotionalTone: phraseResult.emotionalTone,
+          },
+          nativeMindModel: phraseResult.nativeMindModel,
+          wordChoiceContrast: phraseResult.wordChoiceContrast,
+        })
+        return (
         <div className="space-y-2">
-          {/* Pure Core: lead with native mind model + unnatural contrast */}
-          {isCoreMode && (
-            <div className="space-y-2 mb-1">
-              <NativeMindModelCard nativeMindModel={phraseResult.nativeMindModel} />
-              {phraseResult.unnaturalMindModel && (
-                <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
-              )}
+          {/* Pure Core: unnatural contrast only (mindset folded into meaning / wordChoice) */}
+          {isCoreMode && phraseResult.unnaturalMindModel && (
+            <div className="mb-1">
+              <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
             </div>
           )}
 
@@ -258,6 +267,22 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
                 )}
               </div>
+              {(phraseMind.coreConcept?.feelAnchor || phraseMind.coreConcept?.emotionalTone) && (
+                <div className="mt-2 space-y-1 border-l-2 border-l-accent/40 pl-3">
+                  {phraseMind.coreConcept?.feelAnchor && (
+                    <p className="text-[11px] text-foreground-muted leading-relaxed">
+                      <span className="font-semibold text-foreground/80 mr-1">{t('coreConcept.feelAnchor')}</span>
+                      {phraseMind.coreConcept.feelAnchor}
+                    </p>
+                  )}
+                  {phraseMind.coreConcept?.emotionalTone && (
+                    <p className="text-[11px] text-foreground-muted leading-relaxed">
+                      <span className="font-semibold text-foreground/80 mr-1">{t('coreConcept.emotionalTone')}</span>
+                      {phraseMind.coreConcept.emotionalTone}
+                    </p>
+                  )}
+                </div>
+              )}
               {isMeaningLong && (
                 <button
                   onClick={() => setMeaningExpanded(v => !v)}
@@ -348,6 +373,15 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 return phraseResult.culturalLore ? (
                   <CulturalLoreCard key={module.id} lore={phraseResult.culturalLore} />
                 ) : null
+              case 'wordChoice':
+                if (!isCoreMode) return null
+                return (
+                  <WordChoiceCard
+                    key={module.id}
+                    wordChoiceContrast={phraseMind.wordChoiceContrast ?? phraseResult.wordChoiceContrast}
+                    whyChooseFallback={phraseMind.whyChooseFallback}
+                  />
+                )
               case 'mnemonic':
                 if (isCoreMode) return null
                 return (
@@ -384,8 +418,17 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   parts.push(`用户原始输入: "${phrase}" → 纠正为: "${corrected}"`)
                   if (phraseResult.correctionNote) parts.push(`纠正说明: ${phraseResult.correctionNote}`)
                 }
-                if (phraseResult.nativeMindModel) {
-                  parts.push(`母语心智: 画面("${phraseResult.nativeMindModel.mentalPicture}") | 情感("${phraseResult.nativeMindModel.emotionalStance}") | 为何选用("${phraseResult.nativeMindModel.whyChooseThisWord}")`)
+                if (phraseMind.coreConcept?.feelAnchor || phraseMind.coreConcept?.emotionalTone) {
+                  parts.push(
+                    `感觉/情绪: ${phraseMind.coreConcept?.feelAnchor || ''}`
+                    + (phraseMind.coreConcept?.emotionalTone ? ` | ${phraseMind.coreConcept.emotionalTone}` : ''),
+                  )
+                }
+                const pContrast = phraseMind.wordChoiceContrast ?? phraseResult.wordChoiceContrast
+                if (pContrast?.length) {
+                  parts.push('选用对照:\n' + pContrast.map((r) => `  · vs ${r.vs}: ${r.reason}`).join('\n'))
+                } else if (phraseMind.whyChooseFallback) {
+                  parts.push(`选用说明: ${phraseMind.whyChooseFallback}`)
                 }
                 if (phraseResult.unnaturalMindModel) {
                   parts.push(`思维违和感剖析: 中文直译("${phraseResult.unnaturalMindModel.chineseThought}") → 母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
@@ -428,7 +471,8 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             }
           })}
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

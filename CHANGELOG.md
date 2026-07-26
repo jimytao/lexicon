@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 2026-07-26 — Pure Core 心智流水线重组（选用对照 + 概念树空态）(v0.8.8)
+
+### 用户可见
+1. **不再置顶 Native Mind Model**：感觉锚 / 情绪底色并入 Usage Image；「为何选这个」改为可拖拽模组 **选用对照**（L2：vs 近义逐条对照）。
+2. **出厂顺序 P1**：Core Image → 概念树 → 搭配 → 近义 → 选用对照 → 场景…（设置里全部可拖）。
+3. **概念树空态**：`wordGraph` 开启但未返回图时显示提示 + 重试，不再整块静默消失。
+4. **搭配规则 C**：innit 类尾缀/语气词若搭配只会重复概念树句架，AI 返回空搭配（UI 不展示空卡）；shrug/sheen 等实词仍正常出搭配。
+
+### 工程
+- TDD：`coreMindsetPipeline.test.ts`（模组顺序、旧心智映射、空态、源码接线）。
+- Prompt：Core 写 `feelAnchor` / `emotionalTone` / `wordChoiceContrast`；不再要求新生成 `nativeMindModel`。
+- 文档：`AGENT.md`、`04`、`07` 同步。
+
+### 涉及文件
+- `coreMindsetPipeline.ts`、`WordChoiceCard.tsx`、`CoreConceptCard`、`WordGraphCard`、`CoreCognitiveView`、`PhraseView`、`settingsStore`、`ai.ts`、`aiCompleteness`、`types`、`i18n`
+
+---
+
 ## 2026-07-26 — AI 追问 Lookup/Core 分轨、iOS 键盘避让与发版硬门禁 (v0.8.7)
 
 ### 用户可见

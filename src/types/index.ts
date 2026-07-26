@@ -72,6 +72,16 @@ export interface UnnaturalMindModel {
 export interface CoreConcept {
   image: string
   explanation: string
+  /** Pure Core：感觉锚（原 Mental Picture 压缩，不写长场景） */
+  feelAnchor?: string
+  /** Pure Core：情绪底色（原 Emotional Stance） */
+  emotionalTone?: string
+}
+
+/** Pure Core L2：主词 vs 近义选用对照 */
+export interface WordChoiceContrastItem {
+  vs: string
+  reason: string
 }
 
 /** Concept-tree leaf: phrase + required explanation (legacy caches may still be bare strings). */
@@ -176,7 +186,10 @@ export interface AiFullResult {
   }
   collocations?: CollocationData
   conceptGraph?: ConceptGraph
+  /** @deprecated 旧缓存兼容；新 Core 用 coreConcept.feelAnchor/emotionalTone + wordChoiceContrast */
   nativeMindModel?: NativeMindModel
+  /** Pure Core：结构化选用对照（L2），优先于 whyChoose 散文 */
+  wordChoiceContrast?: WordChoiceContrastItem[]
   /** Pure Core：母语者常用场景/句式（非词典释义墙） */
   usageScenes?: Array<{ label: string; description: string }>
 }
@@ -204,8 +217,11 @@ export interface PhraseResult {
   correctForm: string
   correctionNote?: string
   unnaturalMindModel?: UnnaturalMindModel
-  /** Pure Core：母语者如何理解/选用该表达（与单词 NativeMindModel 对齐） */
+  /** @deprecated 旧缓存兼容；新 Core 用 feelAnchor/emotionalTone + wordChoiceContrast */
   nativeMindModel?: NativeMindModel
+  feelAnchor?: string
+  emotionalTone?: string
+  wordChoiceContrast?: WordChoiceContrastItem[]
   meaning: string
   usageScenes?: Array<{ label: string; description: string }>
   examples: Example[]
