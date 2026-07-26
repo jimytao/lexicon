@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXdKeG5HYnJTU2dDY3o5NDR0SGMyTHV5MjVjcDcwdHdBSXREZUlLdmhjK3YrMWZnaFgwcDZFRlJiaks1UjlWeElGdDFyRUZiM1Q1dlBlSHcwOUlwUGdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDQ2Mzg2CWZpbGU6TGV4aWNvbl8wLjguOF94NjQtc2V0dXAuZXhlCmk1RG9qamxnMFdRVVgzMkFPUGlUWVRaYUY3L3cxMlRVTXhDU2pBenNQTkV5clRLQ1R6ZEgyNFBpQ1FDT0EwVUJ5SUFIYStNSE5JeTR3bTczY3IwQ0RRPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTA5MWk0TzA2TmlPcjVrOHpYaGd1aE5lN0JkT2RtcTM3RTNNY055ZVJqMTEwd3djR0ZLR2V0U2FHQTdhelRvU284M1k1M245aHNBN3l4ZERaNlRSRVFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDY1NzM2CWZpbGU6TGV4aWNvbl8wLjguOV94NjQtc2V0dXAuZXhlClE3NC9rdFFpb0tnQitzK0FEMmVNb3Avb0sxNktBR2pscldFbmVocWZQTEN1M1lZdWtnMi8wQVV4QitDZENVMjhicC96ZFpBOGNJTkxkNXpoSUhpMkNBPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-26T06:14:54Z",
-    "version":  "0.8.8",
-    "notes":  "Pure Core 心智流水线重组：选用对照、概念树空态、尾缀词搭配可空\n1. 新增：感觉锚 / 情绪底色并入用法意象；「为何选这个」改为可拖拽「选用对照」（近义逐条 vs）\n2. 优化：Pure Core 出厂顺序改为 Core → 概念树 → 搭配 → 近义 → 选用对照 → 场景…（设置可拖）\n3. 修复：概念树未返回时显示空态与重试，不再整块消失\n4. 优化：innit 类尾缀若搭配只会重复概念树句架，则不生成空搭配卡；实词仍正常出搭配\n",
-    "notes_zh":  "Pure Core 心智流水线重组：选用对照、概念树空态、尾缀词搭配可空\n1. 新增：感觉锚 / 情绪底色并入用法意象；「为何选这个」改为可拖拽「选用对照」（近义逐条 vs）\n2. 优化：Pure Core 出厂顺序改为 Core → 概念树 → 搭配 → 近义 → 选用对照 → 场景…（设置可拖）\n3. 修复：概念树未返回时显示空态与重试，不再整块消失\n4. 优化：innit 类尾缀若搭配只会重复概念树句架，则不生成空搭配卡；实词仍正常出搭配\n",
-    "notes_en":  "Pure Core mindset pipeline: word-choice contrast, concept-tree empty state, skip redundant collocations\n1. **New**: Feel anchor / emotional tone live on Usage Image; “why this word” is a draggable Word Choice Contrast module (vs near-synonyms)\n2. **Improved**: Default Pure Core order is Core → concept tree → collocations → synonyms → word choice → scenes… (reorderable in Settings)\n3. **Fix**: Missing concept trees show an empty state with retry instead of disappearing\n4. **Improved**: Tag particles like innit skip collocation cards when they would only repeat tree sentence frames; content words still get collocations\n",
+    "pub_date":  "2026-07-26T11:39:26Z",
+    "version":  "0.8.9",
+    "notes":  "词组释义与用法场景职责纠偏；订正标题与「为什么这么改」独立折叠\n1. 优化：短词组 Meaning 只保留短释义；情景 / 俚语 / 母语选用意图放到 Usage Contexts（含开场白 usageIntro）\n2. 优化：长句 / 段落 Meaning 仍要求完整逐句翻译，不受短词组规则误伤\n3. 修复：超长订正标题独立折叠；黄色「为什么这么改？」不再被一起裁切\n",
+    "notes_zh":  "词组释义与用法场景职责纠偏；订正标题与「为什么这么改」独立折叠\n1. 优化：短词组 Meaning 只保留短释义；情景 / 俚语 / 母语选用意图放到 Usage Contexts（含开场白 usageIntro）\n2. 优化：长句 / 段落 Meaning 仍要求完整逐句翻译，不受短词组规则误伤\n3. 修复：超长订正标题独立折叠；黄色「为什么这么改？」不再被一起裁切\n",
+    "notes_en":  "Phrase Meaning vs Usage Contexts ownership; independent fold for corrected title vs “why changed”\n1. **Improved**: Short phrases keep Meaning as a gloss; situational / slang / native-intent copy moves to Usage Contexts (with usageIntro blurb)\n2. **Improved**: Long sentences / paragraphs still require full line-by-line translation in Meaning\n3. **Fix**: Long corrected titles fold on their own; amber “why changed” is no longer clipped with them\n",
     "is_major":  false
 }

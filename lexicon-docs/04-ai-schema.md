@@ -177,16 +177,23 @@ Analyze this word and return the JSON.`
 - 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况，以及 Mode 3 对词库词的全量认知视图
 
 ### `aiPhraseQuery(phrase, isFull?, signal?, cognitive?)`
-词组/句子 AI 查询。返回 `PhraseResult`。`cognitive: 'lookup' | 'core'`（默认 `lookup`）决定 prompt 重心与缓存分轨。
+词组/句子 AI 查询。返回 `PhraseResult`。`cognitive: 'lookup' | 'core'`（默认 `lookup`）决定 prompt 重心与缓存分轨。  
+Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `detectQueryType` 的 `phrase` / `sentence` 分轨）。
 
-- 共用字段：`correctForm`、`correctionNote`、`unnaturalMindModel?`、`meaning`、`usageScenes`、`examples` 等
+- 共用字段：`correctForm`、`correctionNote`、`unnaturalMindModel?`、`meaning`、`usageIntro?`、`usageScenes`、`examples` 等
 - **Lookup**：词典式释义 / 订正 / 场景；`unnaturalMindModel` 仅在不地道时填写
 - **Pure Core**：母语者心智教练；**必填** `feelAnchor` / `emotionalTone`；`wordChoice` 开时填 `wordChoiceContrast`；优先交际意图与违和感对比（旧 nativeMindModel 不再要求）
 - `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
-- `meaning` 遵守完整翻译约束：面对长文本或多句段落，`meaning` 必须提供句句对应的完整中文翻译（可首行置顶【核心主题】总结，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括
+- **字段职责 FIELD OWNERSHIP（关键）**
+  - **短词组 (`queryType=phrase`)**：`meaning` = 1–2 句短释义（可首行【主题概括】一句）；**禁止**把来源/语域/俚语地域/情景/何时用/母语者心智长文写进 `meaning`
+  - **长句/段落 (`queryType=sentence`)**：`meaning` 必须句句对应完整翻译（可首行【主题概括】，后文接逐句全文）；不可只给一句概括
+  - 情景 / 语域提示 / 母语选用意图 → `usageIntro`（Usage Contexts 开场白）+ `usageScenes`（具体场景卡）
+  - Core 感觉/情绪 → `feelAnchor` / `emotionalTone`（短句，勿写成 usageIntro）
+  - 语域/文化条目 → `culturalLore`（与 usageScenes 区分）
 - `correctionNote` 分类标注改动类型：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调
 - 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
-- 输入有语法/介词错误时，AI 分析正确形式并在 usageScenes 中说明差异
+- 输入有语法/介词错误时，AI 分析正确形式并在 usageIntro / usageScenes 中说明差异
+- Core 单词全量：`coreConcept.explanation` 停留在意象→用法分支层；**具体** when/where 交际场景写入 `usageScenes`，勿把场景长文塞进 explanation
 
 ### `askQuestion(context, history, signal?)`
 AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。

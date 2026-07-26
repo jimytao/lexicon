@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.8.8**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.8.9**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -139,7 +139,7 @@ Tauri 2（PC）
 |--|-----------|-----------|
 | **角色** | 学会意思、怎么记住 | 母语者怎么想、怎么用 |
 | **单词全量** | 释义墙 + 轻量意象 + 词源/助记；无概念树/搭配墙/选用对照 | 加厚用法意象（感觉锚+情绪底色）+ 概念树 + 介词语组/其他词组 + 近义 + 选用对照；**无 dictionary** |
-| **词组/句子** | 释义、场景、例句、介词意象、释义核对；`modules` | 释义轻量固定展示（可附感觉/情绪）；**`corePhraseModules`**（用法场景/选用对照/语域/造句练习） |
+| **词组/句子** | 短释义 + `usageIntro`/场景、例句、介词意象、释义核对；`modules`（短词组勿把情景长文塞进 meaning） | 释义轻量固定展示（可附感觉/情绪）；**`corePhraseModules`**（`usageIntro`+用法场景/选用对照/语域/造句练习） |
 | **练习** | `meaning-check`（输入大致意思） | `usage-output`（场景造句） |
 | **prompt 模组源** | `settings.modules` | 单词 `coreModules`；词组/句 `corePhraseModules` |
 | **中文反查 Core** | — | 短英文候选（非 dictionary 墙）+ 心智主线 |
@@ -252,9 +252,9 @@ Tauri 2（PC）
 
 ### 最近一次重要改动
 
-**2026-07-26 (v0.8.8)** — Pure Core 心智流水线：感觉锚/情绪并入 Core Image；可拖拽选用对照；概念树空态；innit 类词搭配可空（规则 C）。
+**2026-07-26 (v0.8.9)** — 词组 Meaning / Usage Contexts 字段职责 + 订正标题与「为什么这么改」折叠解耦。
 
-此前（v0.8.7）：AI 追问 Lookup/Core 分轨；iOS 键盘避让；发版硬门禁。
+此前（v0.8.8）：Pure Core 心智流水线（feelAnchor/选用对照/概念树空态/搭配规则 C）。
 
 ### 关键实现备忘
 

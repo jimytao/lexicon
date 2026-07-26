@@ -223,6 +223,8 @@ export interface PhraseResult {
   emotionalTone?: string
   wordChoiceContrast?: WordChoiceContrastItem[]
   meaning: string
+  /** Usage Contexts 开场白：情景/语域/母语选用意图（勿塞进 meaning） */
+  usageIntro?: string
   usageScenes?: Array<{ label: string; description: string }>
   examples: Example[]
   mnemonic?: Mnemonic

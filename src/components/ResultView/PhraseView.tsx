@@ -22,6 +22,7 @@ import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 import { SectionHeading } from './SectionHeading'
 import { phraseCognitiveFromSearchMode } from '../../utils/text'
 import { migrateNativeMindToCoreFields } from '../../utils/coreMindsetPipeline'
+import { isCorrectFormLong } from '../../utils/phraseHeaderFold'
 
 interface PhraseViewProps {
   phrase: string
@@ -44,6 +45,8 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   } = useSettingsStore()
   const updatePhraseMnemonic = useResultStore(state => state.updatePhraseMnemonic)
   const usageScenes = phraseResult?.usageScenes ?? []
+  const usageIntro = phraseResult?.usageIntro?.trim() || ''
+  const hasUsageContexts = Boolean(usageIntro) || usageScenes.length > 0
   const queryType = useSearchStore(s => s.queryType)
   const searchMode = useSearchStore(s => s.mode)
   const isCoreMode = searchMode === 'core'
@@ -58,8 +61,12 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const targetPhrase = phraseResult?.correctForm || phrase
   const isEnglish = detectLanguage(targetPhrase) === 'en'
 
-  const isHeaderLong = targetPhrase.length > 140 || phrase.length > 140
+  const correctFormLong = isCorrectFormLong(targetPhrase)
   const isMeaningLong = (phraseResult?.meaning ?? '').length > 160 || (phraseResult?.meaning ?? '').includes('\n')
+  const hasFormCorrection = Boolean(
+    phraseResult?.correctForm
+    && phraseResult.correctForm.toLowerCase() !== phrase.toLowerCase(),
+  )
 
   const handlePlay = async (accent?: 'uk' | 'us') => {
     const key = accent || 'generic'
@@ -102,64 +109,18 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         <LexiconMemoryBadge word={targetPhrase} />
       </div>
 
-      {/* Header section (Correct Form + DiffText + CorrectionNote) with long text folding */}
+      {/* Correct form (white title) folds alone; DiffText + amber why-changed stay outside */}
       <div className="mb-3">
-        <div className={isHeaderLong && !headerExpanded ? 'relative max-h-36 overflow-hidden transition-all duration-300' : ''}>
-          {phraseResult && phraseResult.correctForm && phraseResult.correctForm.toLowerCase() !== phrase.toLowerCase() ? (
-            <>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 leading-snug break-words [overflow-wrap:anywhere] max-w-full">
-                {phraseResult.correctForm}
-              </h1>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 break-words [overflow-wrap:anywhere]">
-                {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
-              </p>
-              {/* Lookup: fold correction note; Core surfaces mind models below header */}
-              {!isCoreMode && (phraseResult.correctionNote?.trim() || phraseResult.unnaturalMindModel) ? (
-                <div className="mb-2">
-                  <button
-                    onClick={() => setNoteExpanded(v => !v)}
-                    className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
-                  >
-                    <svg
-                      className={`w-3 h-3 transition-transform duration-200 ${noteExpanded ? 'rotate-90' : ''}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                    <span className="font-medium">{t('phrase.whyChanged')}</span>
-                  </button>
-                  {noteExpanded && (
-                    <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700 space-y-2">
-                      {phraseResult.correctionNote?.trim() && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
-                          {phraseResult.correctionNote}
-                        </p>
-                      )}
-                      {phraseResult.unnaturalMindModel && (
-                        <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-              {isCoreMode && phraseResult.correctionNote?.trim() && (
-                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2 break-words [overflow-wrap:anywhere]">
-                  {phraseResult.correctionNote}
-                </p>
-              )}
-            </>
-          ) : (
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2 leading-snug break-words [overflow-wrap:anywhere] max-w-full">
-              {phraseResult?.correctForm || phrase}
-            </h1>
-          )}
-
-          {isHeaderLong && !headerExpanded && (
+        <div className={correctFormLong && !headerExpanded ? 'relative max-h-36 overflow-hidden transition-all duration-300' : ''}>
+          <h1 className={`text-xl font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words [overflow-wrap:anywhere] max-w-full ${hasFormCorrection ? 'mb-1' : 'mb-2'}`}>
+            {phraseResult?.correctForm || phrase}
+          </h1>
+          {correctFormLong && !headerExpanded && (
             <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
           )}
         </div>
 
-        {isHeaderLong && (
+        {correctFormLong && (
           <button
             onClick={() => setHeaderExpanded(v => !v)}
             className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors cursor-pointer"
@@ -172,6 +133,48 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
+        )}
+
+        {hasFormCorrection && phraseResult && (
+          <>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 mb-1 break-words [overflow-wrap:anywhere]">
+              {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
+            </p>
+            {/* Lookup: amber why-changed — independent of correctForm fold */}
+            {!isCoreMode && (phraseResult.correctionNote?.trim() || phraseResult.unnaturalMindModel) ? (
+              <div className="mb-2">
+                <button
+                  onClick={() => setNoteExpanded(v => !v)}
+                  className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
+                >
+                  <svg
+                    className={`w-3 h-3 transition-transform duration-200 ${noteExpanded ? 'rotate-90' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span className="font-medium">{t('phrase.whyChanged')}</span>
+                </button>
+                {noteExpanded && (
+                  <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700 space-y-2">
+                    {phraseResult.correctionNote?.trim() && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
+                        {phraseResult.correctionNote}
+                      </p>
+                    )}
+                    {phraseResult.unnaturalMindModel && (
+                      <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null}
+            {isCoreMode && phraseResult.correctionNote?.trim() && (
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2 break-words [overflow-wrap:anywhere]">
+                {phraseResult.correctionNote}
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -333,38 +336,52 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                         </button>
                       )}
                     </div>
-                    {usageScenes.length > 0 && (
+                    {hasUsageContexts && (
                       <div>
                         <SectionHeading title={t('phrase.usageScenes')} />
-                        <div className="space-y-2">
-                          {usageScenes.map((s, i) => (
-                            <div key={i} className="border-l-2 border-l-border bg-background-soft/40 pl-3.5 pr-3 py-2.5 rounded-r-xl">
-                              <div className="mb-0.5">
-                                <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">{s.label}</span>
+                        {usageIntro && (
+                          <p className="text-sm text-foreground leading-relaxed mb-2.5 whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                            {usageIntro}
+                          </p>
+                        )}
+                        {usageScenes.length > 0 && (
+                          <div className="space-y-2">
+                            {usageScenes.map((s, i) => (
+                              <div key={i} className="border-l-2 border-l-border bg-background-soft/40 pl-3.5 pr-3 py-2.5 rounded-r-xl">
+                                <div className="mb-0.5">
+                                  <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">{s.label}</span>
+                                </div>
+                                <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
                               </div>
-                              <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 )
               case 'usageScenes':
-                if (!isCoreMode || usageScenes.length === 0) return null
+                if (!isCoreMode || !hasUsageContexts) return null
                 return (
                   <div key={module.id}>
                     <SectionHeading title={t('phrase.usageScenes')} />
-                    <div className="space-y-2">
-                      {usageScenes.map((s, i) => (
-                        <div key={i} className="border-l-2 border-l-border bg-background-soft/40 pl-3.5 pr-3 py-2.5 rounded-r-xl">
-                          <div className="mb-0.5">
-                            <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">{s.label}</span>
+                    {usageIntro && (
+                      <p className="text-sm text-foreground leading-relaxed mb-2.5 whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                        {usageIntro}
+                      </p>
+                    )}
+                    {usageScenes.length > 0 && (
+                      <div className="space-y-2">
+                        {usageScenes.map((s, i) => (
+                          <div key={i} className="border-l-2 border-l-border bg-background-soft/40 pl-3.5 pr-3 py-2.5 rounded-r-xl">
+                            <div className="mb-0.5">
+                              <span className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">{s.label}</span>
+                            </div>
+                            <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
                           </div>
-                          <p className="text-xs text-foreground-muted leading-relaxed font-medium break-words [overflow-wrap:anywhere]">{s.description}</p>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               case 'semantic':
@@ -434,6 +451,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   parts.push(`思维违和感剖析: 中文直译("${phraseResult.unnaturalMindModel.chineseThought}") → 母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
                 }
                 if (phraseResult.meaning) parts.push(`释义: ${phraseResult.meaning}`)
+                if (usageIntro) parts.push(`使用场景开场: ${usageIntro}`)
                 if (phraseResult.usageScenes?.length) {
                   parts.push('使用场景:\n' + phraseResult.usageScenes.map(s => `  · ${s.label}: ${s.description}`).join('\n'))
                 }

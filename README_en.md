@@ -12,6 +12,7 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **Instant**: Local dictionary only — zero latency, offline (switching back shows L1 only; AI cache kept).
 - **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
 - **Pure Core**: Native usage — usage image (feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms plus **word-choice contrast**, scenes, register, and usage-output practice (no definition wall; modules are reorderable).
+- **Phrases / sentences**: Short phrases keep Meaning as a gloss; situational / native-intent copy lives under **Usage Contexts** (with an intro blurb); long corrected titles and “why changed” fold independently.
 - Mode switches apply **on click** (restore cache when present; otherwise trigger the matching lookup). History dual-stars mark Lookup vs Core tracks.
 
 ### 2. Dual dictionaries & smart routing
@@ -44,12 +45,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.8.8_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.8.8_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.8.9_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.8.9_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.8.8_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.8/Lexicon_0.8.8_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.8.8](https://github.com/jimytao/lexicon/releases/tag/v0.8.8).
+- **[Lexicon_0.8.9_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.8.9/Lexicon_0.8.9_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.8.9](https://github.com/jimytao/lexicon/releases/tag/v0.8.9).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

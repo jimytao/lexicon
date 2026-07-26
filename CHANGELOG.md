@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 2026-07-26 — 词组 Meaning / Usage Contexts 纠偏与订正折叠解耦 (v0.8.9)
+
+### 用户可见
+1. **短词组 Meaning 不再堆情景长文**：如 `flat chat`，释义区只保留短释义；澳式俚语、何时用、母语选用意图等放到 **Usage Contexts**。
+2. **Usage Contexts 开场白**：新增 `usageIntro`，在场景卡之前展示总述；长句/段落 Meaning 仍要求完整逐句翻译。
+3. **白色订正文本独立折叠**：超长 `correctForm` 的展开/收起只影响标题；黄色「为什么这么改？」始终在折叠区外，互不影响。
+
+### 工程
+- `buildPhrasePrompt`（`aiPhrasePrompt.ts`）按 phrase/sentence 分轨 + FIELD OWNERSHIP；`isCorrectFormLong` 解耦折叠。
+- TDD：`aiPhrasePrompt.test.ts`、`phraseHeaderFold.test.ts`。
+- 文档：`04-ai-schema.md`、`AGENT.md`、双 README 下载链。
+
+### 涉及文件
+- `aiPhrasePrompt.ts` (+ `.test.ts`)、`phraseHeaderFold.ts` (+ `.test.ts`)、`ai.ts`、`PhraseView.tsx`、`types`、`i18n`
+- `lexicon-docs/04-ai-schema.md`、`AGENT.md`、`README.md`、`README_en.md`、本 CHANGELOG
+
+---
+
 ## 2026-07-26 — Pure Core 心智流水线重组（选用对照 + 概念树空态）(v0.8.8)
 
 ### 用户可见
