@@ -74,17 +74,25 @@ export interface UserLanguageProfile {
 
 ## 4. 智能事件触发与蒸馏剪枝算法 (Event-Driven & Pruning Engine)
 
-### 4.1 双路触发与计数器重置机制 (Dual-Path Trigger with Shared Reset)
+### 4.1 多路触发、会话聚合与崩溃恢复 (Flush Engine)
 
-为了保证“连续追问”与“长期不追问”两种场景下 Profile 都能精准更新，设立 **共享计数器重置机制 (`unprocessed_count`)**：
+为控制 Token 成本并保证关 App 后不丢账，**入队与触发解耦**：事件先写入 `localStorage`（`lexicon-pending-profile-events`），再由统一入口 `flushPendingProfileDiagnostics` 蒸馏。
 
-* **路径 A（高价值事件即时触发）**：
-  - 当用户完成了一次 **AI 追问对话** 或 **句子/表达订正** 时，判定为高价值显性困惑，**立即在后台发起 Profile 诊断更新**。
-  - 触发完成后，**立即将 `unprocessed_count` 重置为 0**（重新开始计数），避免重复触发。
-* **路径 B（保底累计触发，设定阈值为 12 次）**：
-  - 如果用户一直进行普通查词且未发起追问，每搜索一次 `unprocessed_count +1`。
-  - 当累积达到 **12 次**（在 10~15 次间平衡体验与 Token 成本）时，自动触发 Profile 诊断更新。
-  - 触发完成后，同样**将 `unprocessed_count` 重置为 0**。
+* **路径 A1（AI 追问 — 延迟聚合）**：
+  - `recordAiChatEvent` **只入队**，并重置 **90s idle timer**（`CHAT_IDLE_MS`）；连续追问会不断推迟，整段会话通常只蒸馏一次。
+  - **硬边界立刻 flush**（取消 idle）：换词搜索、Lookup ↔ Pure Core 切换、离开 Dictionary Tab、`pagehide` / `visibility hidden`、Settings 手动刷新。
+* **路径 A2（句子订正 — 仍即时）**：
+  - `recordSentenceCorrectionEvent` 入队后立即 flush（通常一次查词最多一次订正）。
+* **路径 B（查词累计，阈值 12）**：
+  - 普通查词 `unprocessed_count +1`，达到 **12** 时 flush；若队列里已有未冲刷的 chat，一并带上。
+* **成功才改账**：
+  - 仅 AI 诊断成功后：按事件 `id` 删除本轮快照（`removeEventsByIds`），并 `unprocessed_count = 0`。
+  - 失败 / 杀进程：**不删 pending、不重置 count**。
+* **冷启动续跑**：
+  - App mount 后约 2s 调用 `resumePendingProfileDiagnostics`：pending 含 `chat` / `sentence` 则立刻 flush；**仅 lookup** 则继续等路径 B。
+* **飞行中入队**：
+  - 诊断进行中新事件保留在 pending；若期间又请求 flush，结束后 **queued re-flush** 一次。
+* **总开关**：`enableProfileDiagnostic === false` 时停止 enqueue / flush / resume（不清空已有 Profile）。
 
 ### 4.2 AI 诊断权重控制 (Diagnostic Weighting in Prompt)
 在发送给 AI 的诊断 Prompt 规则中显式定义权重层级：

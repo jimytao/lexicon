@@ -24,7 +24,7 @@
 ### 3. AI 增强与个人资产
 - Lookup / Core 分轨模组可在 Settings 拖拽排序与开关；随身追问、释义核对 / 场景造句练习。
 - **UK / US 发音**（含自动发音与离线 TTS 兜底）。
-- Lexicon Memory 徽章（只读：笔记 / Core 意象；**不再**显示追问条数徽章，底部 AI Chat 仍可用）；AI 追问按 **Lookup / Pure Core** 分轨保存互不覆盖；设置内 **AI Profile** 诊断。个人笔记编辑面板已雪藏，底层记忆数据仍保留。
+- Lexicon Memory 徽章（只读：笔记 / Core 意象；**不再**显示追问条数徽章，底部 AI Chat 仍可用）；AI 追问按 **Lookup / Pure Core** 分轨保存互不覆盖；设置内 **AI Profile** 诊断（连续追问会聚合后再后台总结，关 App 可冷启动续跑）。个人笔记编辑面板已雪藏，底层记忆数据仍保留。
 - 弱项看板 UI 当前**已雪藏**（不占用底栏）；Profile 后端仍可用。
 
 ### 4. 介词空间意象
@@ -45,12 +45,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.9.0_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.9.0_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.9.1_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.9.1_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64_en-US.msi)**（MSI）
 
 ### Android
-- **[Lexicon_0.9.0_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.9.0](https://github.com/jimytao/lexicon/releases/tag/v0.9.0)。
+- **[Lexicon_0.9.1_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.9.1](https://github.com/jimytao/lexicon/releases/tag/v0.9.1)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

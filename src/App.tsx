@@ -26,7 +26,12 @@ import {
 import { historyModeForTrack, resolveHistoryTrack } from './utils/historyTrack'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
-import { recordLookupEvent } from './services/profile'
+import {
+  flushPendingProfileDiagnostics,
+  initProfileFlushListeners,
+  recordLookupEvent,
+  resumePendingProfileDiagnostics,
+} from './services/profile'
 import { useT } from './i18n'
 import type { AiMode } from './stores/historyStore'
 import type { CognitiveMode } from './types'
@@ -61,6 +66,7 @@ export function App() {
   })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
+  const lastProfileQueryRef = useRef<string>('')
   const lastScrollTopRef = useRef(0)
   const { mode, query, setMode } = useSearchStore()
   const { darkMode, performanceMode } = useSettingsStore()
@@ -83,6 +89,22 @@ export function App() {
     }, 400)
     return () => window.clearTimeout(id)
   }, [])
+
+  // Profile diagnostic: pagehide listener + cold-start resume for leftover chat/sentence.
+  useEffect(() => {
+    initProfileFlushListeners()
+    const id = window.setTimeout(() => {
+      void resumePendingProfileDiagnostics()
+    }, 2000)
+    return () => window.clearTimeout(id)
+  }, [])
+
+  // Leaving dictionary tab ends the current result/chat session → flush pending profile events.
+  useEffect(() => {
+    if (view !== 'dictionary') {
+      void flushPendingProfileDiagnostics('leave_result')
+    }
+  }, [view])
 
   // Ensure the active tab is mounted, then reset scroll so a long Settings page
   // does not leave the Dictionary tab scrolled into empty space.
@@ -178,6 +200,11 @@ export function App() {
   function handleModeChange(next: typeof mode) {
     const prev = useSearchStore.getState().mode
     if (prev === next) return
+
+    // Lookup ↔ Pure Core is a different AI chat track — flush pending profile Q&A.
+    if ((prev === 'ai' && next === 'core') || (prev === 'core' && next === 'ai')) {
+      void flushPendingProfileDiagnostics('mode_switch')
+    }
 
     setMode(next)
 
@@ -280,6 +307,12 @@ export function App() {
     scrollToTop()
     localWordSnapshotRef.current = null
     const nw = normalizeQuery(word)
+
+    const prevQuery = lastProfileQueryRef.current
+    if (prevQuery && normalizeQuery(prevQuery) !== nw) {
+      void flushPendingProfileDiagnostics('context_change')
+    }
+    lastProfileQueryRef.current = word
 
     const historyEntry = useHistoryStore.getState().words.find((e) => normalizeQuery(e.word) === nw)
 

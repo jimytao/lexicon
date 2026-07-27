@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBSeTNOOUl0eGtFSExVbmdTN1FvQ2FrK0x3eTlVS1Bxc3NoYjlHUHpSY0Y0a3dzL2U1S1NMR2NFd2pzTTYzQW9oZ3I5azVGVDIxZmVaNUFWVEN4emc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MDc3NzUwCWZpbGU6TGV4aWNvbl8wLjkuMF94NjQtc2V0dXAuZXhlCkcvY3VLa0IrTlhuTTJ0RHVCM21ObW5XSlozZUtJbUdPMEVtWndYdEx2bGd2RkFDb25Lb0szWEg4Nmthb1BLT1Y2bnZNWFdKTmc1anJseWZvNlJBUUJnPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.0/Lexicon_0.9.0_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTZSWkJZQ05CcHd6QXVQUFBaMnZYOEsvUFFsc2lPbjV6bFkyQnpHR3Riei83aE8wcXR5UmtjWktnQlUya293WXo5eFJGcGMyS3cwRExhNmlZVy85NXc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTI1MDQzCWZpbGU6TGV4aWNvbl8wLjkuMV94NjQtc2V0dXAuZXhlClVHbWFmSkJOdXVrOVBvVWhjRmUzUHZUcTJmQndRSkx4MFJVMWw1SnZrcHlrZ0hVWUtIKy91dTZ0V3hEeHpLbVFUUFNoNHZyR0d3MHJyd285UlBweEF3PT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-26T14:58:01Z",
-    "version":  "0.9.0",
-    "notes":  "合并双轨 AI 一次出参 + 中文 Core 翻译修复\n1. 新增：一次搜索，两页数据——输入词/句后 AI 单次调用同时返回「理解」(AI Lookup) 和「用法」(Pure Core) 两套数据，标签页秒切无延迟。\n2. 修复：中文输入 Core 模式——输入中文（如「美丽」）时 AI 明确寻找最地道的英文对应词并以母语者心智教授用法。\n3. 优化：Bypass 按钮（⭐）统一跳过词典直接触发 AI 合并搜索并落地到 AI Lookup 标签。\n4. 优化：Instant 模式输入词库外词/短语/句子时，自动触发合并 AI 搜索。\n",
-    "notes_zh":  "合并双轨 AI 一次出参 + 中文 Core 翻译修复\n1. 新增：一次搜索，两页数据——输入词/句后 AI 单次调用同时返回「理解」(AI Lookup) 和「用法」(Pure Core) 两套数据，标签页秒切无延迟。\n2. 修复：中文输入 Core 模式——输入中文（如「美丽」）时 AI 明确寻找最地道的英文对应词并以母语者心智教授用法。\n3. 优化：Bypass 按钮（⭐）统一跳过词典直接触发 AI 合并搜索并落地到 AI Lookup 标签。\n4. 优化：Instant 模式输入词库外词/短语/句子时，自动触发合并 AI 搜索。\n",
-    "notes_en":  "Combined Dual-Track AI Single Request + Chinese Core Translation Fix\n1. **New**: Single Search, Instant Two-Tab View — AI generates both Lookup and Pure Core data in a single request for zero-latency tab switching.\n2. **Fix**: Chinese Query in Core Mode — Inputting Chinese words (e.g., \"美丽\") in Pure Core explicitly guides AI to find authentic English counterparts and teach usage from a native perspective.\n3. **Improved**: Bypass button (⭐) uniformly skips local dictionary to run combined AI lookup directly into the Lookup tab.\n4. **Improved**: Out-of-dictionary queries in Instant mode automatically trigger combined AI search.\n",
+    "pub_date":  "2026-07-27T04:07:23Z",
+    "version":  "0.9.1",
+    "notes":  "AI Profile 追问聚合诊断与崩溃恢复\n1. 优化：同一词连续 AI 追问不再每条都触发 Profile 总结——约 90 秒空闲或换词 / 切换 Lookup↔Pure Core / 离开 Dict 后才后台蒸馏一次，节省 Token。\n2. 新增：关 App 未完成的诊断事件本地保留；下次打开若含追问/订正会自动续跑；失败不丢队列。\n3. 保持：句子订正仍即时诊断；普通查词累计约 12 次保底触发不变。\n",
+    "notes_zh":  "AI Profile 追问聚合诊断与崩溃恢复\n1. 优化：同一词连续 AI 追问不再每条都触发 Profile 总结——约 90 秒空闲或换词 / 切换 Lookup↔Pure Core / 离开 Dict 后才后台蒸馏一次，节省 Token。\n2. 新增：关 App 未完成的诊断事件本地保留；下次打开若含追问/订正会自动续跑；失败不丢队列。\n3. 保持：句子订正仍即时诊断；普通查词累计约 12 次保底触发不变。\n",
+    "notes_en":  "AI Profile follow-up batching and crash recovery\n1. **Improved**: Consecutive AI follow-ups on the same word no longer each trigger a Profile diagnostic — batched after ~90s idle or hard boundaries (new search, Lookup↔Pure Core switch, leave Dict), saving tokens.\n2. **New**: Unfinished diagnostic events persist locally; cold start resumes when chat/sentence events remain; failures keep the queue.\n3. **Unchanged**: Sentence corrections still flush immediately; lookup accumulation threshold (~12) remains.\n",
     "is_major":  false
 }

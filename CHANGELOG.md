@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-07-27 — AI Profile 追问聚合诊断与崩溃恢复 (v0.9.1)
+
+### 用户可见
+1. **连问不再每条都烧 Profile Token**：同一词连续 AI 追问只入队，约 90 秒空闲或换词 / 切换 Lookup↔Pure Core / 离开 Dict Tab 后才后台蒸馏一次。
+2. **关 App 不丢账**：未完成的诊断事件留在本地；下次打开若队列含追问/订正会自动续跑；失败时保留队列，后续查满约 12 次或再追问结束时一并带上。
+3. **句子订正仍即时诊断**；普通查词累计约 12 次的保底触发不变。关闭「AI Profile 诊断」时停止入队与后台总结。
+
+### 工程
+- `profile.ts`：统一 `flushPendingProfileDiagnostics`；事件 `id`；成功才 `removeEventsByIds` / 重置计数；queued re-flush；冷启动 `resumePendingProfileDiagnostics`。
+- `App.tsx`：硬边界 flush + mount 续跑 / `pagehide` 监听。
+- TDD：`src/services/profile.test.ts`（14 用例）。
+- 文档：`lexicon-docs/08`、`AGENT.md`。
+
+### 涉及文件
+- `src/services/profile.ts`、`profile.test.ts`、`src/App.tsx`
+- `lexicon-docs/08-ai-learning-system-and-profile.md`、`AGENT.md`、双 README、本 CHANGELOG
+
+---
+
 ## 2026-07-27 — 合并双轨 AI 一次出参 + 中文 Core 翻译修复 (v0.9.0)
 
 ### 用户可见

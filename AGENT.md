@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.8.9**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.1**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -185,6 +185,7 @@ Tauri 2（PC）
 
 - 类型与表：`UserLanguageProfile`、`UserWordMemory`、`user_word_memory` 等（见 `08`）
 - 服务：`src/services/profile.ts`；开关 `enableProfileDiagnostic`
+- **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；句子订正仍即时；查词累计 12；成功才删 pending / 重置计数；冷启动对含 chat/sentence 的队列续跑
 - 笔记 / 对话 / Core 意象经 DBService API 持久化；Web 侧有 localStorage 备份防护
 
 ---

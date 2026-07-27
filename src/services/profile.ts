@@ -3,6 +3,8 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { detectLanguage } from '../stores/searchStore'
 
 export interface DiagnosticEvent {
+  /** Stable id for success-only dequeue */
+  id: string
   type: 'lookup' | 'sentence' | 'chat'
   wordOrContext: string
   details?: string
@@ -17,6 +19,23 @@ export interface DiagnosticEvent {
 const PROFILE_STORAGE_KEY = 'lexicon-user-profile'
 const UNPROCESSED_COUNT_KEY = 'lexicon-unprocessed-count'
 const PENDING_EVENTS_KEY = 'lexicon-pending-profile-events'
+
+/** Idle quiet period before aggregating AI chat into one Profile diagnostic. */
+export const CHAT_IDLE_MS = 90_000
+
+const MAX_HIGH_PRIORITY_EVENTS = 12
+const LOOKUP_FLUSH_THRESHOLD = 12
+
+export type ProfileFlushReason =
+  | 'high_priority'
+  | 'accumulation'
+  | 'chat_idle'
+  | 'context_change'
+  | 'mode_switch'
+  | 'leave_result'
+  | 'pagehide'
+  | 'manual'
+  | 'cold_start'
 
 // Default profile factory — always returns a fresh timestamp
 export function makeDefaultProfile(): UserLanguageProfile {
@@ -96,10 +115,24 @@ export function incrementUnprocessedCount(): number {
   return cur
 }
 
+function newEventId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function ensureEventId(event: DiagnosticEvent): DiagnosticEvent {
+  return event.id ? event : { ...event, id: newEventId() }
+}
+
 export function getPendingEvents(): DiagnosticEvent[] {
   try {
     const raw = localStorage.getItem(PENDING_EVENTS_KEY)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((e: DiagnosticEvent) => ensureEventId(e))
   } catch {
     return []
   }
@@ -121,62 +154,128 @@ export function clearPendingEvents(): void {
   }
 }
 
-let _isDiagnosticRunning = false
+/** Remove only events consumed by a successful diagnostic snapshot. */
+export function removeEventsByIds(ids: string[]): void {
+  const idSet = new Set(ids.filter(Boolean))
+  if (idSet.size === 0) return
+  const remaining = getPendingEvents().filter((e) => !idSet.has(e.id))
+  savePendingEvents(remaining)
+}
 
-export async function triggerProfileDiagnostic(
-  _reason: 'high_priority' | 'accumulation'
+function isDiagnosticEnabled(): boolean {
+  return !!useSettingsStore.getState().enableProfileDiagnostic
+}
+
+function isLearningEnglish(text: string): boolean {
+  const lang = detectLanguage(text)
+  return lang !== 'ja' && lang !== 'ko' && lang !== 'other'
+}
+
+let _isDiagnosticRunning = false
+let _chatIdleTimer: ReturnType<typeof setTimeout> | null = null
+let _queuedFlushReason: ProfileFlushReason | null = null
+let _flushListenersInstalled = false
+
+function clearChatIdleTimer(): void {
+  if (_chatIdleTimer !== null) {
+    clearTimeout(_chatIdleTimer)
+    _chatIdleTimer = null
+  }
+}
+
+function scheduleChatIdleFlush(): void {
+  clearChatIdleTimer()
+  _chatIdleTimer = setTimeout(() => {
+    _chatIdleTimer = null
+    void flushPendingProfileDiagnostics('chat_idle')
+  }, CHAT_IDLE_MS)
+}
+
+/** Test-only: clear in-memory flush locks / timers between cases. */
+export function __resetProfileRuntimeForTests(): void {
+  _isDiagnosticRunning = false
+  _queuedFlushReason = null
+  clearChatIdleTimer()
+}
+
+function formatHighPriorityBlock(events: DiagnosticEvent[]): string {
+  const high = events
+    .filter((e) => e.type === 'sentence' || e.type === 'chat')
+    .slice(-MAX_HIGH_PRIORITY_EVENTS)
+
+  if (high.length === 0) return 'None'
+
+  const lines: string[] = []
+  let i = 0
+  while (i < high.length) {
+    const e = high[i]!
+    if (e.type === 'sentence') {
+      lines.push(
+        `- [Sentence Correction]: Original: "${e.wordOrContext}" | Corrected: "${e.details || ''}" | unnaturalMindModel: ${JSON.stringify(
+          e.unnaturalMindModel || {},
+        )}`,
+      )
+      i += 1
+      continue
+    }
+
+    const track =
+      e.cognitive === 'core' ? ' / Pure Core' : e.cognitive === 'lookup' ? ' / Lookup' : ''
+    const sessionKey = `${e.wordOrContext}||${e.cognitive ?? ''}`
+    const session: DiagnosticEvent[] = []
+    while (i < high.length) {
+      const cur = high[i]!
+      if (cur.type !== 'chat') break
+      const curKey = `${cur.wordOrContext}||${cur.cognitive ?? ''}`
+      if (curKey !== sessionKey) break
+      session.push(cur)
+      i += 1
+    }
+
+    if (session.length === 1) {
+      const one = session[0]!
+      lines.push(
+        `- [AI Follow-up Q&A${track}]: Context: "${one.wordOrContext}" | User Question: "${
+          one.userQuestion || ''
+        }" | AI Detailed Answer: "${(one.aiAnswer || '').slice(0, 1000)}"`,
+      )
+    } else {
+      lines.push(`[AI Follow-up session${track}] Context: "${e.wordOrContext}"`)
+      session.forEach((msg, idx) => {
+        lines.push(`  Q${idx + 1}: "${msg.userQuestion || ''}"`)
+        lines.push(`  A${idx + 1}: "${(msg.aiAnswer || '').slice(0, 1000)}"`)
+      })
+    }
+  }
+
+  return lines.join('\n')
+}
+
+async function runDiagnosticAi(
+  snapshot: DiagnosticEvent[],
+  currentProfile: UserLanguageProfile,
 ): Promise<UserLanguageProfile | null> {
   const settings = useSettingsStore.getState()
-  if (!settings.enableProfileDiagnostic) {
+  const providerId = settings.aiProvider || ''
+  const endpoint = settings.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || ''
+  const apiKey = settings.aiApiKeys[providerId] || import.meta.env.VITE_AI_API_KEY || ''
+  const model =
+    settings.aiModels[providerId] || settings.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash'
+
+  if (!apiKey || !endpoint) {
     return null
   }
 
-  // Guard: only one diagnostic can run at a time
-  if (_isDiagnosticRunning) return null
-  _isDiagnosticRunning = true
+  const normalPriorityEvents = snapshot.filter((e) => e.type === 'lookup')
 
-  // Reset counter only when we actually start a new diagnostic run (spec section 4.1)
-  resetUnprocessedCount()
-
-  try {
-    const currentProfile = getProfile()
-    const events = getPendingEvents()
-
-    const providerId = settings.aiProvider || ''
-    const endpoint = settings.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || ''
-    const apiKey = settings.aiApiKeys[providerId] || import.meta.env.VITE_AI_API_KEY || ''
-    const model = settings.aiModels[providerId] || settings.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash'
-
-    if (!apiKey || !endpoint) {
-      _isDiagnosticRunning = false
-      return null
-    }
-
-    const highPriorityEvents = events.filter((e) => e.type === 'sentence' || e.type === 'chat')
-    const normalPriorityEvents = events.filter((e) => e.type === 'lookup')
-
-    const userPrompt = `
+  const userPrompt = `
 [BASELINE CONTEXT: Existing User Language Profile (user_profile.json)]
 ${JSON.stringify(currentProfile, null, 2)}
 
 [INCREMENTAL LEARNER EVENTS (High-Context Feed: 20+ Recent Actions & Q&A)]
 
 🔥 [HIGH PRIORITY: User Explicit Mind Gaps, Sentence Corrections & AI Q&A History]
-${
-  highPriorityEvents.length > 0
-    ? highPriorityEvents
-        .map((e) =>
-          e.type === 'sentence'
-            ? `- [Sentence Correction]: Original: "${e.wordOrContext}" | Corrected: "${e.details || ''}" | unnaturalMindModel: ${JSON.stringify(
-                e.unnaturalMindModel || {}
-              )}`
-            : `- [AI Follow-up Q&A${e.cognitive === 'core' ? ' / Pure Core' : e.cognitive === 'lookup' ? ' / Lookup' : ''}]: Context: "${e.wordOrContext}" | User Question: "${
-                e.userQuestion || ''
-              }" | AI Detailed Answer: "${(e.aiAnswer || '').slice(0, 1000)}"`
-        )
-        .join('\n')
-    : 'None'
-}
+${formatHighPriorityBlock(snapshot)}
 
 💡 [NORMAL PRIORITY: Recent Word Searches & Core Concepts]
 ${
@@ -191,12 +290,13 @@ ${
 Instruction: Execute an "Intelligent Upsert (智能增删改)" on the baseline profile using the above incremental learner events. Return ONLY the complete updated UserLanguageProfile JSON object according to the schema.
 `
 
-    const appLang = settings.appLanguage || 'zh'
-    const langRule = appLang === 'en'
+  const appLang = settings.appLanguage || 'zh'
+  const langRule =
+    appLang === 'en'
       ? 'Output language: Write all weakness descriptions and recommendation reasons in simple, clear English.'
       : 'Output language: Write all weakness descriptions and recommendation reasons in Chinese.'
 
-    const systemPrompt = `You are an expert cognitive linguistics AI profile analyzer designed for high-context models (e.g. Gemini 2.0 Flash / Flash Lite).
+  const systemPrompt = `You are an expert cognitive linguistics AI profile analyzer designed for high-context models (e.g. Gemini 2.0 Flash / Flash Lite).
 Your task is to perform an "Intelligent Upsert (智能增删改)" on the baseline user language profile using rich incremental events.
 
 CRITICAL SCOPE & LANGUAGE FILTER:
@@ -242,80 +342,150 @@ Schema requirements:
 
 OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity). Do NOT include markdown code fences or conversational text.`
 
-    const res = await fetch(`${endpoint}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.3,
-        max_tokens: 3000,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    })
+  const res = await fetch(`${endpoint}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.3,
+      max_tokens: 3000,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  })
 
-    if (!res.ok) {
-      throw new Error(`Profile diagnostic AI API error ${res.status}`)
-    }
+  if (!res.ok) {
+    throw new Error(`Profile diagnostic AI API error ${res.status}`)
+  }
 
-    const data = await res.json()
-    const raw = data.choices?.[0]?.message?.content ?? ''
-    const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
+  const data = await res.json()
+  const raw = data.choices?.[0]?.message?.content ?? ''
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
 
-    let parsed: Partial<UserLanguageProfile> | null = null
-    try {
-      parsed = JSON.parse(cleaned)
-    } catch {
-      const match = cleaned.match(/\{[\s\S]*\}/)
-      if (match) {
-        try {
-          parsed = JSON.parse(match[0])
-        } catch {
-          /* ignore */
-        }
+  let parsed: Partial<UserLanguageProfile> | null = null
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/)
+    if (match) {
+      try {
+        parsed = JSON.parse(match[0])
+      } catch {
+        /* ignore */
       }
     }
+  }
 
-    if (parsed) {
-      const updatedProfile: UserLanguageProfile = {
-        lastUpdated: new Date().toISOString(),
-        totalDiagnosticsRun: (currentProfile.totalDiagnosticsRun || 0) + 1,
-        weaknessPatterns: Array.isArray(parsed.weaknessPatterns)
-          ? parsed.weaknessPatterns
-          : currentProfile.weaknessPatterns,
-        recentExplorationFocus: Array.isArray(parsed.recentExplorationFocus)
-          ? parsed.recentExplorationFocus
-          : currentProfile.recentExplorationFocus,
-        recommendations: Array.isArray(parsed.recommendations)
-          ? parsed.recommendations
-          : currentProfile.recommendations,
-      }
+  if (!parsed) return null
 
-      saveProfile(updatedProfile)
-      clearPendingEvents()
-      return updatedProfile
+  return {
+    lastUpdated: new Date().toISOString(),
+    totalDiagnosticsRun: (currentProfile.totalDiagnosticsRun || 0) + 1,
+    weaknessPatterns: Array.isArray(parsed.weaknessPatterns)
+      ? parsed.weaknessPatterns
+      : currentProfile.weaknessPatterns,
+    recentExplorationFocus: Array.isArray(parsed.recentExplorationFocus)
+      ? parsed.recentExplorationFocus
+      : currentProfile.recentExplorationFocus,
+    recommendations: Array.isArray(parsed.recommendations)
+      ? parsed.recommendations
+      : currentProfile.recommendations,
+  }
+}
+
+/**
+ * Unified flush: snapshot pending → AI → on success remove only snapshot ids + reset count.
+ * Failure / kill-app leaves pending + count intact for cold-start or later triggers.
+ */
+export async function flushPendingProfileDiagnostics(
+  reason: ProfileFlushReason = 'manual',
+): Promise<UserLanguageProfile | null> {
+  if (!isDiagnosticEnabled()) {
+    return null
+  }
+
+  if (_isDiagnosticRunning) {
+    _queuedFlushReason = reason
+    return null
+  }
+
+  const snapshot = getPendingEvents()
+  if (snapshot.length === 0) {
+    return null
+  }
+
+  _isDiagnosticRunning = true
+  clearChatIdleTimer()
+
+  try {
+    const currentProfile = getProfile()
+    const updated = await runDiagnosticAi(snapshot, currentProfile)
+    if (updated) {
+      saveProfile(updated)
+      removeEventsByIds(snapshot.map((e) => e.id))
+      resetUnprocessedCount()
+      return updated
     }
   } catch (err) {
     console.warn('[profile] Profile diagnostic failed:', err)
   } finally {
     _isDiagnosticRunning = false
+    if (_queuedFlushReason && getPendingEvents().length > 0) {
+      const next = _queuedFlushReason
+      _queuedFlushReason = null
+      void flushPendingProfileDiagnostics(next)
+    } else {
+      _queuedFlushReason = null
+    }
   }
 
   return null
 }
 
+/** Cold-start resume: flush only when pending has high-value chat/sentence events. */
+export async function resumePendingProfileDiagnostics(): Promise<UserLanguageProfile | null> {
+  if (!isDiagnosticEnabled()) return null
+  const pending = getPendingEvents()
+  if (pending.length === 0) return null
+  const hasHighValue = pending.some((e) => e.type === 'chat' || e.type === 'sentence')
+  if (!hasHighValue) return null
+  return flushPendingProfileDiagnostics('cold_start')
+}
+
+/** Best-effort pagehide / visibility flush (correctness relies on localStorage + cold start). */
+export function initProfileFlushListeners(): void {
+  if (_flushListenersInstalled || typeof window === 'undefined') return
+  _flushListenersInstalled = true
+
+  const onHide = () => {
+    void flushPendingProfileDiagnostics('pagehide')
+  }
+
+  window.addEventListener('pagehide', onHide)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') onHide()
+  })
+}
+
+/** @deprecated Prefer flushPendingProfileDiagnostics — kept for ProfileModal / callers. */
+export async function triggerProfileDiagnostic(
+  reason: 'high_priority' | 'accumulation' | ProfileFlushReason = 'manual',
+): Promise<UserLanguageProfile | null> {
+  return flushPendingProfileDiagnostics(reason)
+}
+
 export function recordLookupEvent(word: string, coreConcept?: string): void {
-  // Non-English learning language filter guard
-  const lang = detectLanguage(word)
-  if (lang === 'ja' || lang === 'ko' || lang === 'other') return
+  if (!isDiagnosticEnabled()) return
+  if (!isLearningEnglish(word)) return
 
   const events = getPendingEvents()
   events.push({
+    id: newEventId(),
     type: 'lookup',
     wordOrContext: word,
     details: coreConcept,
@@ -324,22 +494,22 @@ export function recordLookupEvent(word: string, coreConcept?: string): void {
   savePendingEvents(events)
 
   const count = incrementUnprocessedCount()
-  if (count >= 12) {
-    void triggerProfileDiagnostic('accumulation')
+  if (count >= LOOKUP_FLUSH_THRESHOLD) {
+    void flushPendingProfileDiagnostics('accumulation')
   }
 }
 
 export function recordSentenceCorrectionEvent(
   original: string,
   correction: string,
-  unnaturalMindModel?: UnnaturalMindModel
+  unnaturalMindModel?: UnnaturalMindModel,
 ): void {
-  // Non-English learning language filter guard
-  const lang = detectLanguage(original)
-  if (lang === 'ja' || lang === 'ko' || lang === 'other') return
+  if (!isDiagnosticEnabled()) return
+  if (!isLearningEnglish(original)) return
 
   const events = getPendingEvents()
   events.push({
+    id: newEventId(),
     type: 'sentence',
     wordOrContext: original,
     details: correction,
@@ -348,7 +518,7 @@ export function recordSentenceCorrectionEvent(
   })
   savePendingEvents(events)
 
-  void triggerProfileDiagnostic('high_priority')
+  void flushPendingProfileDiagnostics('high_priority')
 }
 
 export function recordAiChatEvent(
@@ -357,12 +527,12 @@ export function recordAiChatEvent(
   aiAnswer: string,
   cognitive: CognitiveMode = 'lookup',
 ): void {
-  // Non-English learning language filter guard
-  const lang = detectLanguage(wordOrContext)
-  if (lang === 'ja' || lang === 'ko' || lang === 'other') return
+  if (!isDiagnosticEnabled()) return
+  if (!isLearningEnglish(wordOrContext)) return
 
   const events = getPendingEvents()
   events.push({
+    id: newEventId(),
     type: 'chat',
     wordOrContext,
     userQuestion,
@@ -372,5 +542,5 @@ export function recordAiChatEvent(
   })
   savePendingEvents(events)
 
-  void triggerProfileDiagnostic('high_priority')
+  scheduleChatIdleFlush()
 }
