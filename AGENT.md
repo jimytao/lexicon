@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.2**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.3**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -255,9 +255,9 @@ Tauri 2（PC）
 
 ### 最近一次重要改动
 
-**2026-07-26 (v0.8.9)** — 词组 Meaning / Usage Contexts 字段职责 + 订正标题与「为什么这么改」折叠解耦。
+**2026-07-28 (v0.9.3)** — Appearance：`light` / `dark` / `system`（默认 system）；设置 ≥3 选项用 Accordion。
 
-此前（v0.8.8）：Pure Core 心智流水线（feelAnchor/选用对照/概念树空态/搭配规则 C）。
+此前（v0.9.2）：Lookup/Core 普通搜恢复 L1 + 释义硬化与选用对照并入近义。
 
 ### 关键实现备忘
 
@@ -267,15 +267,16 @@ Tauri 2（PC）
 - sql.js **不能**加入 `optimizeDeps.exclude`，否则浏览器无法 import CJS，词库加载失败  
   （注意：部分旧文档示例仍写 `exclude: ['sql.js']`，以本备忘与实际 `vite.config` 为准）
 - `historyStore`：Zustand persist（localStorage），不走 `DBService.addHistory`
-- `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；含 `coreModules`、`enableProfileDiagnostic` 等
+- `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；含 `appearance`、`coreModules`、`enableProfileDiagnostic` 等
 - `searchStore`：`queryType`（word / phrase / sentence），`setQuery` 时自动推断
 - `capacitor.config.ts`：`server.androidScheme: 'http'`；`plugins.CapacitorHttp.enabled: true`；`plugins.Keyboard.resize: 'none'`
 - Android：`windowSoftInputMode="adjustResize"`；键盘遮挡由 `App.tsx` 监听 Capacitor Keyboard 事件动态处理
 - Android：`networkSecurityConfig` 信任用户 CA + 允许明文（代理兼容）
 - `src/index.css`：html/body 背景色兜底 + `overscroll-behavior: none`
-- `index.html`：同步 inline script 读 `lexicon-settings` 预加 `.dark`，防挂载前白闪
+- `index.html`：同步 inline script 读 `lexicon-settings` 的 `appearance`（兼容旧 `darkMode`）预加 `.dark`，并设 `color-scheme`，防挂载前白闪
 - Android `values-night/styles.xml`：深色 splash（`splash_dark`）
-- Tauri：`backgroundColor: "#030712"` 防原生窗口白闪（浅色用户启动瞬间可能见深色，不足 200ms）
+- Tauri：`backgroundColor: "#030712"` 防原生窗口白闪（浅色用户启动瞬间可能见深色，不足 200ms）；`appearance` 会经 `setTheme` 对齐窗口铬
+- Appearance：`appearance: 'light' | 'dark' | 'system'`（默认 `system`）；解析见 `src/services/appearance.ts`；调研笔记 `lexicon-docs/research/system-appearance-crossplatform.md`
 
 ---
 

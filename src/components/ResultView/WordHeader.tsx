@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { detectLanguage } from '../../stores/searchStore'
 import { playPronunciation } from '../../services/audio'
+import { useResolvedDark } from '../../hooks/useResolvedDark'
 import { useT } from '../../i18n'
 
 interface WordHeaderProps {
@@ -20,7 +21,8 @@ const POS_COLORS: Record<string, { bg: string; text: string; darkBg: string; dar
 
 export function WordHeader({ word, phonetic, pos }: WordHeaderProps) {
   const t = useT()
-  const { darkMode, pronunciationAccent, autoPlayPronunciation } = useSettingsStore()
+  const darkMode = useResolvedDark()
+  const { pronunciationAccent, autoPlayPronunciation } = useSettingsStore()
   const posList = pos.split('/').filter(Boolean)
   const isEnglish = detectLanguage(word) === 'en'
 

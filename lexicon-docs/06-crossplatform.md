@@ -264,7 +264,7 @@ PC 端可以继续用 sql.js（WASM 在 Tauri webview 里正常工作），无�
 | API 网络请求 | 正常 | 需在 capacitor.config 设置 allowedNavigations | 正常 |
 | 键盘遮挡 | 无 | 需 `@capacitor/keyboard` 处理 | 无 |
 | 离线状态检测 | `navigator.onLine` | Capacitor Network plugin | `navigator.onLine` |
-| 深色模式 | CSS prefers-color-scheme | 同 web | 同 web |
+| 外观 / 深色 | class-based `.dark`；`appearance: light\|dark\|system` + `matchMedia`（见 `research/system-appearance-crossplatform.md`） | 同 web；Android DayNight、勿 algorithmic force-dark；iOS 勿 plist 强制 Appearance | 同 web；Tauri `setTheme` 对齐窗口铬 |
 | 应用图标 | favicon | Android/iOS 图标资源 | Tauri icons/ |
 
 ## AI 请求的跨平台注意

@@ -26,25 +26,24 @@ describe('SettingsView ChoiceRow wiring', () => {
     'utf8',
   )
 
-  it('uses ChoiceRow / layout contract for multi-option selectors', () => {
+  it('uses ChoiceRow for compact 2-option selectors', () => {
     expect(settingsSrc).toMatch(/ChoiceRow|SETTINGS_CHOICE_ROW_LAYOUT/)
-  })
-
-  it('no longer co-locates defaultModeDesc beside the three mode pills in one squeezed column', () => {
-    // Legacy pattern: title + desc in left flex-1 column, pills on the right
-    const legacySqueezedBlock = /settings\.defaultModeDesc[\s\S]{0,200}?settings\.defaultMode(?!Desc)/
-    // After fix, desc should sit under ChoiceRow / layout.desc, not inside the title column with pills
-    expect(settingsSrc).toContain('settings.defaultModeDesc')
     expect(settingsSrc).toContain('settings.historyPreferDesc')
     expect(settingsSrc).toContain('settings.appLanguageDesc')
-    // Ensure default mode row is not the old side-by-side title+desc | pills structure
-    const defaultModeSection = settingsSrc.slice(
-      settingsSrc.indexOf("settings.defaultMode'"),
-      settingsSrc.indexOf("settings.defaultMode'") + 800,
-    )
+  })
+
+  it('uses Accordion for ≥3-option selectors (default mode + appearance)', () => {
+    expect(settingsSrc).toContain("settings.defaultMode'")
+    expect(settingsSrc).toContain("settings.appearance'")
+    const defaultModeIdx = settingsSrc.indexOf("settings.defaultMode'")
+    const defaultModeSection = settingsSrc.slice(Math.max(0, defaultModeIdx - 80), defaultModeIdx + 900)
+    expect(defaultModeSection).toContain('<Accordion')
     expect(defaultModeSection).not.toMatch(
       /flex-1 min-w-0 pr-3[\s\S]*defaultModeDesc[\s\S]*shrink-0/,
     )
-    void legacySqueezedBlock
+    const appearanceIdx = settingsSrc.indexOf("settings.appearance'")
+    const appearanceSection = settingsSrc.slice(Math.max(0, appearanceIdx - 80), appearanceIdx + 900)
+    expect(appearanceSection).toContain('<Accordion')
+    expect(appearanceSection).toContain("'system'")
   })
 })

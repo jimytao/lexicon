@@ -5,12 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Lexicon</title>
+    <meta name="color-scheme" content="light dark" />
     <script>
       try {
         const s = JSON.parse(localStorage.getItem('lexicon-settings') || '{}');
-        if (s && s.state && s.state.darkMode) {
-          document.documentElement.classList.add('dark');
+        const state = s && s.state ? s.state : {};
+        let appearance = state.appearance;
+        if (appearance !== 'light' && appearance !== 'dark' && appearance !== 'system') {
+          if (typeof state.darkMode === 'boolean') appearance = state.darkMode ? 'dark' : 'light';
+          else appearance = 'system';
         }
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // Keep in sync with src/services/appearance.ts migrateAppearance + resolveDark
+        const isDark = appearance === 'dark' || (appearance === 'system' && systemDark);
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
       } catch {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

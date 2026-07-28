@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-07-28 — Appearance 跟随系统 + 设置 ≥3 选项 Accordion (v0.9.3)
+
+### 用户可见
+1. **外观三选一**：浅色 / 深色 / **跟随系统**（新安装默认跟随系统）；旧用户按原深色开关迁移为浅色或深色。
+2. **设置折叠**：≥3 个离散选项（外观、默认搜索模式）改为 Accordion，折叠行显示当前值；2 选项（界面语言、历史优先）仍用横排胶囊，与开关密度一致。
+
+### 工程
+- `appearance: light|dark|system` 替代 `darkMode`；`matchMedia` 监听 + Tauri `setTheme`；`index.html` 防闪支持 system。
+- 严密性：`persist.merge` 容忍空 storage；主题应用与 `useResolvedDark` 等待 `onFinishHydration`，避免默认 `system` 覆盖首屏脚本。
+- 调研：`lexicon-docs/research/system-appearance-crossplatform.md`（iOS / Android / Windows / Web）。
+
+### 涉及文件
+- `src/services/appearance.ts`、`App.tsx`、`settingsStore`、`SettingsView`、`index.html`、`useResolvedDark`、i18n、docs、本 CHANGELOG
+
+---
+
 ## 2026-07-28 — Lookup/Core 普通搜恢复 L1 + 释义硬化与选用对照并入近义 (v0.9.2)
 
 ### 用户可见

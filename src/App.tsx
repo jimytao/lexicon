@@ -28,6 +28,13 @@ import { planDictHitNormalSearch } from './utils/searchPath'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
 import {
+  applyDocumentAppearance,
+  getSystemPrefersDark,
+  resolveDark,
+  subscribeSystemPrefersDark,
+  syncNativeWindowTheme,
+} from './services/appearance'
+import {
   flushPendingProfileDiagnostics,
   initProfileFlushListeners,
   recordLookupEvent,
@@ -70,8 +77,17 @@ export function App() {
   const lastProfileQueryRef = useRef<string>('')
   const lastScrollTopRef = useRef(0)
   const { mode, query, setMode } = useSearchStore()
-  const { darkMode, performanceMode } = useSettingsStore()
+  const { appearance, performanceMode } = useSettingsStore()
   const { add: addHistory, upgrade: upgradeHistoryRaw } = useHistoryStore()
+  // Persist rehydrates async; applying theme before that would overwrite index.html with default `system`.
+  const [settingsHydrated, setSettingsHydrated] = useState(() =>
+    useSettingsStore.persist.hasHydrated(),
+  )
+
+  useEffect(() => {
+    setSettingsHydrated(useSettingsStore.persist.hasHydrated())
+    return useSettingsStore.persist.onFinishHydration(() => setSettingsHydrated(true))
+  }, [])
 
   /** History upgrade always tags the current Lookup / Core track. */
   function upgradeHistory(word: string, aiMode: AiMode, cognitive?: CognitiveMode) {
@@ -79,9 +95,17 @@ export function App() {
     upgradeHistoryRaw(word, aiMode, track)
   }
 
+  // Appearance: class-based `.dark` + optional Tauri window theme; system listens to matchMedia.
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode)
-  }, [darkMode])
+    if (!settingsHydrated) return
+    const apply = (systemDark: boolean) => {
+      applyDocumentAppearance(resolveDark(appearance, systemDark))
+    }
+    apply(getSystemPrefersDark())
+    void syncNativeWindowTheme(appearance)
+    if (appearance !== 'system') return
+    return subscribeSystemPrefersDark(apply)
+  }, [appearance, settingsHydrated])
 
   // Prefetch current dictionary after first paint (one file only — not both).
   useEffect(() => {

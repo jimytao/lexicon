@@ -232,10 +232,10 @@ function RowDivider() {
 export function SettingsView() {
   const t = useT()
   const {
-    aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, darkMode,
+    aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, appearance,
     webSearchEnabled, tavilyApiKey, maxExercises,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
-    setHistoryEnabled, setDarkMode, setWebSearchEnabled, setTavilyApiKey, setMaxExercises,
+    setHistoryEnabled, setAppearance, setWebSearchEnabled, setTavilyApiKey, setMaxExercises,
     performanceMode, setPerformanceMode,
     defaultSearchMode, setDefaultSearchMode,
     historyPreferCognitive, setHistoryPreferCognitive,
@@ -555,21 +555,37 @@ export function SettingsView() {
         <div>
           <GroupHeader icon="🔍" label={g2} />
           <Group>
-            {/* Default Search Mode */}
-            <ChoiceRow label={t('settings.defaultMode')} desc={t('settings.defaultModeDesc')}>
-              <div className={SETTINGS_CHOICE_ROW_LAYOUT.controls}>
-                {(['instant', 'ai', 'core'] as const).map(m => (
+            {/* Default Search Mode (≥3 options → Accordion) */}
+            <Accordion
+              title={t('settings.defaultMode')}
+              subtitle={
+                defaultSearchMode === 'instant' ? t('mode.instant')
+                  : defaultSearchMode === 'ai' ? t('mode.ai')
+                    : t('mode.core')
+              }
+            >
+              <p className="text-[11px] text-foreground-muted leading-snug mb-3">{t('settings.defaultModeDesc')}</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { id: 'instant' as const, label: t('mode.instant') },
+                  { id: 'ai' as const, label: t('mode.ai') },
+                  { id: 'core' as const, label: t('mode.core') },
+                ]).map((opt) => (
                   <button
-                    key={m}
+                    key={opt.id}
                     type="button"
-                    onClick={() => setDefaultSearchMode(m)}
-                    className={SETTINGS_CHOICE_ROW_LAYOUT.optionButton(defaultSearchMode === m)}
+                    onClick={() => setDefaultSearchMode(opt.id)}
+                    className={`text-xs px-2.5 py-2.5 rounded-xl border transition-all text-center font-medium cursor-pointer whitespace-nowrap ${
+                      defaultSearchMode === opt.id
+                        ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
+                        : 'bg-background border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
+                    }`}
                   >
-                    {m === 'instant' ? t('mode.instant') : m === 'ai' ? t('mode.ai') : t('mode.core')}
+                    {opt.label}
                   </button>
                 ))}
               </div>
-            </ChoiceRow>
+            </Accordion>
 
             <RowDivider />
 
@@ -768,7 +784,37 @@ export function SettingsView() {
             </ChoiceRow>
 
             <RowDivider />
-            <ToggleRow label={t('settings.darkMode')} desc={t('settings.darkModeDesc')} value={darkMode} onChange={setDarkMode} />
+            {/* Appearance (≥3 options → Accordion); order Light → Dark → System */}
+            <Accordion
+              title={t('settings.appearance')}
+              subtitle={
+                appearance === 'light' ? t('settings.appearanceLight')
+                  : appearance === 'dark' ? t('settings.appearanceDark')
+                    : t('settings.appearanceSystem')
+              }
+            >
+              <p className="text-[11px] text-foreground-muted leading-snug mb-3">{t('settings.appearanceDesc')}</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { id: 'light' as const, label: t('settings.appearanceLight') },
+                  { id: 'dark' as const, label: t('settings.appearanceDark') },
+                  { id: 'system' as const, label: t('settings.appearanceSystem') },
+                ]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setAppearance(opt.id)}
+                    className={`text-xs px-2.5 py-2.5 rounded-xl border transition-all text-center font-medium cursor-pointer whitespace-nowrap ${
+                      appearance === opt.id
+                        ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
+                        : 'bg-background border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </Accordion>
             <RowDivider />
             <ToggleRow label={t('settings.performanceMode')} desc={t('settings.performanceModeDesc')} value={performanceMode} onChange={setPerformanceMode} />
             <RowDivider />

@@ -101,7 +101,7 @@ interface SettingsStore {
   aiModel: string
   aiApiKeys: Record<string, string>  // 按 providerId 存储，如 { gemini: 'AIza...' }
   historyEnabled: boolean
-  darkMode: boolean               // 深色模式，手动切换，persist 到 localStorage
+  appearance: 'light' | 'dark' | 'system'  // 外观偏好；system 跟随 OS；persist
   maxExercises: number            // 练习题数，1–10，默认 5
   activeDictionary: 'lexicon.db' | 'lexicon_en.db' // 当前本地词库文件
   autoSwitchDictionary: boolean    // 是否开启单语言模式自动切换词典
@@ -113,7 +113,7 @@ interface SettingsStore {
   setAiModel: (v: string) => void
   setApiKeyForProvider: (providerId: string, key: string) => void
   setHistoryEnabled: (v: boolean) => void
-  setDarkMode: (v: boolean) => void
+  setAppearance: (v: 'light' | 'dark' | 'system') => void
   setMaxExercises: (v: number) => void
   setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
   setAutoSwitchDictionary: (v: boolean) => void
@@ -130,7 +130,7 @@ export const useSettingsStore = create<SettingsStore>()(
       aiModel: import.meta.env.VITE_AI_MODEL ?? 'gemini-2.0-flash',
       aiApiKeys: {},
       historyEnabled: true,
-      darkMode: false,
+      appearance: 'system',
       maxExercises: 5,
       setAiProvider: (aiProvider) => set({ aiProvider }),
       setAiEndpoint: (aiEndpoint) => set({ aiEndpoint }),
@@ -138,13 +138,31 @@ export const useSettingsStore = create<SettingsStore>()(
       setApiKeyForProvider: (providerId, key) =>
         set((state) => ({ aiApiKeys: { ...state.aiApiKeys, [providerId]: key } })),
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
-      setDarkMode: (darkMode) => set({ darkMode }),
+      setAppearance: (appearance) => set({ appearance }),
       setMaxExercises: (maxExercises) => set({ maxExercises }),
     }),
-    { name: 'lexicon-settings' }
+    {
+      name: 'lexicon-settings',
+      // merge: legacy `darkMode: boolean` → appearance light|dark；无值则 system
+    }
   )
 )
 ```
+
+### appearance（主题解析）
+
+```ts
+// src/services/appearance.ts
+export type AppearanceMode = 'light' | 'dark' | 'system'
+export function resolveDark(appearance, systemPrefersDark?): boolean
+export function applyDocumentAppearance(isDark: boolean): void
+export function subscribeSystemPrefersDark(onChange): () => void
+export async function syncNativeWindowTheme(appearance): Promise<void> // Tauri setTheme；Web/Capacitor no-op
+```
+
+- `App.tsx`：按 `appearance` 同步 `html.dark` + `color-scheme`；`system` 时监听 `matchMedia`
+- `useResolvedDark()`：POS badge 等 JS 分支用
+- 首屏：`index.html` 内联脚本处理 `appearance` / 旧 `darkMode` + system
 
 ### historyStore
 

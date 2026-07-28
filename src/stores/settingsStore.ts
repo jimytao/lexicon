@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { migrateAppearance, type AppearanceMode } from '../services/appearance'
 import { useResultStore } from './resultStore'
+
+export type { AppearanceMode }
 
 
 export interface AppModule {
@@ -162,7 +165,8 @@ interface SettingsStore {
   aiApiKeys: Record<string, string>  // keyed by providerId
   aiModels: Record<string, string>   // keyed by providerId
   historyEnabled: boolean
-  darkMode: boolean
+  /** User appearance preference; `system` follows OS via prefers-color-scheme. */
+  appearance: AppearanceMode
   webSearchEnabled: boolean
   tavilyApiKey: string
   maxExercises: number
@@ -191,7 +195,7 @@ interface SettingsStore {
   setApiKeyForProvider: (providerId: string, key: string) => void
   setAiModelForProvider: (providerId: string, model: string) => void
   setHistoryEnabled: (v: boolean) => void
-  setDarkMode: (v: boolean) => void
+  setAppearance: (v: AppearanceMode) => void
   setWebSearchEnabled: (v: boolean) => void
   setTavilyApiKey: (v: string) => void
   setMaxExercises: (v: number) => void
@@ -223,7 +227,7 @@ export const useSettingsStore = create<SettingsStore>()(
       aiApiKeys: {},
       aiModels: {},
       historyEnabled: true,
-      darkMode: false,
+      appearance: 'system',
       webSearchEnabled: false,
       tavilyApiKey: '',
       maxExercises: 5,
@@ -260,7 +264,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setAiModelForProvider: (providerId, model) =>
         set((state) => ({ aiModels: { ...state.aiModels, [providerId]: model } })),
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
-      setDarkMode: (darkMode) => set({ darkMode }),
+      setAppearance: (appearance) => set({ appearance }),
       setWebSearchEnabled: (webSearchEnabled) => set({ webSearchEnabled }),
       setTavilyApiKey: (tavilyApiKey) => set({ tavilyApiKey }),
       setMaxExercises: (maxExercises) => set({ maxExercises }),
@@ -302,10 +306,14 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'lexicon-settings',
       merge: (persisted, current) => {
-        const persistedState = persisted as Partial<SettingsStore>
+        // Zustand calls merge(undefined, current) when storage is empty — must not destructure.
+        if (persisted == null || typeof persisted !== 'object') return current
+        const persistedState = persisted as Partial<SettingsStore> & { darkMode?: boolean }
+        const { darkMode: legacyDarkMode, ...rest } = persistedState
         return {
           ...current,
-          ...persistedState,
+          ...rest,
+          appearance: migrateAppearance(persistedState.appearance, legacyDarkMode),
           modules: normalizeModules(persistedState.modules),
           coreModules: normalizeCoreModules(persistedState.coreModules ?? DEFAULT_CORE_MODULES),
           corePhraseModules: normalizeCorePhraseModules(

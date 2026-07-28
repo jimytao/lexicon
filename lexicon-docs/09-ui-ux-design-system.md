@@ -98,14 +98,15 @@ Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
 - **Purpose**: Binary state toggle.
 - **Padding & Layout**: `w-full flex items-center justify-between px-4 py-3 hover:bg-foreground/5`
 
-### `ChoiceRow` (Settings multi-option)
-- **Purpose**: Segmented / pill selectors with 2+ options (Default Search Mode, History Prefer, App Language).
+### `ChoiceRow` (Settings multi-option, **2 options**)
+- **Purpose**: Compact pill selectors for binary-ish choices (History Prefer, App Language).
 - **Layout (scheme 1)**: `flex-col` — title + controls on the first row; description on a second full-width row.
 - **Contract**: `src/utils/settingsChoiceRowLayout.ts` (`SETTINGS_CHOICE_ROW_LAYOUT`).
 
 ### `Accordion` (Settings Menu)
-- **Purpose**: Hides secondary complexity without adding visual clutter.
+- **Purpose**: Hides secondary complexity without adding visual clutter; also used for **≥3 discrete options** (Appearance Light/Dark/System, Default Search Mode Instant/Lookup/Core) so collapsed rows stay glanceable (subtitle = current value) and expanded grids stay flush with AI Provider style.
 - **Rules**: MUST NOT carry individual emoji icons in its trigger header. MUST be flush with no outer border inside a `Group`.
+- **Density rule**: 2-option → `ChoiceRow` (same visual weight as ToggleRow); ≥3-option → `Accordion` (avoid cramped pill strips).
 
 ### `Buttons`
 - **Primary**: `bg-accent text-white font-bold px-4 py-2 rounded-xl shadow-sm`.

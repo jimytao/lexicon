@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Meaning, Scene } from '../../../types'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { searchTavilyImage } from '../../../services/ai'
+import { useResolvedDark } from '../../../hooks/useResolvedDark'
 import { useT } from '../../../i18n'
 
 interface MeaningListProps {
@@ -22,7 +23,8 @@ const POS_COLORS: Record<string, { bg: string; text: string; darkBg: string; dar
 export function MeaningList({ meanings, scenes }: MeaningListProps) {
   const t = useT()
   const [expanded, setExpanded] = useState(false)
-  const { darkMode, monolingualWord } = useSettingsStore()
+  const darkMode = useResolvedDark()
+  const { monolingualWord } = useSettingsStore()
 
   const [imageUrls, setImageUrls] = useState<Record<number, string | null>>({})
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({})

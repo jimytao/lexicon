@@ -1,8 +1,9 @@
 /**
- * Settings multi-option rows (Default Search Mode, History Prefer, App Language).
+ * Settings multi-option rows with 2 choices (History Prefer, App Language).
  * Scheme 1: title + controls on row 1; description full-width on row 2.
- * Avoids squeezing long descriptions into a narrow left column beside wide pill groups.
+ * ≥3 discrete options (Appearance, Default Search Mode) use Accordion instead.
  */
+
 export const SETTINGS_CHOICE_ROW_LAYOUT = {
   root: 'flex flex-col gap-2 px-4 py-3',
   titleRow: 'flex items-center justify-between gap-3 min-w-0',

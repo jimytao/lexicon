@@ -38,19 +38,19 @@
 - **Web**（WASM SQLite + OCR）、**Windows**（Tauri v2）、**Android / iOS**（Capacitor 8）。
 
 ### 导航
-底栏 **3 Tab**：**Dict**（查词）/ **Image**（图片）/ **Settings**（全页设置，非抽屉）。
+底栏 **3 Tab**：**Dict**（查词）/ **Image**（图片）/ **Settings**（全页设置，非抽屉）。外观支持浅色 / 深色 / **跟随系统**。
 
 ---
 
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.9.2_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.9.2_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.9.3_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.9.3_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64_en-US.msi)**（MSI）
 
 ### Android
-- **[Lexicon_0.9.2_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.9.2](https://github.com/jimytao/lexicon/releases/tag/v0.9.2)。
+- **[Lexicon_0.9.3_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.9.3](https://github.com/jimytao/lexicon/releases/tag/v0.9.3)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）
@@ -64,7 +64,7 @@
 ## ⚙️ 配置 AI
 
 1. 打开底栏 **Settings**。
-2. 在 **App Language** 切换中文 / 英文界面。
+2. 在 **App Language** 切换中文 / 英文界面；**Appearance** 可选浅色 / 深色 / 跟随系统。
 3. 选择服务商（推荐 **Google Gemini**），粘贴 **API Key**，点 **Test Connection**。
 4. 回到 Dict，将顶部模式切到 **AI Lookup** 或 **Pure Core** 即可使用大模型能力。
 

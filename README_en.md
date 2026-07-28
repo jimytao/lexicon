@@ -38,19 +38,19 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **Web** (WASM SQLite + OCR), **Windows** (Tauri v2), **Android / iOS** (Capacitor 8).
 
 ### Navigation
-Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, not a drawer).
+Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, not a drawer). Appearance supports Light / Dark / **System**.
 
 ---
 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.9.2_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.2_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.3_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.3_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.9.2_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.2](https://github.com/jimytao/lexicon/releases/tag/v0.9.2).
+- **[Lexicon_0.9.3_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.3](https://github.com/jimytao/lexicon/releases/tag/v0.9.3).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)
@@ -64,7 +64,7 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## ⚙️ AI Configuration
 
 1. Open the bottom **Settings** tab.
-2. Set **App Language** (Chinese / English).
+2. Set **App Language** (Chinese / English); choose **Appearance** (Light / Dark / System).
 3. Pick a provider (we recommend **Google Gemini**), paste the **API Key**, tap **Test Connection**.
 4. Back in Dict, switch the top mode to **AI Lookup** or **Pure Core**.
 
