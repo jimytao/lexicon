@@ -55,11 +55,7 @@ enum AppearanceBoot {
 }
 
 class LexiconBridgeViewController: CAPBridgeViewController {
-    override func loadView() {
-        super.loadView()
-        // Earliest point after view exists — paint shell before first layout if possible.
-        applyBootChrome()
-    }
+    // CAPBridgeViewController.loadView is final — do not override.
 
     override func viewDidLoad() {
         super.viewDidLoad()

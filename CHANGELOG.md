@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-07-28 — iOS 构建修复：勿 override CAPBridge loadView (v0.9.5)
+
+### 工程
+- `CAPBridgeViewController.loadView` 为 `final`，移除 `LexiconBridgeViewController` 中的 override，保留 `viewDidLoad` / `viewWillAppear` / `capacitorDidLoad` 涂 chrome（修复 Actions Archive 失败）。
+
+---
+
 ## 2026-07-28 — 冷启动闪屏时序修复（appearance boot runtime）(v0.9.5)
 
 ### 用户可见

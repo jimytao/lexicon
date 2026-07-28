@@ -72,8 +72,9 @@ describe('iOS splash static gates', () => {
   it('registers AppearanceBootPlugin and applies chrome early', () => {
     const vc = read('ios/App/App/LexiconBridgeViewController.swift')
     expect(vc).toContain('registerPluginInstance(AppearanceBootPlugin())')
-    expect(vc).toContain('loadView')
+    expect(vc).toContain('viewDidLoad')
     expect(vc).toContain('viewWillAppear')
+    expect(vc).not.toContain('override func loadView')
     expect(existsSync(join(root, 'ios/App/App/AppearanceBootPlugin.swift'))).toBe(true)
     const pbx = read('ios/App/App.xcodeproj/project.pbxproj')
     expect(pbx).toContain('AppearanceBootPlugin.swift')
