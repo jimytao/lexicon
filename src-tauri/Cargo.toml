@@ -1,6 +1,6 @@
 [package]
 name = "lexicon"
-version = "0.9.5"
+version = "0.9.6"
 description = "Lexicon — English learning tool for Chinese speakers"
 authors = ["Julian"]
 edition = "2021"

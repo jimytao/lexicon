@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-07-29 — 移动端暗黑模式冷启动闪退与运行时频闪修复 (v0.9.6)
+
+### 用户可见
+1. **Android 冷启动暗黑模式闪退修复**：修复 Android 12+ 在系统处于暗黑模式或新安装软件时，启动触发 Activity 销毁重绘死循环导致闪退的问题。
+2. **移动端（iOS / Android）切主题零频闪**：App 内切换浅色/深色/跟随系统时，不再触发 Android 原生 Activity 销毁重建或 WebView 重新加载，实现零黑白闪烁平滑过渡。
+3. **状态栏与导航栏图标智能自适应**：原生层结合 `WindowInsetsControllerCompat` 与 iOS `preferredStatusBarStyle`，在深底色下自动切换为白色图标，浅底色下切换为黑色图标。
+
+### 工程
+- Android：`LexiconApplication.applyBootNightMode` 仅在进程启动时设置 in-process `AppCompatDelegate`；移除了启动时对 `UiModeManager.setApplicationNightMode` 的重复强调用；`updateNativeWindowChrome` 负责平滑底色与状态栏图标更新。
+- iOS：`LexiconBridgeViewController` 添加去重 `overrideUserInterfaceStyle` 校验与 `preferredStatusBarStyle` 覆写。
+
+### 涉及文件
+- `android/app/src/main/java/com/julian/lexicon/LexiconApplication.java`
+- `android/app/src/main/java/com/julian/lexicon/MainActivity.java`
+- `android/app/src/main/java/com/julian/lexicon/AppearanceBootPlugin.java`
+- `ios/App/App/LexiconBridgeViewController.swift`
+
+---
+
 ## 2026-07-28 — iOS 构建修复：勿 override CAPBridge loadView (v0.9.5)
 
 ### 工程

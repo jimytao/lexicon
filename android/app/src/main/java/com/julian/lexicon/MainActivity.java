@@ -9,6 +9,8 @@ import android.util.Log;
 import android.view.WindowManager;
 import android.webkit.WebView;
 import androidx.core.splashscreen.SplashScreen;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 import com.getcapacitor.BridgeActivity;
@@ -24,10 +26,30 @@ public class MainActivity extends BridgeActivity {
         Log.i(TAG, "splash released");
     }
 
+    public void updateNativeWindowChrome(boolean isDark) {
+        int chrome = isDark ? 0xFF050505 : 0xFFFFFFFF;
+        runOnUiThread(() -> {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
+                webView.setBackgroundColor(chrome);
+                if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+                    WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), false);
+                } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+                    WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
+                }
+            }
+            getWindow().getDecorView().setBackgroundColor(chrome);
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+            if (controller != null) {
+                controller.setAppearanceLightStatusBars(!isDark);
+                controller.setAppearanceLightNavigationBars(!isDark);
+            }
+        });
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppearanceBootPlugin.class);
-        LexiconApplication.applyBootNightMode(this);
         SplashScreen splash = SplashScreen.installSplashScreen(this);
         splash.setKeepOnScreenCondition(keepSplash::get);
         new Handler(Looper.getMainLooper()).postDelayed(MainActivity::releaseSplash, SPLASH_TIMEOUT_MS);
@@ -36,17 +58,8 @@ public class MainActivity extends BridgeActivity {
         WebView.setWebContentsDebuggingEnabled(true);
 
         int chrome = LexiconApplication.resolveBootChromeColor(this);
-        Log.i(TAG, "webview chrome=0x" + Integer.toHexString(chrome));
-        if (getBridge() != null && getBridge().getWebView() != null) {
-            WebView webView = getBridge().getWebView();
-            webView.setBackgroundColor(chrome);
-            if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-                WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.getSettings(), false);
-            } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-                WebSettingsCompat.setForceDark(webView.getSettings(), WebSettingsCompat.FORCE_DARK_OFF);
-            }
-        }
-        getWindow().getDecorView().setBackgroundColor(chrome);
+        boolean isDark = (chrome == 0xFF050505);
+        updateNativeWindowChrome(isDark);
 
         // Enable edge-to-edge layout to allow CSS env(safe-area-insets) to work
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

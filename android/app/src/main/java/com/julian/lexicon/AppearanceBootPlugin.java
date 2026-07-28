@@ -16,7 +16,13 @@ public class AppearanceBootPlugin extends Plugin {
     @PluginMethod
     public void applyNightMode(PluginCall call) {
         String appearance = call.getString("appearance", "system");
+        Boolean darkObj = call.getBoolean("dark");
         LexiconApplication.applyAppearanceMode(getContext(), appearance);
+        if (getActivity() instanceof MainActivity) {
+            MainActivity mainActivity = (MainActivity) getActivity();
+            boolean isDark = darkObj != null ? darkObj : (LexiconApplication.resolveBootChromeColor(getContext()) == 0xFF050505);
+            mainActivity.updateNativeWindowChrome(isDark);
+        }
         call.resolve();
     }
 

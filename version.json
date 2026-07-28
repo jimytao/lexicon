@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXc5eXYvcGdGNVpMRTFrNTlrbFAvWDlPTy9EeHBIQnB1eVFCT01ER1Zidm44ZnhwN3NnS0g0ak85ekNLbkpwNFE3REYrVFc0ekhXanhFc2xWTlN0YUEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjQ2NTc2CWZpbGU6TGV4aWNvbl8wLjkuNV94NjQtc2V0dXAuZXhlCktrckNjZ2Ftd05uNkhxMHVISjFpVUVNbDhxaXNrZjd4dHR1dGliajVsSGV3VU95bVVWbVhzZEpTdWtiTVVHN0lzRHE5R3JweWI1OVQ3RmZFeXN6Y0J3PT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.5/Lexicon_0.9.5_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTN3SjhJUG14VWttMmxDNExGZlY3eVkxekVqdVZiK2dnVVlvYnl5Y0xzK2NnUG1SdDdDTk8rSEsyNWxDK0VETTRDRTBaQlVkdjNuZ1NyNTZZNTE0OWdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjQ4NDQyCWZpbGU6TGV4aWNvbl8wLjkuNl94NjQtc2V0dXAuZXhlCkxGZVA5QStZSXJhaHEycFRjTWkxaXZLWjRMd090ZUNYUU5hNkFZSVg0WjZ3WVpXUkdHQXdudEpOWER2WWNNMWhnUUVPdUJOVGpxVGRxdlhIazhXVkFBPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.6/Lexicon_0.9.6_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-28T13:52:01Z",
-    "version":  "0.9.5",
-    "notes":  "冷启动闪屏时序修复：原生壳与 App 主题对齐\n1. Android：改外观立刻持久化 UiModeManager；Web 就绪前 keep-on-screen，减少系统色闪一下。\n2. Windows：按 boot 设窗口主题后再显示；hydrate 后 show，减轻深色系统 + 浅色 App 黑闪。\n3. iOS：更早涂 WebView/窗口底色；运行时改外观经 AppearanceBoot 同步（系统≠App 时 Launch 仍可能跟系统一帧）。\n",
-    "notes_zh":  "冷启动闪屏时序修复：原生壳与 App 主题对齐\n1. Android：改外观立刻持久化 UiModeManager；Web 就绪前 keep-on-screen，减少系统色闪一下。\n2. Windows：按 boot 设窗口主题后再显示；hydrate 后 show，减轻深色系统 + 浅色 App 黑闪。\n3. iOS：更早涂 WebView/窗口底色；运行时改外观经 AppearanceBoot 同步（系统≠App 时 Launch 仍可能跟系统一帧）。\n",
-    "notes_en":  "Cold-start flash timing fix: align native chrome with App appearance\n1. Android: Persist UiModeManager as soon as appearance changes; keep splash on-screen until Web is ready.\n2. Windows: Apply boot theme before showing the window; show after hydrate to reduce dark-OS / light-app black flash.\n3. iOS: Apply WebView/window chrome earlier; AppearanceBoot syncs runtime overrides (Launch may still follow OS for one frame when system ≠ App).\n",
+    "pub_date":  "2026-07-28T14:22:41Z",
+    "version":  "0.9.6",
+    "notes":  "移动端暗黑模式冷启动闪退与运行时频闪修复\n1. 修复：Android 12+ 在系统处于暗黑模式或刚安装时，冷启动触发 Activity 销毁重绘死循环引发的闪退问题。\n2. 修复：移动端（iOS / Android）在 App 内切换浅色/深色/跟随系统外观时，零黑白屏闪烁与零 WebView 页面重载。\n3. 优化：原生状态栏与导航栏图标结合背景色自动适配黑白前景图标。\n",
+    "notes_zh":  "移动端暗黑模式冷启动闪退与运行时频闪修复\n1. 修复：Android 12+ 在系统处于暗黑模式或刚安装时，冷启动触发 Activity 销毁重绘死循环引发的闪退问题。\n2. 修复：移动端（iOS / Android）在 App 内切换浅色/深色/跟随系统外观时，零黑白屏闪烁与零 WebView 页面重载。\n3. 优化：原生状态栏与导航栏图标结合背景色自动适配黑白前景图标。\n",
+    "notes_en":  "Fix mobile dark mode startup crash and appearance flickering\n1. **Fix**: Resolved Android 12+ cold start crash caused by Activity destruction loop when in dark mode or fresh install.\n2. **Fix**: Eliminated screen flickering and WebView reloads when switching appearance (Light / Dark / System) on iOS and Android.\n3. **Improved**: Native status bar and navigation bar icons automatically adapt to background darkness.\n",
     "is_major":  false
 }

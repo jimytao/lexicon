@@ -41,36 +41,45 @@ public class LexiconApplication extends Application {
                 // Corrupt boot → follow system.
             }
         }
-        applyAppearanceMode(context, appearance);
-        Log.i(TAG, "boot nightMode from prefs appearance=" + appearance + " raw=" + raw);
+
+        int mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+        if ("light".equals(appearance)) {
+            mode = AppCompatDelegate.MODE_NIGHT_NO;
+        } else if ("dark".equals(appearance)) {
+            mode = AppCompatDelegate.MODE_NIGHT_YES;
+        }
+
+        // Apply only in-process AppCompatDelegate default night mode during boot.
+        // DO NOT call UiModeManager.setApplicationNightMode during Application.onCreate
+        // or Activity initialization to prevent Activity destruction/recreation loops.
+        AppCompatDelegate.setDefaultNightMode(mode);
+        Log.i(TAG, "boot nightMode from prefs appearance=" + appearance + " appCompatMode=" + mode + " raw=" + raw);
     }
 
     /**
-     * Persist application night mode for splash matching (API 31+) and
-     * AppCompatDelegate for older APIs / in-process resources.
+     * Runtime update for API 31+ UiModeManager night mode when the user changes appearance in JS.
+     * Only updates OS-level system splash preference for future cold starts if changed,
+     * avoiding calls to AppCompatDelegate.setDefaultNightMode which forces Activity recreate at runtime.
      */
     static void applyAppearanceMode(Context context, String appearance) {
-        int mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
-        Integer api31Forced = null;
-        if ("light".equals(appearance)) {
-            mode = AppCompatDelegate.MODE_NIGHT_NO;
-            api31Forced = UiModeManager.MODE_NIGHT_NO;
-        } else if ("dark".equals(appearance)) {
-            mode = AppCompatDelegate.MODE_NIGHT_YES;
-            api31Forced = UiModeManager.MODE_NIGHT_YES;
-        }
-
-        AppCompatDelegate.setDefaultNightMode(mode);
-        // API 31+: persist app night mode so the *next* system splash matches.
-        // Forced light/dark → NO/YES; system → AUTO (clears a prior forced mode).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            UiModeManager uiModeManager = context.getSystemService(UiModeManager.class);
-            if (uiModeManager != null) {
-                int uiMode = api31Forced != null ? api31Forced : UiModeManager.MODE_NIGHT_AUTO;
-                uiModeManager.setApplicationNightMode(uiMode);
+            try {
+                UiModeManager uiModeManager = context.getSystemService(UiModeManager.class);
+                if (uiModeManager != null) {
+                    int targetUiMode = UiModeManager.MODE_NIGHT_AUTO;
+                    if ("light".equals(appearance)) {
+                        targetUiMode = UiModeManager.MODE_NIGHT_NO;
+                    } else if ("dark".equals(appearance)) {
+                        targetUiMode = UiModeManager.MODE_NIGHT_YES;
+                    }
+
+                    uiModeManager.setApplicationNightMode(targetUiMode);
+                    Log.i(TAG, "updated uiModeManager nightMode to " + targetUiMode);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "failed to update UiModeManager nightMode", e);
             }
         }
-        Log.i(TAG, "applyAppearanceMode appearance=" + appearance + " appCompatMode=" + mode);
     }
 
     /** Resolve chrome color from boot + current configuration (matches JS resolveBootDark). */

@@ -48,7 +48,9 @@ enum AppearanceBoot {
     static func apply(to window: UIWindow?) {
         let style = overrideStyle()
         let color = chromeColor()
-        window?.overrideUserInterfaceStyle = style
+        if window?.overrideUserInterfaceStyle != style {
+            window?.overrideUserInterfaceStyle = style
+        }
         window?.backgroundColor = color
         NSLog("[LexiconBoot] apply window style=%d colorDark=%@", style.rawValue, resolveDark() ? "true" : "false")
     }
@@ -56,6 +58,11 @@ enum AppearanceBoot {
 
 class LexiconBridgeViewController: CAPBridgeViewController {
     // CAPBridgeViewController.loadView is final — do not override.
+
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        let isDark = AppearanceBoot.resolveDark()
+        return isDark ? .lightContent : .darkContent
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -82,10 +89,15 @@ class LexiconBridgeViewController: CAPBridgeViewController {
 
     private func applyBootChrome() {
         let style = AppearanceBoot.overrideStyle()
-        overrideUserInterfaceStyle = style
-        view.overrideUserInterfaceStyle = style
+        if overrideUserInterfaceStyle != style {
+            overrideUserInterfaceStyle = style
+        }
+        if view.overrideUserInterfaceStyle != style {
+            view.overrideUserInterfaceStyle = style
+        }
         let color = AppearanceBoot.chromeColor()
         view.backgroundColor = color
+        setNeedsStatusBarAppearanceUpdate()
         guard let webView = self.webView else { return }
         webView.backgroundColor = color
         webView.scrollView.backgroundColor = color
