@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXdkZmRteFpnS1JUK282ZytZT2MyYUUyaTB1eFMxTnZBL1dZR2d0RTI3UDVldzdzdnNkNGxKUG5FK1UvYUx5M2U1T0llVHo3NG56S2F4MEJ2eENsdWdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjE1NzQ1CWZpbGU6TGV4aWNvbl8wLjkuM194NjQtc2V0dXAuZXhlCkJuM0swNGZLdktyVXhLZ1VqL2g4Rm1rVVRickJubmswRExRbUpub2t3dmZNQzJSOGJyZTVuTi9wam14YWlFRm5tSDNmeTdZU2J0L3Z5ZFo4eDllWUJRPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBGbTdkUG9LOWd1RS9QR3M1ZjcrWmVlMitFRWxVTHZjYTdzUHdEOTdCeFkzdllnci82QmpiNHBsMnRUM0lPdHoxSVpHQldyU0s2S3lXelpRQTlMT3dnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjQxMTAzCWZpbGU6TGV4aWNvbl8wLjkuNF94NjQtc2V0dXAuZXhlCld4ektwSWlhN2RGbjhCMytCVXB5WUE5Tm00WWprUTd5a3YzTkZiRENXQnI1MDRiZnJ5ZW03dFZ2eWYrS2NTRmZqbEdwWDFKMDdLTGw0SnR1VzZpb0NBPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.4/Lexicon_0.9.4_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-28T05:17:46Z",
-    "version":  "0.9.3",
-    "notes":  "外观跟随系统；设置 ≥3 选项改为折叠\n1. 新增：Appearance 浅色 / 深色 / 跟随系统（默认跟随系统；旧开关自动迁移）。\n2. 优化：默认搜索模式与外观等 ≥3 选项改为 Accordion；2 选项仍用横排胶囊。\n3. 修复：persist 空存储与异步水合不再误盖首屏主题。\n",
-    "notes_zh":  "外观跟随系统；设置 ≥3 选项改为折叠\n1. 新增：Appearance 浅色 / 深色 / 跟随系统（默认跟随系统；旧开关自动迁移）。\n2. 优化：默认搜索模式与外观等 ≥3 选项改为 Accordion；2 选项仍用横排胶囊。\n3. 修复：persist 空存储与异步水合不再误盖首屏主题。\n",
-    "notes_en":  "System appearance; Accordion for ≥3-option settings\n1. **New**: Appearance Light / Dark / System (default System; legacy dark toggle migrates).\n2. **Improved**: ≥3 discrete settings (appearance, default mode) use Accordion; 2-option rows stay as pills.\n3. **Fix**: Empty persist merge and async rehydration no longer overwrite the pre-paint theme.\n",
+    "pub_date":  "2026-07-28T12:21:48Z",
+    "version":  "0.9.4",
+    "notes":  "跨平台冷启动闪屏对齐外观主题；Active Dictionary 下拉裁切修复\n1. 修复：Windows / Android / iOS 冷启动时原生壳与 App 浅色、深色、跟随系统对齐，减少黑白跳变。\n2. 修复：设置页 Active Dictionary 下拉框右侧圆角不再被裁切。\n",
+    "notes_zh":  "跨平台冷启动闪屏对齐外观主题；Active Dictionary 下拉裁切修复\n1. 修复：Windows / Android / iOS 冷启动时原生壳与 App 浅色、深色、跟随系统对齐，减少黑白跳变。\n2. 修复：设置页 Active Dictionary 下拉框右侧圆角不再被裁切。\n",
+    "notes_en":  "Align cold-start chrome with appearance; fix Active Dictionary select clipping\n1. **Fix**: Windows / Android / iOS cold start — native splash/window/WebView background matches Light / Dark / System to reduce black↔white flashes.\n2. **Fix**: Settings Active Dictionary select no longer clips its right corners.\n",
     "is_major":  false
 }

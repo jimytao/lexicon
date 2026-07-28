@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-persist-boot-appearance"
+description = "Allows persisting the last resolved light/dark flag for cold-start window background."
+commands.allow = ["persist_boot_appearance"]

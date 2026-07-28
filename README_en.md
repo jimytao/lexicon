@@ -45,12 +45,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.9.3_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.3_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.4_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.4/Lexicon_0.9.4_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.4_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.4/Lexicon_0.9.4_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.9.3_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.3/Lexicon_0.9.3_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.3](https://github.com/jimytao/lexicon/releases/tag/v0.9.3).
+- **[Lexicon_0.9.4_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.4/Lexicon_0.9.4_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.4](https://github.com/jimytao/lexicon/releases/tag/v0.9.4).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

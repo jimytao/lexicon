@@ -102,9 +102,12 @@ export function App() {
       applyDocumentAppearance(resolveDark(appearance, systemDark))
     }
     apply(getSystemPrefersDark())
-    void syncNativeWindowTheme(appearance)
+    void syncNativeWindowTheme(appearance, resolveDark(appearance, getSystemPrefersDark()))
     if (appearance !== 'system') return
-    return subscribeSystemPrefersDark(apply)
+    return subscribeSystemPrefersDark((systemDark) => {
+      apply(systemDark)
+      void syncNativeWindowTheme(appearance, resolveDark(appearance, systemDark))
+    })
   }, [appearance, settingsHydrated])
 
   // Prefetch current dictionary after first paint (one file only — not both).

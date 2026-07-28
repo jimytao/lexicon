@@ -1,5 +1,53 @@
 # CHANGELOG
 
+## 2026-07-28 — 跨平台冷启动闪屏对齐 appearance (v0.9.4)
+
+### 用户可见
+1. **Android / iOS / Windows 冷启动**：App 浅色、深色、跟随系统时，原生启动层与 WebView / 窗口底色对齐解析主题，减少黑↔白跳变（iOS 在「系统≠强制 App」时 Launch 仍可能跟系统一帧，随后不再二次反色闪）。
+2. **Settings Active Dictionary**：下拉框限制宽度，避免右侧圆角被裁切。
+
+### 工程
+- 统一 boot 契约 `{ dark, appearance }`：强制浅/深信 `dark`；`system`/缺失跟 OS。JS：`resolveBootDark` / Preferences `appearance-boot`；Tauri `appearance-boot.json` 同语义。
+- Android：不透明 `Theme.SplashScreen` + `postSplashScreenTheme`；`LexiconApplication` 尽早 night mode（API 31+ `UiModeManager` 仅强制浅/深）；`installSplashScreen`；关 algorithmic darkening。
+- iOS：`LaunchBackground` / Splash Dark Appearance；`LexiconBridgeViewController` 设 `overrideUserInterfaceStyle` + WebView/`underPageBackgroundColor`。
+- Tauri：`visible: false` → 按 boot/系统涂底色再 `show`（修复 v0.9.3 硬编码近黑窗）。
+- TDD：契约表 + 静态门禁；调研 `lexicon-docs/research/splash-flash-ios-android.md`。
+
+### 涉及文件
+- `src/services/appearance.ts`、`appearance.test.ts`、`appearanceBootGates.test.ts`、`SettingsView.tsx`、`App.tsx`
+- `android/...`（styles/colors/`LexiconApplication`/`MainActivity`/Manifest/`build.gradle`）
+- `ios/...`（Bridge VC、Launch/Splash、`project.pbxproj`）
+- `src-tauri/*`、`CHANGELOG.md`、`AGENT.md`、README*
+
+---
+
+## 2026-07-28 — 浅色模式冷启动黑闪修复（Tauri）
+
+### 用户可见
+1. **Windows 冷启动**：浅色 / 跟随系统（浅色）时不再先闪纯黑再变白；窗口底色按上次解析主题或系统主题预涂。
+
+### 工程
+- `tauri.conf.json`：`visible: false` + 默认底色改为白；启动时 Rust 读 `appearance-boot.json` 或系统主题后 `set_background_color` 再 `show`。
+- boot 文件同时存 `appearance` + `dark`：强制浅/深信任 `dark`；`system` 冷启动跟 OS，避免隔夜改系统主题后用过期底色。
+- 前端 `syncNativeWindowTheme`：同步 `setBackgroundColor` 并 `persist_boot_appearance`。
+- `show()` 失败不再静默吞掉（setup 返回 Err）。
+
+### 涉及文件
+- `src-tauri/src/lib.rs`、`tauri.conf.json`、`capabilities/default.json`、`permissions/persist-boot-appearance.toml`
+- `src/services/appearance.ts`、`src/App.tsx`、本 CHANGELOG
+
+---
+
+## 2026-07-28 — Settings Active Dictionary 选择器溢出裁切
+
+### 用户可见
+1. **Active Dictionary 下拉框**：限定最大宽度；超出部分隐藏、不换行，避免右侧圆角被设置卡片裁切。
+
+### 涉及文件
+- `src/components/Settings/SettingsView.tsx`、本 CHANGELOG
+
+---
+
 ## 2026-07-28 — Appearance 跟随系统 + 设置 ≥3 选项 Accordion (v0.9.3)
 
 ### 用户可见

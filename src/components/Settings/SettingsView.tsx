@@ -714,12 +714,12 @@ export function SettingsView() {
                 <span className="text-sm font-bold text-foreground block">{t('settings.dictionarySettings')}</span>
                 <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.dictionaryDesc')}</p>
               </div>
-              <div className="flex items-center justify-between pl-4">
-                <span className="text-xs font-medium text-foreground">{t('settings.activeDictionary')}</span>
+              <div className="flex items-center justify-between gap-3 pl-4 min-w-0">
+                <span className="text-xs font-medium text-foreground shrink-0">{t('settings.activeDictionary')}</span>
                 <select
                   value={activeDictionary} disabled={autoSwitchDictionary}
                   onChange={(e) => setActiveDictionary(e.target.value as 'lexicon.db' | 'lexicon_en.db')}
-                  className={`text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background text-foreground ${autoSwitchDictionary ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`min-w-0 max-w-[11.5rem] shrink text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background text-foreground overflow-hidden whitespace-nowrap text-ellipsis ${autoSwitchDictionary ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <option value="lexicon.db">{t('settings.dictEnZh')}</option>
                   <option value="lexicon_en.db">{t('settings.dictEnEn')}</option>
