@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const prefsSet = vi.hoisted(() => vi.fn())
+const applyNightMode = vi.hoisted(() => vi.fn(async () => {}))
+const releaseSplash = vi.hoisted(() => vi.fn(async () => {}))
 const isTauri = vi.hoisted(() => vi.fn(() => false))
 const isCapacitor = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock('./platform', () => ({
   isTauri: () => isTauri(),
   isCapacitor: () => isCapacitor(),
+}))
+
+vi.mock('@capacitor/core', () => ({
+  registerPlugin: () => ({
+    applyNightMode: (...args: unknown[]) => applyNightMode(...args),
+    releaseSplash: (...args: unknown[]) => releaseSplash(...args),
+  }),
 }))
 
 vi.mock('@capacitor/preferences', () => ({
@@ -158,15 +167,24 @@ describe('appearance boot serialize / parse', () => {
 describe('syncNativeWindowTheme Capacitor path', () => {
   beforeEach(() => {
     prefsSet.mockReset()
+    applyNightMode.mockClear()
+    releaseSplash.mockClear()
     isTauri.mockReturnValue(false)
     isCapacitor.mockReturnValue(true)
   })
 
-  it(`writes ${APPEARANCE_BOOT_KEY} for next native cold start`, async () => {
+  it(`writes ${APPEARANCE_BOOT_KEY} and applies native night mode + releases splash`, async () => {
     await syncNativeWindowTheme('dark', true)
     expect(prefsSet).toHaveBeenCalledWith({
       key: APPEARANCE_BOOT_KEY,
       value: serializeAppearanceBoot(true, 'dark'),
     })
+    expect(applyNightMode).toHaveBeenCalledWith({ appearance: 'dark', dark: true })
+    expect(releaseSplash).toHaveBeenCalled()
+  })
+
+  it('applies light night mode when forcing light against dark OS', async () => {
+    await syncNativeWindowTheme('light', false)
+    expect(applyNightMode).toHaveBeenCalledWith({ appearance: 'light', dark: false })
   })
 })

@@ -46,19 +46,41 @@ enum AppearanceBoot {
     }
 
     static func apply(to window: UIWindow?) {
-        window?.overrideUserInterfaceStyle = overrideStyle()
-        window?.backgroundColor = chromeColor()
+        let style = overrideStyle()
+        let color = chromeColor()
+        window?.overrideUserInterfaceStyle = style
+        window?.backgroundColor = color
+        NSLog("[LexiconBoot] apply window style=%d colorDark=%@", style.rawValue, resolveDark() ? "true" : "false")
     }
 }
 
 class LexiconBridgeViewController: CAPBridgeViewController {
+    override func loadView() {
+        super.loadView()
+        // Earliest point after view exists — paint shell before first layout if possible.
+        applyBootChrome()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        applyBootChrome()
+        AppearanceBoot.apply(to: view.window)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        AppearanceBoot.apply(to: view.window)
         applyBootChrome()
     }
 
     override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(AppearanceBootPlugin())
         super.capacitorDidLoad()
+        applyBootChrome()
+        AppearanceBoot.apply(to: view.window)
+    }
+
+    func applyBootChromePublic() {
         applyBootChrome()
     }
 

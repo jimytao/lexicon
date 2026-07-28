@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use serde::Deserialize;
 use tauri::window::Color;
@@ -8,6 +9,8 @@ use tauri::{Manager, Theme};
 const BOOT_FILE: &str = "appearance-boot.json";
 const LIGHT_BG: Color = Color(0xFF, 0xFF, 0xFF, 0xFF);
 const DARK_BG: Color = Color(0x05, 0x05, 0x05, 0xFF);
+/// Safety net if the frontend never calls show() after hydrate.
+const SHOW_FALLBACK_MS: u64 = 3000;
 
 #[derive(Debug, Deserialize)]
 struct BootAppearance {
@@ -45,6 +48,15 @@ fn resolve_boot_dark(app: &tauri::AppHandle, window: &tauri::WebviewWindow) -> b
         Some(boot) if boot.appearance == "light" || boot.appearance == "dark" => boot.dark,
         Some(_) | None => system_is_dark(window),
     }
+}
+
+fn apply_window_theme(window: &tauri::WebviewWindow, appearance: &str) {
+    let theme = match appearance {
+        "light" => Some(Theme::Light),
+        "dark" => Some(Theme::Dark),
+        _ => None,
+    };
+    let _ = window.set_theme(theme);
 }
 
 fn apply_window_background(window: &tauri::WebviewWindow, dark: bool) {
@@ -87,9 +99,27 @@ pub fn run() {
                 // Misconfigured label — nothing to paint; avoid silently hanging invisible.
                 return Ok(());
             };
+            let boot = read_boot(app.handle());
+            let appearance = boot
+                .as_ref()
+                .map(|b| b.appearance.as_str())
+                .unwrap_or("system");
             let dark = resolve_boot_dark(app.handle(), &window);
+            eprintln!(
+                "[LexiconBoot] setup appearance={} dark={} boot={:?}",
+                appearance,
+                dark,
+                boot.as_ref().map(|b| format!("{},{}", b.appearance, b.dark))
+            );
+            // Theme before background so WebView2 / DWM don't briefly follow OS dark.
+            apply_window_theme(&window, appearance);
             apply_window_background(&window, dark);
-            window.show()?;
+            // Do not show yet — frontend calls show() after hydrate + syncNativeWindowTheme.
+            let fallback = window.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_millis(SHOW_FALLBACK_MS));
+                let _ = fallback.show();
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

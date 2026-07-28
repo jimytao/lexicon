@@ -1,3 +1,4 @@
+import { registerPlugin } from '@capacitor/core'
 import { isCapacitor, isTauri } from './platform'
 
 export type AppearanceMode = 'light' | 'dark' | 'system'
@@ -13,6 +14,13 @@ export type AppearanceBoot = {
   dark: boolean
   appearance: AppearanceMode
 }
+
+type AppearanceBootNative = {
+  applyNightMode(options: { appearance: AppearanceMode; dark?: boolean }): Promise<void>
+  releaseSplash(): Promise<void>
+}
+
+const AppearanceBootNative = registerPlugin<AppearanceBootNative>('AppearanceBoot')
 
 export function normalizeAppearanceMode(value: unknown): AppearanceMode {
   if (value === 'light' || value === 'dark' || value === 'system') return value
@@ -109,6 +117,14 @@ export async function syncNativeWindowTheme(
       await invoke('persist_boot_appearance', { dark: resolvedDark, appearance })
     } catch {
       // Window API may be unavailable in some test / preview hosts.
+    } finally {
+      // Show only after theme + background are applied (window starts visible:false).
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window')
+        await getCurrentWindow().show()
+      } catch {
+        // ignore
+      }
     }
     return
   }
@@ -120,8 +136,12 @@ export async function syncNativeWindowTheme(
         key: APPEARANCE_BOOT_KEY,
         value: serializeAppearanceBoot(resolvedDark, appearance),
       })
+      // Persist UiModeManager / iOS override now so the *next* splash matches,
+      // and keep-on-screen splash can dismiss once Web chrome is ready.
+      await AppearanceBootNative.applyNightMode({ appearance, dark: resolvedDark })
+      await AppearanceBootNative.releaseSplash()
     } catch {
-      // Preferences may be unavailable in tests / web preview.
+      // Preferences / local plugin may be unavailable in tests / web preview.
     }
   }
 }

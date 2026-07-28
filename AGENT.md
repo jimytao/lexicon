@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.4**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.5**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -255,9 +255,9 @@ Tauri 2（PC）
 
 ### 最近一次重要改动
 
-**2026-07-28 (v0.9.4)** — 冷启动闪屏：Android/iOS/PC 原生壳对齐 appearance boot；Active Dictionary 选择器裁切修复。
+**2026-07-28 (v0.9.5)** — 冷启动闪屏时序：改外观立刻持久化 `UiModeManager`；Android keep-on-screen；Tauri 延迟 `show` + boot `set_theme`；iOS 更早 chrome + `AppearanceBoot` 插件。
 
-此前（v0.9.3）：Appearance `light` / `dark` / `system`；设置 ≥3 选项 Accordion。
+此前（v0.9.4）：冷启动闪屏静态壳对齐 appearance boot；Active Dictionary 选择器裁切修复。
 
 ### 关键实现备忘
 
@@ -275,11 +275,11 @@ Tauri 2（PC）
 - `src/index.css`：html/body 背景色兜底 + `overscroll-behavior: none`
 - `index.html`：同步 inline script 读 `lexicon-settings` 的 `appearance`（兼容旧 `darkMode`）预加 `.dark`，并设 `color-scheme`，防挂载前白闪
 - Appearance boot：`appearance-boot`（Capacitor Preferences / Tauri 文件）存 `{ dark, appearance }`；强制浅/深信 `dark`，`system` 冷启动跟 OS；壳色浅 `#FFFFFF` / 深 `#050505`
-- Android：`Theme.SplashScreen` 不透明 `windowSplashScreenBackground` + `postSplashScreenTheme`；`LexiconApplication` 尽早 night mode；`MainActivity` `installSplashScreen` + WebView 底色；关 algorithmic darkening
-- iOS：Splash / `LaunchBackground` 支持 Dark Appearance；`LexiconBridgeViewController` 按 boot 设 `overrideUserInterfaceStyle` 与 WebView 底色（勿写死 `capacitor.config` `backgroundColor`）
-- Tauri：冷启动先 `visible: false`，按 boot 或系统主题设窗口底色再 `show`；避免旧硬编码 `#030712` 导致浅色用户先黑后白
+- Android：`Theme.SplashScreen` 不透明色 + `postSplashScreenTheme`；`LexiconApplication.applyAppearanceMode`（改设置时经 `AppearanceBoot` 插件立刻 `UiModeManager`）；`MainActivity` `installSplashScreen` + `setKeepOnScreenCondition`（JS `releaseSplash` / 2.5s 超时）；关 algorithmic darkening
+- iOS：Splash / `LaunchBackground` Dark Appearance；`LexiconBridgeViewController` 在 `loadView`/`viewWillAppear`/`capacitorDidLoad` 涂 chrome；本地插件 `AppearanceBoot`；勿写死 `capacitor.config` `backgroundColor`。系统≠App 时 Launch 仍可能跟系统一帧
+- Tauri：`visible: false` → setup 按 boot `set_theme` + 底色，**不**立刻 `show`；前端 `syncNativeWindowTheme` 的 `finally` 里 `show`（Rust 3s 兜底）
 - Appearance：`appearance: 'light' | 'dark' | 'system'`（默认 `system`）；解析见 `src/services/appearance.ts`；调研 `lexicon-docs/research/system-appearance-crossplatform.md`、`splash-flash-ios-android.md`
-- 冷启动顺序：Android = Application night → installSplashScreen → super.onCreate → WebView 底色；iOS = 读 boot → overrideUserInterfaceStyle → WebView/`underPageBackgroundColor`
+- 冷启动顺序：Android = Application night → installSplashScreen(keep) → super.onCreate → WebView 底色 → JS releaseSplash；iOS = Launch(系统) → 读 boot → overrideUserInterfaceStyle → WebView/`underPageBackgroundColor`；Tauri = 隐藏窗涂 theme/底色 → JS show
 
 ---
 

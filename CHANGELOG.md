@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-07-28 — 冷启动闪屏时序修复（appearance boot runtime）(v0.9.5)
+
+### 用户可见
+1. **Android**：设置里强制浅/深后，`UiModeManager` 立即持久化，下次冷启动系统 splash 跟 App 主题（不再先闪系统色）；Web 就绪前 keep-on-screen 挡住空 WebView。
+2. **Windows (Tauri)**：按 boot `set_theme` 后再涂底色；窗口等前端 hydrate 后再 `show`（3s 兜底），减少深色 OS + 浅色 App 的黑闪。
+3. **iOS**：更早 apply window/WebView chrome；运行时改外观经 `AppearanceBoot` 插件同步 override。系统≠App 时 Launch 仍可能跟系统一帧（平台限制）。
+
+### 工程
+- 本地 Capacitor 插件 `AppearanceBoot`：`applyNightMode` + `releaseSplash`；`syncNativeWindowTheme` 写 Preferences 后立刻调用。
+- Android：`applyAppearanceMode`；`setKeepOnScreenCondition` + 2.5s 超时。
+- Tauri：setup 不立刻 `show`；JS `finally` 里 `show()`。
+- 门禁扩展：plugin / keepOnScreen / set_theme / delayed show。
+
+### 涉及文件
+- `src/services/appearance.ts`、`appearance.test.ts`、`appearanceBootGates.test.ts`
+- `android/.../AppearanceBootPlugin.java`、`LexiconApplication.java`、`MainActivity.java`
+- `ios/.../AppearanceBootPlugin.swift`、`LexiconBridgeViewController.swift`、`AppDelegate.swift`、`project.pbxproj`
+- `src-tauri/src/lib.rs`、`CHANGELOG.md`、`AGENT.md`
+
+---
+
 ## 2026-07-28 — 跨平台冷启动闪屏对齐 appearance (v0.9.4)
 
 ### 用户可见

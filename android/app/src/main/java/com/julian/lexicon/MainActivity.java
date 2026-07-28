@@ -3,22 +3,40 @@ package com.julian.lexicon;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.WindowManager;
 import android.webkit.WebView;
 import androidx.core.splashscreen.SplashScreen;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 import com.getcapacitor.BridgeActivity;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends BridgeActivity {
+    private static final String TAG = "LexiconBoot";
+    private static final long SPLASH_TIMEOUT_MS = 2500L;
+    private static final AtomicBoolean keepSplash = new AtomicBoolean(true);
+
+    static void releaseSplash() {
+        keepSplash.set(false);
+        Log.i(TAG, "splash released");
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AppearanceBootPlugin.class);
         LexiconApplication.applyBootNightMode(this);
-        SplashScreen.installSplashScreen(this);
+        SplashScreen splash = SplashScreen.installSplashScreen(this);
+        splash.setKeepOnScreenCondition(keepSplash::get);
+        new Handler(Looper.getMainLooper()).postDelayed(MainActivity::releaseSplash, SPLASH_TIMEOUT_MS);
+
         super.onCreate(savedInstanceState);
         WebView.setWebContentsDebuggingEnabled(true);
 
         int chrome = LexiconApplication.resolveBootChromeColor(this);
+        Log.i(TAG, "webview chrome=0x" + Integer.toHexString(chrome));
         if (getBridge() != null && getBridge().getWebView() != null) {
             WebView webView = getBridge().getWebView();
             webView.setBackgroundColor(chrome);

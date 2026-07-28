@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTBGbTdkUG9LOWd1RS9QR3M1ZjcrWmVlMitFRWxVTHZjYTdzUHdEOTdCeFkzdllnci82QmpiNHBsMnRUM0lPdHoxSVpHQldyU0s2S3lXelpRQTlMT3dnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjQxMTAzCWZpbGU6TGV4aWNvbl8wLjkuNF94NjQtc2V0dXAuZXhlCld4ektwSWlhN2RGbjhCMytCVXB5WUE5Tm00WWprUTd5a3YzTkZiRENXQnI1MDRiZnJ5ZW03dFZ2eWYrS2NTRmZqbEdwWDFKMDdLTGw0SnR1VzZpb0NBPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.4/Lexicon_0.9.4_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXc5eXYvcGdGNVpMRTFrNTlrbFAvWDlPTy9EeHBIQnB1eVFCT01ER1Zidm44ZnhwN3NnS0g0ak85ekNLbkpwNFE3REYrVFc0ekhXanhFc2xWTlN0YUEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjQ2NTc2CWZpbGU6TGV4aWNvbl8wLjkuNV94NjQtc2V0dXAuZXhlCktrckNjZ2Ftd05uNkhxMHVISjFpVUVNbDhxaXNrZjd4dHR1dGliajVsSGV3VU95bVVWbVhzZEpTdWtiTVVHN0lzRHE5R3JweWI1OVQ3RmZFeXN6Y0J3PT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.5/Lexicon_0.9.5_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-28T12:21:48Z",
-    "version":  "0.9.4",
-    "notes":  "跨平台冷启动闪屏对齐外观主题；Active Dictionary 下拉裁切修复\n1. 修复：Windows / Android / iOS 冷启动时原生壳与 App 浅色、深色、跟随系统对齐，减少黑白跳变。\n2. 修复：设置页 Active Dictionary 下拉框右侧圆角不再被裁切。\n",
-    "notes_zh":  "跨平台冷启动闪屏对齐外观主题；Active Dictionary 下拉裁切修复\n1. 修复：Windows / Android / iOS 冷启动时原生壳与 App 浅色、深色、跟随系统对齐，减少黑白跳变。\n2. 修复：设置页 Active Dictionary 下拉框右侧圆角不再被裁切。\n",
-    "notes_en":  "Align cold-start chrome with appearance; fix Active Dictionary select clipping\n1. **Fix**: Windows / Android / iOS cold start — native splash/window/WebView background matches Light / Dark / System to reduce black↔white flashes.\n2. **Fix**: Settings Active Dictionary select no longer clips its right corners.\n",
+    "pub_date":  "2026-07-28T13:52:01Z",
+    "version":  "0.9.5",
+    "notes":  "冷启动闪屏时序修复：原生壳与 App 主题对齐\n1. Android：改外观立刻持久化 UiModeManager；Web 就绪前 keep-on-screen，减少系统色闪一下。\n2. Windows：按 boot 设窗口主题后再显示；hydrate 后 show，减轻深色系统 + 浅色 App 黑闪。\n3. iOS：更早涂 WebView/窗口底色；运行时改外观经 AppearanceBoot 同步（系统≠App 时 Launch 仍可能跟系统一帧）。\n",
+    "notes_zh":  "冷启动闪屏时序修复：原生壳与 App 主题对齐\n1. Android：改外观立刻持久化 UiModeManager；Web 就绪前 keep-on-screen，减少系统色闪一下。\n2. Windows：按 boot 设窗口主题后再显示；hydrate 后 show，减轻深色系统 + 浅色 App 黑闪。\n3. iOS：更早涂 WebView/窗口底色；运行时改外观经 AppearanceBoot 同步（系统≠App 时 Launch 仍可能跟系统一帧）。\n",
+    "notes_en":  "Cold-start flash timing fix: align native chrome with App appearance\n1. Android: Persist UiModeManager as soon as appearance changes; keep splash on-screen until Web is ready.\n2. Windows: Apply boot theme before showing the window; show after hydrate to reduce dark-OS / light-app black flash.\n3. iOS: Apply WebView/window chrome earlier; AppearanceBoot syncs runtime overrides (Launch may still follow OS for one frame when system ≠ App).\n",
     "is_major":  false
 }

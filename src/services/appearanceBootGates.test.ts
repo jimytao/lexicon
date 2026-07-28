@@ -42,6 +42,19 @@ describe('Android splash static gates', () => {
     const manifest = read('android/app/src/main/AndroidManifest.xml')
     expect(manifest).toMatch(/android:name="\.LexiconApplication"/)
   })
+
+  it('MainActivity keeps splash until release + registers AppearanceBoot plugin', () => {
+    const main = read('android/app/src/main/java/com/julian/lexicon/MainActivity.java')
+    expect(main).toContain('setKeepOnScreenCondition')
+    expect(main).toContain('registerPlugin(AppearanceBootPlugin.class)')
+    expect(main).toContain('releaseSplash')
+    expect(existsSync(join(root, 'android/app/src/main/java/com/julian/lexicon/AppearanceBootPlugin.java'))).toBe(
+      true,
+    )
+    const app = read('android/app/src/main/java/com/julian/lexicon/LexiconApplication.java')
+    expect(app).toContain('applyAppearanceMode')
+    expect(app).toContain('setApplicationNightMode')
+  })
 })
 
 describe('iOS splash static gates', () => {
@@ -56,8 +69,31 @@ describe('iOS splash static gates', () => {
     expect(storyboard).toContain('LexiconBridgeViewController')
   })
 
+  it('registers AppearanceBootPlugin and applies chrome early', () => {
+    const vc = read('ios/App/App/LexiconBridgeViewController.swift')
+    expect(vc).toContain('registerPluginInstance(AppearanceBootPlugin())')
+    expect(vc).toContain('loadView')
+    expect(vc).toContain('viewWillAppear')
+    expect(existsSync(join(root, 'ios/App/App/AppearanceBootPlugin.swift'))).toBe(true)
+    const pbx = read('ios/App/App.xcodeproj/project.pbxproj')
+    expect(pbx).toContain('AppearanceBootPlugin.swift')
+  })
+
   it('does not hardcode capacitor backgroundColor (dynamic native wins)', () => {
     const config = read('capacitor.config.ts')
     expect(config).not.toMatch(/backgroundColor\s*:/)
+  })
+})
+
+describe('Tauri cold-start gates', () => {
+  it('sets theme from boot and delays show until frontend (with fallback)', () => {
+    const lib = read('src-tauri/src/lib.rs')
+    expect(lib).toContain('set_theme')
+    expect(lib).toContain('apply_window_theme')
+    expect(lib).toMatch(/SHOW_FALLBACK_MS|from_millis\(SHOW_FALLBACK_MS\)/)
+    // Must not show immediately in setup before theme — show only in fallback thread / JS.
+    expect(lib).toMatch(/Do not show yet|Do not show/)
+    const appearance = read('src/services/appearance.ts')
+    expect(appearance).toContain('.show()')
   })
 })
