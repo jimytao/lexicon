@@ -24,6 +24,7 @@ import {
   preferredAiModeFromSettings,
 } from './utils/text'
 import { historyModeForTrack, resolveHistoryTrack } from './utils/historyTrack'
+import { planDictHitNormalSearch } from './utils/searchPath'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
 import {
@@ -213,15 +214,15 @@ export function App() {
     const currentWord = store.wordResult
     const target = (currentQuery.trim() || currentWord?.word || '').trim()
 
-    // → AI Lookup (local word): still uses analyze path
-    if (next === 'ai' && searchSource === 'local' && currentWord) {
-      const cached = store.getCachedAi(currentWord.word)
+    // → Lookup / Core with dictionary L1 on screen: keep L1, fill combined (view switch only if cached)
+    if ((next === 'ai' || next === 'core') && searchSource === 'local' && currentWord) {
+      const cached = store.getCachedCombined(currentWord.word)
       if (cached) {
-        store.setAiAnalysis(currentWord.word, cached)
-        upgradeHistory(currentWord.word, 'analyze')
+        store.setCombinedResult(currentWord.word, cached)
+        upgradeHistory(currentWord.word, 'full')
       } else if (store.aiStatus !== 'loading') {
-        triggerAi(currentWord.word, currentWord.meanings, currentWord.examples.length === 0)
-        upgradeHistory(currentWord.word, 'analyze')
+        triggerCombinedLookup(currentWord.word)
+        upgradeHistory(currentWord.word, 'full')
       }
       return
     }
@@ -375,10 +376,11 @@ export function App() {
       } else {
         const store = useResultStore.getState()
         const currentMode = useSearchStore.getState().mode
+        const plan = planDictHitNormalSearch(currentMode)
 
-        if (currentMode === 'ai' || currentMode === 'core') {
-          // Combined path: check combined cache first; if missing fire a combined call
-          setSearchSource('ai-full')
+        if (plan.kind === 'l1-then-combined') {
+          // Lookup + Core share one pipeline: keep dictionary L1, then combined Lookup→Core
+          setSearchSource('local')
           const cachedCombined = store.getCachedCombined(word)
           if (cachedCombined) {
             store.setCombinedResult(word, cachedCombined)
@@ -388,12 +390,15 @@ export function App() {
             upgradeHistory(word, 'full')
           }
         } else {
-          // Instant / legacy path
+          // Instant: L1 only (optional legacy cache restore without forcing AI chrome)
           const cognitive = cognitiveFromSearchMode(currentMode)
           const cachedFull = store.getCachedAiFull(word, cognitive)
           const cachedAi = store.getCachedAi(result.word)
+          const cachedCombined = store.getCachedCombined(word)
 
-          if (cachedFull) {
+          if (cachedCombined) {
+            // Have combined cache but stay Instant visually — do not auto-upgrade
+          } else if (cachedFull) {
             setSearchSource('ai-full')
             useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
             upgradeHistory(word, 'full', cognitive)
@@ -447,12 +452,12 @@ export function App() {
 
 
   function handleRetry() {
-    if (searchSource === 'local' && wordResult && mode === 'ai') {
-      triggerAi(wordResult.word, wordResult.meanings, wordResult.examples.length === 0)
+    if (searchSource === 'local' && wordResult && (mode === 'ai' || mode === 'core')) {
+      triggerCombinedLookup(wordResult.word)
     } else if (searchSource === 'phrase' && query) {
-      triggerPhraseQuery(query)
+      triggerCombinedPhraseQuery(query)
     } else if (searchSource === 'ai-full' && query) {
-      triggerFullLookup(query)
+      triggerCombinedLookup(query)
     }
   }
 
@@ -703,6 +708,7 @@ export function App() {
                   <CoreCognitiveView
                     word={query}
                     aiFullResult={combinedResult?.core ?? aiFullResult}
+                    dictWordResult={searchSource === 'local' ? wordResult : null}
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}

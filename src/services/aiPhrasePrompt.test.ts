@@ -13,7 +13,6 @@ const LOOKUP_MODULES = [
 
 const CORE_PHRASE_MODULES = [
   { id: 'usageScenes', enabled: true },
-  { id: 'wordChoice', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
   { id: 'chat', enabled: true },
@@ -30,8 +29,8 @@ describe('buildPhrasePrompt — short phrase field ownership', () => {
 
     expect(prompt).toContain('"usageIntro"')
     expect(prompt).toMatch(/FIELD OWNERSHIP|字段职责/)
-    expect(prompt).toMatch(/short gloss|短释义|一行释义|1[-–]2句/)
-    expect(prompt).toMatch(/禁止.*(来源|语域|情景|何时用)|FORBID.*(origin|register|when to use|native)/i)
+    expect(prompt).toMatch(/LEXICAL|词典式|等价词|short gloss|短释义|1[-–]2句/)
+    expect(prompt).toMatch(/禁止.*(来源|语域|情景|何时用)|FORBID.*(origin|register|when-to-use|native)/i)
     // 短词组不得套用「长文必须全文翻译」规则作为 meaning 主职责
     expect(prompt).not.toMatch(
       /CRITICAL — meaning completeness: For long text[\s\S]*DO NOT output only a summary!/,
@@ -57,7 +56,6 @@ describe('buildPhrasePrompt — short phrase field ownership', () => {
     const prompt = buildPhrasePrompt({
       modules: [
         { id: 'usageScenes', enabled: false },
-        { id: 'wordChoice', enabled: true },
         { id: 'chat', enabled: true },
       ],
       cognitive: 'core',

@@ -17,7 +17,6 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { playPronunciation } from '../../services/audio'
 
 import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
-import { WordChoiceCard } from './AiSection/WordChoiceCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 import { SectionHeading } from './SectionHeading'
 import { phraseCognitiveFromSearchMode } from '../../utils/text'
@@ -391,14 +390,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   <CulturalLoreCard key={module.id} lore={phraseResult.culturalLore} />
                 ) : null
               case 'wordChoice':
-                if (!isCoreMode) return null
-                return (
-                  <WordChoiceCard
-                    key={module.id}
-                    wordChoiceContrast={phraseMind.wordChoiceContrast ?? phraseResult.wordChoiceContrast}
-                    whyChooseFallback={phraseMind.whyChooseFallback}
-                  />
-                )
+                return null
               case 'mnemonic':
                 if (isCoreMode) return null
                 return (
@@ -440,12 +432,6 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                     `感觉/情绪: ${phraseMind.coreConcept?.feelAnchor || ''}`
                     + (phraseMind.coreConcept?.emotionalTone ? ` | ${phraseMind.coreConcept.emotionalTone}` : ''),
                   )
-                }
-                const pContrast = phraseMind.wordChoiceContrast ?? phraseResult.wordChoiceContrast
-                if (pContrast?.length) {
-                  parts.push('选用对照:\n' + pContrast.map((r) => `  · vs ${r.vs}: ${r.reason}`).join('\n'))
-                } else if (phraseMind.whyChooseFallback) {
-                  parts.push(`选用说明: ${phraseMind.whyChooseFallback}`)
                 }
                 if (phraseResult.unnaturalMindModel) {
                   parts.push(`思维违和感剖析: 中文直译("${phraseResult.unnaturalMindModel.chineseThought}") → 母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)

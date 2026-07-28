@@ -13,7 +13,6 @@ export const CORE_WORD_MODULE_P1_IDS = [
   'chunks',
   'collocations',
   'synonyms',
-  'wordChoice',
   'usageScenes',
   'culture',
   'practice',

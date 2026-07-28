@@ -72,6 +72,8 @@ export interface UnnaturalMindModel {
 export interface CoreConcept {
   image: string
   explanation: string
+  /** Pure Core：短对译/义核（词典式，非情景散文）；Lookup meanings 已有释义墙时可选 */
+  gloss?: string
   /** Pure Core：感觉锚（原 Mental Picture 压缩，不写长场景） */
   feelAnchor?: string
   /** Pure Core：情绪底色（原 Emotional Stance） */

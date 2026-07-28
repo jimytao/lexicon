@@ -53,7 +53,6 @@ const DEFAULT_CORE_MODULE_FLAGS: ModuleFlag[] = [
   { id: 'chunks', enabled: true },
   { id: 'collocations', enabled: true },
   { id: 'synonyms', enabled: true },
-  { id: 'wordChoice', enabled: true },
   { id: 'usageScenes', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
@@ -62,7 +61,6 @@ const DEFAULT_CORE_MODULE_FLAGS: ModuleFlag[] = [
 
 const DEFAULT_CORE_PHRASE_MODULE_FLAGS: ModuleFlag[] = [
   { id: 'usageScenes', enabled: true },
-  { id: 'wordChoice', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
   { id: 'chat', enabled: true },
@@ -664,7 +662,7 @@ function getFullLookupPrompt(
       const emotionDesc = isMono
         ? '1 short line: emotional tone when natives use this word'
         : '1句情绪底色：母语者用此词时的情感态度'
-      schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",\n    "explanation": "${isMono ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)' : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（比记忆锚点更细，偏「怎么用」）'}",\n    "feelAnchor": "${feelDesc}",\n    "emotionalTone": "${emotionDesc}"\n  }`
+      schema += `,\n  "coreConcept": {\n    "gloss": "${isMono ? "Short lexical gloss: English equivalents + sense nucleus (NOT a scene essay)" : '短词典对译：中文等价词 + 一句义核（禁止情景散文）'}",\n    "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",\n    "explanation": "${isMono ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)' : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（比记忆锚点更细，偏「怎么用」）'}",\n    "feelAnchor": "${feelDesc}",\n    "emotionalTone": "${emotionDesc}"\n  }`
     } else {
       schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${isMono ? '1 short sentence unifying the main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
     }
@@ -684,18 +682,14 @@ function getFullLookupPrompt(
     schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "${derivedMeaning}" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
-    const whenToUseDesc = isMono ? "1 sentence in English: when and why native speakers choose this specific word" : "1句中文：母语者在何时及为何使用该词 (如: slim -> 表示夸奖优雅的瘦)"
+    const whenToUseDesc = isMono
+      ? (isCore
+        ? '1 sentence: mental fit — when natives pick THIS near-synonym AND when the HEADWORD fits better'
+        : '1 sentence in English: when and why native speakers choose this specific word')
+      : (isCore
+        ? '1句适用心智：何时用该近义词，以及何时仍应选主词'
+        : '1句中文：母语者在何时及为何使用该词 (如: slim -> 表示夸奖优雅的瘦)')
     schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}", "tone": "one of: positive | negative | neutral | informal", "whenToUse": "${whenToUseDesc}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
-  }
-
-  if (isCore && isEnabled('wordChoice')) {
-    const vsDesc = isMono
-      ? 'near-synonym word (prefer ones listed in synonyms[])'
-      : '近义词（优先使用 synonyms[] 中出现的词）'
-    const reasonDesc = isMono
-      ? '1 sentence: when to still pick the HEADWORD over this near-synonym'
-      : '1句：何时仍选主词而非该近义词'
-    schema += `,\n  "wordChoiceContrast": [{ "vs": "${vsDesc}", "reason": "${reasonDesc}" }]`
   }
 
   const wantChunks = isFull && isEnabled('chunks')
@@ -785,11 +779,12 @@ ${schema}
 Rules:
 ${isCore ? `- Do NOT fill a full dictionary meanings wall for English input (meanings may be []).
 - Do NOT invent nativeMindModel (legacy). Put feel into coreConcept.feelAnchor and emotion into coreConcept.emotionalTone.
+- coreConcept.gloss: REQUIRED short lexical gloss (equivalents + sense nucleus) before imagery.
 - coreConcept.explanation: RICH usage-oriented (how the image guides when/how to use the word). feelAnchor must NOT repeat the same scene prose.
 - Do NOT dump concrete scenes into coreConcept.explanation — concrete when/where communicative scenes belong in usageScenes; explanation stays at image→usage-branch level.
+- Do NOT invent wordChoiceContrast — fold why-choose-headword into synonyms[].whenToUse (mental fit).
 ${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase, meaning, mindHint }; never bare strings or N/A. mindHint = how this phrase grows from rootCore only (not whole-word emotion).' : ''}
-${isEnabled('wordChoice') ? '- wordChoiceContrast: REQUIRED 3-5 rows. vs MUST prefer synonyms[].word; reason = when to still pick the headword (structured contrast, not a long essay).' : ''}
-- PRIORITY for Pure Core: coreConcept > conceptGraph > prep chunks > other collocations > synonyms > wordChoiceContrast > usageScenes > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency).
+- PRIORITY for Pure Core: coreConcept > conceptGraph > prep chunks > other collocations > synonyms > usageScenes > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency) — dictionary-style glosses, not scene essays.
 - coreConcept: LIGHT memory anchor (short image + short unifying line). Do NOT invent nativeMindModel, conceptGraph, or wordChoiceContrast.
 - PRIORITY for Lookup: coreConcept > meanings/scenes > etymology > examples.`}
 - For abbreviations, explain what each letter stands for.

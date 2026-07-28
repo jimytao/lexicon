@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 2026-07-28 — Lookup/Core 普通搜恢复 L1 + 释义硬化与选用对照并入近义 (v0.9.2)
+
+### 用户可见
+1. **普通搜索不再旁路词库**：在 AI Lookup 或 Pure Core 下点普通搜索且词库命中时，先出本地词典 L1，再跑合并 AI（Lookup→Core）；⭐ 强制 AI 仍旁路词库。
+2. **Pure Core 也先出词典**：有词库命中时 Core 页顶部同样展示 L1 释义，再淡入用法心智板块。
+3. **释义更像词典**：Lookup meanings / 短词组 meaning / Core `gloss` 要求等价词 + 义核（适配 monolingual）；情景长文归场景字段。
+4. **选用对照整块移除**：不再单独展示 My Choice Contrast；「为何选主词」并入近义 `whenToUse`（适用心智）。
+
+### 工程
+- `searchPath.ts`：词库命中路由判定；`App.tsx` / `resultStore`：L1 + combined；`aiFullToAnalysis` 供 ResultView。
+- Prompt：`aiCombinedPrompt` / `aiPhrasePrompt` / `ai.ts`；设置 normalize 丢弃旧 `wordChoice`。
+- TDD：`searchPath.test.ts`、prompt / coreMindsetPipeline 用例更新。
+
+### 涉及文件
+- `src/App.tsx`、`src/utils/searchPath.ts`、`aiFullToAnalysis.ts`、`CoreCognitiveView`、`CoreConceptCard`、`settingsStore`、`ai*.ts`、`AGENT.md`、双 README、本 CHANGELOG
+
+---
+
 ## 2026-07-27 — AI Profile 追问聚合诊断与崩溃恢复 (v0.9.1)
 
 ### 用户可见

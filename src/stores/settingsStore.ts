@@ -22,14 +22,13 @@ export const DEFAULT_MODULES: AppModule[] = [
   { id: 'chat',        label: 'AI Chat',              enabled: true },
 ]
 
-/** Pure Core 单词出厂模组 — P1 顺序可拖拽覆盖（含选用对照 wordChoice） */
+/** Pure Core 单词出厂模组 — P1 顺序可拖拽（选用对照已并入 synonyms.whenToUse） */
 export const DEFAULT_CORE_MODULES: AppModule[] = [
   { id: 'coreConcept',  label: 'Usage Image',            enabled: true },
   { id: 'wordGraph',    label: 'Concept Tree Graph',     enabled: true },
   { id: 'chunks',       label: 'Prep Phrases',           enabled: true },
   { id: 'collocations', label: 'Other Collocations',     enabled: true },
   { id: 'synonyms',     label: 'Synonyms & Nuances',     enabled: true },
-  { id: 'wordChoice',   label: 'Word Choice Contrast',   enabled: true },
   { id: 'usageScenes',  label: 'Usage Scenes',           enabled: true },
   { id: 'culture',      label: 'Cultural Context',       enabled: true },
   { id: 'practice',     label: 'Usage Practice',         enabled: true },
@@ -39,7 +38,6 @@ export const DEFAULT_CORE_MODULES: AppModule[] = [
 /** Pure Core 词组/句子出厂模组（与单词列表分离，避免开了却无 UI） */
 export const DEFAULT_CORE_PHRASE_MODULES: AppModule[] = [
   { id: 'usageScenes', label: 'Usage Scenes',         enabled: true },
-  { id: 'wordChoice',  label: 'Word Choice Contrast', enabled: true },
   { id: 'culture',     label: 'Cultural Context',     enabled: true },
   { id: 'practice',    label: 'Usage Practice',       enabled: true },
   { id: 'chat',        label: 'AI Chat Follow-up',    enabled: true },
@@ -103,6 +101,8 @@ export function normalizeCoreModules(modules?: AppModule[]): AppModule[] {
 
   for (const module of modules) {
     if (module.id === 'dictionary') continue
+    // 选用对照已并入 synonyms.whenToUse — 丢弃旧 wordChoice 模组
+    if (module.id === 'wordChoice') continue
     // 旧版单模组「Chunks & Metaphors」→ 拆成介词语组 + 其他常用词组
     if (module.id === 'collocations' && !modules.some((m) => m.id === 'chunks')) {
       expanded.push({
@@ -136,7 +136,7 @@ export function normalizeCorePhraseModules(modules?: AppModule[]): AppModule[] {
 
   const defaultsById = new Map(DEFAULT_CORE_PHRASE_MODULES.map((module) => [module.id, module]))
   const normalized = modules
-    .filter((module) => defaultsById.has(module.id))
+    .filter((module) => module.id !== 'wordChoice' && defaultsById.has(module.id))
     .map((module) => {
       const defaultModule = defaultsById.get(module.id)!
       return { ...defaultModule, enabled: module.enabled }

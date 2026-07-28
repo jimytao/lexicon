@@ -15,6 +15,7 @@ export function CoreConceptCard({ coreConcept, variant = 'memory' }: CoreConcept
     || (
       !coreConcept.image
       && !coreConcept.explanation
+      && !coreConcept.gloss
       && !coreConcept.feelAnchor
       && !coreConcept.emotionalTone
     )
@@ -29,8 +30,13 @@ export function CoreConceptCard({ coreConcept, variant = 'memory' }: CoreConcept
       <SectionHeading title={t('module.coreConcept')} subtitle={subtitle} />
 
       <div className="space-y-2 border-l-2 border-l-accent/40 pl-3">
-        {coreConcept.image && (
+        {coreConcept.gloss && (
           <p className="text-sm font-semibold text-foreground leading-snug">
+            {coreConcept.gloss}
+          </p>
+        )}
+        {coreConcept.image && (
+          <p className={`text-sm ${coreConcept.gloss ? 'font-medium text-foreground/90' : 'font-semibold text-foreground'} leading-snug`}>
             {coreConcept.image}
           </p>
         )}

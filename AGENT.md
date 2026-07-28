@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.1**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.2**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -100,10 +100,12 @@ Tauri 2（PC）
 - **切回 Instant**：`cancelAi()`（abort + generation 作废）→ 有本地快照则只显示 L1（卸下 AI 展示含 Chat，缓存保留）；无本地 → `searchSource=none` 清空结果区，保留搜索框
 - **空态**：无查询且无结果时，任意默认模式都显示小书引导（`showEmptyHome`），禁止 Core 空壳抢首页
 - 在 **Core** 下命中全量缓存时，**禁止**强制切回 `ai`
+- **Instant 词库命中**：纯 L1；切到 Lookup/Core 时保持 L1，再触发 combined（标签翻页不重打）
+- **Lookup / Pure Core 普通搜索 + 词库命中**：同一流水线——先出本地 L1，再 `triggerCombinedLookup`（Lookup→Core 双半）；**禁止**把普通搜改成 `ai-full` 旁路词库
+- **强制 AI（⭐）**：旁路词库的全量路径（`ai-full` / phrase），文案须与「普通搜 = 词典+合并增量」区分
 - **Instant 词库未命中**（或强制 AI）：按 `defaultSearchMode` 落入 Lookup 或 Core（默认仍是 Instant 时 → Lookup）
 - **历史双轨**：`lookupAiMode` / `coreAiMode`；历史列表双星（Lookup 琥珀 / Core 靛色）；`historyPreferCognitive`（默认 lookup）决定双轨皆有时的回放优先；**双轨皆无** → 有词库则留 Instant，OOD/词组仍落入 preferred AI
 - **AI 超时**：fetch Abort + Timeout reason 须映射为可展示 error（禁止当静默 Abort 卡住 loading）
-- **强制 AI**：旁路词库的全量路径，文案须与「点 AI Lookup = 词典+增量」区分
 - **释义补全**：全量结果缺 note/meaning 时静默重试一次；仍缺则板块「补全缺失释义」只补缺项
 
 ### 结果渲染路径
@@ -130,15 +132,15 @@ Tauri 2（PC）
 释义 → 轻量 coreConcept → 词根 → 助记 → 例句 → 相关词组 → 介词意象 → **释义核对练习** → Chat  
 
 **Pure Core（母语者用法）**  
-加厚 coreConcept（含 feelAnchor / emotionalTone）→ 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用 → **选用对照 (`wordChoice`)** → 用法场景 → 语域 → **场景造句练习** → Chat  
-（以上模组均可在设置中拖拽/开关；旧 `nativeMindModel` 仅作缓存兼容映射。**搭配规则 C**：innit 类尾缀若只会重复概念树句架，AI 可返回空搭配，UI 不展示空卡；实词仍正常出搭配。）
+加厚 coreConcept（含 **gloss 短对译** + feelAnchor / emotionalTone）→ 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用（`whenToUse` 含适用心智 / 为何仍选主词）→ 用法场景 → 语域 → **场景造句练习** → Chat  
+（以上模组均可在设置中拖拽/开关；旧 `wordChoice` / `nativeMindModel` 仅作缓存兼容。**搭配规则 C**：innit 类尾缀若只会重复概念树句架，AI 可返回空搭配，UI 不展示空卡；实词仍正常出搭配。）
 
 ### Lookup vs Pure Core 认知分轨
 
 | | AI Lookup | Pure Core |
 |--|-----------|-----------|
 | **角色** | 学会意思、怎么记住 | 母语者怎么想、怎么用 |
-| **单词全量** | 释义墙 + 轻量意象 + 词源/助记；无概念树/搭配墙/选用对照 | 加厚用法意象（感觉锚+情绪底色）+ 概念树 + 介词语组/其他词组 + 近义 + 选用对照；**无 dictionary** |
+| **单词全量** | 释义墙 + 轻量意象 + 词源/助记；无概念树/搭配墙 | 加厚用法意象（gloss+感觉锚+情绪底色）+ 概念树 + 介词语组/其他词组 + 近义（含适用心智）；**无 dictionary / 无独立选用对照** |
 | **词组/句子** | 短释义 + `usageIntro`/场景、例句、介词意象、释义核对；`modules`（短词组勿把情景长文塞进 meaning） | 释义轻量固定展示（可附感觉/情绪）；**`corePhraseModules`**（`usageIntro`+用法场景/选用对照/语域/造句练习） |
 | **练习** | `meaning-check`（输入大致意思） | `usage-output`（场景造句） |
 | **prompt 模组源** | `settings.modules` | 单词 `coreModules`；词组/句 `corePhraseModules` |

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode, CombinedAiResult, CombinedPhraseResult } from '../types'
 import { normalizeQuery, cognitiveCacheKey } from '../utils/text'
 import { combinedCacheKey, reconstructFromLegacy, reconstructPhraseFromLegacy } from '../utils/combinedResult'
+import { aiFullToAnalysis } from '../utils/aiFullToAnalysis'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -164,11 +165,13 @@ export const useResultStore = create<ResultStore>()(
         cache[key] = combinedResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
-        // Also set the individual lookup/core views for legacy compatibility
+        // Also set the individual lookup/core views for legacy compatibility;
+        // map lookup → aiAnalysis so ResultView (L1 + Lookup modules) can render.
         set({
           combinedCache: cache,
           combinedResult,
           aiFullResult: combinedResult.lookup,
+          aiAnalysis: aiFullToAnalysis(combinedResult.lookup),
           aiStatus: 'success',
         })
       },

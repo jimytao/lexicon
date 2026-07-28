@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTZSWkJZQ05CcHd6QXVQUFBaMnZYOEsvUFFsc2lPbjV6bFkyQnpHR3Riei83aE8wcXR5UmtjWktnQlUya293WXo5eFJGcGMyS3cwRExhNmlZVy85NXc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MTI1MDQzCWZpbGU6TGV4aWNvbl8wLjkuMV94NjQtc2V0dXAuZXhlClVHbWFmSkJOdXVrOVBvVWhjRmUzUHZUcTJmQndRSkx4MFJVMWw1SnZrcHlrZ0hVWUtIKy91dTZ0V3hEeHpLbVFUUFNoNHZyR0d3MHJyd285UlBweEF3PT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMStEajVLdnRZVERsWU9kbTFpRktOMTlkT09tdTRwUUxpS2xkMzdYUzQrSFo0RnRYYVhjUlY4UGVaM1JQbXo5V1JoNTBWWFNqUklleUVTTlZ2T3dtOGdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjA3Mzc5CWZpbGU6TGV4aWNvbl8wLjkuMl94NjQtc2V0dXAuZXhlCjkwTnJkOHgzV0hBb3Z0OWM1VEd5Y2EwdCszdTR4MEp3eEdvS0NkaGIyVGNQZXRhTjhmNmhLeDZlRkZ6ek5DV0xOVStBOXg4WEFaWEtzMEFpRTcyT0NnPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-27T04:07:23Z",
-    "version":  "0.9.1",
-    "notes":  "AI Profile 追问聚合诊断与崩溃恢复\n1. 优化：同一词连续 AI 追问不再每条都触发 Profile 总结——约 90 秒空闲或换词 / 切换 Lookup↔Pure Core / 离开 Dict 后才后台蒸馏一次，节省 Token。\n2. 新增：关 App 未完成的诊断事件本地保留；下次打开若含追问/订正会自动续跑；失败不丢队列。\n3. 保持：句子订正仍即时诊断；普通查词累计约 12 次保底触发不变。\n",
-    "notes_zh":  "AI Profile 追问聚合诊断与崩溃恢复\n1. 优化：同一词连续 AI 追问不再每条都触发 Profile 总结——约 90 秒空闲或换词 / 切换 Lookup↔Pure Core / 离开 Dict 后才后台蒸馏一次，节省 Token。\n2. 新增：关 App 未完成的诊断事件本地保留；下次打开若含追问/订正会自动续跑；失败不丢队列。\n3. 保持：句子订正仍即时诊断；普通查词累计约 12 次保底触发不变。\n",
-    "notes_en":  "AI Profile follow-up batching and crash recovery\n1. **Improved**: Consecutive AI follow-ups on the same word no longer each trigger a Profile diagnostic — batched after ~90s idle or hard boundaries (new search, Lookup↔Pure Core switch, leave Dict), saving tokens.\n2. **New**: Unfinished diagnostic events persist locally; cold start resumes when chat/sentence events remain; failures keep the queue.\n3. **Unchanged**: Sentence corrections still flush immediately; lookup accumulation threshold (~12) remains.\n",
+    "pub_date":  "2026-07-28T02:59:25Z",
+    "version":  "0.9.2",
+    "notes":  "Lookup/Core 普通搜恢复 L1，释义硬化，选用对照并入近义\n1. 修复：Lookup / Pure Core 普通搜索词库命中时先出本地 L1，再合并 AI；⭐ 仍旁路词库。\n2. 优化：短词组与 Lookup 释义要求词典式对译；Core 增加 gloss 短对译（适配 monolingual）。\n3. 简化：移除独立「选用对照」模组，并入近义 whenToUse（适用心智）。\n",
+    "notes_zh":  "Lookup/Core 普通搜恢复 L1，释义硬化，选用对照并入近义\n1. 修复：Lookup / Pure Core 普通搜索词库命中时先出本地 L1，再合并 AI；⭐ 仍旁路词库。\n2. 优化：短词组与 Lookup 释义要求词典式对译；Core 增加 gloss 短对译（适配 monolingual）。\n3. 简化：移除独立「选用对照」模组，并入近义 whenToUse（适用心智）。\n",
+    "notes_en":  "Restore L1-first Lookup/Core search, harden glosses, fold word-choice into synonyms\n1. **Fix**: Normal search in AI Lookup or Pure Core keeps local dictionary L1 first, then combined AI; Bypass (⭐) still skips the lexicon.\n2. **Improved**: Lookup / short-phrase meanings require lexical glosses; Core adds a short `gloss` (monolingual-aware).\n3. **Simplified**: Removed the separate Word Choice Contrast module; why-choose-headword lives in synonym `whenToUse` (mental fit).\n",
     "is_major":  false
 }

@@ -51,11 +51,11 @@ export function buildCombinedWordPrompt({
 
   // ── LOOKUP schema ─────────────────────────────────────────────────────────
   const lookupMeaningsDesc = isMono
-    ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'"
+    ? "LEXICAL gloss in English: head equivalents + one short sense nucleus, e.g. 'self-aware; uneasy about how one appears — overly aware of oneself'"
     : isZh
       ? '该英文候选与中文输入的细微差别（中文，1句）'
-      : '（情景前缀）中文释义'
-  const lookupEnDesc = isZh ? 'English candidate word/phrase' : 'English definition'
+      : '词典式中文对译：等价词/义项 + 一句义核，如「难为情的；在意别人看法的 — 过分在意自己给人的印象」。禁止只写情景散文'
+  const lookupEnDesc = isZh ? 'English candidate word/phrase' : (isMono ? 'English sense paraphrase (lexical, not a scene essay)' : 'English definition (lexical)')
   const sceneLabel = isMono ? '2-4 word English context tag' : '2-4字情景标签'
   const sceneDesc = isMono
     ? '1-3 sentences in English: when this meaning occurs, tone, and how it differs'
@@ -102,10 +102,10 @@ export function buildCombinedWordPrompt({
   }
 
   if (isFull && mod(lookupModules, 'synonyms')) {
-    const dist = isMono ? 'English nuance explanation' : '与主词的差异'
+    const dist = isMono ? 'English nuance vs the headword' : '与主词的差异'
     const whenToUse = isMono
-      ? '1 sentence in English: when and why native speakers choose this specific word'
-      : '1句中文：母语者在何时及为何使用该词'
+      ? '1 sentence: mental fit — when natives pick THIS synonym, and when the HEADWORD is still better'
+      : '1句适用心智：母语者何时用该近义词；并点明何时仍更适合用主词'
     lookupSchema += `,
     "synonyms": [{ "word": "synonym", "distinction": "${dist}", "tone": "positive|negative|neutral|informal", "whenToUse": "${whenToUse}" }],
     "antonyms": [{ "word": "antonym", "distinction": "${dist}" }]`
@@ -132,10 +132,15 @@ export function buildCombinedWordPrompt({
     ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way'
     : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（偏「怎么用」）'
 
+  const coreGlossDesc = isMono
+    ? "Short lexical gloss: English equivalents + sense nucleus (NOT a scene essay). e.g. 'uneasy about others\\' judgment; self-aware in a tense way'"
+    : '短词典对译：中文等价词 + 一句义核（禁止情景散文）。如「难为情的；自觉的 — 过分在意别人怎么看自己」'
+
   let coreSchema = `"correctForm": "same as lookup.correctForm",
     "phonetic": "same as lookup.phonetic",
     "pos": "same as lookup.pos",
     "coreConcept": {
+      "gloss": "${coreGlossDesc}",
       "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",
       "explanation": "${coreConceptExpl}",
       "feelAnchor": "${feelDesc}",
@@ -153,24 +158,13 @@ export function buildCombinedWordPrompt({
 
   const wantCoreSynonyms = isFull && mod(coreModules, 'synonyms')
   if (wantCoreSynonyms) {
-    const dist = isMono ? 'English nuance explanation' : '与主词的差异'
+    const dist = isMono ? 'English nuance vs the headword' : '与主词的差异'
     const whenToUse = isMono
-      ? '1 sentence: when and why native speakers choose this word'
-      : '1句：母语者何时及为何使用该词'
+      ? '1 sentence: mental fit — when natives pick THIS near-synonym AND when the HEADWORD fits better'
+      : '1句适用心智：何时用该近义词，以及何时仍应选主词（把原「选用对照」并入这里）'
     coreSchema += `,
     "synonyms": [{ "word": "near-synonym", "distinction": "${dist}", "tone": "positive|negative|neutral|informal", "whenToUse": "${whenToUse}" }],
     "antonyms": [{ "word": "antonym", "distinction": "${dist}" }]`
-  }
-
-  if (mod(coreModules, 'wordChoice')) {
-    const vsDesc = isMono
-      ? 'near-synonym word (prefer ones listed in synonyms[])'
-      : '近义词（优先使用 synonyms[] 中出现的词）'
-    const reasonDesc = isMono
-      ? '1 sentence: when to still pick the HEADWORD over this near-synonym'
-      : '1句：何时仍选主词而非该近义词'
-    coreSchema += `,
-    "wordChoiceContrast": [{ "vs": "${vsDesc}", "reason": "${reasonDesc}" }]`
   }
 
   const wantChunks = isFull && mod(coreModules, 'chunks')
@@ -266,17 +260,20 @@ The JSON must follow this exact schema:
 Rules:
 ${chineseInputRule}
 - BOTH sections share the same input word — they are two perspectives on the SAME word.
-- lookup = "understand & remember": focus on meanings, etymology, examples, light core concept.
+- lookup = "understand & remember": focus on lexical meanings (gloss first), etymology, examples, light core concept.
+- lookup.meanings: MUST be dictionary-style glosses (equivalents + short sense), NOT scene essays. Scenes belong in meanings[].scene.
 - core = "use it natively": focus on mental image, feel/emotion, usage branches, when/why natives choose it. Do NOT add a dictionary meanings wall (meanings: [] for English input in core).
+- core.coreConcept.gloss: REQUIRED short lexical gloss (equivalents + sense nucleus) so learners see a real translation before imagery.
 - core.correctForm and core.phonetic and core.pos: copy from lookup (they must match).
 - Do NOT invent nativeMindModel (legacy). Put feel into core.coreConcept.feelAnchor and emotion into core.coreConcept.emotionalTone.
+- Do NOT invent wordChoiceContrast — fold why-choose-headword into core.synonyms[].whenToUse (mental fit).
 - core.coreConcept.explanation: RICH — how the image guides when/how to use the word. feelAnchor must NOT repeat this.
 - Do NOT dump concrete scenes into core.coreConcept.explanation — concrete scenes belong in core.usageScenes.
 ${mod(coreModules, 'wordGraph') ? '- core.conceptGraph: REQUIRED. Examples MUST be { phrase, meaning, mindHint }; never bare strings or N/A.' : ''}
-${mod(coreModules, 'wordChoice') ? '- core.wordChoiceContrast: REQUIRED 3-5 rows. reason = when to still pick the headword.' : ''}
 ${wantChunks ? `- core.collocations.chunks: 4-6 COMMON PREPOSITIONAL phrases ONLY.` : ''}
 ${wantCollocations ? `- core.collocations.collocations: 4-6 OTHER common phrases (no prep focus).` : ''}
 ${isFull && mod(coreModules, 'usageScenes') ? '- core.usageScenes: 3-5 native usage scenes — not a translation example wall.' : ''}
+${wantCoreSynonyms ? '- core.synonyms: 3-5 with tone + whenToUse (include when HEADWORD is better); antonyms: 3-5.' : ''}
 ${isFull && mod(lookupModules, 'etymology') && !isZh ? `- lookup.etymology.parts: cover ALL meaningful morphemes. For ROOT morphemes fill sourceForm, anchor, anchorNote.` : ''}
 ${isFull && mod(lookupModules, 'synonyms') ? '- lookup.synonyms: 3-5 with tone + whenToUse; antonyms: 3-5.' : ''}
 ${mod(lookupModules, 'examples') && !isZh ? '- lookup.examples: 3-5 learner-friendly sentences.' : ''}
@@ -305,8 +302,8 @@ export function buildCombinedPhrasePrompt({
 
   const meaningDesc = isShortPhrase
     ? (isMono
-      ? '1-2 short sentences: a clear English gloss of WHAT it means only. FORBID origin, register, or native-mind scenes here.'
-      : '1-2句短释义（只写「是什么意思」）。禁止写来源/语域/情景/何时用。')
+      ? 'LEXICAL English gloss only: equivalents + one short sense nucleus, e.g. "self-aware; uneasy about appearance — overly aware of oneself". FORBID origin, register, when-to-use essays, or scene prose.'
+      : '词典式中文对译：等价词 + 一句义核，如「难为情的；自觉的 — 过分在意别人怎么看自己」。只写「是什么意思」。禁止来源/语域/情景散文/何时用。')
     : (isMono
       ? 'English definition or complete line-by-line translation. For multi-sentence input, MUST translate ALL sentences.'
       : '中文释义与准确翻译。若输入为多句子，必须包含针对所有句子的完整逐句翻译。')
@@ -377,13 +374,6 @@ export function buildCombinedPhrasePrompt({
     "feelAnchor": "${feelDesc}",
     "emotionalTone": "${emotionDesc}"`
 
-  if (mod(coreModules, 'wordChoice')) {
-    const vsDesc = isMono ? 'near-synonym or alternate wording' : '近义说法或替代表达'
-    const reasonDesc = isMono ? '1 sentence: when to still pick THIS wording' : '1句：何时仍选这个表达'
-    coreSchema += `,
-    "wordChoiceContrast": [{ "vs": "${vsDesc}", "reason": "${reasonDesc}" }]`
-  }
-
   // ── Full prompt ───────────────────────────────────────────────────────────
   const langLabel = lang === 'en' ? 'English' : lang === 'zh' ? 'Chinese' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'
 
@@ -425,10 +415,9 @@ ${chineseInputRule}
 - CRITICAL — correctForm integrity: Do NOT shorten or truncate the input. correctForm is a proofread copy, not a rewrite. If input has no real errors, copy it verbatim.
 - correctionNote: Only when correctForm differs from input. Omit if no change.
 - unnaturalMindModel: Fill when input sounds like Chinese-to-English transfer. Omit if naturally idiomatic.
-- FIELD OWNERSHIP: meaning = short gloss only. Put situational/intent content into usageIntro/usageScenes. Put feel/emotion into feelAnchor/emotionalTone.
-${isShortPhrase ? '- Short phrases: keep "meaning" to 1-2 sentences max. Essays belong in usageIntro/usageScenes.' : '- CRITICAL — meaning completeness: For multi-sentence input, meaning MUST contain full sentence-by-sentence translation of ALL content.'}
+- FIELD OWNERSHIP: meaning = lexical gloss only (equivalents + sense nucleus). Put situational/intent content into usageIntro/usageScenes. Put feel/emotion into feelAnchor/emotionalTone. Do NOT invent wordChoiceContrast.
+${isShortPhrase ? '- Short phrases: keep "meaning" to a lexical gloss (1-2 sentences max). Essays belong in usageIntro/usageScenes.' : '- CRITICAL — meaning completeness: For multi-sentence input, meaning MUST contain full sentence-by-sentence translation of ALL content.'}
 ${wantUsage ? '- Provide usageIntro (1 blurb) + 2-4 usage scenes in both sections.' : ''}
-${mod(coreModules, 'wordChoice') ? '- core.wordChoiceContrast: 2-4 structured vs/reason rows.' : ''}
 ${isForeign ? '- For foreign input: prioritize culturalLore with deep subculture/ACG context.' : ''}
 ${isMono ? '- ALL output text must be in English only. No Chinese characters anywhere.' : ''}
 - Keep everything concise. Never output anything outside the JSON object.`

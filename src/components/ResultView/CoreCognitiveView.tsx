@@ -1,10 +1,9 @@
-import type { AiFullResult } from '../../types'
+import type { AiFullResult, WordResult } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { WordGraphCard } from './AiSection/WordGraphCard'
-import { WordChoiceCard } from './AiSection/WordChoiceCard'
 import { CollocationCard } from './AiSection/CollocationCard'
 import { SynonymList } from './AiSection/SynonymList'
 import { migrateNativeMindToCoreFields } from '../../utils/coreMindsetPipeline'
@@ -18,11 +17,14 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { PracticeSection } from './AiSection/PracticeSection'
 import { UsageScenesCard } from './AiSection/UsageScenesCard'
 import { SectionHeading } from './SectionHeading'
+import { MeaningList } from './InstantSection/MeaningList'
 import { detectLanguage } from '../../stores/searchStore'
 
 interface CoreCognitiveViewProps {
   word: string
   aiFullResult: AiFullResult | null
+  /** Dictionary L1 when normal search hit the local lexicon (not force-AI bypass). */
+  dictWordResult?: WordResult | null
   aiStatus: AiStatus
   aiError: string | null
   onRetry: () => void
@@ -33,6 +35,7 @@ interface CoreCognitiveViewProps {
 export function CoreCognitiveView({
   word,
   aiFullResult,
+  dictWordResult = null,
   aiStatus,
   aiError,
   onRetry,
@@ -42,7 +45,7 @@ export function CoreCognitiveView({
   const t = useT()
   const { coreModules = DEFAULT_CORE_MODULES } = useSettingsStore()
   const { repairCollocationNotes, repairConceptExamples } = useAiLookup()
-  const repairKey = aiFullResult?.correctForm || word
+  const repairKey = aiFullResult?.correctForm || dictWordResult?.word || word
   const isChineseQuery = detectLanguage(word) === 'zh'
   const zhCandidates = isChineseQuery ? (aiFullResult?.meanings ?? []) : []
   const migratedMind = aiFullResult
@@ -52,6 +55,7 @@ export function CoreCognitiveView({
         wordChoiceContrast: aiFullResult.wordChoiceContrast,
       })
     : {}
+  const showDictL1 = Boolean(dictWordResult?.meanings?.length)
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
@@ -59,10 +63,21 @@ export function CoreCognitiveView({
         <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium">
           {t('mode.core')}
         </span>
-        <LexiconMemoryBadge word={aiFullResult?.correctForm || word} />
+        <LexiconMemoryBadge word={aiFullResult?.correctForm || dictWordResult?.word || word} />
       </div>
 
-      {aiStatus !== 'success' && (
+      {showDictL1 && dictWordResult && (
+        <div className="mb-3 space-y-2">
+          <WordHeader
+            word={dictWordResult.word}
+            phonetic={dictWordResult.phonetic}
+            pos={dictWordResult.pos}
+          />
+          <MeaningList meanings={dictWordResult.meanings} />
+        </div>
+      )}
+
+      {!showDictL1 && aiStatus !== 'success' && (
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] max-w-full">
             {word}
@@ -82,12 +97,16 @@ export function CoreCognitiveView({
 
       {aiStatus === 'success' && aiFullResult && (
         <div className="space-y-3">
-          <WordHeader word={aiFullResult.correctForm || word} phonetic={aiFullResult.phonetic} pos={aiFullResult.pos} />
+          {!showDictL1 && (
+            <>
+              <WordHeader word={aiFullResult.correctForm || word} phonetic={aiFullResult.phonetic} pos={aiFullResult.pos} />
 
-          {aiFullResult.correctForm && aiFullResult.correctForm.toLowerCase() !== word.toLowerCase() && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 -mt-2 mb-2">
-              {t('aifull.youEntered')} <DiffText original={word} corrected={aiFullResult.correctForm} />
-            </p>
+              {aiFullResult.correctForm && aiFullResult.correctForm.toLowerCase() !== word.toLowerCase() && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 -mt-2 mb-2">
+                  {t('aifull.youEntered')} <DiffText original={word} corrected={aiFullResult.correctForm} />
+                </p>
+              )}
+            </>
           )}
 
           {/* 中文反查：短英文候选（非 dictionary 墙） */}
@@ -168,13 +187,8 @@ export function CoreCognitiveView({
                   />
                 )
               case 'wordChoice':
-                return (
-                  <WordChoiceCard
-                    key={module.id}
-                    wordChoiceContrast={migratedMind.wordChoiceContrast ?? aiFullResult.wordChoiceContrast}
-                    whyChooseFallback={migratedMind.whyChooseFallback}
-                  />
-                )
+                // Removed: fold why-choose into synonyms[].whenToUse (mental fit)
+                return null
               case 'usageScenes':
                 return (
                   <UsageScenesCard
@@ -212,46 +226,31 @@ export function CoreCognitiveView({
                     + (cc?.emotionalTone ? ` | 情绪底色: ${cc.emotionalTone}` : ''),
                   )
                 }
-                const contrast = migratedMind.wordChoiceContrast ?? aiFullResult.wordChoiceContrast
-                if (contrast?.length) {
+                if (aiFullResult.synonyms?.length) {
                   parts.push(
-                    '选用对照:\n' + contrast.map((r) => `  · vs ${r.vs}: ${r.reason}`).join('\n'),
+                    '近义心智:\n' + aiFullResult.synonyms.map((s) => {
+                      const mental = s.whenToUse ? ` | 适用心智: ${s.whenToUse}` : ''
+                      return `  · ${s.word}: ${s.distinction || ''}${mental}`
+                    }).join('\n'),
                   )
-                } else if (migratedMind.whyChooseFallback) {
-                  parts.push(`选用说明: ${migratedMind.whyChooseFallback}`)
                 }
-                if (aiFullResult.conceptGraph?.branches?.length) {
-                  parts.push('延伸分支领域:\n' + aiFullResult.conceptGraph.branches.map((b) => {
-                    const ex = (b.examples || []).map((raw) => {
-                      if (typeof raw === 'string') return raw
-                      return `${raw.phrase}${raw.meaning ? `（${raw.meaning}）` : ''}${raw.mindHint ? `〔${raw.mindHint}〕` : ''}`
-                    }).join('；')
-                    return `  · ${b.category}${b.explanation ? ` — ${b.explanation}` : ''}: ${ex}`
-                  }).join('\n'))
-                }
-                if (aiFullResult.collocations?.chunks?.length) {
-                  parts.push('介词语组:\n' + aiFullResult.collocations.chunks.map(
-                    c => `  · ${c.chunk}${c.note ? ` — ${c.note}` : ''}${c.spatialExtension ? ` 〔${c.spatialExtension}〕` : ''}`
-                  ).join('\n'))
-                }
-                if (aiFullResult.collocations?.collocations?.length) {
-                  parts.push('其他常用词组:\n' + aiFullResult.collocations.collocations.map(
-                    c => `  · ${c.chunk}${c.note ? ` — ${c.note}` : ''}`
-                  ).join('\n'))
+                if (aiFullResult.conceptGraph?.rootCore) {
+                  parts.push(`概念树根: ${aiFullResult.conceptGraph.rootCore}`)
                 }
                 if (aiFullResult.usageScenes?.length) {
-                  parts.push('用法场景:\n' + aiFullResult.usageScenes.map(s => `  · ${s.label}: ${s.description}`).join('\n'))
+                  parts.push(
+                    '用法场景:\n' + aiFullResult.usageScenes.map((s) => `  · ${s.label}: ${s.description}`).join('\n'),
+                  )
                 }
-                if (aiFullResult.synonyms?.length) {
-                  parts.push('近义选用: ' + aiFullResult.synonyms.map(s =>
-                    `${s.word}${s.whenToUse ? `（${s.whenToUse}）` : ''}`
-                  ).join('；'))
-                }
-                if (aiFullResult.culturalLore?.content) {
-                  parts.push(`语域/文化: ${aiFullResult.culturalLore.content}`)
-                }
-                const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} cognitive="core" enrichedContext={enrichedContext} />
+                const enrichedContext = parts.length > 0 ? parts.join('\n\n') : undefined
+                return (
+                  <AiChatBox
+                    key={module.id}
+                    context={corrected}
+                    cognitive="core"
+                    enrichedContext={enrichedContext}
+                  />
+                )
               }
               default:
                 return null

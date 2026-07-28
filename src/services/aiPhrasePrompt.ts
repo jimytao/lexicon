@@ -39,8 +39,8 @@ export function buildPhrasePrompt({
 
   const meaningDesc = isShortPhrase
     ? (isMono
-      ? '1-2 short sentences: a clear English gloss of WHAT it means only (short gloss). FORBID origin, register, slang geography, when-to-use essays, or native-mind scenes in this field.'
-      : '1-2句短释义（一行释义即可，可首行【主题概括】一句）。只写「是什么意思」。禁止在 meaning 写来源/语域/俚语地域/情景/何时用/母语者心智长文。')
+      ? 'LEXICAL English gloss only: equivalents + one short sense nucleus, e.g. "self-aware; uneasy about appearance — overly aware of oneself". FORBID origin, register, slang geography, when-to-use essays, or native-mind scenes.'
+      : '词典式中文对译：等价词 + 一句义核，如「难为情的；自觉的 — 过分在意别人怎么看自己」。只写「是什么意思」。禁止在 meaning 写来源/语域/俚语地域/情景/何时用/母语者心智长文。')
     : (isMono
       ? 'English definition or complete line-by-line translation in simple terms. For multi-sentence or long paragraphs, you MUST provide full translation for ALL sentences, NOT just a summary.'
       : '中文释义与准确翻译。若输入为多句子或长段落文章，必须包含针对所有句子的完整全文翻译（可首行放一句话【主题概括】，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括。')
@@ -84,16 +84,6 @@ export function buildPhrasePrompt({
       ? '1 short line: emotional / social stance'
       : '1句情绪底色/社交态度'
     schema += `,\n  "feelAnchor": "${feelDesc}",\n  "emotionalTone": "${emotionDesc}"`
-  }
-
-  if (isCore && isEnabled('wordChoice')) {
-    const vsDesc = isMono
-      ? 'near-synonym or alternate wording'
-      : '近义说法或替代表达'
-    const reasonDesc = isMono
-      ? '1 sentence: when to still pick THIS wording'
-      : '1句：何时仍选这个表达'
-    schema += `,\n  "wordChoiceContrast": [{ "vs": "${vsDesc}", "reason": "${reasonDesc}" }]`
   }
 
   if (isEnabled('examples')) {
@@ -181,9 +171,9 @@ ${meaningCompletenessRule}
 - correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.
 - unnaturalMindModel: When input sounds unnatural, un-idiomatic, or reflects Chinese-to-English translation mindset, fill unnaturalMindModel with detailed cognitive breakdown (chineseThought, nativeConcept, reusablePrinciple). Omit if input is already natural.
 ${isCore ? `- Do NOT invent nativeMindModel (legacy). Fill feelAnchor + emotionalTone instead.
-${isEnabled('wordChoice') ? '- wordChoiceContrast: REQUIRED 2-4 structured vs/reason rows (not a long whyChoose essay).' : ''}
-- PRIORITY order for Pure Core: feelAnchor/emotionalTone > unnaturalMindModel (if any)${wantUsage ? ' > usageIntro/usageScenes' : ''} > wordChoiceContrast > meaning. Keep meaning accurate but secondary to cognitive remodeling.
-${wantUsage ? '- usageScenes in Core mode must emphasize native communicative intent (what job the phrase does), not just textbook situations.' : '- usageIntro/usageScenes omitted (module off) — do not invent those fields.'}` : `- Focus on clear meaning, practical usage scenes, and correction quality. nativeMindModel / wordChoiceContrast are NOT required for Lookup mode.`}
+- Do NOT invent wordChoiceContrast.
+- PRIORITY order for Pure Core: feelAnchor/emotionalTone > unnaturalMindModel (if any)${wantUsage ? ' > usageIntro/usageScenes' : ''} > meaning (lexical gloss still required and accurate).
+${wantUsage ? '- usageScenes in Core mode must emphasize native communicative intent (what job the phrase does), not just textbook situations.' : '- usageIntro/usageScenes omitted (module off) — do not invent those fields.'}` : `- Focus on clear lexical meaning, practical usage scenes, and correction quality. nativeMindModel / wordChoiceContrast are NOT required for Lookup mode.`}
 - If input is CHINESE (targeting English):
   - correctForm: the most natural, complete English translation of the full input — do NOT omit any part of the Chinese.
   - correctionNote: omit (translation, not correction).

@@ -25,7 +25,6 @@ const CORE_MODULES = [
   { id: 'wordGraph', enabled: true },
   { id: 'chunks', enabled: true },
   { id: 'synonyms', enabled: true },
-  { id: 'wordChoice', enabled: true },
   { id: 'usageScenes', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
@@ -34,7 +33,6 @@ const CORE_MODULES = [
 
 const CORE_PHRASE_MODULES = [
   { id: 'usageScenes', enabled: true },
-  { id: 'wordChoice', enabled: true },
   { id: 'culture', enabled: true },
   { id: 'practice', enabled: true },
 ]
@@ -79,6 +77,18 @@ describe('buildCombinedWordPrompt — schema structure', () => {
       lang: 'en',
     })
     expect(prompt).toContain('"conceptGraph"')
+  })
+
+  it('includes coreConcept.gloss and lexical meaning guidance', () => {
+    const prompt = buildCombinedWordPrompt({
+      lookupModules: LOOKUP_MODULES,
+      coreModules: CORE_MODULES,
+      lang: 'en',
+    })
+    expect(prompt).toContain('"gloss"')
+    expect(prompt).toMatch(/LEXICAL|词典式|equivalents|等价词/)
+    expect(prompt).not.toMatch(/"wordChoiceContrast"\s*:/)
+    expect(prompt).toMatch(/whenToUse.*HEADWORD|适用心智|仍应选主词/i)
   })
 
   it('includes meanings / examples in the lookup section', () => {

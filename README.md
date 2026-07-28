@@ -11,8 +11,8 @@
 ### 1. 三种查词模式
 - **Instant**：纯本地词库，零延迟，离线可用（词库外输入自动触发 AI 合并搜索）。
 - **AI Lookup**：理解与记忆——L1 立即呈现；轻量意象、词根、助记、例句、介词意象、释义核对练习与 Chat 异步淡入。
-- **Pure Core**：母语者用法——用法意象（含感觉锚/情绪底色）、概念树、介词语组/其他词组（尾缀类词可空）、近义与**选用对照**、用法场景、语域与造句练习（无释义墙；模组均可拖拽排序）。
-- **合并双轨出参**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套数据，标签页**瞬间翻页**零延迟；Bypass 按钮（⭐）一键触发合并 AI 搜索。
+- **Pure Core**：母语者用法——用法意象（含短对译 gloss / 感觉锚 / 情绪底色）、概念树、介词语组/其他词组（尾缀类词可空）、近义（适用心智含「为何仍选主词」）、用法场景、语域与造句练习（无释义墙；模组均可拖拽排序）。
+- **合并双轨出参**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套数据；词库命中时普通搜索先出 L1 再合并增量；标签页瞬间翻页；Bypass（⭐）旁路词库触发合并 AI。
 - **词组/句子**：短词组 Meaning 只留短释义；情景与母语选用意图在 **Usage Contexts**（含开场白）；超长订正标题与「为什么这么改」各自独立折叠。
 
 ### 2. 双本地词库与智能路由
@@ -45,12 +45,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.9.1_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.9.1_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.9.2_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.9.2_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64_en-US.msi)**（MSI）
 
 ### Android
-- **[Lexicon_0.9.1_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.9.1](https://github.com/jimytao/lexicon/releases/tag/v0.9.1)。
+- **[Lexicon_0.9.2_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.9.2](https://github.com/jimytao/lexicon/releases/tag/v0.9.2)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

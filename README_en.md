@@ -11,8 +11,8 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 ### 1. Three lookup modes
 - **Instant**: Local dictionary only — zero latency, offline (out-of-dict queries auto-trigger combined AI search).
 - **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
-- **Pure Core**: Native usage — usage image (feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms plus **word-choice contrast**, scenes, register, and usage-output practice (no definition wall; modules are reorderable).
-- **Combined Dual-Track Results**: Single AI request generates both Lookup and Pure Core data for instant zero-latency tab switching; Bypass button (⭐) triggers combined AI search.
+- **Pure Core**: Native usage — usage image (short gloss + feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms with mental-fit notes (when the headword still wins), scenes, register, and usage-output practice (no definition wall; modules are reorderable).
+- **Combined Dual-Track Results**: Single AI request generates both Lookup and Pure Core data; dictionary hits keep L1 first on normal search, then combined fill-in; instant tab flip; Bypass (⭐) skips the lexicon for combined AI.
 - **Phrases / sentences**: Short phrases keep Meaning as a gloss; situational / native-intent copy lives under **Usage Contexts** (with an intro blurb); long corrected titles and “why changed” fold independently.
 
 ### 2. Dual dictionaries & smart routing
@@ -45,12 +45,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.9.1_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.1_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.2_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.2_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_x64_en-US.msi)** (MSI)
 
 ### Android
-- **[Lexicon_0.9.1_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.1/Lexicon_0.9.1_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.1](https://github.com/jimytao/lexicon/releases/tag/v0.9.1).
+- **[Lexicon_0.9.2_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.2/Lexicon_0.9.2_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.2](https://github.com/jimytao/lexicon/releases/tag/v0.9.2).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

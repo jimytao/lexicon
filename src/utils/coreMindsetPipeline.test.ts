@@ -19,19 +19,18 @@ import {
 import type { AiFullResult } from '../types'
 
 describe('Pure Core P1 module order (factory defaults)', () => {
-  it('DEFAULT_CORE_MODULES follows P1 and includes wordChoice after synonyms', () => {
+  it('DEFAULT_CORE_MODULES follows P1 without wordChoice (folded into synonyms)', () => {
     const ids = DEFAULT_CORE_MODULES.map((m) => m.id)
     expect(ids).toEqual([...CORE_WORD_MODULE_P1_IDS])
-    expect(ids.indexOf('synonyms')).toBeLessThan(ids.indexOf('wordChoice'))
+    expect(ids).not.toContain('wordChoice')
     expect(ids.indexOf('wordGraph')).toBeLessThan(ids.indexOf('synonyms'))
     expect(ids.indexOf('coreConcept')).toBe(0)
   })
 
-  it('wordChoice is enabled by default and labeled as choice contrast', () => {
-    const mod = DEFAULT_CORE_MODULES.find((m) => m.id === 'wordChoice')
+  it('synonyms module remains enabled by default for mental-fit contrast', () => {
+    const mod = DEFAULT_CORE_MODULES.find((m) => m.id === 'synonyms')
     expect(mod).toBeDefined()
     expect(mod!.enabled).toBe(true)
-    expect(mod!.label.toLowerCase()).toMatch(/choice|contrast|选用|对照/)
   })
 
   it('normalizeCoreModules(undefined) returns a fresh P1 copy', () => {
@@ -42,13 +41,14 @@ describe('Pure Core P1 module order (factory defaults)', () => {
     expect(a[0]).not.toBe(DEFAULT_CORE_MODULES[0])
   })
 
-  it('migrates legacy coreModules by inserting wordChoice after synonyms (D2: preserve user order otherwise)', () => {
+  it('strips legacy wordChoice from persisted coreModules', () => {
     const legacy = [
       { id: 'coreConcept', label: 'Usage Image', enabled: true },
       { id: 'wordGraph', label: 'Concept Tree Graph', enabled: true },
       { id: 'chunks', label: 'Prep Phrases', enabled: false },
       { id: 'collocations', label: 'Other Collocations', enabled: true },
       { id: 'synonyms', label: 'Synonyms & Nuances', enabled: true },
+      { id: 'wordChoice', label: 'Word Choice Contrast', enabled: true },
       { id: 'usageScenes', label: 'Usage Scenes', enabled: true },
       { id: 'culture', label: 'Cultural Context', enabled: true },
       { id: 'practice', label: 'Usage Practice', enabled: true },
@@ -56,46 +56,29 @@ describe('Pure Core P1 module order (factory defaults)', () => {
     ]
     const normalized = normalizeCoreModules(legacy)
     const ids = normalized.map((m) => m.id)
-    expect(ids).toContain('wordChoice')
-    expect(ids.indexOf('synonyms') + 1).toBe(ids.indexOf('wordChoice'))
+    expect(ids).not.toContain('wordChoice')
+    expect(ids).toContain('synonyms')
     expect(normalized.find((m) => m.id === 'chunks')?.enabled).toBe(false)
-  })
-
-  it('does not force wordChoice to re-stick after synonyms once user moved it (D2)', () => {
-    const userOrdered = [
-      { id: 'coreConcept', label: 'Usage Image', enabled: true },
-      { id: 'wordChoice', label: 'Word Choice Contrast', enabled: true },
-      { id: 'wordGraph', label: 'Concept Tree Graph', enabled: true },
-      { id: 'chunks', label: 'Prep Phrases', enabled: true },
-      { id: 'collocations', label: 'Other Collocations', enabled: true },
-      { id: 'synonyms', label: 'Synonyms & Nuances', enabled: true },
-      { id: 'usageScenes', label: 'Usage Scenes', enabled: true },
-      { id: 'culture', label: 'Cultural Context', enabled: true },
-      { id: 'practice', label: 'Usage Practice', enabled: true },
-      { id: 'chat', label: 'AI Chat Follow-up', enabled: true },
-    ]
-    const ids = normalizeCoreModules(userOrdered).map((m) => m.id)
-    expect(ids).toContain('wordChoice')
-    expect(ids.indexOf('wordChoice')).toBeGreaterThanOrEqual(0)
-    expect(ids.indexOf('wordChoice')).toBeLessThan(ids.indexOf('synonyms'))
   })
 })
 
-describe('Pure Core phrase modules include wordChoice', () => {
-  it('DEFAULT_CORE_PHRASE_MODULES contains wordChoice as a draggable module', () => {
+describe('Pure Core phrase modules drop wordChoice', () => {
+  it('DEFAULT_CORE_PHRASE_MODULES does not contain wordChoice', () => {
     const ids = DEFAULT_CORE_PHRASE_MODULES.map((m) => m.id)
-    expect(ids).toContain('wordChoice')
+    expect(ids).not.toContain('wordChoice')
   })
 
-  it('normalizeCorePhraseModules inserts missing wordChoice', () => {
+  it('normalizeCorePhraseModules strips wordChoice', () => {
     const legacy = [
       { id: 'usageScenes', label: 'Usage Scenes', enabled: true },
+      { id: 'wordChoice', label: 'Word Choice Contrast', enabled: true },
       { id: 'culture', label: 'Cultural Context', enabled: true },
       { id: 'practice', label: 'Usage Practice', enabled: true },
       { id: 'chat', label: 'AI Chat Follow-up', enabled: true },
     ]
     const ids = normalizeCorePhraseModules(legacy).map((m) => m.id)
-    expect(ids).toContain('wordChoice')
+    expect(ids).not.toContain('wordChoice')
+    expect(ids).toContain('usageScenes')
   })
 })
 
@@ -317,12 +300,12 @@ describe('source wiring — no pinned native mind; graph empty state; no fake tr
   it('CoreCognitiveView does not hard-pin NativeMindModelCard above the module loop', () => {
     expect(coreView).not.toMatch(/<NativeMindModelCard[\s\S]*?coreModules\.map/)
     expect(coreView).not.toContain('NativeMindModelCard')
-    expect(coreView).toMatch(/case ['"]wordChoice['"]/)
+    expect(coreView).toContain('dictWordResult')
   })
 
-  it('PhraseView Core track does not hard-pin NativeMindModelCard', () => {
+  it('PhraseView Core track does not hard-pin NativeMindModelCard or WordChoiceCard', () => {
     expect(phraseView).not.toContain('NativeMindModelCard')
-    expect(phraseView).toMatch(/case ['"]wordChoice['"]/)
+    expect(phraseView).not.toContain('WordChoiceCard')
   })
 
   it('WordGraphCard uses empty-state helper instead of silent null-only empty graph', () => {
@@ -339,17 +322,7 @@ describe('source wiring — no pinned native mind; graph empty state; no fake tr
 
   it('settingsStore no longer documents nativeMindModel as pinned outside the list', () => {
     expect(settingsStore).not.toMatch(/nativeMindModel.*置顶/)
-    expect(settingsStore).toContain("id: 'wordChoice'")
-  })
-
-  it('WordChoiceCard exists and renders vs/reason contrast rows', () => {
-    const choiceCard = readFileSync(
-      join(root, 'components/ResultView/AiSection/WordChoiceCard.tsx'),
-      'utf8',
-    )
-    expect(choiceCard).toContain('wordChoiceContrast')
-    expect(choiceCard).toMatch(/vs/)
-    expect(choiceCard).toMatch(/reason|whyChooseFallback/)
+    expect(settingsStore).not.toContain("id: 'wordChoice'")
   })
 
   it('Pure Core prompt encodes rule C: skip collocations when redundant with conceptGraph', () => {
