@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.5**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.6**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -342,3 +342,13 @@ Tauri 2（PC）
 | `CHANGELOG.md` | 变更日志（文档与发版真相源之一） |
 | `workflow.md` | 发版 / 上传 SOP（§0 文档门禁 + §3–4 签名硬门禁；脚本见 `scripts/release/`） |
 | `README.md` / `README_en.md` | 人类用户向说明 |
+
+---
+
+## 移动端外观与冷启动性能记录 (v0.9.6 Status & Backlog)
+
+- **实测现状**：
+  - **iOS**：启动首帧原生壳为暗色过渡，无刺眼频闪，体验平滑受认可。
+  - **Android**：冷启动前约 1 秒为深色底，随后平滑渲染最终主题。彻底解决了历史版本中的暴力频闪跳变、WebView 重载与暗黑模式启动崩溃。
+- **详细记录与未来 Backlog**：见 [`lexicon-docs/research/splash-flash-ios-android.md`](./lexicon-docs/research/splash-flash-ios-android.md#8-实测反馈记录与后续优化-backlog-v096-status--future-roadmap)。
+

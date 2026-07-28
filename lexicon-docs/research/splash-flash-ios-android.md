@@ -338,3 +338,19 @@ Android WebView `backgroundColor`：Capacitor `Bridge` 在配置了 `backgroundC
 
 - 系统外观检测与 `matchMedia`：见 [`system-appearance-crossplatform.md`](./system-appearance-crossplatform.md)。  
 - 本文聚焦 **原生启动层与 WebView 底色**；不重复 Status Bar / Tauri 细节，仅在计划中交叉引用。
+
+---
+
+## 8. 实测反馈记录与后续优化 Backlog (v0.9.6 Status & Future Roadmap)
+
+> **实测版本**：v0.9.6  
+> **用户反馈与现状记录**：
+> 1. **iOS 冷启动首帧**：无论选择浅色还是深色模式，启动时原生壳均以暗色背景做过渡。目前过渡平滑无频闪、不刺眼，整体体验符合预期。
+> 2. **Android 冷启动首帧**：应用打开时会优先出现约 1 秒的深色背景，随后平滑过渡到最终主题背景。已彻底消除此前版本的白/黑频闪跳变、WebView 重载及暗黑模式冷启动崩溃。
+
+### 未来彻底优化探索路线（Future Backlog）
+1. **iOS 启动首帧静态色对齐**：
+   - 探索在 Asset Catalog 中为 LaunchScreen 启动页配置动态 `Any / Dark` 变体组，使原生 Window 在载入 WKWebView 之前直接命中与当前应用外观一致的底层 Drawable。
+2. **Android 1 秒黑底过渡优化**：
+   - 探索在 `LexiconApplication` 早期 `onCreate` 或静态初始化中，预读 Preferences 中的 `appearance-boot` 标记，动态给 `Activity` 的 Window 设置对应颜色的 `windowBackground` Drawable，消除 JS hydrate 之前的 1 秒黑底过渡。
+
