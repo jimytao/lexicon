@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-08-01 — 词组 Pure Core 错轨 + Profile 持久化失败丢事件
+
+### 用户可见
+1. **词组/句子 Pure Core 恢复正确半轨**：Combined 查词后，Pure Core 不再误展示 Lookup 半轨内容（母语者心智 / feelAnchor / 用法场景等可见）。
+2. **Profile 诊断不再静默丢事件**：AI 诊断成功但 `localStorage` 写入失败（如配额满）时，保留 pending 事件与计数，下次可重试。
+
+### 工程
+- `App.tsx` 经 `activePhraseResultForMode` 按模式选择 `combinedPhraseResult.core|lookup`（对齐单词视图对 `combinedResult` 的用法）。
+- `saveProfile` 返回写入成败；`flushPendingProfileDiagnostics` 仅在 persist 成功后 dequeue。
+
+### 涉及文件
+- `src/App.tsx`
+- `src/utils/combinedResult.ts` / `combinedResult.test.ts`
+- `src/services/profile.ts` / `profile.test.ts`
+
+---
+
 ## 2026-07-29 — 移动端暗黑模式冷启动闪退与运行时频闪修复 (v0.9.6)
 
 ### 用户可见

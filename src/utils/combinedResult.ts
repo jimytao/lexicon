@@ -7,7 +7,20 @@
  */
 
 import { normalizeQuery } from './text'
-import type { AiFullResult, PhraseResult, CombinedAiResult, CombinedPhraseResult } from '../types'
+import type { AiFullResult, Mode, PhraseResult, CombinedAiResult, CombinedPhraseResult } from '../types'
+
+/**
+ * Pick the active phrase half for the current search mode.
+ * Combined calls always populate both tracks; Pure Core must not fall back to Lookup.
+ */
+export function activePhraseResultForMode(
+  mode: Mode,
+  combined: CombinedPhraseResult | null | undefined,
+  fallback: PhraseResult | null,
+): PhraseResult | null {
+  if (!combined) return fallback
+  return mode === 'core' ? combined.core : combined.lookup
+}
 
 // ── Cache key ────────────────────────────────────────────────────────────────
 

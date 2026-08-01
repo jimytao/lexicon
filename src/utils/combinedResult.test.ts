@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  activePhraseResultForMode,
   combinedCacheKey,
   splitCombinedJson,
   reconstructFromLegacy,
@@ -120,6 +121,31 @@ describe('reconstructFromLegacy', () => {
     const combined = reconstructPhraseFromLegacy(p, null)
     expect(combined.lookup.phrase).toBe('flat chat')
     expect(combined.core.phrase).toBe('flat chat')
+  })
+})
+
+// ── activePhraseResultForMode ────────────────────────────────────────────────
+
+describe('activePhraseResultForMode', () => {
+  it('returns Core half in Pure Core mode (must not show Lookup track)', () => {
+    const combined = {
+      lookup: makePhraseResult('lookup-half'),
+      core: makePhraseResult('core-half'),
+    }
+    expect(activePhraseResultForMode('core', combined, null)?.phrase).toBe('core-half')
+  })
+
+  it('returns Lookup half in AI Lookup mode', () => {
+    const combined = {
+      lookup: makePhraseResult('lookup-half'),
+      core: makePhraseResult('core-half'),
+    }
+    expect(activePhraseResultForMode('ai', combined, null)?.phrase).toBe('lookup-half')
+  })
+
+  it('falls back when combined result is missing', () => {
+    const fallback = makePhraseResult('fallback')
+    expect(activePhraseResultForMode('core', null, fallback)?.phrase).toBe('fallback')
   })
 })
 

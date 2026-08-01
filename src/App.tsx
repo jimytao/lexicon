@@ -25,6 +25,7 @@ import {
 } from './utils/text'
 import { historyModeForTrack, resolveHistoryTrack } from './utils/historyTrack'
 import { planDictHitNormalSearch } from './utils/searchPath'
+import { activePhraseResultForMode } from './utils/combinedResult'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
 import {
@@ -148,7 +149,7 @@ export function App() {
     lastScrollTopRef.current = 0
   }, [view])
 
-  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, aiStatus, aiError } = useResultStore()
+  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, combinedPhraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery, triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
@@ -725,7 +726,7 @@ export function App() {
                 ) : showPhraseView ? (
                   <PhraseView
                     phrase={query}
-                    phraseResult={phraseResult}
+                    phraseResult={activePhraseResultForMode(mode, combinedPhraseResult, phraseResult)}
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}
