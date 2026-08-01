@@ -302,6 +302,36 @@ describe('success-only mutation / crash safety', () => {
       expect(getPendingEvents().filter((e) => e.wordOrContext === 'second')).toHaveLength(0)
     }
   })
+
+  it('on profile persist failure keeps pending events (no silent data loss)', async () => {
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordAiChatEvent('quota', 'why?', 'because', 'lookup')
+    for (let i = 0; i < 3; i++) {
+      recordLookupEvent(`keep${i}`)
+    }
+    expect(getPendingEvents().length).toBeGreaterThan(0)
+    const beforeCount = getUnprocessedCount()
+
+    const originalSetItem = memoryStorage.setItem.bind(memoryStorage)
+    memoryStorage.setItem = (key: string, value: string) => {
+      if (key === PROFILE_KEY) {
+        throw new DOMException('QuotaExceededError', 'QuotaExceededError')
+      }
+      return originalSetItem(key, value)
+    }
+
+    await flushPendingProfileDiagnostics('context_change')
+    await flushMicrotasks()
+
+    expect(fetchMock).toHaveBeenCalled()
+    expect(getPendingEvents().some((e) => e.wordOrContext === 'quota')).toBe(true)
+    expect(getPendingEvents().filter((e) => e.type === 'lookup')).toHaveLength(3)
+    expect(getUnprocessedCount()).toBe(beforeCount)
+
+    memoryStorage.setItem = originalSetItem
+  })
 })
 
 describe('resumePendingProfileDiagnostics — cold start', () => {

@@ -74,11 +74,13 @@ export function getProfile(): UserLanguageProfile {
   }
 }
 
-export function saveProfile(profile: UserLanguageProfile): void {
+/** Persist profile. Returns false when storage write fails (e.g. quota). */
+export function saveProfile(profile: UserLanguageProfile): boolean {
   try {
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile))
+    return true
   } catch {
-    /* ignore */
+    return false
   }
 }
 
@@ -426,7 +428,11 @@ export async function flushPendingProfileDiagnostics(
     const currentProfile = getProfile()
     const updated = await runDiagnosticAi(snapshot, currentProfile)
     if (updated) {
-      saveProfile(updated)
+      // Only dequeue after a successful persist — otherwise AI work is lost forever.
+      if (!saveProfile(updated)) {
+        console.warn('[profile] Profile persist failed; keeping pending events for retry')
+        return null
+      }
       removeEventsByIds(snapshot.map((e) => e.id))
       resetUnprocessedCount()
       return updated
