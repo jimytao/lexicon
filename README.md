@@ -45,12 +45,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.9.6_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.6/Lexicon_0.9.6_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.9.6_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.6/Lexicon_0.9.6_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.9.7_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.9.7_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64_en-US.msi)**（MSI）
 
-### Android 手机 / 平板 (v0.9.6)
-- **[Lexicon_0.9.6_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.6/Lexicon_0.9.6_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.9.6](https://github.com/jimytao/lexicon/releases/tag/v0.9.6)。
+### Android 手机 / 平板 (v0.9.7)
+- **[Lexicon_0.9.7_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.9.7](https://github.com/jimytao/lexicon/releases/tag/v0.9.7)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

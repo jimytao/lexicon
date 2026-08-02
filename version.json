@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTN3SjhJUG14VWttMmxDNExGZlY3eVkxekVqdVZiK2dnVVlvYnl5Y0xzK2NnUG1SdDdDTk8rSEsyNWxDK0VETTRDRTBaQlVkdjNuZ1NyNTZZNTE0OWdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MjQ4NDQyCWZpbGU6TGV4aWNvbl8wLjkuNl94NjQtc2V0dXAuZXhlCkxGZVA5QStZSXJhaHEycFRjTWkxaXZLWjRMd090ZUNYUU5hNkFZSVg0WjZ3WVpXUkdHQXdudEpOWER2WWNNMWhnUUVPdUJOVGpxVGRxdlhIazhXVkFBPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.6/Lexicon_0.9.6_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTA5TlRGR1krUWpHUHVid0lyY2oyaU5jZHJ1SWVuNmZ4ZHFFWDlnTUZjcUJIMHduaTQwbzdrN2FlUFp6TU5KSVhvZW5hVmNvMmNLTkdiYWU4ZzFnM1EwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NjQ2NjkzCWZpbGU6TGV4aWNvbl8wLjkuN194NjQtc2V0dXAuZXhlCnRzZXovUjNaU1BvN3gyeFJNLzZqOFhqR3JkR1kyKzdNeGIyN2RPVDU1S1hxa0lwbXB0ZFNTeVM5d3dsNVdTeEtNdTJWQlJnWjlSRFhHalhtZTBvR0JRPT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-07-28T14:22:41Z",
-    "version":  "0.9.6",
-    "notes":  "移动端暗黑模式冷启动闪退与运行时频闪修复\n1. 修复：Android 12+ 在系统处于暗黑模式或刚安装时，冷启动触发 Activity 销毁重绘死循环引发的闪退问题。\n2. 修复：移动端（iOS / Android）在 App 内切换浅色/深色/跟随系统外观时，零黑白屏闪烁与零 WebView 页面重载。\n3. 优化：原生状态栏与导航栏图标结合背景色自动适配黑白前景图标。\n",
-    "notes_zh":  "移动端暗黑模式冷启动闪退与运行时频闪修复\n1. 修复：Android 12+ 在系统处于暗黑模式或刚安装时，冷启动触发 Activity 销毁重绘死循环引发的闪退问题。\n2. 修复：移动端（iOS / Android）在 App 内切换浅色/深色/跟随系统外观时，零黑白屏闪烁与零 WebView 页面重载。\n3. 优化：原生状态栏与导航栏图标结合背景色自动适配黑白前景图标。\n",
-    "notes_en":  "Fix mobile dark mode startup crash and appearance flickering\n1. **Fix**: Resolved Android 12+ cold start crash caused by Activity destruction loop when in dark mode or fresh install.\n2. **Fix**: Eliminated screen flickering and WebView reloads when switching appearance (Light / Dark / System) on iOS and Android.\n3. **Improved**: Native status bar and navigation bar icons automatically adapt to background darkness.\n",
+    "pub_date":  "2026-08-02T04:58:13Z",
+    "version":  "0.9.7",
+    "notes":  "词组与句子分层改错架构 (2-Tier Proofreading)\n1. **Tier 1 最小改动原则**：搜索词组与句子时，优先保留原始句式结构，仅修补语法、介词误用、用词不当与拼写错误。\n2. **改动原因逐条剖析**：「为什么这么改？」支持以项目符号（•）逐条剖析语法与用词细节，拒绝空话抽象概括。\n3. **Tier 2 地道与正式表达折叠卡片**：独立折叠收纳高阶地道句式改写、地道搭配与介词意图剖析以及母语心智对比。\n4. **单语言模式语言对齐**：开启单语言模式时改错说明全量以纯英文输出，界面标题遵循应用语言设置。\n",
+    "notes_zh":  "词组与句子分层改错架构 (2-Tier Proofreading)\n1. **Tier 1 最小改动原则**：搜索词组与句子时，优先保留原始句式结构，仅修补语法、介词误用、用词不当与拼写错误。\n2. **改动原因逐条剖析**：「为什么这么改？」支持以项目符号（•）逐条剖析语法与用词细节，拒绝空话抽象概括。\n3. **Tier 2 地道与正式表达折叠卡片**：独立折叠收纳高阶地道句式改写、地道搭配与介词意图剖析以及母语心智对比。\n4. **单语言模式语言对齐**：开启单语言模式时改错说明全量以纯英文输出，界面标题遵循应用语言设置。\n",
+    "notes_en":  "2-Tiered Proofreading Architecture for Phrases and Sentences\n1. **Tier 1 Minimal Fix**: Preserves original sentence structure while fixing grammar, prepositions, word misuse, and typos.\n2. **Itemized Change Breakdown**: \"Why was this changed?\" provides point-by-point bullet explanations without abstract generalities.\n3. **Tier 2 Native \u0026 Formal Expression Folder**: Grouped collapsible card housing polished rephrasings, native phrase/preposition rationale, and mindset contrast.\n4. **Monolingual Mode Alignment**: All explanations render strictly in English when Monolingual Mode is enabled; UI headers align with display language settings.\n",
     "is_major":  false
 }
