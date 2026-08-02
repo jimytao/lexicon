@@ -218,6 +218,10 @@ export interface PhraseResult {
   phrase: string
   correctForm: string
   correctionNote?: string
+  /** Tier 2: Polished native or formal expression */
+  nativeForm?: string
+  /** Tier 2: Explanation of why native speakers choose this phrase/preposition */
+  nativeRationale?: string
   unnaturalMindModel?: UnnaturalMindModel
   /** @deprecated 旧缓存兼容；新 Core 用 feelAnchor/emotionalTone + wordChoiceContrast */
   nativeMindModel?: NativeMindModel

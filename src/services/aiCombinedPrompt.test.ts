@@ -175,4 +175,28 @@ describe('buildCombinedPhrasePrompt — schema structure', () => {
     expect(prompt).toMatch(/English translation|英文翻译|correctForm.*English/i)
     expect(prompt).toMatch(/native|母语/i)
   })
+
+  it('2-Tier Proofreading System — includes nativeForm and nativeRationale schema', () => {
+    const prompt = buildCombinedPhrasePrompt({
+      lookupModules: LOOKUP_MODULES,
+      coreModules: CORE_PHRASE_MODULES,
+      lang: 'en',
+      queryType: 'sentence',
+    })
+    expect(prompt).toContain('"nativeForm"')
+    expect(prompt).toContain('"nativeRationale"')
+    expect(prompt).toMatch(/minimal fix|Minimal Fix|保持句子结构/i)
+  })
+
+  it('Monolingual Mode (isMono) — requires English-only explanations', () => {
+    const prompt = buildCombinedPhrasePrompt({
+      lookupModules: LOOKUP_MODULES,
+      coreModules: CORE_PHRASE_MODULES,
+      lang: 'en',
+      isMono: true,
+      queryType: 'sentence',
+    })
+    expect(prompt).toMatch(/ALL output text must be in English only/i)
+  })
 })
+

@@ -55,6 +55,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const [noteExpanded, setNoteExpanded] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(false)
   const [meaningExpanded, setMeaningExpanded] = useState(false)
+  const [nativePolishExpanded, setNativePolishExpanded] = useState(false)
   const [playingAccent, setPlayingAccent] = useState<'uk' | 'us' | 'generic' | null>(null)
 
   const targetPhrase = phraseResult?.correctForm || phrase
@@ -92,6 +93,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
     setNoteExpanded(false)
     setHeaderExpanded(false)
     setMeaningExpanded(false)
+    setNativePolishExpanded(false)
   }, [phrase, phraseResult?.correctForm])
 
   return (
@@ -139,12 +141,12 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 mb-1 break-words [overflow-wrap:anywhere]">
               {t('phrase.youEntered')} <DiffText original={phrase} corrected={phraseResult.correctForm} />
             </p>
-            {/* Lookup: amber why-changed — independent of correctForm fold */}
-            {!isCoreMode && (phraseResult.correctionNote?.trim() || phraseResult.unnaturalMindModel) ? (
+            {/* Tier 1 Minimal Fix: amber why-changed — independent of correctForm fold */}
+            {!isCoreMode && phraseResult.correctionNote?.trim() ? (
               <div className="mb-2">
                 <button
                   onClick={() => setNoteExpanded(v => !v)}
-                  className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group"
+                  className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors duration-150 group cursor-pointer"
                 >
                   <svg
                     className={`w-3 h-3 transition-transform duration-200 ${noteExpanded ? 'rotate-90' : ''}`}
@@ -156,26 +158,74 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                 </button>
                 {noteExpanded && (
                   <div className="mt-1.5 ml-4 pl-3 border-l-2 border-amber-300 dark:border-amber-700 space-y-2">
-                    {phraseResult.correctionNote?.trim() && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere]">
-                        {phraseResult.correctionNote}
-                      </p>
-                    )}
-                    {phraseResult.unnaturalMindModel && (
-                      <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
-                    )}
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-line">
+                      {phraseResult.correctionNote}
+                    </p>
                   </div>
                 )}
               </div>
             ) : null}
             {isCoreMode && phraseResult.correctionNote?.trim() && (
-              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2 break-words [overflow-wrap:anywhere]">
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2 break-words [overflow-wrap:anywhere] whitespace-pre-line">
                 {phraseResult.correctionNote}
               </p>
             )}
           </>
         )}
       </div>
+
+      {/* Tier 2: Folded Native & Formal Expression Card */}
+      {phraseResult && (phraseResult.nativeForm || phraseResult.nativeRationale || phraseResult.unnaturalMindModel) && (
+        <div className="mb-3 rounded-xl bg-background-soft/60 border border-border/50 overflow-hidden transition-all">
+          <button
+            onClick={() => setNativePolishExpanded(v => !v)}
+            className="w-full px-3.5 py-2.5 flex items-center justify-between text-left text-xs font-semibold text-foreground hover:bg-background-soft transition-colors cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5 font-bold text-accent">
+              <svg className="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              {t('phrase.nativePolishFolder')}
+            </span>
+            <svg
+              className={`w-3.5 h-3.5 text-foreground-muted transition-transform duration-200 ${nativePolishExpanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {nativePolishExpanded && (
+            <div className="px-3.5 pb-3.5 pt-2.5 space-y-3 border-t border-border/40">
+              {phraseResult.nativeForm && (
+                <div className="p-2.5 rounded-xl border border-border/50 bg-background-soft/40">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50 block mb-1">
+                    {t('phrase.nativeFormLabel')}
+                  </span>
+                  <p className="text-sm font-semibold text-foreground leading-relaxed break-words [overflow-wrap:anywhere]">
+                    {phraseResult.nativeForm}
+                  </p>
+                </div>
+              )}
+
+              {phraseResult.nativeRationale && (
+                <div className="p-2.5 rounded-xl border border-border/50 bg-background-soft/40">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground-muted/50 block mb-1">
+                    {t('phrase.nativeRationaleLabel')}
+                  </span>
+                  <p className="text-xs text-foreground-muted leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
+                    {phraseResult.nativeRationale}
+                  </p>
+                </div>
+              )}
+
+              {phraseResult.unnaturalMindModel && (
+                <UnnaturalMindModelCard model={phraseResult.unnaturalMindModel} />
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Play buttons for Phrase/Sentence */}
       <div className="flex items-center gap-2 mb-4">

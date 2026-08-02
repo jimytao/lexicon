@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-08-02 — 词组与句子分层改错架构 (2-Tier Proofreading)
+
+### 用户可见
+1. **Tier 1 最小改动原则 (Minimal Fix)**：处理词组与句子搜索时，标题优先保留用户原始句式结构，仅修正语法错误、介词误用、用词搭配不当与拼写/大小写。
+2. **改动原因逐条剖析 ("Why was this changed?")**：展开改动说明时，使用项目符号（•）逐条清晰列出语法与介词等修正细节，避免包含抽象概括空话。
+3. **Tier 2 地道与正式表达折叠卡片 (Native & Formal Expression)**：新增独立折叠卡片，集成了高阶地道/正式句式改写（`nativeForm`）、地道短语与介词选用意图剖析（`nativeRationale`）以及母语心智对比（`unnaturalMindModel`），UI/UX 样式完全对齐系统设计语言。
+4. **单语言模式（Monolingual Mode）语言对齐**：开启单语言模式时，AI 生成的修改说明与地道剖析强制为纯英文；界面标题与导航严格遵循应用语言设置。
+
+### 涉及文件
+- `src/types/index.ts`
+- `src/services/aiCombinedPrompt.ts`
+- `src/services/aiPhrasePrompt.ts`
+- `src/components/ResultView/PhraseView.tsx`
+- `src/i18n/index.ts`
+- `src/services/aiCombinedPrompt.test.ts`
+- `src/services/aiPhrasePrompt.test.ts`
+
+---
+
 ## 2026-07-29 — 移动端暗黑模式冷启动闪退与运行时频闪修复 (v0.9.6)
 
 ### 用户可见

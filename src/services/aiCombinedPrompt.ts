@@ -312,17 +312,27 @@ export function buildCombinedPhrasePrompt({
     ? '1-3 sentences in English: WHEN a native speaker reaches for this, what communicative job it does'
     : '1-3句口语化中文：母语者在什么意图下选用这个表达、完成什么交际任务、带什么语气'
 
+  const nativeFormDesc = isMono
+    ? 'Polished native or formal rephrasing: how a native speaker or professional writer would naturally elevate or frame this sentence.'
+    : '地道/正式表达建议：母语者或专业书面表达中更自然、地道的句式改写。'
+
+  const nativeRationaleDesc = isMono
+    ? '1-2 sentences explaining WHY native speakers prefer this specific phrase, word choice, or preposition in nativeForm over the literal wording.'
+    : '1-2句说明为何母语者更倾向选用 nativeForm 中的短语、介词或搭配（地道意象与用词剖析）。'
+
   const correctionNoteDesc = isMono
-    ? "1-2 sentences in English explaining why correctForm differs from input. Omit if no change."
-    : '1-2句中文简要说明改动原因（能理解但不地道 / 语法有误 / 无实质错误微调）。无改动时省略。'
+    ? "If correctForm differs from input: explain why correctForm differs from input. When there are multiple changes (tense, collocation, typos, articles), MUST provide an itemized list using bullet points ('• original -> corrected: reason'). Omit if no change."
+    : '如果 correctForm 与原文不同，说明改动原因。当有多处修改（如语法错误、介词误用、用词不当/搭配错误、拼写/大小写等）时，必须使用项目符号逐条列出（格式：• 原始词句 -> 修正词句：详细改动原因），禁止概括为模糊的单句抽象总结。无改动时省略。'
 
   const unnaturalDesc = isMono
     ? `{ "chineseThought": "how a Chinese-thinking learner would frame this", "nativeConcept": "how a native speaker actually conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking" }`
     : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
 
   // ── SHARED correctForm / unnaturalMindModel (same for both sections) ───────
-  const sharedFields = `"correctForm": "corrected/standard form — fix real errors only; for Chinese input = best English translation",
+  const sharedFields = `"correctForm": "Minimal Fix version — fix actual grammar errors, preposition misuses, word misuses (incorrect word choice), and typos ONLY. Preserve user's original sentence structure and wording as much as possible.",
     "correctionNote": "${correctionNoteDesc}",
+    "nativeForm": "${nativeFormDesc}",
+    "nativeRationale": "${nativeRationaleDesc}",
     "unnaturalMindModel": ${unnaturalDesc},
     "meaning": "${meaningDesc}"`
 
@@ -384,7 +394,8 @@ export function buildCombinedPhrasePrompt({
   const chineseInputRule = isZh ? `
 CRITICAL — CHINESE INPUT RULE:
 The user typed Chinese. This is a Chinese→English learning request.
-- correctForm (in BOTH lookup and core): the most natural, complete English translation of the full Chinese input. Do NOT omit any part.
+- correctForm (in BOTH lookup and core): the most accurate English translation of the full Chinese input.
+- nativeForm: an elevated, highly idiomatic native English translation.
 - correctionNote: omit (this is translation, not correction).
 - lookup: provide English usage context and scenes for the translated expression.
 - core: teach the learner how a native speaker FEELS and USES this English expression — feel, emotion, communicative intent.
@@ -412,7 +423,10 @@ ${chineseInputRule}
 - Both sections analyze the SAME input from different angles.
 - lookup = understanding + practical usage context.
 - core = native communicative intent, emotional feel, when/why to choose this expression.
-- CRITICAL — correctForm integrity: Do NOT shorten or truncate the input. correctForm is a proofread copy, not a rewrite. If input has no real errors, copy it verbatim.
+- 2-TIER PROOFREADING:
+  - Tier 1: correctForm is MINIMAL FIX ONLY (grammar, preposition, word misuse, typos). Keep original sentence structure intact.
+  - Tier 1: correctionNote explains Tier 1 minimal fix items point-by-point.
+  - Tier 2: nativeForm provides polished native/formal rephrasing; nativeRationale explains why native speakers use this phrase/preposition.
 - correctionNote: Only when correctForm differs from input. Omit if no change.
 - unnaturalMindModel: Fill when input sounds like Chinese-to-English transfer. Omit if naturally idiomatic.
 - FIELD OWNERSHIP: meaning = lexical gloss only (equivalents + sense nucleus). Put situational/intent content into usageIntro/usageScenes. Put feel/emotion into feelAnchor/emotionalTone. Do NOT invent wordChoiceContrast.

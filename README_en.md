@@ -13,7 +13,7 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
 - **Pure Core**: Native usage — usage image (short gloss + feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms with mental-fit notes (when the headword still wins), scenes, register, and usage-output practice (no definition wall; modules are reorderable).
 - **Combined Dual-Track Results**: Single AI request generates both Lookup and Pure Core data; dictionary hits keep L1 first on normal search, then combined fill-in; instant tab flip; Bypass (⭐) skips the lexicon for combined AI.
-- **Phrases / sentences**: Short phrases keep Meaning as a gloss; situational / native-intent copy lives under **Usage Contexts** (with an intro blurb); long corrected titles and “why changed” fold independently.
+- **Phrases / sentences (2-Tiered Proofreading)**: Tier 1 minimal fix (preserves original structure while fixing grammar, prepositions, word misuse, and typos) with itemized change notes; Tier 2 folded section houses native/formal rephrasing, native preposition/phrase rationale, and mindset contrast.
 
 ### 2. Dual dictionaries & smart routing
 - **Dictionaries**: OALD 9 bilingual (`lexicon.db`, ~52k) + OALD 10 English-English (`lexicon_en.db`, ~84k).

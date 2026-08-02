@@ -65,6 +65,18 @@ describe('buildPhrasePrompt — short phrase field ownership', () => {
     expect(prompt).not.toMatch(/"usageScenes"\s*:/)
     expect(prompt).toMatch(/usageIntro\/usageScenes omitted|已关闭/)
   })
+
+  it('2-Tier Proofreading System — includes nativeForm and nativeRationale schema in phrase prompt', () => {
+    const prompt = buildPhrasePrompt({
+      modules: LOOKUP_MODULES,
+      lang: 'en',
+      cognitive: 'lookup',
+      queryType: 'sentence',
+    })
+    expect(prompt).toContain('"nativeForm"')
+    expect(prompt).toContain('"nativeRationale"')
+    expect(prompt).toMatch(/minimal fix|Minimal Fix|保持句子结构/i)
+  })
 })
 
 describe('buildPhrasePrompt — sentence / long text keeps full translation duty', () => {

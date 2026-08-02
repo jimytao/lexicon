@@ -61,15 +61,23 @@ export function buildPhrasePrompt({
       ? '1-3句口语化中文：母语者在什么意图下会选用这个表达、它完成什么交际任务、带什么语气感觉'
       : '1-3句口语化中文，说明在什么情景下使用这个表达，语气和感觉如何')
 
+  const nativeFormDesc = isMono
+    ? 'Polished native or formal rephrasing: how a native speaker or professional writer would naturally elevate or frame this sentence.'
+    : '地道/正式表达建议：母语者或专业书面表达中更自然、地道的句式改写。'
+
+  const nativeRationaleDesc = isMono
+    ? '1-2 sentences explaining WHY native speakers prefer this specific phrase, word choice, or preposition in nativeForm over the literal wording.'
+    : '1-2句说明为何母语者更倾向选用 nativeForm 中的短语、介词或搭配（地道意象与用词剖析）。'
+
   const correctionNoteDesc = isMono
-    ? "If correctForm differs from input: 1-2 sentences in English explaining why — e.g. 'The original is understandable but unnatural; native speakers say X instead.' or 'Minor grammar error: subject-verb agreement.' Focus on the most important issue only. Skip trivial capitalization/punctuation unless it changes meaning. Omit this field if no change was made."
-    : '如果 correctForm 与原文不同，用1-2句中文简要说明改动原因，分类标注（能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质性错误微调），仅提及最关键的问题。大小写/标点等只在影响意思时才提及。无改动时省略此字段。'
+    ? "If correctForm differs from input: explain why correctForm differs from input. When there are multiple changes (tense, collocation, typos, articles), MUST provide an itemized list using bullet points ('• original -> corrected: reason'). Skip trivial capitalization unless necessary. Omit if no change."
+    : '如果 correctForm 与原文不同，说明改动原因。当有多处修改（如语法错误、介词误用、用词不当/搭配错误、拼写/大小写等）时，必须使用项目符号逐条列出（格式：• 原始词句 -> 修正词句：详细改动原因），仅在最重要或有影响时提及细节，禁止概括为模糊的单句抽象总结。无改动时省略。'
 
   const unnaturalDesc = isMono
     ? `{ "chineseThought": "how a Chinese-thinking learner would frame this", "nativeConcept": "how a native speaker actually conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking/writing" }`
     : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
 
-  let schema = `{\n  "correctForm": "the corrected/standard form — fix real grammar, preposition, or spelling errors ONLY. CRITICAL: do NOT shorten, summarize, or truncate the input. If input is a long sentence or multi-sentence paragraph, keep ALL content intact and only fix actual errors. correctForm is the proofread original, not a rewrite.",\n  "correctionNote": "${correctionNoteDesc}",\n  "unnaturalMindModel": ${unnaturalDesc},\n  "meaning": "${meaningDesc}"`
+  let schema = `{\n  "correctForm": "Minimal Fix version — fix actual grammar errors, preposition misuses, word misuses (incorrect word choice), and typos ONLY. Preserve user's original sentence structure and wording as much as possible.",\n  "correctionNote": "${correctionNoteDesc}",\n  "nativeForm": "${nativeFormDesc}",\n  "nativeRationale": "${nativeRationaleDesc}",\n  "unnaturalMindModel": ${unnaturalDesc},\n  "meaning": "${meaningDesc}"`
 
   // Lookup：场景始终要；Core：跟 corePhraseModules.usageScenes 开关
   if (wantUsage) {
