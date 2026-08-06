@@ -32,7 +32,7 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - Per-item “regenerate” refresh.
 
 ### 5. Comic / screenshot batch translation
-- Multi-image import, parallel translate, side-by-side reading, zoom/pan, typeset, export.
+- Multi-image import, parallel translate, side-by-side reading, zoom/pan, export.
 
 ### 6. Platforms
 - **Web** (WASM SQLite + OCR), **Windows** (Tauri v2), **Android / iOS** (Capacitor 8).
@@ -76,7 +76,7 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 
 - **Ctrl + Enter**: Force full AI lookup.
 - **Search-box AI icon**: Bypass local dictionary for a direct AI definition.
-- **Image flow**: Import → Translate all → Read → Typeset → Export.
+- **Image flow**: Import → Translate all → Read → Export.
 - **Clear history / cache**: Bottom of the Settings page.
 
 ---
