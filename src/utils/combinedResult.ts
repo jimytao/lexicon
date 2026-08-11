@@ -9,15 +9,14 @@
 import { normalizeQuery } from './text'
 import type { AiFullResult, PhraseResult, CombinedAiResult, CombinedPhraseResult } from '../types'
 
-// ── Cache key ────────────────────────────────────────────────────────────────
+export type SearchTag = 'normal' | 'bypass'
 
 /**
- * Mode-agnostic cache key for the combined result.
- * Distinct from the old `word` (lookup) and `word::core` keys so legacy
- * cache entries are not confused with combined entries.
+ * Mode-agnostic cache key for the combined result, tagged by normal vs bypass search.
  */
-export function combinedCacheKey(query: string): string {
-  return `${normalizeQuery(query)}::combined`
+export function combinedCacheKey(query: string, tag: SearchTag = 'normal'): string {
+  const norm = normalizeQuery(query)
+  return tag === 'bypass' ? `${norm}::bypass` : `${norm}::combined`
 }
 
 // ── Parsing ──────────────────────────────────────────────────────────────────

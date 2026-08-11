@@ -18,6 +18,7 @@ import { createAiRequestGate, shouldCommitAiDisplay } from '../utils/aiRequestGa
 import { cognitiveFromSearchMode, normalizeQuery } from '../utils/text'
 import { aiFullNeedsExplanationFill, collocationsNeedFill, conceptGraphNeedsFill } from '../utils/aiCompleteness'
 import type { Meaning, CollocationData, ConceptGraph, ConceptGraphExample } from '../types'
+import type { SearchTag } from '../utils/combinedResult'
 
 function mergeCollocationNotes(
   data: CollocationData | undefined,
@@ -210,17 +211,19 @@ export function useAiLookup() {
   }, [getCachedPhrase, setPhraseResult, setAiStatus, setAiError])
 
   /** v0.9.0: Combined AI call — fetches Lookup + Core in one round-trip. */
-  const triggerCombinedLookup = useCallback(async (word: string) => {
+  const triggerCombinedLookup = useCallback(async (word: string, forceRefresh = false, tag: SearchTag = 'normal') => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
 
-    const cached = getCachedCombined(word)
-    if (cached) {
-      if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
-        setCombinedResult(word, cached)
+    if (!forceRefresh) {
+      const cached = getCachedCombined(word, tag)
+      if (cached) {
+        if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
+          setCombinedResult(word, cached, tag)
+        }
+        return
       }
-      return
     }
 
     const { signal: combined, dispose } = combineSignals(abortRef.current.signal, 30_000)
@@ -230,7 +233,7 @@ export function useAiLookup() {
       const result = await aiCombinedLookup(word, true, combined)
       dispose()
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
-      setCombinedResult(word, result)
+      setCombinedResult(word, result, tag)
     } catch (e) {
       dispose()
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
@@ -245,24 +248,26 @@ export function useAiLookup() {
   }, [getCachedCombined, setCombinedResult, setAiStatus, setAiError])
 
   /** v0.9.0: Combined phrase AI call — fetches Lookup + Core phrase results in one round-trip. */
-  const triggerCombinedPhraseQuery = useCallback(async (phrase: string) => {
+  const triggerCombinedPhraseQuery = useCallback(async (phrase: string, forceRefresh = false, tag: SearchTag = 'normal') => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
 
-    const cached = getCachedCombinedPhrase(phrase)
-    if (cached) {
-      if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
-        setCombinedPhraseResult(phrase, cached)
+    if (!forceRefresh) {
+      const cached = getCachedCombinedPhrase(phrase, tag)
+      if (cached) {
+        if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
+          setCombinedPhraseResult(phrase, cached, tag)
+        }
+        return
       }
-      return
     }
 
     setAiStatus('loading')
     try {
       const result = await aiCombinedPhraseQuery(phrase, true, abortRef.current.signal)
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
-      setCombinedPhraseResult(phrase, result)
+      setCombinedPhraseResult(phrase, result, tag)
     } catch (e) {
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
       const kind = classifyAiRequestError(e, abortRef.current?.signal.reason)

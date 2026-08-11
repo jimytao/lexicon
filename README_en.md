@@ -12,8 +12,8 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **Instant**: Local dictionary only — zero latency, offline (out-of-dict queries auto-trigger combined AI search).
 - **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
 - **Pure Core**: Native usage — usage image (short gloss + feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms with mental-fit notes (when the headword still wins), scenes, register, and usage-output practice (no definition wall; modules are reorderable).
-- **Combined Dual-Track Results**: Single AI request generates both Lookup and Pure Core data; dictionary hits keep L1 first on normal search, then combined fill-in; instant tab flip; Bypass (⭐) skips the lexicon for combined AI.
-- **Phrases / sentences (2-Tiered Proofreading)**: Tier 1 minimal fix (preserves original structure while fixing grammar, prepositions, word misuse, and typos) with itemized change notes; Tier 2 folded section houses native/formal rephrasing, native preposition/phrase rationale, and mindset contrast.
+- **Combined Dual-Track Results & Tag-Isolated Cache**: Single AI request generates both Lookup and Pure Core data; `normal` (standard search) and `bypass` (✨ force AI skipping dict) tag caches enable 0s instant toggling and side-by-side comparison; history items route via a 4-case smart decision tree.
+- **Contextual Meaning Exercises**: Lookup practice links to `maxExercises` count setting, generating real-world example sentence cards for learners to check and understand sense in context.
 
 ### 2. Dual dictionaries & smart routing
 - **Dictionaries**: OALD 9 bilingual (`lexicon.db`, ~52k) + OALD 10 English-English (`lexicon_en.db`, ~84k).
@@ -22,7 +22,7 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **Fallback**: Missing English-English DB falls back to bilingual safely.
 
 ### 3. AI extras & personal assets
-- Lookup / Core module lists are reorderable in Settings; in-context chat; meaning-check vs usage-output practice.
+- Lookup / Core module lists are reorderable in Settings; in-context chat; contextual meaning-check vs usage-output practice.
 - **UK / US pronunciation** (auto-play + offline TTS fallback).
 - Lexicon Memory badges (read-only: notes / Core concept; **no** AI follow-up count badge — bottom AI Chat remains); AI follow-ups are stored on separate **Lookup / Pure Core** tracks; **AI Profile** diagnostics in Settings (follow-ups are batched before background distillation; unfinished jobs resume on cold start). Personal-notes editor is shelved; underlying memory data remains.
 - Weakness-board UI is **shelved** (not in the tab bar); Profile backend remains available.
@@ -45,12 +45,12 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.9.7_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.7_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.8_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.8_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64_en-US.msi)** (MSI)
 
-### Android (v0.9.7)
-- **[Lexicon_0.9.7_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.7](https://github.com/jimytao/lexicon/releases/tag/v0.9.7).
+### Android (v0.9.8)
+- **[Lexicon_0.9.8_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.8](https://github.com/jimytao/lexicon/releases/tag/v0.9.8).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

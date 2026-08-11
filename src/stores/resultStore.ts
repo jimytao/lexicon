@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode, CombinedAiResult, CombinedPhraseResult } from '../types'
 import { normalizeQuery, cognitiveCacheKey } from '../utils/text'
-import { combinedCacheKey, reconstructFromLegacy, reconstructPhraseFromLegacy } from '../utils/combinedResult'
+import { combinedCacheKey, reconstructFromLegacy, reconstructPhraseFromLegacy, type SearchTag } from '../utils/combinedResult'
 import { aiFullToAnalysis } from '../utils/aiFullToAnalysis'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -33,8 +33,8 @@ interface ResultStore {
   setAiFullResult: (word: string, r: AiFullResult, cognitive?: CognitiveMode) => void
   setPhraseResult: (key: string, r: PhraseResult, cognitive?: CognitiveMode) => void
   /** v0.9.0: store combined result and update active display */
-  setCombinedResult: (word: string, r: CombinedAiResult) => void
-  setCombinedPhraseResult: (phrase: string, r: CombinedPhraseResult) => void
+  setCombinedResult: (word: string, r: CombinedAiResult, tag?: SearchTag) => void
+  setCombinedPhraseResult: (phrase: string, r: CombinedPhraseResult, tag?: SearchTag) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
   updateFullMnemonic: (word: string, m: Mnemonic, cognitive?: CognitiveMode) => void
@@ -43,8 +43,8 @@ interface ResultStore {
   getCachedAiFull: (word: string, cognitive?: CognitiveMode) => AiFullResult | null
   getCachedPhrase: (key: string, cognitive?: CognitiveMode) => PhraseResult | null
   /** v0.9.0: get combined result from cache (with legacy fallback reconstruction) */
-  getCachedCombined: (word: string) => CombinedAiResult | null
-  getCachedCombinedPhrase: (phrase: string) => CombinedPhraseResult | null
+  getCachedCombined: (word: string, tag?: SearchTag) => CombinedAiResult | null
+  getCachedCombinedPhrase: (phrase: string, tag?: SearchTag) => CombinedPhraseResult | null
   clearCache: () => void
   clearCacheOnly: () => void
   evictCacheEntry: (key: string) => void
@@ -157,16 +157,14 @@ export const useResultStore = create<ResultStore>()(
       },
       setAiError: (aiError) => set({ aiError, aiStatus: 'error' }),
 
-      // v0.9.0: combined cache
-      setCombinedResult: (word, combinedResult) => {
-        const key = combinedCacheKey(word)
+      // v0.9.0: combined cache tagged by normal vs bypass
+      setCombinedResult: (word, combinedResult, tag = 'normal') => {
+        const key = combinedCacheKey(word, tag)
         const cache = { ...get().combinedCache }
         delete cache[key]
         cache[key] = combinedResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
-        // Also set the individual lookup/core views for legacy compatibility;
-        // map lookup → aiAnalysis so ResultView (L1 + Lookup modules) can render.
         set({
           combinedCache: cache,
           combinedResult,
@@ -175,8 +173,8 @@ export const useResultStore = create<ResultStore>()(
           aiStatus: 'success',
         })
       },
-      setCombinedPhraseResult: (phrase, combinedPhraseResult) => {
-        const key = combinedCacheKey(phrase)
+      setCombinedPhraseResult: (phrase, combinedPhraseResult, tag = 'normal') => {
+        const key = combinedCacheKey(phrase, tag)
         const cache = { ...get().combinedPhraseCache }
         delete cache[key]
         cache[key] = combinedPhraseResult
@@ -189,8 +187,8 @@ export const useResultStore = create<ResultStore>()(
           aiStatus: 'success',
         })
       },
-      getCachedCombined: (word) => {
-        const key = combinedCacheKey(word)
+      getCachedCombined: (word, tag = 'normal') => {
+        const key = combinedCacheKey(word, tag)
         const cache = get().combinedCache
         if (cache[key]) {
           const updated = { ...cache }
@@ -200,20 +198,22 @@ export const useResultStore = create<ResultStore>()(
           set({ combinedCache: updated })
           return val
         }
-        // Legacy fallback: reconstruct from old separate caches if available
-        const n = normalizeQuery(word)
-        const legacyLookup = get().aiFullCache[n] ?? null
-        const legacyCore = get().aiFullCache[cognitiveCacheKey(n, 'core')] ?? null
-        if (legacyLookup || legacyCore) {
-          return reconstructFromLegacy(
-            legacyLookup ?? legacyCore!,
-            legacyCore
-          )
+        // Legacy fallback (normal tag only): reconstruct from old separate caches if available
+        if (tag === 'normal') {
+          const n = normalizeQuery(word)
+          const legacyLookup = get().aiFullCache[n] ?? null
+          const legacyCore = get().aiFullCache[cognitiveCacheKey(n, 'core')] ?? null
+          if (legacyLookup || legacyCore) {
+            return reconstructFromLegacy(
+              legacyLookup ?? legacyCore!,
+              legacyCore
+            )
+          }
         }
         return null
       },
-      getCachedCombinedPhrase: (phrase) => {
-        const key = combinedCacheKey(phrase)
+      getCachedCombinedPhrase: (phrase, tag = 'normal') => {
+        const key = combinedCacheKey(phrase, tag)
         const cache = get().combinedPhraseCache
         if (cache[key]) {
           const updated = { ...cache }
@@ -223,15 +223,16 @@ export const useResultStore = create<ResultStore>()(
           set({ combinedPhraseCache: updated })
           return val
         }
-        // Legacy fallback
-        const n = normalizeQuery(phrase)
-        const legacyLookup = get().phraseCache[n] ?? null
-        const legacyCore = get().phraseCache[cognitiveCacheKey(n, 'core')] ?? null
-        if (legacyLookup || legacyCore) {
-          return reconstructPhraseFromLegacy(
-            legacyLookup ?? legacyCore!,
-            legacyCore
-          )
+        if (tag === 'normal') {
+          const n = normalizeQuery(phrase)
+          const legacyLookup = get().phraseCache[n] ?? null
+          const legacyCore = get().phraseCache[cognitiveCacheKey(n, 'core')] ?? null
+          if (legacyLookup || legacyCore) {
+            return reconstructPhraseFromLegacy(
+              legacyLookup ?? legacyCore!,
+              legacyCore
+            )
+          }
         }
         return null
       },

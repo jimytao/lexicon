@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTA5TlRGR1krUWpHUHVid0lyY2oyaU5jZHJ1SWVuNmZ4ZHFFWDlnTUZjcUJIMHduaTQwbzdrN2FlUFp6TU5KSVhvZW5hVmNvMmNLTkdiYWU4ZzFnM1EwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NjQ2NjkzCWZpbGU6TGV4aWNvbl8wLjkuN194NjQtc2V0dXAuZXhlCnRzZXovUjNaU1BvN3gyeFJNLzZqOFhqR3JkR1kyKzdNeGIyN2RPVDU1S1hxa0lwbXB0ZFNTeVM5d3dsNVdTeEtNdTJWQlJnWjlSRFhHalhtZTBvR0JRPT0K",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTFPWERNdTg4NlZEQTRHK2xxaFZxcFVDcnpwNlFoRGx1NWZaRlFicVNxV2xTK1Z3eFVpSFlRRndzYkVrZy9Bc2J0RzhmdDQyejhWNG9TTDk2cTIyNVFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2NDIxNTM3CWZpbGU6TGV4aWNvbl8wLjkuOF94NjQtc2V0dXAuZXhlCkZuZ1dYcU9JUEkzZkozOEQwNjB6K3BZUUxYN1I5eEpSMThHMUprWWVQWGl3eXpKTmdHSERKYjVLcG05WVYzTUdIbEdsL01ieTBOd0J6QUFDUnQzRkR3PT0K",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-08-02T04:58:13Z",
-    "version":  "0.9.7",
-    "notes":  "词组与句子分层改错架构 (2-Tier Proofreading)\n1. **Tier 1 最小改动原则**：搜索词组与句子时，优先保留原始句式结构，仅修补语法、介词误用、用词不当与拼写错误。\n2. **改动原因逐条剖析**：「为什么这么改？」支持以项目符号（•）逐条剖析语法与用词细节，拒绝空话抽象概括。\n3. **Tier 2 地道与正式表达折叠卡片**：独立折叠收纳高阶地道句式改写、地道搭配与介词意图剖析以及母语心智对比。\n4. **单语言模式语言对齐**：开启单语言模式时改错说明全量以纯英文输出，界面标题遵循应用语言设置。\n",
-    "notes_zh":  "词组与句子分层改错架构 (2-Tier Proofreading)\n1. **Tier 1 最小改动原则**：搜索词组与句子时，优先保留原始句式结构，仅修补语法、介词误用、用词不当与拼写错误。\n2. **改动原因逐条剖析**：「为什么这么改？」支持以项目符号（•）逐条剖析语法与用词细节，拒绝空话抽象概括。\n3. **Tier 2 地道与正式表达折叠卡片**：独立折叠收纳高阶地道句式改写、地道搭配与介词意图剖析以及母语心智对比。\n4. **单语言模式语言对齐**：开启单语言模式时改错说明全量以纯英文输出，界面标题遵循应用语言设置。\n",
-    "notes_en":  "2-Tiered Proofreading Architecture for Phrases and Sentences\n1. **Tier 1 Minimal Fix**: Preserves original sentence structure while fixing grammar, prepositions, word misuse, and typos.\n2. **Itemized Change Breakdown**: \"Why was this changed?\" provides point-by-point bullet explanations without abstract generalities.\n3. **Tier 2 Native \u0026 Formal Expression Folder**: Grouped collapsible card housing polished rephrasings, native phrase/preposition rationale, and mindset contrast.\n4. **Monolingual Mode Alignment**: All explanations render strictly in English when Monolingual Mode is enabled; UI headers align with display language settings.\n",
+    "pub_date":  "2026-08-11T04:15:44Z",
+    "version":  "0.9.8",
+    "notes":  "AI 双轨 Tag 隔离缓存架构与真实例句练习重构\n1. **AI 搜索双轨 Tag 隔离缓存 (Normal vs Bypass)**：普通 AI 搜索与强制 AI 搜索（✨ 旁路词典）建立独立 Tag 隔离缓存，支持两套成果 0 秒无缝对比切换。\n2. **历史记录四场景智能路由**：包含普通与 Bypass 双缓存时优先载入普通搜索结果，保留 ✨ 按钮供随时切看；仅有 Bypass 强搜缓存时直接载入纯 AI 全量画面；无 AI 记录时以 Instant 模式轻量载入。\n3. **Lookup 模式真实例句理解练习重构**：例句练习连通设置里的练习题数量（maxExercises），依据词义生成真实例句卡片，引导学习者在语境中核对与理解词义。\n",
+    "notes_zh":  "AI 双轨 Tag 隔离缓存架构与真实例句练习重构\n1. **AI 搜索双轨 Tag 隔离缓存 (Normal vs Bypass)**：普通 AI 搜索与强制 AI 搜索（✨ 旁路词典）建立独立 Tag 隔离缓存，支持两套成果 0 秒无缝对比切换。\n2. **历史记录四场景智能路由**：包含普通与 Bypass 双缓存时优先载入普通搜索结果，保留 ✨ 按钮供随时切看；仅有 Bypass 强搜缓存时直接载入纯 AI 全量画面；无 AI 记录时以 Instant 模式轻量载入。\n3. **Lookup 模式真实例句理解练习重构**：例句练习连通设置里的练习题数量（maxExercises），依据词义生成真实例句卡片，引导学习者在语境中核对与理解词义。\n",
+    "notes_en":  "Tag-Isolated AI Cache Architecture and Contextual Practice Refactor\n1. **Tag-Isolated AI Cache (Normal vs Bypass)**: Independent normal and bypass tag caches enable 0s instant toggling and side-by-side comparison between standard and force AI views.\n2. **4-Case Smart History Routing**: History entries with both normal and bypass caches default to normal view with a ✨ toggle; entries with only bypass cache load directly into Pure AI view; non-AI entries load into Instant mode.\n3. **Contextual Meaning Exercises**: Lookup practice links to exercise count setting (maxExercises), generating real example sentence cards for learners to check and understand sense in context.\n",
     "is_major":  false
 }

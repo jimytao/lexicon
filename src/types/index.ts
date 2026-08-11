@@ -44,6 +44,12 @@ export interface Exercise {
   scenario: string
 }
 
+export interface MeaningExercise {
+  sentence: string
+  targetMeaning?: string
+  hint?: string
+}
+
 export interface MnemonicItem {
   content: string
   score: number

@@ -21,10 +21,9 @@ import { UpdateModal } from './components/Settings/UpdateModal'
 import {
   normalizeQuery,
   cognitiveFromSearchMode,
-  preferredAiModeFromSettings,
 } from './utils/text'
-import { historyModeForTrack, resolveHistoryTrack } from './utils/historyTrack'
 import { planDictHitNormalSearch } from './utils/searchPath'
+import { decideHistoryClickRoute } from './utils/historyDecisionTree'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
 import {
@@ -150,7 +149,7 @@ export function App() {
 
   const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
-  const { trigger: triggerAi, triggerFullLookup, triggerPhraseQuery, triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
+  const { triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
 
   useEffect(() => {
@@ -318,19 +317,6 @@ export function App() {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  /** Pick Lookup vs Core track for history replay; null = Instant-only (no AI intent/cache). */
-  function resolveHistoryTrackForWord(word: string): CognitiveMode | null {
-    const store = useResultStore.getState()
-    const entry = useHistoryStore.getState().words.find((e) => normalizeQuery(e.word) === normalizeQuery(word))
-    return resolveHistoryTrack(word, {
-      prefer: useSettingsStore.getState().historyPreferCognitive,
-      entry,
-      aiCache: store.aiCache,
-      aiFullCache: store.aiFullCache,
-      phraseCache: store.phraseCache,
-    })
-  }
-
   async function handleWordSelect(word: string, fromHistory = false) {
     scrollToTop()
     localWordSnapshotRef.current = null
@@ -341,8 +327,6 @@ export function App() {
       void flushPendingProfileDiagnostics('context_change')
     }
     lastProfileQueryRef.current = word
-
-    const historyEntry = useHistoryStore.getState().words.find((e) => normalizeQuery(e.word) === nw)
 
     const { result, queryType } = await selectWord(word)
 
@@ -363,41 +347,17 @@ export function App() {
 
       if (fromHistory) {
         const store = useResultStore.getState()
-        const track = resolveHistoryTrackForWord(word)
-        if (track == null) {
-          // Instant-only history: keep L1, do not force AI chrome
-          useSearchStore.getState().setMode('instant')
-        } else {
-          const targetMode = historyModeForTrack(track, 'ai')
-          useSearchStore.getState().setMode(targetMode)
-          const cognitive = track
-          const cachedFull = store.getCachedAiFull(word, cognitive)
-          const cachedPhrase = store.getCachedPhrase(word, cognitive)
-          const cachedAi = cognitive === 'lookup' ? store.getCachedAi(result.word) : null
-          const trackHistMode = cognitive === 'core'
-            ? (historyEntry?.coreAiMode ?? null)
-            : (historyEntry?.lookupAiMode ?? null)
+        const hasNormal = Boolean(store.getCachedCombined(word, 'normal'))
+        const hasBypass = Boolean(store.getCachedCombined(word, 'bypass'))
+        const route = decideHistoryClickRoute({ hasNormalCache: hasNormal, hasBypassCache: hasBypass })
 
-          if (cachedFull) {
-            setSearchSource('ai-full')
-            useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
-            upgradeHistory(word, 'full', cognitive)
-          } else if (cachedPhrase) {
-            setSearchSource('phrase')
-            useResultStore.getState().setPhraseResult(word, cachedPhrase, cognitive)
-            upgradeHistory(word, 'phrase', cognitive)
-          } else if (cachedAi) {
-            useResultStore.getState().setAiAnalysis(result.word, cachedAi)
-            upgradeHistory(word, 'analyze', 'lookup')
-          } else if (trackHistMode === 'phrase') {
-            setSearchSource('phrase')
-            triggerPhraseQuery(word)
-          } else if (trackHistMode === 'full' || cognitive === 'core') {
-            setSearchSource('ai-full')
-            triggerFullLookup(word)
-          } else if (trackHistMode === 'analyze') {
-            triggerAi(result.word, result.meanings, result.examples.length === 0)
-            upgradeHistory(word, 'analyze', 'lookup')
+        useSearchStore.getState().setMode(route.mode)
+        setSearchSource(route.searchSource)
+        if (route.activeTag) {
+          const cached = store.getCachedCombined(word, route.activeTag)
+          if (cached) {
+            store.setCombinedResult(word, cached, route.activeTag)
+            upgradeHistory(word, 'full')
           }
         }
       } else {
@@ -406,25 +366,24 @@ export function App() {
         const plan = planDictHitNormalSearch(currentMode)
 
         if (plan.kind === 'l1-then-combined') {
-          // Lookup + Core share one pipeline: keep dictionary L1, then combined Lookup→Core
           setSearchSource('local')
-          const cachedCombined = store.getCachedCombined(word)
+          const cachedCombined = store.getCachedCombined(word, 'normal')
           if (cachedCombined) {
-            store.setCombinedResult(word, cachedCombined)
+            store.setCombinedResult(word, cachedCombined, 'normal')
             upgradeHistory(word, 'full')
           } else {
-            triggerCombinedLookup(word)
+            triggerCombinedLookup(word, false, 'normal')
             upgradeHistory(word, 'full')
           }
         } else {
-          // Instant: L1 only (optional legacy cache restore without forcing AI chrome)
+          // Instant mode
           const cognitive = cognitiveFromSearchMode(currentMode)
           const cachedFull = store.getCachedAiFull(word, cognitive)
           const cachedAi = store.getCachedAi(result.word)
-          const cachedCombined = store.getCachedCombined(word)
+          const cachedCombined = store.getCachedCombined(word, 'normal')
 
           if (cachedCombined) {
-            // Have combined cache but stay Instant visually — do not auto-upgrade
+            // Stay Instant visually
           } else if (cachedFull) {
             setSearchSource('ai-full')
             useResultStore.getState().setAiFullResult(word, cachedFull, cognitive)
@@ -438,41 +397,60 @@ export function App() {
       }
     } else {
       localWordSnapshotRef.current = null
-      // Clear word result in the same sync block as setSearchSource so React 18 batches
-      // them into a single render, preventing the intermediate blank/black screen flash.
       useResultStore.getState().setWordResult(null)
 
       if (fromHistory) {
-        const track = resolveHistoryTrackForWord(word)
-        // OOD / phrase: null track still needs an AI surface — fall into settings preferred mode
-        const fallback = preferredAiModeFromSettings(useSettingsStore.getState().defaultSearchMode)
-        useSearchStore.getState().setMode(historyModeForTrack(track, fallback))
+        const store = useResultStore.getState()
+        const hasNormal = Boolean(store.getCachedCombined(word, 'normal')) || Boolean(store.getCachedCombinedPhrase(word, 'normal'))
+        const hasBypass = Boolean(store.getCachedCombined(word, 'bypass')) || Boolean(store.getCachedCombinedPhrase(word, 'bypass'))
+        const route = decideHistoryClickRoute({ hasNormalCache: hasNormal, hasBypassCache: hasBypass })
+
+        const targetMode = route.mode === 'instant' ? 'ai' : route.mode
+        useSearchStore.getState().setMode(targetMode)
+        const isPhraseOrSentence = queryType === 'phrase' || queryType === 'sentence'
+        setSearchSource(isPhraseOrSentence ? 'phrase' : route.searchSource)
+        const activeTag = route.activeTag ?? 'normal'
+
+        if (isPhraseOrSentence) {
+          const cachedPhrase = store.getCachedCombinedPhrase(word, activeTag)
+          if (cachedPhrase) {
+            store.setCombinedPhraseResult(word, cachedPhrase, activeTag)
+          } else {
+            triggerCombinedPhraseQuery(word, false, activeTag)
+          }
+        } else {
+          const cachedFull = store.getCachedCombined(word, activeTag)
+          if (cachedFull) {
+            store.setCombinedResult(word, cachedFull, activeTag)
+          } else {
+            triggerCombinedLookup(word, false, activeTag)
+          }
+        }
       } else {
-        // Instant 未命中：switch to 'ai' and use combined call
         const currentMode = useSearchStore.getState().mode
         if (currentMode === 'instant') {
           useSearchStore.getState().setMode('ai')
         }
-      }
 
-      if (queryType === 'phrase' || queryType === 'sentence') {
-        setSearchSource('phrase')
-        const cachedPhrase = useResultStore.getState().getCachedCombinedPhrase(word)
-        if (cachedPhrase) {
-          useResultStore.getState().setCombinedPhraseResult(word, cachedPhrase)
+        if (queryType === 'phrase' || queryType === 'sentence') {
+          setSearchSource('phrase')
+          const cachedPhrase = useResultStore.getState().getCachedCombinedPhrase(word, 'normal')
+          if (cachedPhrase) {
+            useResultStore.getState().setCombinedPhraseResult(word, cachedPhrase, 'normal')
+          } else {
+            triggerCombinedPhraseQuery(word, false, 'normal')
+          }
+          upgradeHistory(word, 'phrase', 'lookup')
         } else {
-          triggerCombinedPhraseQuery(word)
+          setSearchSource('ai-full')
+          const cachedFull = useResultStore.getState().getCachedCombined(word, 'normal')
+          if (cachedFull) {
+            useResultStore.getState().setCombinedResult(word, cachedFull, 'normal')
+          } else {
+            triggerCombinedLookup(word, false, 'normal')
+          }
+          upgradeHistory(word, 'full', 'lookup')
         }
-        upgradeHistory(word, 'phrase', 'lookup')
-      } else {
-        setSearchSource('ai-full')
-        const cachedFull = useResultStore.getState().getCachedCombined(word)
-        if (cachedFull) {
-          useResultStore.getState().setCombinedResult(word, cachedFull)
-        } else {
-          triggerCombinedLookup(word)
-        }
-        upgradeHistory(word, 'full', 'lookup')
       }
     }
   }
@@ -508,11 +486,11 @@ export function App() {
     const qt = detectQueryType(word)
     if (qt === 'phrase' || qt === 'sentence') {
       setSearchSource('phrase')
-      triggerCombinedPhraseQuery(word)
+      triggerCombinedPhraseQuery(word, true)
       if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase', 'lookup')
     } else {
       setSearchSource('ai-full')
-      triggerCombinedLookup(word)
+      triggerCombinedLookup(word, true)
       if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full', 'lookup')
     }
   }

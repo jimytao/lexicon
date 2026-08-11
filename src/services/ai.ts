@@ -11,7 +11,7 @@ import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
-import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult } from '../types'
+import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult } from '../types'
 
 /** 仅当模组出现在当前模式列表且 enabled 时才请求；不在列表 = 关闭（Lookup/Core 分轨依赖此语义） */
 function moduleEnabled(modules: ModuleFlag[], id: string): boolean {
@@ -587,11 +587,68 @@ export async function evaluateAnswer(
   throw new Error(`AI returned invalid JSON for evaluation`)
 }
 
-/** Lookup：核对学习者对词义的理解（中/英均可），不要求造句 */
+const MEANING_EXERCISES_SYSTEM_PROMPT = `You are a language exercise designer for English learners.
+
+Given a target word/phrase and its dictionary meanings, generate practical example sentences for learning.
+
+Return ONLY a valid JSON array. No markdown. No explanation.
+
+[
+  {
+    "sentence": "A clear, natural example sentence in the target language containing the target word/phrase.",
+    "targetMeaning": "The specific meaning/sense of the target word demonstrated in this sentence.",
+    "hint": "Optional short context clue for the learner."
+  }
+]
+
+Rules:
+- The sentence MUST be natural and written in the target language (e.g. English).
+- The sentence MUST contain the target word/phrase.
+- Prioritize common and practical meanings.
+- Never output anything outside the JSON array.`
+
+export async function generateMeaningExercises(
+  word: string,
+  meanings: Array<{ zh: string; en: string }>,
+  count: number,
+  signal?: AbortSignal
+): Promise<MeaningExercise[]> {
+  const config = getConfig()
+  const isMono = getIsMono(word, config)
+
+  const meaningsText = meanings
+    .map((m, i) => isMono ? `${i + 1}. EN: ${m.en}` : `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
+    .join('\n')
+
+  const lang = detectLanguage(word)
+  const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
+  const langName = langNames[lang] || 'the target language'
+
+  const userPrompt = `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practical example sentences containing '${word}', each demonstrating one of its common meanings in context.`
+  const cleaned = await callApi(MEANING_EXERCISES_SYSTEM_PROMPT, userPrompt, signal)
+
+  try {
+    return JSON.parse(cleaned) as MeaningExercise[]
+  } catch { /* fall through */ }
+
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/)
+  if (arrayMatch) {
+    try {
+      return JSON.parse(arrayMatch[0]) as MeaningExercise[]
+    } catch { /* fall through */ }
+  }
+
+  console.error('generateMeaningExercises raw response:', cleaned)
+  throw new Error(`AI returned invalid JSON for meaning exercises`)
+}
+
+/** Lookup：核对学习者对词义在例句中的理解（中/英均可），不要求造句 */
 export async function evaluateMeaningCheck(
   word: string,
   meanings: Array<{ zh: string; en: string }>,
   userGuess: string,
+  sentenceContext?: string,
+  targetMeaning?: string,
   signal?: AbortSignal
 ): Promise<{ correct: boolean; feedback: string }> {
   const config = getConfig()
@@ -602,14 +659,15 @@ export async function evaluateMeaningCheck(
     .join('\n')
 
   const system = isMono
-    ? `You check whether a learner roughly understands a word/phrase meaning. Return ONLY JSON: {"correct":true|false,"feedback":"..."}.
-If roughly right (core sense captured), correct=true and feedback a short confirmation (e.g. "Correct.").
+    ? `You check whether a learner correctly understands the meaning of a word/phrase in a specific example sentence context. Return ONLY JSON: {"correct":true|false,"feedback":"..."}.
+If roughly right (core sense in context captured), correct=true and feedback a short confirmation (e.g. "Correct.").
 If wrong or incomplete, correct=false and feedback briefly corrects in simple English — do NOT require a full sentence from the learner.`
-    : `你核对学习者是否大致理解了词/词组的意思。只返回 JSON：{"correct":true|false,"feedback":"..."}。
-大致抓住核心义 → correct=true，feedback 简短确认（如「对」）。
-错或偏差大 → correct=false，feedback 用中文简短纠正要点。不要要求学习者造完整句。`
+    : `你核对学习者是否理解了词/词组在特定例句中的含义。只返回 JSON：{"correct":true|false,"feedback":"..."}。
+抓住例句中该词的核心意思 → correct=true，feedback 简短确认（如「回答正确！此句中表示...」）。
+偏差大或偏离义项 → correct=false，feedback 用中文简短解析该句中的实际释义与用词习惯。不要要求学习者造完整句。`
 
-  const userPrompt = `Word/phrase: ${word}\nReference meanings:\n${meaningLines || '(none)'}\nLearner's guess (zh or en OK): "${userGuess}"\n\nEvaluate understanding only.`
+  const contextPart = sentenceContext ? `Example Sentence: "${sentenceContext}"\nTarget Meaning: ${targetMeaning || 'unspecified'}\n` : ''
+  const userPrompt = `Word/phrase: ${word}\n${contextPart}Reference meanings:\n${meaningLines || '(none)'}\nLearner's guess (zh or en OK): "${userGuess}"\n\nEvaluate understanding in context.`
   const cleaned = await callApi(system, userPrompt, signal)
 
   try {
@@ -623,6 +681,7 @@ If wrong or incomplete, correct=false and feedback briefly corrects in simple En
   }
   throw new Error('AI returned invalid JSON for meaning check')
 }
+
 
 // ── AI 全量查词（词库无结果时） ──
 

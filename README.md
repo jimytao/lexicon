@@ -12,8 +12,8 @@
 - **Instant**：纯本地词库，零延迟，离线可用（词库外输入自动触发 AI 合并搜索）。
 - **AI Lookup**：理解与记忆——L1 立即呈现；轻量意象、词根、助记、例句、介词意象、释义核对练习与 Chat 异步淡入。
 - **Pure Core**：母语者用法——用法意象（含短对译 gloss / 感觉锚 / 情绪底色）、概念树、介词语组/其他词组（尾缀类词可空）、近义（适用心智含「为何仍选主词」）、用法场景、语域与造句练习（无释义墙；模组均可拖拽排序）。
-- **合并双轨出参**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套数据；词库命中时普通搜索先出 L1 再合并增量；标签页瞬间翻页；Bypass（⭐）旁路词库触发合并 AI。
-- **词组/句子分层改错**：实行 Tier 1 最小程度修补（保留原句结构，仅修正语法/介词/用词误用/拼写），搭配逐条剖析折叠；Tier 2 独立折叠收纳地道/正式表达建议、地道搭配意图与母语心智对比。
+- **合并双轨出参与 Tag 隔离缓存**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套数据；建立 `normal`（普通搜索）与 `bypass`（✨ 强搜旁路词库）独立双轨 Tag 缓存，支持两套成果 0 秒无缝对比切换；历史记录采用 4 场景智能决策树精确调取。
+- **语境化例句练习**：Lookup 模式连通练习题数量设置（`maxExercises`），依据词义生成真实英文例句卡片，引导学习者在真实语境中核对与理解词义。
 
 ### 2. 双本地词库与智能路由
 - **多词库**：牛津高阶第 9 版中英双解（`lexicon.db`，约 5.2 万）+ 第 10 版纯英英（`lexicon_en.db`，约 8.4 万）。
@@ -22,7 +22,7 @@
 - **回退保护**：英英库缺失时安全回退双解，避免崩溃。
 
 ### 3. AI 增强与个人资产
-- Lookup / Core 分轨模组可在 Settings 拖拽排序与开关；随身追问、释义核对 / 场景造句练习。
+- Lookup / Core 分轨模组可在 Settings 拖拽排序与开关；随身追问、例句理解核对 / 场景造句练习。
 - **UK / US 发音**（含自动发音与离线 TTS 兜底）。
 - Lexicon Memory 徽章（只读：笔记 / Core 意象；**不再**显示追问条数徽章，底部 AI Chat 仍可用）；AI 追问按 **Lookup / Pure Core** 分轨保存互不覆盖；设置内 **AI Profile** 诊断（连续追问会聚合后再后台总结，关 App 可冷启动续跑）。个人笔记编辑面板已雪藏，底层记忆数据仍保留。
 - 弱项看板 UI 当前**已雪藏**（不占用底栏）；Profile 后端仍可用。
@@ -45,12 +45,12 @@
 ## 📦 下载安装
 
 ### Windows
-- **[Lexicon_0.9.7_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64-setup.exe)**（推荐，NSIS）
-- **[Lexicon_0.9.7_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_x64_en-US.msi)**（MSI）
+- **[Lexicon_0.9.8_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64-setup.exe)**（推荐，NSIS）
+- **[Lexicon_0.9.8_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64_en-US.msi)**（MSI）
 
-### Android 手机 / 平板 (v0.9.7)
-- **[Lexicon_0.9.7_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.7/Lexicon_0.9.7_universal_signed.apk)**（推荐）
-- 架构分包见 [Releases v0.9.7](https://github.com/jimytao/lexicon/releases/tag/v0.9.7)。
+### Android 手机 / 平板 (v0.9.8)
+- **[Lexicon_0.9.8_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_universal_signed.apk)**（推荐）
+- 架构分包见 [Releases v0.9.8](https://github.com/jimytao/lexicon/releases/tag/v0.9.8)。
 - *安装或更新后若 AI 请求失败，重启 VPN / 代理即可。*
 
 ### iOS（自签侧载）

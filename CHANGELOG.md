@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-08-11 — AI 双轨 Tag 隔离缓存架构与真实例句练习重构 (v0.9.8)
+
+### 用户可见
+1. **AI 搜索双轨 Tag 隔离缓存 (Normal vs Bypass)**：普通 AI 搜索（`normal` Tag）与强制 AI 搜索（`bypass` Tag ✨ 旁路词典）建立独立隔离缓存，互不干扰覆盖。同一单词可随时在普通 AI 视图与纯 AI 全量视图间自由点击切换并进行 0 秒瞬间对比。
+2. **历史记录四场景智能路由决策树**：包含普通与 Bypass 双缓存时优先载入普通搜索结果，并保留 ✨ 按钮供随时切看；仅包含 Bypass 强搜缓存时自动直接载入纯 AI 全量画面 (`AiFullView`)；仅有纯词库记录时以 `Instant` 模式轻量载入，不强制触发 AI 加载。
+3. **Lookup 模式真实例句理解练习重构**：Lookup 模式连通设置中的练习题数量（`maxExercises`）。AI 依据词条常见义项生成真实的在语境中的英文例句卡片，引导学习者结合特定例句解释该词的具体释义并进行针对性智能批改。
+
+### 涉及文件
+- `src/types/index.ts`
+- `src/utils/combinedResult.ts`
+- `src/utils/historyDecisionTree.ts`
+- `src/utils/historyDecisionTree.test.ts`
+- `src/stores/resultStore.ts`
+- `src/hooks/useAiLookup.ts`
+- `src/App.tsx`
+- `src/services/ai.ts`
+- `src/components/ResultView/AiSection/PracticeSection.tsx`
+- `src/i18n/index.ts`
+
+---
+
 ## 2026-08-02 — 词组与句子分层改错架构 (2-Tier Proofreading) (v0.9.7)
 
 ### 用户可见
