@@ -72,25 +72,25 @@
 
 ### 1. 常见 API 服务商注册与密钥获取（点击超链接直接跳转）
 
-> **💡 模型选择建议**：大模型迭代迅速，无须纠结固定的「首选模型」。在查词分析与语言学习场景下，**强烈建议优先选择响应速度快、成本低廉的轻量小模型**（如 `Gemini Flash / Flash Lite`、`GPT Mini / Nano / Luna` 系列、`DeepSeek Flash`、`Claude Haiku` 等）。轻量小模型输出极快且推理准确度高，完全满足词汇解析需求。
+> **💡 模型选择与指导大纲**：大模型更新迭代非常迅速，版本号变化频繁，无须纠结固定的数字版本号。在 Lexicon 查词分析与语言学习场景下，**统一建议优先选择各家平台主打「轻量化、速度快」的小模型系列**（如 `Flash` / `Flash Lite` / `Mini` / `Nano` / `Haiku` / `Small` / `Lightning` 等）。此类轻量小模型生成极速、成本低廉，且逻辑准确度完全能够胜任词汇与句法深度解析。
 
-| AI 服务商 | 官方 API Key 申请平台 | 常用轻量 / 高速模型举例 |
-|-----------|------------------------|-------------------------|
-| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-2.0-flash-lite`（极速轻量） |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` / Mini / Nano 系列轻量模型 |
-| **DeepSeek** | [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) | `deepseek-chat`, `deepseek-reasoner` |
-| **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | 聚合全球模型，无需多个账号 |
-| **SiliconFlow (硅基流动)** | [硅基流动 Cloud](https://cloud.siliconflow.cn/account/ak) | 提供 DeepSeek / Qwen 等免费或极低成本 API |
-| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `claude-3-5-haiku`（轻量迅捷） |
-| **Moonshot (Kimi)** | [Moonshot 开放平台](https://platform.moonshot.cn/console/api-keys) | `moonshot-v1-8k` |
-| **智谱 GLM** | [智谱 AI 开放平台](https://open.bigmodel.cn/usercenter/apikeys) | `glm-4-flash`（轻量极速模型） |
-| **零一万物 (Yi)** | [零一万物 API 平台](https://platform.lingyiwanwu.com/apikeys) | `yi-lightning` |
-| **Groq** | [GroqConsole](https://console.groq.com/keys) | 超高速 Llama / Mixtral 轻量推理 |
-| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `grok-3-mini` |
-| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `sonar` |
-| **Together AI** | [Together AI Settings](https://api.together.xyz/settings/api-keys) | 包含各类开源模型托管 |
-| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `mistral-small`, `pixtral-12b` |
-| **Ollama (本地私有大模型)** | [Ollama 官网](https://ollama.com/) | 无需 API Key，只需启动 Ollama 填本地地址即可 |
+| AI 服务商 | 官方 API Key 申请平台 | 推荐选择的模型类型系列（无须在意版本数字） |
+|-----------|------------------------|--------------------------------------------|
+| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `Flash` / `Flash Lite` 系列（极速轻量，响应迅捷） |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `Mini` / `Nano` / `Luna` 等轻量系列 |
+| **DeepSeek** | [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) | `DeepSeek Chat` 轻量高速模型 |
+| **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | 聚合全球模型，搜索带有 `Flash` / `Mini` / `Free` 标识的轻量模型 |
+| **SiliconFlow (硅基流动)** | [硅基流动 Cloud](https://cloud.siliconflow.cn/account/ak) | 选择 `DeepSeek` / `Qwen` 等托管的轻量免费或高速小模型 |
+| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Haiku` 系列（轻量迅捷） |
+| **Moonshot (Kimi)** | [Moonshot 开放平台](https://platform.moonshot.cn/console/api-keys) | `Moonshot` 基础轻量模型 |
+| **智谱 GLM** | [智谱 AI 开放平台](https://open.bigmodel.cn/usercenter/apikeys) | `GLM Flash` 轻量极速系列 |
+| **零一万物 (Yi)** | [零一万物 API 平台](https://platform.lingyiwanwu.com/apikeys) | `Yi Lightning` / 轻量高速系列 |
+| **Groq** | [GroqConsole](https://console.groq.com/keys) | 选择超高速 Llama / Mixtral 轻量推理节点 |
+| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `Grok Mini` 轻量系列 |
+| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `Sonar` 基础轻量模型 |
+| **Together AI** | [Together AI Settings](https://api.together.xyz/settings/api-keys) | 挑选各开源厂商的 `Small` / `Mini` 托管节点 |
+| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `Mistral Small` 轻量系列 |
+| **Ollama (本地私有大模型)** | [Ollama 官网](https://ollama.com/) | 无需 API Key，下载启动小参数量模型（如 7B/8B/Q4 等）填本地地址即可 |
 | **Tavily (网络实时搜索)** | [Tavily AI Search Platform](https://tavily.com/) | 专为 AI 简报与联网查词设计的 Web 搜索 API |
 
 ---
@@ -112,7 +112,7 @@
 
 #### 步骤四：拉取并选择模型 (Fetch Models)
 1. 点击输入框旁边的 **「获取模型 (Fetch Models)」** 按钮。Lexicon 会自动向 API 接口发起实时查询并获取该账号可用的模型列表。
-2. 在弹出的模型下拉列表中选择您满意的模型（如 `gemini-2.0-flash` 或 `deepseek-chat`）。
+2. 在弹出的模型下拉列表中选择您满意的轻量高速模型（如带 `Flash`、`Mini` 或 `Chat` 标识的模型）。
 
 #### 步骤五：测试连接 (Test Connection)
 1. 点击下方高亮的 **「测试连接 (Test Connection)」** 按钮。
