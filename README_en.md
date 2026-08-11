@@ -72,12 +72,12 @@ To unlock Lexicon's AI capabilities, you need to configure an **API Key** for yo
 
 ### 1. Provider Registration & API Key Links (Direct Clickable Links)
 
-> **💡 Model Selection Tip**: AI models evolve rapidly, so there's no need to look for a rigid "first choice". For dictionary lookups and language learning, **we strongly recommend using fast, lightweight small models** (e.g., `Gemini Flash / Flash Lite`, `GPT Mini`, `DeepSeek Flash`, `Claude Haiku`). Lightweight models provide ultra-fast responses and high accuracy, ideal for dictionary parsing.
+> **💡 Model Selection Tip**: AI models evolve rapidly, so there's no need to look for a rigid "first choice". For dictionary lookups and language learning, **we strongly recommend using fast, lightweight small models** (e.g., `Gemini Flash / Flash Lite`, `GPT Mini / Nano / Luna` series, `DeepSeek Flash`, `Claude Haiku`). Lightweight models provide ultra-fast responses and high accuracy, ideal for dictionary parsing.
 
 | AI Provider | Official API Key Portal | Lightweight / Fast Model Examples |
 |-------------|-------------------------|-----------------------------------|
 | **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-2.0-flash-lite` (Ultra fast & lightweight) |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` (Fast & lightweight) |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` / Mini / Nano series lightweight models |
 | **DeepSeek** | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | `deepseek-chat`, `deepseek-reasoner` |
 | **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | Global model aggregator; single key for all models |
 | **SiliconFlow (硅基流动)** | [SiliconFlow Cloud](https://cloud.siliconflow.cn/account/ak) | Free & low-cost endpoints for DeepSeek / Qwen |

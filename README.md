@@ -72,12 +72,12 @@
 
 ### 1. 常见 API 服务商注册与密钥获取（点击超链接直接跳转）
 
-> **💡 模型选择建议**：大模型迭代迅速，无须纠结固定的「首选模型」。在查词分析与语言学习场景下，**强烈建议优先选择响应速度快、成本低廉的轻量小模型**（如 `Gemini Flash / Flash Lite`、`GPT Mini`、`DeepSeek Flash`、`Claude Haiku` 等）。轻量小模型输出极快且推理准确度高，完全满足词汇解析需求。
+> **💡 模型选择建议**：大模型迭代迅速，无须纠结固定的「首选模型」。在查词分析与语言学习场景下，**强烈建议优先选择响应速度快、成本低廉的轻量小模型**（如 `Gemini Flash / Flash Lite`、`GPT Mini / Nano / Luna` 系列、`DeepSeek Flash`、`Claude Haiku` 等）。轻量小模型输出极快且推理准确度高，完全满足词汇解析需求。
 
 | AI 服务商 | 官方 API Key 申请平台 | 常用轻量 / 高速模型举例 |
 |-----------|------------------------|-------------------------|
 | **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-2.0-flash-lite`（极速轻量） |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini`（轻量快速） |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` / Mini / Nano 系列轻量模型 |
 | **DeepSeek** | [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) | `deepseek-chat`, `deepseek-reasoner` |
 | **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | 聚合全球模型，无需多个账号 |
 | **SiliconFlow (硅基流动)** | [硅基流动 Cloud](https://cloud.siliconflow.cn/account/ak) | 提供 DeepSeek / Qwen 等免费或极低成本 API |
