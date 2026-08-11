@@ -72,22 +72,24 @@ To unlock Lexicon's AI capabilities, you need to configure an **API Key** for yo
 
 ### 1. Provider Registration & API Key Links (Direct Clickable Links)
 
-| AI Provider | Official API Key Portal | Recommended Models / Notes |
-|-------------|-------------------------|----------------------------|
-| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-1.5-pro` (Top recommendation, ultra fast) |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o`, `gpt-4o-mini` |
+> **💡 Model Selection Tip**: AI models evolve rapidly, so there's no need to look for a rigid "first choice". For dictionary lookups and language learning, **we strongly recommend using fast, lightweight small models** (e.g., `Gemini Flash / Flash Lite`, `GPT Mini`, `DeepSeek Flash`, `Claude Haiku`). Lightweight models provide ultra-fast responses and high accuracy, ideal for dictionary parsing.
+
+| AI Provider | Official API Key Portal | Lightweight / Fast Model Examples |
+|-------------|-------------------------|-----------------------------------|
+| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-2.0-flash-lite` (Ultra fast & lightweight) |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` (Fast & lightweight) |
 | **DeepSeek** | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | `deepseek-chat`, `deepseek-reasoner` |
 | **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | Global model aggregator; single key for all models |
 | **SiliconFlow (硅基流动)** | [SiliconFlow Cloud](https://cloud.siliconflow.cn/account/ak) | Free & low-cost endpoints for DeepSeek / Qwen |
-| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `claude-sonnet-4-6`, `claude-haiku-4-5-20251001` |
-| **Moonshot (Kimi)** | [Moonshot Platform](https://platform.moonshot.cn/console/api-keys) | `moonshot-v1-8k`, `moonshot-v1-32k` |
-| **Zhipu GLM** | [Zhipu Open Platform](https://open.bigmodel.cn/usercenter/apikeys) | `glm-4-flash`, `glm-4` |
-| **01.AI (Yi)** | [01.AI Platform](https://platform.lingyiwanwu.com/apikeys) | `yi-lightning`, `yi-large` |
+| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `claude-3-5-haiku` (Fast & lightweight) |
+| **Moonshot (Kimi)** | [Moonshot Platform](https://platform.moonshot.cn/console/api-keys) | `moonshot-v1-8k` |
+| **Zhipu GLM** | [Zhipu Open Platform](https://open.bigmodel.cn/usercenter/apikeys) | `glm-4-flash` (Fast & lightweight) |
+| **01.AI (Yi)** | [01.AI Platform](https://platform.lingyiwanwu.com/apikeys) | `yi-lightning` |
 | **Groq** | [GroqConsole](https://console.groq.com/keys) | Ultra high-speed Llama / Mixtral inference |
-| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `grok-3`, `grok-3-mini` |
-| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `sonar`, `sonar-pro` |
+| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `grok-3-mini` |
+| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `sonar` |
 | **Together AI** | [Together AI Settings](https://api.together.xyz/settings/api-keys) | Hosts various open-source models |
-| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `mistral-large`, `pixtral-12b` |
+| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `mistral-small`, `pixtral-12b` |
 | **Ollama (Local Private Models)** | [Ollama Website](https://ollama.com/) | No API Key needed; launch Ollama and set Base URL |
 | **Tavily (Real-Time Web Search)** | [Tavily AI Search Platform](https://tavily.com/) | Purpose-built search API for real-time AI contextual retrieval |
 
