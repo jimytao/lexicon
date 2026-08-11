@@ -31,10 +31,15 @@
 - 覆盖核心隐喻性介词（如 `up` / `out` / `off` 等）的认知拆解。
 - 支持单条意象「换一个」局部刷新。
 
-### 5. 漫画 / 截图多图翻译
-- 批量导入、并行翻译与进度；对照阅读、缩放平移与导出。
+### 5. 漫画 / 截图多图翻译 (Image & Comic Translation)
+- **批量导入与并行翻译**：支持一次性选择多张英汉漫画、教材截图或讲义，并行调用 OCR 提取文字与 AI 翻译；包含整体进度与对比预览。
+- **平移缩放与放大阅读**：内建高帧率双手指/鼠标滚轮平移与无级缩放查看器，原图与翻译版本秒级叠加切换。
+- **导出与分享**：支持生成长图导出与本地存档。
 
-### 6. 跨平台
+### 6. 网络实时搜索 (Tavily Web Search Integration)
+- **实时联网补全**：整合 Tavily AI Search Platform 搜索 API，遇到最新时事词汇、特殊缩写、网络流行语或冷门专业词汇时，AI 可自动检索全球最新网讯进行语境对齐与权威释义。
+
+### 7. 跨平台
 - **Web**（WASM SQLite + OCR）、**Windows**（Tauri v2）、**Android / iOS**（Capacitor 8）。
 
 ### 导航
@@ -61,14 +66,60 @@
 
 ---
 
-## ⚙️ 配置 AI
+## ⚙️ 配置 API Key 与服务指南 (AI & Web Search Setup)
 
-1. 打开底栏 **Settings**。
-2. 在 **App Language** 切换中文 / 英文界面；**Appearance** 可选浅色 / 深色 / 跟随系统。
-3. 选择服务商（推荐 **Google Gemini**），粘贴 **API Key**，点 **Test Connection**。
-4. 回到 Dict，将顶部模式切到 **AI Lookup** 或 **Pure Core** 即可使用大模型能力。
+软件首次使用或更换模型服务商时，需要配置对应的 **API Key**。Lexicon 采用原生 OpenAI 兼容协议与 Google Gemini 官方协议，支持绝大部分主流云端 AI 与本地私有化大模型。
 
-> **支持**：Google Gemini、OpenAI、Anthropic Claude、DeepSeek、Moonshot/Kimi、智谱 GLM、零一万物、SiliconFlow、OpenRouter、xAI/Grok、Perplexity、Mistral、Groq、Together AI、自定义 Endpoint。
+### 1. 常见 API 服务商注册与密钥获取（点击超链接直接跳转）
+
+| AI 服务商 | 官方 API Key 申请平台 | 推荐模型 / 备注 |
+|-----------|------------------------|-----------------|
+| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-1.5-pro`（首选推荐，速度极快） |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o`, `gpt-4o-mini` |
+| **DeepSeek** | [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) | `deepseek-chat`, `deepseek-reasoner` |
+| **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | 聚合全球模型，无需多个账号 |
+| **SiliconFlow (硅基流动)** | [硅基流动 Cloud](https://cloud.siliconflow.cn/account/ak) | 提供 DeepSeek / Qwen 等免费或极低成本 API |
+| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `claude-sonnet-4-6`, `claude-haiku-4-5-20251001` |
+| **Moonshot (Kimi)** | [Moonshot 开放平台](https://platform.moonshot.cn/console/api-keys) | `moonshot-v1-8k`, `moonshot-v1-32k` |
+| **智谱 GLM** | [智谱 AI 开放平台](https://open.bigmodel.cn/usercenter/apikeys) | `glm-4-flash`, `glm-4` |
+| **零一万物 (Yi)** | [零一万物 API 平台](https://platform.lingyiwanwu.com/apikeys) | `yi-lightning`, `yi-large` |
+| **Groq** | [GroqConsole](https://console.groq.com/keys) | 超高速 Llama / Mixtral 推理 |
+| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `grok-3`, `grok-3-mini` |
+| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `sonar`, `sonar-pro` |
+| **Together AI** | [Together AI Settings](https://api.together.xyz/settings/api-keys) | 包含各类开源模型托管 |
+| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `mistral-large`, `pixtral-12b` |
+| **Ollama (本地私有大模型)** | [Ollama 官网](https://ollama.com/) | 无需 API Key，只需启动 Ollama 填本地地址即可 |
+| **Tavily (网络实时搜索)** | [Tavily AI Search Platform](https://tavily.com/) | 专为 AI 简报与联网查词设计的 Web 搜索 API |
+
+---
+
+### 2. 详细配置步骤（从获取到激活）
+
+#### 步骤一：获取 API Key
+1. 点击上方表格中您想使用的厂商链接（如 [Google AI Studio](https://aistudio.google.com/app/apikey) 或 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys)）。
+2. 登录/注册账号，创建新的 **API Key**（通常格式为 `sk-...` 或 `AIza...`）。
+3. 复制生成的 API Key。部分平台（如 OpenAI / DeepSeek）可能需要账号内有余额或充值额度（Top up）。
+
+#### 步骤二：进入 Lexicon 设置面板
+1. 打开 Lexicon，点击底栏最右侧的 **Settings** (设置全页 Tab)。
+2. 在页面顶部展开 **「AI 服务商与模型 (AI Provider & Model)」** 手风琴项。
+
+#### 步骤三：选择服务商并填写 API Key
+1. 在服务商网格中点击选择对应的厂商（例如 `Google Gemini`、`DeepSeek` 或 `OpenRouter`）。若使用第三方中转代理或本地 Ollama，请选择 `自定义 (Custom)` 并填写对应的 Endpoint 接口地址（如 `http://localhost:11434/v1`）。
+2. 将复制好的 API Key 粘贴至 **API Key** 输入框内，页面右上角将显示绿色的 `已保存 (Key Saved)` 提示。
+
+#### 步骤四：拉取并选择模型 (Fetch Models)
+1. 点击输入框旁边的 **「获取模型 (Fetch Models)」** 按钮。Lexicon 会自动向 API 接口发起实时查询并获取该账号可用的模型列表。
+2. 在弹出的模型下拉列表中选择您满意的模型（如 `gemini-2.0-flash` 或 `deepseek-chat`）。
+
+#### 步骤五：测试连接 (Test Connection)
+1. 点击下方高亮的 **「测试连接 (Test Connection)」** 按钮。
+2. 系统会发送一次轻量测试请求。当按钮显示测试成功，代表您的 API Key 和模型配置完全正确！回到 Dict 查词页即可享受完整的 AI 深度增强能力。
+
+#### 步骤六：配置 Tavily 网络实时搜索 (可选)
+1. 在 **Settings** 页面向下滚动至 **「网络实时搜索 (Web Search)」** 开关。
+2. 开启开关，并在出现的输入框中粘贴从 [Tavily AI Search Platform](https://tavily.com/) 获得的 API Key（格式为 `tvly-...`）。
+3. 开启后，AI 在进行概念拆解和多角度词汇溯源时，可实时抓取全球最新网讯增强答复。
 
 ---
 

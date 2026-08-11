@@ -31,10 +31,15 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - Cognitive metaphors for core prepositions (`up`, `out`, `off`, …).
 - Per-item “regenerate” refresh.
 
-### 5. Comic / screenshot batch translation
-- Multi-image import, parallel translate, side-by-side reading, zoom/pan, export.
+### 5. Comic / screenshot batch translation (Image & Comic Translation)
+- **Batch import & parallel translation**: Import multiple English/Chinese comic pages, textbook scans, or handouts; parallel OCR text extraction and AI translation with progress & side-by-side previews.
+- **Pan, zoom & detailed reading**: Built-in smooth multi-touch & mouse wheel pan & infinite zoom viewer with 1-click toggle between original image and translated overlays.
+- **Export & archiving**: Supports generating long image exports and local saves.
 
-### 6. Platforms
+### 6. Real-time web search (Tavily Web Search Integration)
+- **Real-time online grounding**: Integrated Tavily AI Search Platform API; automatically fetches real-time web context, news, slang, and technical jargon for AI prompt enhancement and accurate explanations.
+
+### 7. Platforms
 - **Web** (WASM SQLite + OCR), **Windows** (Tauri v2), **Android / iOS** (Capacitor 8).
 
 ### Navigation
@@ -61,27 +66,73 @@ Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, 
 
 ---
 
-## ⚙️ AI Configuration
+## ⚙️ API Key & Provider Setup Guide
 
-1. Open the bottom **Settings** tab.
-2. Set **App Language** (Chinese / English); choose **Appearance** (Light / Dark / System).
-3. Pick a provider (we recommend **Google Gemini**), paste the **API Key**, tap **Test Connection**.
-4. Back in Dict, switch the top mode to **AI Lookup** or **Pure Core**.
+To unlock Lexicon's AI capabilities, you need to configure an **API Key** for your preferred AI provider. Lexicon natively supports standard OpenAI-compatible endpoints as well as the official Google Gemini protocol, working seamlessly with both major cloud platforms and local privacy-first models.
 
-> **Providers**: Google Gemini, OpenAI, Anthropic Claude, DeepSeek, Moonshot/Kimi, Zhipu GLM, 01.AI, SiliconFlow, OpenRouter, xAI/Grok, Perplexity, Mistral, Groq, Together AI, Custom Endpoint.
+### 1. Provider Registration & API Key Links (Direct Clickable Links)
+
+| AI Provider | Official API Key Portal | Recommended Models / Notes |
+|-------------|-------------------------|----------------------------|
+| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `gemini-2.0-flash`, `gemini-1.5-pro` (Top recommendation, ultra fast) |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o`, `gpt-4o-mini` |
+| **DeepSeek** | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | `deepseek-chat`, `deepseek-reasoner` |
+| **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | Global model aggregator; single key for all models |
+| **SiliconFlow (硅基流动)** | [SiliconFlow Cloud](https://cloud.siliconflow.cn/account/ak) | Free & low-cost endpoints for DeepSeek / Qwen |
+| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `claude-sonnet-4-6`, `claude-haiku-4-5-20251001` |
+| **Moonshot (Kimi)** | [Moonshot Platform](https://platform.moonshot.cn/console/api-keys) | `moonshot-v1-8k`, `moonshot-v1-32k` |
+| **Zhipu GLM** | [Zhipu Open Platform](https://open.bigmodel.cn/usercenter/apikeys) | `glm-4-flash`, `glm-4` |
+| **01.AI (Yi)** | [01.AI Platform](https://platform.lingyiwanwu.com/apikeys) | `yi-lightning`, `yi-large` |
+| **Groq** | [GroqConsole](https://console.groq.com/keys) | Ultra high-speed Llama / Mixtral inference |
+| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `grok-3`, `grok-3-mini` |
+| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `sonar`, `sonar-pro` |
+| **Together AI** | [Together AI Settings](https://api.together.xyz/settings/api-keys) | Hosts various open-source models |
+| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `mistral-large`, `pixtral-12b` |
+| **Ollama (Local Private Models)** | [Ollama Website](https://ollama.com/) | No API Key needed; launch Ollama and set Base URL |
+| **Tavily (Real-Time Web Search)** | [Tavily AI Search Platform](https://tavily.com/) | Purpose-built search API for real-time AI contextual retrieval |
+
+---
+
+### 2. Step-by-Step Configuration Workflow
+
+#### Step 1: Obtain your API Key
+1. Click any provider link in the table above (e.g., [Google AI Studio](https://aistudio.google.com/app/apikey) or [DeepSeek Platform](https://platform.deepseek.com/api_keys)).
+2. Sign in or create an account, then generate a new **API Key** (typically starting with `sk-...`, `AIza...`, etc.).
+3. Copy the API Key. (Ensure your provider account has active credits if required).
+
+#### Step 2: Open Lexicon Settings
+1. Launch Lexicon and tap **Settings** in the bottom navigation bar (full-page tab).
+2. Expand the **"AI Provider & Model"** accordion item at the top.
+
+#### Step 3: Select Provider & Paste API Key
+1. Select your provider from the grid (e.g., `Google Gemini`, `DeepSeek`, or `OpenRouter`). If using a reverse proxy or local Ollama instance, select `Custom` and enter the Endpoint URL (e.g., `http://localhost:11434/v1`).
+2. Paste your API Key into the **API Key** input box. A green `Key Saved` indicator will appear.
+
+#### Step 4: Fetch Models & Select
+1. Click the **"Fetch Models"** button next to the model input box. Lexicon will query the provider for all available models on your account.
+2. Select your desired model from the dynamic dropdown list (e.g., `gemini-2.0-flash` or `deepseek-chat`).
+
+#### Step 5: Test Connection
+1. Click the **"Test Connection"** button below.
+2. Lexicon will execute a quick latency test. Once confirmed successful, all AI Features are activated! Return to the Dict tab to start querying.
+
+#### Step 6: Configure Tavily Web Search (Optional)
+1. In the **Settings** tab, scroll down to the **"Web Search"** toggle.
+2. Turn on the toggle and enter your Tavily API Key (`tvly-...`) obtained from [Tavily AI Search Platform](https://tavily.com/).
+3. Real-time web context will now enrich AI explanations and etymology breakdowns.
 
 ---
 
 ## ⌨️ Tips
 
-- **Ctrl + Enter**: Force full AI lookup.
-- **Search-box AI icon**: Bypass local dictionary for a direct AI definition.
-- **Image flow**: Import → Translate all → Read → Export.
-- **Clear history / cache**: Bottom of the Settings page.
+- **Ctrl + Enter**: Force full AI search.
+- **AI icon on search bar**: Bypass local dictionary and query AI directly.
+- **Image flow**: Import images → Translate all → Compare & read → Export.
+- **Clear history / cache**: Manage at the bottom of the Settings page.
 
 ---
 
-## 🛠️ Run Locally
+## 🛠️ Local Development
 
 Requires [Node.js](https://nodejs.org/) LTS (≥ 18).
 
@@ -92,12 +143,12 @@ npm install
 npm run dev
 ```
 
-Open the URL printed in the terminal (e.g. `http://localhost:5173/`).  
-*First lookup lazy-loads the dictionary (~30MB+); wait a few seconds.*
+Open the local server URL in your browser (e.g. `http://localhost:5173/`).  
+*First query lazy-loads the local dictionary (~30MB+), please allow a few seconds.*
 
 ---
 
-## ⚙️ Build
+## ⚙️ Building
 
 ```bash
 npm run build
@@ -105,7 +156,7 @@ npm run tauri:build
 npx cap sync android && cd android && ./gradlew assembleRelease
 ```
 
-Release SOP: [`workflow.md`](./workflow.md). Agent context: [`AGENT.md`](./AGENT.md).
+For release and upload guidelines, see [`workflow.md`](./workflow.md); agent context in [`AGENT.md`](./AGENT.md).
 
 ---
 
