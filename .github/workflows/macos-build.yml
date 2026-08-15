@@ -41,8 +41,11 @@ jobs:
 
       - name: Prepare macOS Artifacts
         run: |
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
-          VERSION="${TAG_NAME#v}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="0.9.10"
+          fi
           mkdir -p "$RUNNER_TEMP/macOS"
           
           # Find DMG file if generated
