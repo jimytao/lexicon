@@ -8,6 +8,7 @@ import type { ChatMessage, CognitiveMode } from '../../../types'
 import { cognitiveCacheKey, normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
 import { AI_CHAT_COMPOSER_LAYOUT } from '../../../utils/aiChatComposerLayout'
+import { useComposerAutoGrow } from '../../../hooks/useComposerAutoGrow'
 import { SectionHeading } from '../SectionHeading'
 
 
@@ -94,14 +95,8 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
   }
 
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 128)}px`
-  }, [input])
+  // 128px ≈ 4 lines
+  const { textareaRef } = useComposerAutoGrow(input, { maxHeight: 128 })
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -144,36 +139,41 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
       )}
 
       <div className={AI_CHAT_COMPOSER_LAYOUT.row}>
-        {/* Rich context toggle — beside input so iOS keyboard scroll cannot push it off-screen.
-            Still a single button; only rendered when enrichedContext exists. */}
-        {enrichedContext && (
-          <button
-            type="button"
-            onClick={() => setRichMode(v => !v)}
-            title={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
-            aria-label={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
-            className={`${AI_CHAT_COMPOSER_LAYOUT.bulb} transition-all duration-200 ${
-              richMode
-                ? 'bg-violet-500 text-white shadow-sm shadow-violet-300/40 dark:shadow-violet-700/30'
-                : 'text-violet-400 dark:text-violet-500 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-violet-200/60 dark:border-violet-800/50'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-          </button>
-        )}
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          enterKeyHint="send"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={t('chat.placeholder')}
-          disabled={loading}
-          className={AI_CHAT_COMPOSER_LAYOUT.input}
-        />
+        {/* Bulb + textarea keep Send on their row, bottom-aligned: the textarea's width
+            stays constant as it grows, so every line wraps at the same boundary and Send
+            sits beside the last line rather than costing a row of its own. */}
+        <div className="flex items-end gap-2 min-w-0 flex-1">
+          {/* Rich context toggle — beside input so iOS keyboard scroll cannot push it off-screen.
+              Still a single button; only rendered when enrichedContext exists. */}
+          {enrichedContext && (
+            <button
+              type="button"
+              onClick={() => setRichMode(v => !v)}
+              title={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
+              aria-label={richMode ? t('chat.richContextOn') : t('chat.richContextOff')}
+              className={`${AI_CHAT_COMPOSER_LAYOUT.bulb} transition-all duration-200 ${
+                richMode
+                  ? 'bg-violet-500 text-white shadow-sm shadow-violet-300/40 dark:shadow-violet-700/30'
+                  : 'text-violet-400 dark:text-violet-500 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-violet-200/60 dark:border-violet-800/50'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </button>
+          )}
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            enterKeyHint="send"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t('chat.placeholder')}
+            disabled={loading}
+            className={AI_CHAT_COMPOSER_LAYOUT.input}
+          />
+        </div>
         <button
           onClick={handleSend}
           disabled={loading || !input.trim()}

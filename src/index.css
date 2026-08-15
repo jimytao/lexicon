@@ -186,6 +186,27 @@ body {
   border-radius: 10px;
 }
 
+/* No-scrollbar: for compact auto-expanding textareas (composer inputs) where a
+   native/overlay scrollbar (esp. Android WebView, which ignores ::-webkit-scrollbar
+   styling) visually overflows the rounded container. Content stays scrollable via
+   touch/keyboard, just without a visible track. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Composer placeholders (search bar / AI chat box) never wrap — they should read as a
+   single-line prompt, only the user's own typed text is allowed to grow multi-line. */
+textarea.no-scrollbar::placeholder {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Input Zoom fix */
 @supports (-webkit-touch-callout: none) {
 

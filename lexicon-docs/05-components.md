@@ -226,6 +226,43 @@ export function useAiLookup() {
 
 相关纯函数（可单测）：`utils/abortSignal.ts`、`aiRequestErrors.ts`、`aiRequestGate.ts`、`historyTrack.ts`、`resultAiVisibility.ts`。
 
+### useComposerFlowLayout
+
+```ts
+// src/hooks/useComposerFlowLayout.ts
+// 负责：SearchBar 输入框的多行排版 —— 文字满宽、右下角按钮只遮最后一行
+
+export function useComposerFlowLayout(value, { gap, maxHeight }) {
+  // 用隐藏镜像 div（复制 textarea 的字体 / 内边距 / 内容宽度）测量：
+  //   1. 文字总高度 → textarea 高度
+  //   2. 末尾零宽标记的 x 坐标 → 最后一行末尾是否顶到按钮
+  // collides → reserveHeight 撑出一行空白供按钮占位；文字继续在上方满宽流动
+  // 下沉量由实测几何推导（按钮胶囊比行高高出多少就沉多少），按钮改尺寸自动适配
+
+  return { textareaRef, mirrorRef, actionsRef, containerRef, reserveHeight, isMultiLine }
+}
+```
+
+**硬约束（勿违反）**：
+
+- textarea 宽度**必须恒定**（满宽），按钮用 `absolute` 脱离文档流。一旦让「是否换行」去改变 textarea 宽度，就会形成**布局反馈环**：换行 → 变宽 → 不需换行 → 变窄 → 又需换行，每敲一个字符抖一次，严重时 React `Maximum update depth exceeded` 崩溃。
+- **不要数字符**判断换行，字符非等宽；一切阈值运行时按像素实测，随屏宽 / 字体自适应。
+- 若必须临时钉住 textarea 宽度做测量，`flex-1` 的 `flex-basis: 0` 会让 inline `width` 失效，须同时设 `flex: none`。
+
+### useComposerAutoGrow
+
+```ts
+// src/hooks/useComposerAutoGrow.ts
+// 负责：AiChatBox 输入框的高度自适应（Send 按钮本就在框外，无需绕行逻辑）
+// isMultiLine 仅用于圆角切换，不得反馈到宽度
+
+export function useComposerAutoGrow(value, { maxHeight }) {
+  return { textareaRef, isMultiLine }
+}
+```
+
+相关纯函数（可单测）：`utils/composerAutoGrow.ts`（`singleLineHeight` / `wrapsToMultipleLines`）。
+
 ## 各组件 Props 接口
 
 ```ts

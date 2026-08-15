@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.6**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.9**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -255,9 +255,10 @@ Tauri 2（PC）
 
 ### 最近一次重要改动
 
-**2026-07-28 (v0.9.5)** — 冷启动闪屏时序：改外观立刻持久化 `UiModeManager`；Android keep-on-screen；Tauri 延迟 `show` + boot `set_theme`；iOS 更早 chrome + `AppearanceBoot` 插件。
+**2026-08-16（未发版）** — 搜索栏多行布局重做：文字满宽排版、右下角按钮只遮最后一行、撞到按钮才长高；修复 v0.9.9 的换行抖动（布局反馈环）与按钮压字。新增 `useComposerFlowLayout`（详见 `05-components.md`，含硬约束）。
 
-此前（v0.9.4）：冷启动闪屏静态壳对齐 appearance boot；Active Dictionary 选择器裁切修复。
+此前（v0.9.9）：搜索栏与 AI 提问框升级为多行自适应 textarea；Tavily Web 搜索开关全站联动。  
+更早版本见 `CHANGELOG.md`（发版真相源）。
 
 ### 关键实现备忘
 
@@ -330,6 +331,8 @@ Tauri 2（PC）
 | 追问记录对不上历史 | chat key 是否 `cognitiveCacheKey`（Lookup/Core 分轨） |
 | UI 风格漂移 | 未读 `09-ui-ux-design-system.md`；设置是否又做成抽屉 |
 | 误加第四个底栏 Tab | 看板已雪藏；勿恢复 Memory Tab |
+| 输入框换行时一行/两行反复抖动、`Maximum update depth exceeded` | **布局反馈环**：让「是否换行」去改变 textarea 宽度（如按钮下沉腾宽），换行→变宽→不需换行→变窄→又换行。textarea 宽度必须恒定，按钮走 `absolute`；见 `05-components.md` 的 `useComposerFlowLayout` 硬约束 |
+| 给 `flex-1` 的元素设 inline `width` 没反应 | `flex-basis: 0` 会让 flex 无视 `width`，须同时设 `flex: none` |
 
 ---
 

@@ -51,12 +51,12 @@ Bottom navigation features **3 Tabs**: **Dict** (Lookup) / **Image** (Translatio
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.9.9_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.9/Lexicon_0.9.9_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.9_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.9/Lexicon_0.9.9_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.10_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.10_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64_en-US.msi)** (MSI)
 
-### Android (v0.9.9)
-- **[Lexicon_0.9.9_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.9/Lexicon_0.9.9_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.9](https://github.com/jimytao/lexicon/releases/tag/v0.9.9).
+### Android (v0.9.10)
+- **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.10](https://github.com/jimytao/lexicon/releases/tag/v0.9.10).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)

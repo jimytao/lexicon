@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-08-16 — 搜索栏多行布局重做：文字绕行按钮 + 布局抖动修复 (v0.9.10)
+
+### 用户可见
+1. **修复输入框在换行边界反复抖动**：v0.9.9 的「换行后按钮下沉」会让输入框变宽、文字又不需要换行、按钮再弹回，导致每敲一个字符就在一行 / 两行之间跳变，严重时触发 React `Maximum update depth exceeded` 崩溃。根因是「是否换行」的判断依赖了会被该判断本身改变的宽度（布局反馈环）。
+2. **文字绕行按钮的排版模型**：文字**始终按满宽排版**，右下角按钮只遮挡**最后一行**。第 1 行写到撞按钮 → 按钮下沉留出空行，第 1 行继续延伸到最右边；文字溢出到第 2 行时**总高度不变**；第 2 行也撞到按钮，才再长高一行。
+3. **消除按钮与文字重叠**：按钮胶囊比一行文字高，底部对齐时会探进上一行（满宽行）的尾部。现按最后一行下沉，下沉量由实测几何推导（按钮比行高高出多少就沉多少），按钮尺寸变化时自动适配。
+4. **输入框滚动条不再破框**：多行滚动时原生 / Android WebView 滚动条会溢出圆角并与按钮打架，改为隐藏滚动条（内容仍可滚动）。
+5. **占位符不再撑高空输入框**：占位符强制单行省略，只有用户真实输入才多行延展。
+6. **搜索按钮组瘦身**：按钮组 153px → 115px，可输入宽度显著变宽；静止胶囊高度 62px → 52px。
+
+### 工程
+- 新增 `src/hooks/useComposerFlowLayout.ts`：隐藏镜像元素测量「最后一行末尾的像素位置」与所需下沉量。**不数字符**（字符非等宽），阈值全部运行时实测，随屏宽 / 字体自适应。textarea 宽度恒定 → 结构上不存在反馈环。
+- 新增 `src/hooks/useComposerAutoGrow.ts` + `src/utils/composerAutoGrow.ts`（含测试）：AI 追问框的简单高度自适应。
+- `src/index.css`：新增 `.no-scrollbar`（含 textarea 占位符单行省略规则）。
+- 排错记录：用 `offsetWidth` 反推宽度会因取整误差在边界翻转；给 `flex-1` 的 textarea 设 inline `width` 会被 flex 布局忽略（`flex-basis: 0`），须同时设 `flex: none` 才能钉住测量宽度。
+
+### 涉及文件
+- `src/components/SearchBar/index.tsx`
+- `src/components/ResultView/AiSection/AiChatBox.tsx`
+- `src/hooks/useComposerFlowLayout.ts`、`src/hooks/useComposerAutoGrow.ts`
+- `src/utils/composerAutoGrow.ts`、`src/utils/composerAutoGrow.test.ts`
+- `src/utils/aiChatComposerLayout.ts`
+- `src/index.css`
+
+---
+
 ## 2026-08-15 — 主搜索栏与 AI 提问框多行自适应延伸及按钮联动 (v0.9.9)
 
 ### 用户可见

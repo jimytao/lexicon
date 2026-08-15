@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
@@ -7,6 +7,7 @@ import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
 import type { SuggestItem } from '../../types'
 import { normalizeQuery, hasAnyAiCacheEntry } from '../../utils/text'
+import { useComposerFlowLayout } from '../../hooks/useComposerFlowLayout'
 import { useT } from '../../i18n'
 
 interface SearchBarProps {
@@ -22,24 +23,17 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   const { words: historyWords } = useHistoryStore()
   const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const containerRef = useRef<HTMLFormElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const suggestRequestRef = useRef(0)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
-  const [isMultiLine, setIsMultiLine] = useState(false)
   const trimmedQuery = query.trim()
+
+  // gap-3 of clearance from the buttons; 110px ≈ 4 lines before the text scrolls
+  const { textareaRef, mirrorRef, actionsRef, containerRef: pillRef, reserveHeight, isMultiLine } =
+    useComposerFlowLayout(query, { gap: 12, maxHeight: 110 })
 
   const showSuggestions = suggestions.length > 0
   const showHistory = historyEnabled && isFocused && !trimmedQuery && !showSuggestions
-
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    const newHeight = Math.min(el.scrollHeight, 110)
-    el.style.height = `${newHeight}px`
-    setIsMultiLine(el.scrollHeight > 36)
-  }, [query])
 
   // Build enriched suggest items: mark DB hits that have AI cache
   // and append history-miss items (in history but not in DB results)
@@ -145,7 +139,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         onSubmit={handleSubmit}
         className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
-        <div className={`flex items-end gap-3 px-4 py-2.5 border transition-all duration-300 shadow-sm overflow-hidden ${
+        <div ref={pillRef} className={`relative flex items-start gap-3 px-4 py-2 min-h-[52px] border transition-all duration-300 shadow-sm overflow-hidden ${
           isMultiLine ? 'rounded-2xl' : 'rounded-full'
         } ${
           isFocused
@@ -154,45 +148,55 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         }`}
         >
           <svg
-            className={`w-5 h-5 shrink-0 transition-colors self-start mt-2.5 ${isFocused ? 'text-accent' : 'text-foreground-muted'}`}
+            className={`w-5 h-5 shrink-0 transition-colors mt-1.5 ${isFocused ? 'text-accent' : 'text-foreground-muted'}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
 
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={query}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            placeholder={t('search.placeholder')}
-            className="flex-1 min-w-0 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50 resize-none overflow-y-auto leading-normal py-1"
-            onFocus={(e) => {
-              setIsFocused(true)
-              e.target.select()
-            }}
-            onBlur={() => {
-              suggestRequestRef.current += 1
-              setTimeout(() => setIsFocused(false), 200)
-            }}
-          />
+          {/* The text always wraps at the full width — the buttons float over the
+              bottom-right corner, so they can only ever obstruct the last line. When
+              they would, `reserveHeight` opens one empty line beneath the text for them. */}
+          <div className="relative flex-1 min-w-0">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={query}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              placeholder={t('search.placeholder')}
+              className="block w-full text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50 resize-none overflow-y-auto no-scrollbar leading-normal py-1"
+              onFocus={(e) => {
+                setIsFocused(true)
+                e.target.select()
+              }}
+              onBlur={() => {
+                suggestRequestRef.current += 1
+                setTimeout(() => setIsFocused(false), 200)
+              }}
+            />
+            <div aria-hidden style={{ height: reserveHeight }} />
+            <div ref={mirrorRef} aria-hidden className="absolute top-0 left-0 invisible pointer-events-none" />
+          </div>
 
-          <div className={`flex shrink-0 items-center gap-2 p-1 rounded-full border transition-all duration-300 self-end ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
+          <div
+            ref={actionsRef}
+            className={`absolute right-4 bottom-2 flex shrink-0 items-center gap-1 rounded-full border transition-all duration-300 ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}
+          >
             {query && (
               <button
                 type="button"
                 onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); textareaRef.current?.focus() }}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
                 aria-label={t('search.clear')}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -206,30 +210,30 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
                   onForceAi?.(query.trim())
                 }}
                 disabled={!query.trim()}
-                className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 ${query.trim()
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 ${query.trim()
                     ? 'text-accent hover:bg-accent/10 active:scale-90 opacity-100'
                     : 'text-foreground-muted/20 opacity-40 cursor-default'
                   }`}
                 title={`${t('search.forceAi')} — ${t('search.forceAiHint')}`}
                 aria-label={t('search.forceAi')}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
               </button>
 
-              <div className={`w-[1px] h-4 bg-foreground/10 mx-1 transition-opacity duration-300 ${query.trim() ? 'opacity-100' : 'opacity-0'}`} />
+              <div className={`w-[1px] h-4 bg-foreground/10 mx-0.5 transition-opacity duration-300 ${query.trim() ? 'opacity-100' : 'opacity-0'}`} />
 
               <button
                 type="submit"
                 disabled={!query.trim()}
-                className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-500 ${query.trim()
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-500 ${query.trim()
                     ? 'bg-accent text-white shadow-md shadow-accent/20 active:scale-95 translate-x-0 opacity-100'
                     : 'bg-foreground/5 text-foreground-muted/20 translate-x-0 opacity-40 cursor-default'
                   }`}
                 aria-label={t('search.submit')}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>
