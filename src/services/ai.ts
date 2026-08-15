@@ -453,7 +453,7 @@ export async function performWebSearch(query: string, signal?: AbortSignal): Pro
 
 export async function searchTavilyImage(query: string, signal?: AbortSignal): Promise<string | null> {
   const config = getConfig()
-  if (!config.tavilyApiKey) return null
+  if (!config.webSearchEnabled || !config.tavilyApiKey) return null
 
   try {
     const response = await fetch('https://api.tavily.com/search', {

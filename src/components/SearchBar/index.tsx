@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
@@ -22,17 +22,24 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   const { words: historyWords } = useHistoryStore()
   const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const containerRef = useRef<HTMLFormElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const suggestRequestRef = useRef(0)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
+  const [isMultiLine, setIsMultiLine] = useState(false)
   const trimmedQuery = query.trim()
 
   const showSuggestions = suggestions.length > 0
   const showHistory = historyEnabled && isFocused && !trimmedQuery && !showSuggestions
 
-  // The suggestion triggering is now centralized in useSearch hook
-  // to avoid redundant DB calls and race conditions.
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const newHeight = Math.min(el.scrollHeight, 110)
+    el.style.height = `${newHeight}px`
+    setIsMultiLine(el.scrollHeight > 36)
+  }, [query])
 
   // Build enriched suggest items: mark DB hits that have AI cache
   // and append history-miss items (in history but not in DB results)
@@ -63,14 +70,14 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   function handleSelect(word: string) {
     setSuggestions([])
     setActiveIndex(-1)
-    inputRef.current?.blur()
+    textareaRef.current?.blur()
     onWordSelect(word)
   }
 
   function handleHistoryItemSelect(word: string) {
     setSuggestions([])
     setActiveIndex(-1)
-    inputRef.current?.blur()
+    textareaRef.current?.blur()
     onHistorySelect(word)
   }
 
@@ -99,7 +106,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
     handleSelect(finalQuery)
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setQuery(e.target.value)
     setActiveIndex(-1)
     if (!e.target.value.trim()) {
@@ -108,7 +115,13 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+      return
+    }
+
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setActiveIndex(i => Math.min(i + 1, enrichedSuggestions.length - 1))
@@ -132,33 +145,35 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         onSubmit={handleSubmit}
         className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
-        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-full border transition-all duration-300 shadow-sm overflow-hidden
-          ${isFocused
+        <div className={`flex items-end gap-3 px-4 py-2.5 border transition-all duration-300 shadow-sm overflow-hidden ${
+          isMultiLine ? 'rounded-2xl' : 'rounded-full'
+        } ${
+          isFocused
             ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg'
             : 'bg-background-soft border-border hover:border-foreground-muted/30'
-          }`}
+        }`}
         >
           <svg
-            className={`w-5 h-5 shrink-0 transition-colors ${isFocused ? 'text-accent' : 'text-foreground-muted'}`}
+            className={`w-5 h-5 shrink-0 transition-colors self-start mt-2.5 ${isFocused ? 'text-accent' : 'text-foreground-muted'}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
 
-          <input
-            ref={inputRef}
-            type="text"
+          <textarea
+            ref={textareaRef}
+            rows={1}
             inputMode="search"
+            enterKeyHint="search"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
-            enterKeyHint="search"
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder={t('search.placeholder')}
-            className="flex-1 min-w-0 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50"
+            className="flex-1 min-w-0 text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50 resize-none overflow-y-auto leading-normal py-1"
             onFocus={(e) => {
               setIsFocused(true)
               e.target.select()
@@ -169,11 +184,11 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
             }}
           />
 
-          <div className={`flex shrink-0 items-center gap-2 p-1 rounded-full border transition-all duration-300 ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
+          <div className={`flex shrink-0 items-center gap-2 p-1 rounded-full border transition-all duration-300 self-end ${query.trim() ? 'bg-foreground/5 border-foreground/5' : 'bg-foreground/5 border-transparent'}`}>
             {query && (
               <button
                 type="button"
-                onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); inputRef.current?.focus() }}
+                onClick={() => { suggestRequestRef.current += 1; setSuggestions([]); setQuery(''); setActiveIndex(-1); textareaRef.current?.focus() }}
                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground-muted transition-colors animate-in fade-in zoom-in duration-200"
                 aria-label={t('search.clear')}
               >

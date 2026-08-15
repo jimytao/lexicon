@@ -94,6 +94,15 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
   }
 
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`
+  }, [input])
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -154,8 +163,10 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
             </svg>
           </button>
         )}
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
+          rows={1}
+          enterKeyHint="send"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

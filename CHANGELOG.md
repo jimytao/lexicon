@@ -1,11 +1,31 @@
 # CHANGELOG
 
+## 2026-08-15 — 主搜索栏与 AI 提问框多行自适应延伸及按钮联动 (v0.9.9)
+
+### 用户可见
+1. **主搜索栏与 AI 提问框多行自适应输入 (Multi-line Auto-Expanding Textarea)**：将主搜索栏（`SearchBar`）与 AI 提问框（`AiChatBox`）单行 `<input>` 升级为多行自适应 `<textarea>`。输入长词、长句或长提问时，文字在容器宽度内严格自动换行全量展示，彻底解决长文本溢出滚屏与手机端光标调不准的问题。输入框根据字数从 1 行自动延展至 4 行（最高 110px，超长显示滚动条），提交或清空后自动平滑收缩复原。
+2. **多行交互与按钮联动视觉协调 (Dynamic Layout Adaptation)**：
+   - 搜索栏变为多行时外框由经典 `rounded-full` 胶囊自动平滑过渡为圆润大卡片（`rounded-2xl`），彻底避免胶囊弧角遮挡文字。
+   - 布局采用“左上固定 + 右下沉底”结构：左侧图标（搜索栏放大镜 / AI 提问框 💡 开关）锚定在左上角（`self-start`），右侧操作按钮组（清除 ✕ / 强制 AI ✨ / 搜索 → / 发送）锚定在最下一行沉底（`self-end`），随最下一行平滑移动。
+   - 键盘交互：支持桌面端 `Enter` 直接提交 / `Shift + Enter` 插入换行；移动端配置原生 `enterKeyHint` 渲染“搜索”与“发送”软键盘按钮。
+3. **Tavily Web 搜索开关全站联动补全**：完善 `searchTavilyImage` 校验逻辑，当在设置中关闭 Web 搜索开关时，系统停止一切 Tavily 图片检索请求并隐藏对应入口。
+
+### 涉及文件
+- `src/components/SearchBar/index.tsx`
+- `src/components/ResultView/AiSection/AiChatBox.tsx`
+- `src/utils/aiChatComposerLayout.ts`
+- `src/services/ai.ts`
+- `src/components/ResultView/InstantSection/MeaningList.tsx`
+
+---
+
 ## 2026-08-11 — AI 双轨 Tag 隔离缓存架构与真实例句练习重构 (v0.9.8)
 
 ### 用户可见
 1. **AI 搜索双轨 Tag 隔离缓存 (Normal vs Bypass)**：普通 AI 搜索（`normal` Tag）与强制 AI 搜索（`bypass` Tag ✨ 旁路词典）建立独立隔离缓存，互不干扰覆盖。同一单词可随时在普通 AI 视图与纯 AI 全量视图间自由点击切换并进行 0 秒瞬间对比。
 2. **历史记录四场景智能路由决策树**：包含普通与 Bypass 双缓存时优先载入普通搜索结果，并保留 ✨ 按钮供随时切看；仅包含 Bypass 强搜缓存时自动直接载入纯 AI 全量画面 (`AiFullView`)；仅有纯词库记录时以 `Instant` 模式轻量载入，不强制触发 AI 加载。
 3. **Lookup 模式真实例句理解练习重构**：Lookup 模式连通设置中的练习题数量（`maxExercises`）。AI 依据词条常见义项生成真实的在语境中的英文例句卡片，引导学习者结合特定例句解释该词的具体释义并进行针对性智能批改。
+4. **Tavily 网络搜索与图片检索开关联动修复**：修复在配置 `tavilyApiKey` 后，若将“Web 搜索”开关设为关闭状态，后台 `searchTavilyImage` 仍会绕过开关向 Tavily API 发起图片检索请求、以及 UI `MeaningList` 仍会展示“查看图片释义”按钮的问题。修复后保证 Web 搜索开关关闭时全站停止一切 Tavily 网络请求与图片检索入口。
 
 ### 涉及文件
 - `src/types/index.ts`
@@ -17,6 +37,7 @@
 - `src/App.tsx`
 - `src/services/ai.ts`
 - `src/components/ResultView/AiSection/PracticeSection.tsx`
+- `src/components/ResultView/InstantSection/MeaningList.tsx`
 - `src/i18n/index.ts`
 
 ---

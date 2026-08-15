@@ -24,7 +24,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
   const t = useT()
   const [expanded, setExpanded] = useState(false)
   const darkMode = useResolvedDark()
-  const { monolingualWord } = useSettingsStore()
+  const { monolingualWord, webSearchEnabled, tavilyApiKey } = useSettingsStore()
 
   const [imageUrls, setImageUrls] = useState<Record<number, string | null>>({})
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({})
@@ -99,7 +99,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                     </div>
                   )}
 
-                  {m.imageQuery && (
+                  {webSearchEnabled && tavilyApiKey && m.imageQuery && (
                     <div className="mt-1.5">
                       <button
                         onClick={() => handleToggleImage(i, m.imageQuery!)}

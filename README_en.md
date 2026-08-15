@@ -12,50 +12,51 @@ Lexicon is not just another translation app. Dual local dictionaries, cognitive 
 - **Instant**: Local dictionary only — zero latency, offline (out-of-dict queries auto-trigger combined AI search).
 - **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
 - **Pure Core**: Native usage — usage image (short gloss + feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms with mental-fit notes (when the headword still wins), scenes, register, and usage-output practice (no definition wall; modules are reorderable).
-- **Combined Dual-Track Results & Tag-Isolated Cache**: Single AI request generates both Lookup and Pure Core data; `normal` (standard search) and `bypass` (✨ force AI skipping dict) tag caches enable 0s instant toggling and side-by-side comparison; history items route via a 4-case smart decision tree.
-- **Contextual Meaning Exercises**: Lookup practice links to `maxExercises` count setting, generating real-world example sentence cards for learners to check and understand sense in context.
+- **Multi-line Auto-Expanding Input & Action Alignment**: Search bar and AI question box dynamically grow from 1 to 4 lines (capped at 110px) with strict text wrapping. Search bar smoothly transitions from `rounded-full` to `rounded-2xl` when expanding, while keeping top-left icons anchored and right action buttons bottom-aligned.
+- **Combined Dual-Output & Tag-Isolated Cache**: Single AI request generates both Lookup and Pure Core datasets; establishes independent `normal` and `bypass` (✨ Force AI) tag caches for 0-second instant comparison; history items are retrieved via a 4-scenario smart decision tree.
+- **Contextualized Example Practice**: Lookup mode connects to `maxExercises` setting, generating real-in-context English example cards to guide learners in verifying definitions within context.
 
-### 2. Dual dictionaries & smart routing
-- **Dictionaries**: OALD 9 bilingual (`lexicon.db`, ~52k) + OALD 10 English-English (`lexicon_en.db`, ~84k).
-- **Monolingual hot-swap**: Independent word/phrase toggles; UI reflows and hides redundant Chinese when needed.
-- **Chinese reverse routing & Core fix**: Chinese queries map via the bilingual DB; Pure Core explicitly guides AI to find authentic English counterparts and teach usage from a native perspective.
-- **Fallback**: Missing English-English DB falls back to bilingual safely.
+### 2. Dual Local Dictionaries & Smart Routing
+- **Multi-Dictionary Engine**: Oxford Advanced Learner's Dictionary 9th Edition (Bilingual, `lexicon.db`, ~52k entries) + 10th Edition (Monolingual English, `lexicon_en.db`, ~84k entries).
+- **Monolingual Hot-Toggle**: Words/phrases independently support monolingual mode, switching seamlessly between English-English and English-Chinese rendering.
+- **Chinese Reverse Routing & Core Fix**: Chinese queries route to the bilingual database for reverse lookup; Pure Core mode actively identifies authentic English target words with native speaker mindset.
+- **Fallback Protection**: Missing English-English entries fall back to bilingual dictionary safely to avoid crashes.
 
-### 3. AI extras & personal assets
-- Lookup / Core module lists are reorderable in Settings; in-context chat; contextual meaning-check vs usage-output practice.
-- **UK / US pronunciation** (auto-play + offline TTS fallback).
-- Lexicon Memory badges (read-only: notes / Core concept; **no** AI follow-up count badge — bottom AI Chat remains); AI follow-ups are stored on separate **Lookup / Pure Core** tracks; **AI Profile** diagnostics in Settings (follow-ups are batched before background distillation; unfinished jobs resume on cold start). Personal-notes editor is shelved; underlying memory data remains.
-- Weakness-board UI is **shelved** (not in the tab bar); Profile backend remains available.
+### 3. AI Augmentation & Personal Assets
+- Modular Lookup / Core components can be reordered or toggled in Settings; inline follow-up AI Chat & practice exercises.
+- **UK / US Audio**: Native audio pronunciation with offline TTS fallback.
+- Lexicon Memory Badge (Read-only notes / Core metaphors); AI follow-up history is stored per **Lookup / Pure Core** track; in-app **AI Profile** diagnostics.
+- Weakness Dashboard UI is **sunsetted** from bottom navigation (backend Profile services remain fully functional).
 
-### 4. Preposition spatial imagery
-- Cognitive metaphors for core prepositions (`up`, `out`, `off`, …).
-- Per-item “regenerate” refresh.
+### 4. Preposition Metaphor Visualizer
+- Cognitive breakdown of core metaphoric prepositions (`up`, `out`, `off`, etc.).
+- Single metaphor "Regenerate" button for targeted refresh.
 
-### 5. Comic / screenshot batch translation (Image & Comic Translation)
-- **Batch import & parallel translation**: Import multiple English/Chinese comic pages, textbook scans, or handouts; parallel OCR text extraction and AI translation with progress & side-by-side previews.
-- **Pan, zoom & detailed reading**: Built-in smooth multi-touch & mouse wheel pan & infinite zoom viewer with 1-click toggle between original image and translated overlays.
-- **Export & archiving**: Supports generating long image exports and local saves.
+### 5. Image & Comic Translation
+- **Batch Import & Parallel Processing**: Multi-image OCR and parallel AI translation with progress tracking.
+- **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated versions.
+- **Export & Archive**: Supports long-image exports.
 
-### 6. Real-time web search (Tavily Web Search Integration)
-- **Real-time online grounding**: Integrated Tavily AI Search Platform API; automatically fetches real-time web context, news, slang, and technical jargon for AI prompt enhancement and accurate explanations.
+### 6. Real-Time Web Search Integration (Tavily AI Search)
+- **Live Search Extension**: Connects with Tavily Search API for slang, trending news terms, jargon, and contemporary phrases.
 
-### 7. Platforms
+### 7. Cross-Platform Engine
 - **Web** (WASM SQLite + OCR), **Windows** (Tauri v2), **Android / iOS** (Capacitor 8).
 
-### Navigation
-Bottom bar **3 tabs**: **Dict** / **Image** / **Settings** (full-page settings, not a drawer). Appearance supports Light / Dark / **System**.
+### Navigation Layout
+Bottom navigation features **3 Tabs**: **Dict** (Lookup) / **Image** (Translation) / **Settings** (Full-page settings). Supports Light / Dark / **Follow System** themes.
 
 ---
 
 ## 📦 Download & Installation
 
 ### Windows
-- **[Lexicon_0.9.8_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.8_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.9_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.9/Lexicon_0.9.9_x64-setup.exe)** (recommended, NSIS)
+- **[Lexicon_0.9.9_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.9/Lexicon_0.9.9_x64_en-US.msi)** (MSI)
 
-### Android (v0.9.8)
-- **[Lexicon_0.9.8_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.8/Lexicon_0.9.8_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.8](https://github.com/jimytao/lexicon/releases/tag/v0.9.8).
+### Android (v0.9.9)
+- **[Lexicon_0.9.9_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.9/Lexicon_0.9.9_universal_signed.apk)** (recommended)
+- ABI splits: [Releases v0.9.9](https://github.com/jimytao/lexicon/releases/tag/v0.9.9).
 - *If AI fails after install/update, restart your VPN/proxy.*
 
 ### iOS (sideload)
