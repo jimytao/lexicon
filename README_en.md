@@ -54,6 +54,9 @@ Bottom navigation features **3 Tabs**: **Dict** (Lookup) / **Image** (Translatio
 - **[Lexicon_0.9.10_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64-setup.exe)** (recommended, NSIS)
 - **[Lexicon_0.9.10_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64_en-US.msi)** (MSI)
 
+### macOS Desktop (v0.9.10)
+- **[Lexicon_0.9.10_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal.dmg)** (Universal binary, supporting Apple Silicon M1-M4 & Intel Macs)
+
 ### Android (v0.9.10)
 - **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)** (recommended)
 - ABI splits: [Releases v0.9.10](https://github.com/jimytao/lexicon/releases/tag/v0.9.10).

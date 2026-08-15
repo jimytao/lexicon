@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.9**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.10**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -60,10 +60,10 @@ Zustand（状态管理 + 部分 persist）
 sql.js（本地 SQLite，WASM；全平台当前仍用此实现）
 Tesseract.js（WASM OCR，嵌字/图片模式文字定位）
 Capacitor 8（Android / iOS）
-Tauri 2（PC）
+Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ```
 
-目标平台：Web → Android（Capacitor）→ iOS（Capacitor）→ PC（Tauri）  
+目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）  
 **产品阶段**：多端已可构建；功能迭代以 Web 为开发基准。
 
 ---

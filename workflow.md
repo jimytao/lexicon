@@ -262,9 +262,11 @@ cd ..
 
 Gradle 在 `signingConfigs.release` 中签名；输出在 `android/app/build/outputs/apk/release/`，脚本会拷到仓库根目录的 `Lexicon_${V}_*_signed.apk`（供 `gh release upload`）。
 
-### 3.3 iOS（云端）
+### 3.3 iOS 与 macOS 桌面端（云端自动构建）
 
-无需本地编译。推送 tag `v$V` 后，`.github/workflows/ios-build.yml` 自动构建并把 `Lexicon.ipa` 挂到该 Release。
+无需本地 Mac 电脑。推送 tag `v$V` 后，GitHub Actions 自动触发：
+- `.github/workflows/ios-build.yml`：自动编译并把 `Lexicon.ipa` 挂载到 GitHub Release。
+- `.github/workflows/macos-build.yml`：自动编译 Tauri macOS 通用安装包（`Lexicon_${V}_universal.dmg` / `.app.zip`）并挂载到 GitHub Release。
 
 ### 3.5 构建后硬门禁（正式发版必跑）
 
@@ -387,15 +389,15 @@ $V = "X.X.X"
 gh release view "v$V" --json assets --jq '.assets[].name'
 # 期望至少含：x64-setup.exe、x64_en-US.msi、5 个 apk；稍后出现 Lexicon.ipa
 
-# iOS Actions
+# iOS & macOS Actions
 gh run list --workflow=ios-build.yml --limit 1
+gh run list --workflow=macos-build.yml --limit 1
 # 失败则排查 Actions 日志，勿声称发版完成
-```
 
 核对清单：
 - [ ] `version.json` 的 `version` / `url` / `signature` 与本版 `.sig` 一致，无 BOM，`is_major` 符合用户意图（默认 false）  
 - [ ] GitHub Release 含 Windows + Android 产物  
-- [ ] iOS workflow 成功且 `Lexicon.ipa` 已挂上（或已向用户说明仍在构建）  
+- [ ] iOS 与 macOS workflows 触发成功且产物挂上（或已向用户说明仍在构建）  
 - [ ] 向用户回报 Release URL  
 
 全部通过后进入 §8 清理。
