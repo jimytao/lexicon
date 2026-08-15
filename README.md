@@ -56,7 +56,10 @@
 
 ### macOS 桌面端 (v0.9.10)
 - **[Lexicon_0.9.10_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal.dmg)**（通用二进制，支持 Apple Silicon M1-M4 & Intel Mac）
-- *首次打开提示“无法验证开发者”时：在应用图标上**右键选择“打开”**即可；若提示文件损坏，在终端运行 `sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app`。*
+- **首次打开提示“无法验证开发者”或“已损坏”的解法（三选一，仅需首次设置）：**
+  1. **右键打开（最快）**：在 `Lexicon.app` 图标上按住 `Control` 键点击或直接右键，选择“打开”，并在弹窗中再次确认“打开”。
+  2. **系统设置允许**：打开 `系统设置` -> `隐私与安全性` -> 滚动至“安全性”栏目，点击“仍要打开”。
+  3. **终端解除隔离（针对损坏提示）**：若因浏览器标记提示损坏，打开终端运行：`sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app`
 
 ### Android 手机 / 平板 (v0.9.10)
 - **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)**（推荐）

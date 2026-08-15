@@ -56,7 +56,10 @@ Bottom navigation features **3 Tabs**: **Dict** (Lookup) / **Image** (Translatio
 
 ### macOS Desktop (v0.9.10)
 - **[Lexicon_0.9.10_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal.dmg)** (Universal binary, supporting Apple Silicon M1-M4 & Intel Macs)
-- *First launch prompt "Unidentified developer": **Right-click app icon and select "Open"**; if flagged as damaged by Gatekeeper, run `sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app` in Terminal.*
+- **First-launch Gatekeeper Solutions ("Unidentified Developer" or "App Damaged"):**
+  1. **Right-click Open (Fastest)**: Hold `Control` key or right-click `Lexicon.app`, select "Open", and click "Open" again in the dialog.
+  2. **System Settings Permission**: Go to `System Settings` -> `Privacy & Security` -> scroll down to "Security", and click "Open Anyway".
+  3. **Terminal Quarantine Removal**: If Gatekeeper flags the app as damaged, open Terminal and run: `sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app`
 
 ### Android (v0.9.10)
 - **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)** (recommended)
