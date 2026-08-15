@@ -56,6 +56,7 @@
 
 ### macOS 桌面端 (v0.9.10)
 - **[Lexicon_0.9.10_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal.dmg)**（通用二进制，支持 Apple Silicon M1-M4 & Intel Mac）
+- *首次打开提示“无法验证开发者”时：在应用图标上**右键选择“打开”**即可；若提示文件损坏，在终端运行 `sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app`。*
 
 ### Android 手机 / 平板 (v0.9.10)
 - **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)**（推荐）

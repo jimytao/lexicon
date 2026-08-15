@@ -56,6 +56,7 @@ Bottom navigation features **3 Tabs**: **Dict** (Lookup) / **Image** (Translatio
 
 ### macOS Desktop (v0.9.10)
 - **[Lexicon_0.9.10_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal.dmg)** (Universal binary, supporting Apple Silicon M1-M4 & Intel Macs)
+- *First launch prompt "Unidentified developer": **Right-click app icon and select "Open"**; if flagged as damaged by Gatekeeper, run `sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app` in Terminal.*
 
 ### Android (v0.9.10)
 - **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)** (recommended)
