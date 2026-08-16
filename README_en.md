@@ -1,148 +1,141 @@
 # Lexicon
 
-**Next-generation deep English learning tool for Chinese speakers** | **[中文版](./README.md)**
+**AI-Powered English Dictionary & Context Comprehension Tool for Desktop & Mobile** | **[中文版](./README.md)**
 
-Lexicon is not just another translation app. Dual local dictionaries, cognitive preposition imagery, cultural register, and async AI analysis help you grasp meaning, tone, and etymology.
+> 💡 **Not a flashcard app, but a deep reading & context comprehension assistant.**  
+> Lexicon combines **dual offline local dictionaries (Oxford 9th Bilingual + Oxford 10th Monolingual)** with **multimodal AI context analysis**. Instead of force-feeding flashcards or spaced repetition, Lexicon is built for real-world reading, translation, comics, and writing—helping you **instantly look up definitions and deeply understand tone, feel anchors, preposition metaphors, and native speaker usage**.
 
 ---
 
-## 🚀 Key Features
+## 🖼️ Real Application Screenshots
 
-### 1. Three lookup modes
-- **Instant**: Local dictionary only — zero latency, offline (out-of-dict queries auto-trigger combined AI search).
-- **AI Lookup**: Learn & remember — L1 first; light core image, roots, mnemonics, examples, prep imagery, meaning-check practice, and chat fade in.
-- **Pure Core**: Native usage — usage image (short gloss + feel anchor + emotional tone), concept tree, prep / other collocations (may be empty for tag particles), synonyms with mental-fit notes (when the headword still wins), scenes, register, and usage-output practice (no definition wall; modules are reorderable).
-- **Multi-line Auto-Expanding Input & Action Alignment**: Search bar and AI question box dynamically grow from 1 to 4 lines (capped at 110px) with strict text wrapping. Search bar smoothly transitions from `rounded-full` to `rounded-2xl` when expanding, while keeping top-left icons anchored and right action buttons bottom-aligned.
-- **Combined Dual-Output & Tag-Isolated Cache**: Single AI request generates both Lookup and Pure Core datasets; establishes independent `normal` and `bypass` (✨ Force AI) tag caches for 0-second instant comparison; history items are retrieved via a 4-scenario smart decision tree.
-- **Contextualized Example Practice**: Lookup mode connects to `maxExercises` setting, generating real-in-context English example cards to guide learners in verifying definitions within context.
+| AI Lookup & Memory Anchor (AI Lookup) | Comic & Manga OCR Translation (Comic Translation) |
+| :---: | :---: |
+| ![AI Lookup Result](./docs/images/02_lookup_result.png) | ![Comic Translation](./docs/images/03_comic_translate.png) |
+| *Example query `dart`: Phonetics, CORE IMAGE memory anchor & deep definitions* | *Import manga/comics; auto OCR extracts text and generates bilingual cards* |
+
+| Clean Home Interface & 3 Modes (Home Screen) | Flexible AI Provider & Web Search (Settings) |
+| :---: | :---: |
+| ![Home Screen](./docs/images/01_home_screen.png) | ![Settings Panel](./docs/images/05_settings.png) |
+| *Minimalist glassmorphic UI; supports Instant / AI Lookup / Pure Core modes* | *Configurable Gemini (Flash Lite), DeepSeek, OpenAI, Ollama & Tavily Web Search* |
+
+---
+
+## 💡 Why Choose Lexicon?
+
+There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused on card repetition and spaced memory algorithms. Lexicon has a completely different purpose:
+
+1. **No Rote Memorization**: We believe real vocabulary acquisition comes from deep context comprehension during reading, not mindless card flipping.
+2. **Zero-Latency Offline Dictionaries**: Built-in Oxford Advanced Learner's Dictionary 9th Edition (Bilingual, ~52k entries) and 10th Edition (Monolingual English, ~84k entries) stored in local SQLite WASM. Works instantly without internet.
+3. **Dual-Track AI Parsing**: Beyond dictionary definitions, AI breaks down emotional nuances, etymology, root mnemonics, synonym fit, and contextual practice cards.
+4. **Cognitive Preposition Visualizer**: Visual breakdown of metaphoric prepositions (`up`, `out`, `off`, `through`) to master authentic English collocations naturally.
+5. **Batch Image & Comic OCR Translation**: Tailored for manga readers, study notes, and document screenshots, featuring parallel OCR, smooth pan-and-zoom, and side-by-side bilingual overlay.
+
+---
+
+## 🚀 Key Feature Highlights
+
+### 1. Three Dedicated Lookup Modes
+- **Instant**: Offline local dictionary lookup with 0ms latency. Queries out of dictionary auto-trigger combined AI search.
+- **AI Lookup**: Presents local L1 definitions alongside AI-generated root breakdowns, mnemonics, example verification, and follow-up Q&A chat.
+- **Pure Core**: Replaces definition walls with **usage imagery (short gloss, feel anchors, emotional tone)**, concept trees, collocations, register notes, and output practice cards. Modules are reorderable via drag-and-drop.
+- **Auto-Expanding Input**: Search bar dynamically expands from 1 to 4 lines with strict text wrapping for smooth mobile typing.
+- **Dual-Track Cache & Comparison**: Single AI request generates both Lookup and Pure Core analyses, allowing instant 0ms track switching.
 
 ### 2. Dual Local Dictionaries & Smart Routing
-- **Multi-Dictionary Engine**: Oxford Advanced Learner's Dictionary 9th Edition (Bilingual, `lexicon.db`, ~52k entries) + 10th Edition (Monolingual English, `lexicon_en.db`, ~84k entries).
-- **Monolingual Hot-Toggle**: Words/phrases independently support monolingual mode, switching seamlessly between English-English and English-Chinese rendering.
-- **Chinese Reverse Routing & Core Fix**: Chinese queries route to the bilingual database for reverse lookup; Pure Core mode actively identifies authentic English target words with native speaker mindset.
-- **Fallback Protection**: Missing English-English entries fall back to bilingual dictionary safely to avoid crashes.
+- **Dual Oxford Engines**: Oxford 9th Edition Bilingual (~52k entries) + 10th Edition Monolingual (~84k entries).
+- **Monolingual Hot-Toggle**: Switch freely between English-English and English-Chinese views with auto-adjusted layout.
+- **Chinese Reverse Routing**: Reverse matches Chinese queries to authentic English words with native speaker mindset analysis.
 
-### 3. AI Augmentation & Personal Assets
-- Modular Lookup / Core components can be reordered or toggled in Settings; inline follow-up AI Chat & practice exercises.
-- **UK / US Audio**: Native audio pronunciation with offline TTS fallback.
-- Lexicon Memory Badge (Read-only notes / Core metaphors); AI follow-up history is stored per **Lookup / Pure Core** track; in-app **AI Profile** diagnostics.
-- Weakness Dashboard UI is **sunsetted** from bottom navigation (backend Profile services remain fully functional).
+### 3. Cognitive Preposition Imagery
+- Cognitive breakdown of core metaphoric prepositions (`up`, `out`, `off`, `through`, etc.).
+- Single metaphor "Regenerate" button for targeted spatial refresh.
 
-### 4. Preposition Metaphor Visualizer
-- Cognitive breakdown of core metaphoric prepositions (`up`, `out`, `off`, etc.).
-- Single metaphor "Regenerate" button for targeted refresh.
-
-### 5. Image & Comic Translation
+### 4. Image & Comic Translation
 - **Batch Import & Parallel Processing**: Multi-image OCR and parallel AI translation with progress tracking.
-- **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated versions.
+- **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated text.
 - **Export & Archive**: Supports long-image exports.
 
-### 6. Real-Time Web Search Integration (Tavily AI Search)
-- **Live Search Extension**: Connects with Tavily Search API for slang, trending news terms, jargon, and contemporary phrases.
+### 5. Flexible AI Engines & Real-Time Web Search
+- **Universal Provider Integration**: Supports Google Gemini, OpenAI, DeepSeek, Claude, OpenRouter, SiliconFlow, and local privacy-first Ollama models.
+- **Tavily AI Search Extension**: Live web search integration for slang, trending news terms, jargon, and contemporary phrases.
 
-### 7. Cross-Platform Engine
-- **Web** (WASM SQLite + OCR), **Windows** (Tauri v2), **Android / iOS** (Capacitor 8).
-
-### Navigation Layout
-Bottom navigation features **3 Tabs**: **Dict** (Lookup) / **Image** (Translation) / **Settings** (Full-page settings). Supports Light / Dark / **Follow System** themes.
+### 6. Cross-Platform Coverage
+- **Desktop**: Windows (Tauri v2) / macOS (dmg)
+- **Mobile**: Android (APK) / iOS (Capacitor 8)
+- **Web**: WASM SQLite offline web app
 
 ---
 
 ## 📦 Download & Installation
 
+> 🔄 **In-App Auto-Update Notice**:  
+> Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
+
 ### Windows
-- **[Lexicon_0.9.10_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64-setup.exe)** (recommended, NSIS)
-- **[Lexicon_0.9.10_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64_en-US.msi)** (MSI)
+- **[Lexicon_0.9.11_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.11/Lexicon_0.9.11_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.11_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.11/Lexicon_0.9.11_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.10)
-- **[Lexicon_0.9.10_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal.dmg)** (Universal binary, supporting Apple Silicon M1-M4 & Intel Macs)
-- **First-launch Gatekeeper Solutions ("Unidentified Developer" or "App Damaged"):**
-  1. **Right-click Open (Fastest)**: Hold `Control` key or right-click `Lexicon.app`, select "Open", and click "Open" again in the dialog.
-  2. **System Settings Permission**: Go to `System Settings` -> `Privacy & Security` -> scroll down to "Security", and click "Open Anyway".
-  3. **Terminal Quarantine Removal**: If Gatekeeper flags the app as damaged, open Terminal and run: `sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app`
+### macOS Desktop (v0.9.11)
+- **[Lexicon_0.9.11_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.11/Lexicon_0.9.11_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
-### Android (v0.9.10)
-- **[Lexicon_0.9.10_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_universal_signed.apk)** (recommended)
-- ABI splits: [Releases v0.9.10](https://github.com/jimytao/lexicon/releases/tag/v0.9.10).
-- *If AI fails after install/update, restart your VPN/proxy.*
+> **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
+> As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
+> 1. **Right-Click Open (Recommended & Easiest)**: Drag `Lexicon.app` to your `Applications` folder. Hold the `Control` key on your keyboard and right-click `Lexicon` → Select **Open**, then click **Open** again in the security prompt.
+> 2. **System Settings Security Authorization**: If blocked directly, open **System Settings → Privacy & Security**, scroll down to the "Security" section, find "Lexicon was blocked", and click **Open Anyway**.
+> 3. **Terminal Quarantine Removal (Ultimate Fix)**: If macOS claims the app is "damaged and cannot be opened", open **Terminal** and run the following command (enter your Mac user password when prompted):  
+>    ```bash
+>    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
+>    ```
 
-### iOS (sideload)
-1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud, not Store builds).
-2. USB-connect iPhone, unlock, trust the computer.
-3. Download `.ipa` from GitHub Releases → Sideloadly → Apple ID sign.
-4. Before first launch: Settings → General → VPN & Device Management → Trust your Apple ID.
+### Android (v0.9.11)
+- **[Lexicon_0.9.11_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.11/Lexicon_0.9.11_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.11](https://github.com/jimytao/lexicon/releases/tag/v0.9.11).
 
----
-
-## ⚙️ API Key & Provider Setup Guide
-
-To unlock Lexicon's AI capabilities, you need to configure an **API Key** for your preferred AI provider. Lexicon natively supports standard OpenAI-compatible endpoints as well as the official Google Gemini protocol, working seamlessly with both major cloud platforms and local privacy-first models.
-
-### 1. Provider Registration & API Key Links (Direct Clickable Links)
-
-> **💡 Model Selection Guidelines**: AI models update and iterate extremely rapidly, so there's no need to strictly follow specific generation numbers. For Lexicon's dictionary lookups and language learning workflows, **we strongly recommend selecting lightweight, high-speed model series** (such as `Flash`, `Flash Lite`, `Mini`, `Nano`, `Haiku`, `Small`, `Lightning`, etc.). These lightweight small models offer ultra-fast responses, minimal cost, and more than enough accuracy for deep lexical parsing.
-
-| AI Provider | Official API Key Portal | Recommended Model Series (Ignore Version Numbers) |
-|-------------|-------------------------|--------------------------------------------------|
-| **Google Gemini** | [Google AI Studio Platform](https://aistudio.google.com/app/apikey) | `Flash` / `Flash Lite` series (Ultra fast & lightweight) |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `Mini` / `Nano` / `Luna` lightweight series |
-| **DeepSeek** | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | `DeepSeek Chat` fast & lightweight model |
-| **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | Global aggregator; pick models tagged with `Flash`, `Mini`, or `Free` |
-| **SiliconFlow (硅基流动)** | [SiliconFlow Cloud](https://cloud.siliconflow.cn/account/ak) | Free & low-cost endpoints for `DeepSeek` / `Qwen` small models |
-| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Haiku` series (Fast & lightweight) |
-| **Moonshot (Kimi)** | [Moonshot Platform](https://platform.moonshot.cn/console/api-keys) | Standard `Moonshot` lightweight model |
-| **Zhipu GLM** | [Zhipu Open Platform](https://open.bigmodel.cn/usercenter/apikeys) | `GLM Flash` ultra-fast series |
-| **01.AI (Yi)** | [01.AI Platform](https://platform.lingyiwanwu.com/apikeys) | `Yi Lightning` fast series |
-| **Groq** | [GroqConsole](https://console.groq.com/keys) | Ultra high-speed Llama / Mixtral lightweight nodes |
-| **xAI (Grok)** | [xAI Console](https://console.x.ai/) | `Grok Mini` series |
-| **Perplexity** | [Perplexity API Settings](https://www.perplexity.ai/settings/api) | `Sonar` base model |
-| **Together AI** | [Together AI Settings](https://api.together.xyz/settings/api-keys) | Pick `Small` / `Mini` hosted open-source endpoints |
-| **Mistral** | [Mistral Console](https://console.mistral.ai/api-keys/) | `Mistral Small` series |
-| **Ollama (Local Private Models)** | [Ollama Website](https://ollama.com/) | No API Key needed; run small quantized models (7B/8B/Q4) locally |
-| **Tavily (Real-Time Web Search)** | [Tavily AI Search Platform](https://tavily.com/) | Purpose-built search API for real-time AI contextual retrieval |
+### iOS (Sideload)
+1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).
+2. Connect iPhone via USB, unlock, and trust the computer.
+3. Download `.ipa` from GitHub Releases → Drag into Sideloadly → Sign with Apple ID.
+4. Before launching: Settings → General → VPN & Device Management → Trust your Apple ID.
 
 ---
 
-### 2. Step-by-Step Configuration Workflow
+## ⚙️ API Key & AI Configuration Guide
 
-#### Step 1: Obtain your API Key
-1. Click any provider link in the table above (e.g., [Google AI Studio](https://aistudio.google.com/app/apikey) or [DeepSeek Platform](https://platform.deepseek.com/api_keys)).
-2. Sign in or create an account, then generate a new **API Key** (typically starting with `sk-...`, `AIza...`, etc.).
-3. Copy the API Key. (Ensure your provider account has active credits if required).
+To activate AI enhancements, configure an API Key for your preferred provider. Lexicon natively supports standard OpenAI-compatible endpoints as well as the official Google Gemini protocol.
 
-#### Step 2: Open Lexicon Settings
-1. Launch Lexicon and tap **Settings** in the bottom navigation bar (full-page tab).
-2. Expand the **"AI Provider & Model"** accordion item at the top.
+> **💡 Model Selection Advice**: For dictionary lookups and language learning workflows, **we strongly recommend selecting lightweight, high-speed model series** (such as `gemini-3.1-flash-lite-preview`, `Flash`, `Flash Lite`, `Mini`, `Haiku`, `Small`, etc.).
 
-#### Step 3: Select Provider & Paste API Key
-1. Select your provider from the grid (e.g., `Google Gemini`, `DeepSeek`, or `OpenRouter`). If using a reverse proxy or local Ollama instance, select `Custom` and enter the Endpoint URL (e.g., `http://localhost:11434/v1`).
-2. Paste your API Key into the **API Key** input box. A green `Key Saved` indicator will appear.
+| AI Provider | Official Portal | Recommended Model Series |
+|---|---|---|
+| **Google Gemini** | [Google AI Studio](https://aistudio.google.com/app/apikey) | `Flash` / `Flash Lite` series (ultra fast & low cost) |
+| **DeepSeek** | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | `DeepSeek Chat` fast lightweight model |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` lightweight series |
+| **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | Global aggregator; pick models tagged with `Flash` or `Mini` |
+| **SiliconFlow** | [SiliconFlow Cloud](https://cloud.siliconflow.cn/account/ak) | Free & low-cost hosted endpoints for `DeepSeek` / `Qwen` |
+| **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Claude Haiku` lightweight series |
+| **Ollama (Local Private)** | [Ollama Website](https://ollama.com/) | Privacy-first local models; set endpoint to `http://localhost:11434/v1` |
+| **Tavily (Real-Time Search)** | [Tavily AI Platform](https://tavily.com/) | Real-time web retrieval API tailored for AI contextual analysis |
 
-#### Step 4: Fetch Models & Select
-1. Click the **"Fetch Models"** button next to the model input box. Lexicon will query the provider for all available models on your account.
-2. Select your desired lightweight, fast model from the dynamic dropdown list (e.g. models tagged with `Flash`, `Mini`, or `Chat`).
-
-#### Step 5: Test Connection
-1. Click the **"Test Connection"** button below.
-2. Lexicon will execute a quick latency test. Once confirmed successful, all AI Features are activated! Return to the Dict tab to start querying.
-
-#### Step 6: Configure Tavily Web Search (Optional)
-1. In the **Settings** tab, scroll down to the **"Web Search"** toggle.
-2. Turn on the toggle and enter your Tavily API Key (`tvly-...`) obtained from [Tavily AI Search Platform](https://tavily.com/).
-3. Real-time web context will now enrich AI explanations and etymology breakdowns.
+### Quick 5-Step Setup:
+1. Obtain an API Key from any provider portal above.
+2. Launch Lexicon and click **Settings** on the bottom navigation bar.
+3. Expand **"AI Provider & Model"**, select your provider, and paste your API Key.
+4. Click **"Fetch Models"** and pick a lightweight model (e.g., Flash or Mini).
+5. Click **"Test Connection"** to verify and start searching!
 
 ---
 
-## ⌨️ Tips
+## ⌨️ Useful Shortcuts & Tips
 
-- **Ctrl + Enter**: Force full AI search.
-- **AI icon on search bar**: Bypass local dictionary and query AI directly.
-- **Image flow**: Import images → Translate all → Compare & read → Export.
-- **Clear history / cache**: Manage at the bottom of the Settings page.
+- **Ctrl + Enter**: Force full AI query execution.
+- **AI icon on search bar (✨)**: Bypass local dictionary and query AI directly.
+- **Comic / Image Workflow**: Import images → Batch translate → Side-by-side read → Export long image.
+- **Cache Management**: Clear history and cache at the bottom of the Settings page.
 
 ---
 
-## 🛠️ Local Development
+## 🛠️ Local Development & Building
 
 Requires [Node.js](https://nodejs.org/) LTS (≥ 18).
 
@@ -153,30 +146,27 @@ npm install
 npm run dev
 ```
 
-Open the local server URL in your browser (e.g. `http://localhost:5173/`).  
-*First query lazy-loads the local dictionary (~30MB+), please allow a few seconds.*
+Open the local server URL in your browser (e.g. `http://localhost:5173/`).
 
----
-
-## ⚙️ Building
-
+### Building Production Bundles
 ```bash
 npm run build
 npm run tauri:build
 npx cap sync android && cd android && ./gradlew assembleRelease
 ```
 
-For release and upload guidelines, see [`workflow.md`](./workflow.md); agent context in [`AGENT.md`](./AGENT.md).
+For release and workflow guidelines, see [`workflow.md`](./workflow.md) and [`AGENT.md`](./AGENT.md).
 
 ---
 
 ## 🧱 Tech Stack
 
-- React 18 + TypeScript (strict) · Vite 6 · Tailwind CSS v4 · Zustand  
-- sql.js (SQLite WASM) · Tesseract.js · Tauri v2 · Capacitor v8  
+- **Frontend / Core**: React 18 + TypeScript (strict) · Vite 6 · Tailwind CSS v4 · Zustand
+- **Local Engine / OCR**: sql.js (SQLite WASM) · Tesseract.js
+- **Cross-Platform**: Tauri v2 (Desktop) · Capacitor v8 (Mobile)
 
 ---
 
 ## License
 
-[MIT](LICENSE)
+[MIT License](LICENSE)

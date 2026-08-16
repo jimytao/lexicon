@@ -305,8 +305,8 @@ export function buildCombinedPhrasePrompt({
       ? 'LEXICAL English gloss only: equivalents + one short sense nucleus, e.g. "self-aware; uneasy about appearance — overly aware of oneself". FORBID origin, register, when-to-use essays, or scene prose.'
       : '词典式中文对译：等价词 + 一句义核，如「难为情的；自觉的 — 过分在意别人怎么看自己」。只写「是什么意思」。禁止来源/语域/情景散文/何时用。')
     : (isMono
-      ? 'English definition or complete line-by-line translation. For multi-sentence input, MUST translate ALL sentences.'
-      : '中文释义与准确翻译。若输入为多句子，必须包含针对所有句子的完整逐句翻译。')
+      ? 'FAITHFUL FULL TRANSLATION of the entire input, sentence by sentence, in the original order. Keep every clause, hedge, modifier, name and number. Never summarize, condense, merge or drop anything. Translation only — no commentary.'
+      : '整段输入的忠实全文翻译：逐句翻译每一个句子，顺序与原文完全一致，保留每个从句、修饰语、语气词、人名与数字。禁止概括、压缩、合并或省略任何内容。此字段只放译文，不写解读或总结。')
 
   const sceneDesc = isMono
     ? '1-3 sentences in English: WHEN a native speaker reaches for this, what communicative job it does'
@@ -430,11 +430,17 @@ ${chineseInputRule}
 - correctionNote: Only when correctForm differs from input. Omit if no change.
 - unnaturalMindModel: Fill when input sounds like Chinese-to-English transfer. Omit if naturally idiomatic.
 - FIELD OWNERSHIP: meaning = lexical gloss only (equivalents + sense nucleus). Put situational/intent content into usageIntro/usageScenes. Put feel/emotion into feelAnchor/emotionalTone. Do NOT invent wordChoiceContrast.
-${isShortPhrase ? '- Short phrases: keep "meaning" to a lexical gloss (1-2 sentences max). Essays belong in usageIntro/usageScenes.' : '- CRITICAL — meaning completeness: For multi-sentence input, meaning MUST contain full sentence-by-sentence translation of ALL content.'}
+${isShortPhrase ? '- Short phrases: keep "meaning" to a lexical gloss (1-2 sentences max). Essays belong in usageIntro/usageScenes.' : `- CRITICAL — "meaning" is a FAITHFUL TRANSLATION, NEVER a summary. Translate like a literal, obedient translator, not like an editor writing an abstract:
+  - Go SENTENCE BY SENTENCE in the original order — same sentence count, same order as the input.
+  - Carry over EVERY clause, modifier, hedge, intensifier, politeness marker, name, number and connective. Nothing may be dropped as redundant.
+  - FORBIDDEN in "meaning": gist/abstract/paraphrase, topic-summary lines, merging sentences, commentary. Fewer sentences than the input = summarizing = redo it.
+  - Do NOT invent numbering, bullets or headings the source lacks. Reproduce the source's own markers verbatim (a leading thread marker like "1/2" stays "1/2"; it is NOT list item 1).
+  - A plain, slightly literal translation is BETTER than an elegant compressed one; the translation must be roughly as long as the input.
+  - Interpretation and tone belong in usageIntro/usageScenes — never in "meaning".`}
 ${wantUsage ? '- Provide usageIntro (1 blurb) + 2-4 usage scenes in both sections.' : ''}
 ${isForeign ? '- For foreign input: prioritize culturalLore with deep subculture/ACG context.' : ''}
 ${isMono ? '- ALL output text must be in English only. No Chinese characters anywhere.' : ''}
-- Keep everything concise. Never output anything outside the JSON object.`
+- Keep everything concise${isShortPhrase ? '' : ' — EXCEPT "meaning" for sentence/paragraph input, where completeness always beats brevity'}. Never output anything outside the JSON object.`
 
   return prompt
 }

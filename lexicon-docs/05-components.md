@@ -232,16 +232,23 @@ export function useAiLookup() {
 // src/hooks/useComposerFlowLayout.ts
 // 负责：SearchBar 输入框的多行排版 —— 文字满宽、右下角按钮只遮最后一行
 
-export function useComposerFlowLayout(value, { gap, maxHeight }) {
+export function useComposerFlowLayout(value, { gap, maxHeight, collapsed }) {
   // 用隐藏镜像 div（复制 textarea 的字体 / 内边距 / 内容宽度）测量：
   //   1. 文字总高度 → textarea 高度
   //   2. 末尾零宽标记的 x 坐标 → 最后一行末尾是否顶到按钮
   // collides → reserveHeight 撑出一行空白供按钮占位；文字继续在上方满宽流动
   // 下沉量由实测几何推导（按钮胶囊比行高高出多少就沉多少），按钮改尺寸自动适配
+  // collapsed（失焦）且内容多行 → 只把可视高度压回一行、scrollTop 归零、圆角回胶囊，
+  //   value 完全不动；重新聚焦时 effect 以 collapsed=false 重跑，版式原样恢复
 
-  return { textareaRef, mirrorRef, actionsRef, containerRef, reserveHeight, isMultiLine }
+  return { textareaRef, mirrorRef, actionsRef, containerRef, reserveHeight, isMultiLine, isCollapsed }
 }
 ```
+
+**SearchBar 折叠交互**：`collapsed: !isFocused`。失焦（blur 后 200ms，让点击建议项不误触）→ 收成一行；
+再次聚焦 → 展开，光标落到**文本末尾**并滚到底（长文不再 `select()`，避免一个按键清空全文）；
+单行短查询仍保持原来的 `select()` 全选。光标定位放在 `useLayoutEffect` 里（声明在本 hook 之后），
+必须等 hook 先把高度撑回去，否则 scrollTop 会被随后的高度变更重置。
 
 **硬约束（勿违反）**：
 

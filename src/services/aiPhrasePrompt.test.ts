@@ -80,7 +80,7 @@ describe('buildPhrasePrompt — short phrase field ownership', () => {
 })
 
 describe('buildPhrasePrompt — sentence / long text keeps full translation duty', () => {
-  it('sentence Lookup: meaning still requires complete line-by-line translation', () => {
+  it('sentence Lookup: meaning must be a faithful sentence-by-sentence translation', () => {
     const prompt = buildPhrasePrompt({
       modules: LOOKUP_MODULES,
       lang: 'en',
@@ -88,9 +88,35 @@ describe('buildPhrasePrompt — sentence / long text keeps full translation duty
       queryType: 'sentence',
     })
 
-    expect(prompt).toMatch(/meaning completeness|完整.*翻译|line-by-line|逐句/)
-    expect(prompt).toMatch(/【主题概括】/)
+    expect(prompt).toMatch(/FAITHFUL TRANSLATION|忠实全文翻译|SENTENCE BY SENTENCE|逐句/)
     expect(prompt).toContain('"usageIntro"')
+  })
+
+  it('sentence Lookup: forbids summarizing and self-invented numbering in meaning', () => {
+    const prompt = buildPhrasePrompt({
+      modules: LOOKUP_MODULES,
+      lang: 'en',
+      cognitive: 'lookup',
+      queryType: 'sentence',
+    })
+
+    // No topic-summary escape hatch left, and brevity must not override completeness
+    expect(prompt).not.toMatch(/【主题概括】/)
+    expect(prompt).toMatch(/NEVER a summary/)
+    expect(prompt).toMatch(/Do NOT invent numbering/)
+    expect(prompt).toMatch(/completeness always beats brevity/)
+  })
+
+  it('short phrase: still keeps meaning as a short gloss (no translation essay rule)', () => {
+    const prompt = buildPhrasePrompt({
+      modules: LOOKUP_MODULES,
+      lang: 'en',
+      cognitive: 'lookup',
+      queryType: 'phrase',
+    })
+
+    expect(prompt).not.toMatch(/NEVER a summary/)
+    expect(prompt).toMatch(/1-2 sentences max|最多 1-2 句/)
   })
 })
 

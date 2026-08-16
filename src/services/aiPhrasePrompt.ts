@@ -42,8 +42,8 @@ export function buildPhrasePrompt({
       ? 'LEXICAL English gloss only: equivalents + one short sense nucleus, e.g. "self-aware; uneasy about appearance — overly aware of oneself". FORBID origin, register, slang geography, when-to-use essays, or native-mind scenes.'
       : '词典式中文对译：等价词 + 一句义核，如「难为情的；自觉的 — 过分在意别人怎么看自己」。只写「是什么意思」。禁止在 meaning 写来源/语域/俚语地域/情景/何时用/母语者心智长文。')
     : (isMono
-      ? 'English definition or complete line-by-line translation in simple terms. For multi-sentence or long paragraphs, you MUST provide full translation for ALL sentences, NOT just a summary.'
-      : '中文释义与准确翻译。若输入为多句子或长段落文章，必须包含针对所有句子的完整全文翻译（可首行放一句话【主题概括】，但后文必须接全文本的逐句完整翻译），绝对不可仅给出一句简短概括。')
+      ? 'FAITHFUL FULL TRANSLATION of the entire input, sentence by sentence, in the original order. Keep every clause, hedge, modifier, name and number. Never summarize, condense, merge or drop anything. This field holds the translation only — no commentary.'
+      : '整段输入的忠实全文翻译：逐句翻译每一个句子，顺序与原文完全一致，保留每个从句、修饰语、语气词、人名与数字。禁止概括、压缩、合并或省略任何内容。此字段只放译文，不写解读或总结。')
 
   const usageIntroDesc = isMono
     ? (isCore
@@ -158,7 +158,14 @@ export function buildPhrasePrompt({
       : (isMono
         ? `- For short phrases/idioms: keep "meaning" to a short gloss (1-2 sentences max).`
         : `- 短词组/习语：meaning 只保留短释义（最多 1-2 句）。`))
-    : `- CRITICAL — meaning completeness: For long text or multi-sentence paragraphs, "meaning" MUST contain a complete, line-by-line / sentence-by-sentence full translation of ALL content. You may put a brief 1-sentence topic summary at the very beginning (e.g., "【主题概括】..."), but you MUST follow with the full translation of every sentence. DO NOT output only a summary!`
+    : `- CRITICAL — "meaning" is a FAITHFUL TRANSLATION, NEVER a summary. Translate like a literal, obedient translator, not like an editor writing an abstract:
+  - Go SENTENCE BY SENTENCE in the original order. Every sentence of the input must produce its own translated sentence in "meaning" — same sentence count, same order.
+  - Carry over EVERY clause, modifier, hedge, intensifier, politeness marker, name, number and connective (e.g. "I don't usually...", "especially", "really", "but", "because"). Nothing may be dropped as redundant.
+  - FORBIDDEN in "meaning": gist/abstract/paraphrase, topic-summary lines, merging two sentences into one, commentary, analysis, or "this passage is about...". If your draft has fewer sentences than the input, you are summarizing — redo it.
+  - Do NOT invent numbering, bullets or headings that the source does not have. Reproduce the source's own markers verbatim (e.g. a leading thread marker like "1/2" stays "1/2"; it is NOT list item 1).
+  - Keep the original register and sentence shape as closely as the target language allows. A plain, slightly literal translation is BETTER than an elegant compressed one.
+  - Length sanity check: the translation must be roughly as long as the input. A translation that is a fraction of the input's length is a failure.
+  - Interpretation, tone and "what the speaker is really doing" belong in usageIntro / usageScenes — never in "meaning".`
 
   let prompt = `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
 
@@ -192,7 +199,7 @@ ${isCore ? '  - feelAnchor/emotionalTone: how an English native would feel/stanc
 ${wantUsage ? '  - usageIntro/usageScenes: explain the specific feeling or tone of the original expression.' : ''}
   - culturalLore: PRIORITY: Provide deep cultural/subculture context. Specify historical origins or social context if applicable.
 ${wantUsage ? `- Provide usageIntro (1 blurb) + 2-4 usage scenes${isCore ? '' : ', 2-4 examples'}.` : `- Do not output usageIntro/usageScenes (module off)${isCore ? '' : '; still provide 2-4 examples if examples enabled'}.`}
-- Keep everything concise.
+- Keep everything concise${isShortPhrase ? '' : ' — EXCEPT "meaning" for sentence/paragraph input, where completeness always beats brevity'}.
 - Never output anything outside the JSON object.`
 
   if (isMono) {

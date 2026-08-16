@@ -185,8 +185,9 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
 - **Pure Core**：母语者心智教练；**必填** `feelAnchor` / `emotionalTone`；`wordChoice` 开时填 `wordChoiceContrast`；优先交际意图与违和感对比（旧 nativeMindModel 不再要求）
 - `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
 - **字段职责 FIELD OWNERSHIP（关键）**
-  - **短词组 (`queryType=phrase`)**：`meaning` = 1–2 句短释义（可首行【主题概括】一句）；**禁止**把来源/语域/俚语地域/情景/何时用/母语者心智长文写进 `meaning`
-  - **长句/段落 (`queryType=sentence`)**：`meaning` 必须句句对应完整翻译（可首行【主题概括】，后文接逐句全文）；不可只给一句概括
+  - **短词组 (`queryType=phrase`)**：`meaning` = 1–2 句短释义；**禁止**把来源/语域/俚语地域/情景/何时用/母语者心智长文写进 `meaning`
+  - **长句/段落 (`queryType=sentence`)**：`meaning` = **忠实全文翻译，不是概括**。逐句对应、句数与顺序同原文，保留每个从句/修饰语/语气词/人名/数字；禁止概括、压缩、合并、加解读；禁止自造编号或小标题（原文自带的 `1/2` 等标记原样保留）；译文长度应与原文相当。
+    （旧版允许的首行【主题概括】已移除——它正是模型退化成"给个总结"的入口；同时 `Keep everything concise` 对 sentence 的 `meaning` 显式豁免）
   - 情景 / 语域提示 / 母语选用意图 → `usageIntro`（Usage Contexts 开场白）+ `usageScenes`（具体场景卡）
   - Core 感觉/情绪 → `feelAnchor` / `emotionalTone`（短句，勿写成 usageIntro）
   - 语域/文化条目 → `culturalLore`（与 usageScenes 区分）

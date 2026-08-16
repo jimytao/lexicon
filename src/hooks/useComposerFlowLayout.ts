@@ -16,6 +16,11 @@ interface ComposerFlowOptions {
   gap: number
   /** Height (px) at which the textarea stops growing and starts scrolling. */
   maxHeight: number
+  /**
+   * Shrink the composer back to a single line while the user is elsewhere.
+   * The text is untouched — only the visible height — so focusing expands it again.
+   */
+  collapsed?: boolean
 }
 
 /**
@@ -29,7 +34,7 @@ interface ComposerFlowOptions {
  * Nothing here can feed back on itself: the textarea's width is constant, so wrapping is
  * fixed, and the only thing this hook varies is vertical space.
  */
-export function useComposerFlowLayout(value: string, { gap, maxHeight }: ComposerFlowOptions) {
+export function useComposerFlowLayout(value: string, { gap, maxHeight, collapsed = false }: ComposerFlowOptions) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
   const actionsRef = useRef<HTMLDivElement>(null)
@@ -37,11 +42,16 @@ export function useComposerFlowLayout(value: string, { gap, maxHeight }: Compose
 
   const [reserveHeight, setReserveHeight] = useState(0)
   const [isMultiLine, setIsMultiLine] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   useLayoutEffect(() => {
     const el = textareaRef.current
     const mirror = mirrorRef.current
     if (!el || !mirror) return
+
+    // Drop the collapsed state's right padding before measuring, so everything below
+    // reads the composer's real, full-width geometry.
+    el.style.paddingRight = ''
 
     const cs = getComputedStyle(el)
     const lineHeight = parseFloat(cs.lineHeight) || 24
@@ -72,6 +82,28 @@ export function useComposerFlowLayout(value: string, { gap, maxHeight }: Compose
     const limit = el.getBoundingClientRect().width - actionsWidth - gap
     const collides = value.length > 0 && lastLineEnd > limit
 
+    const textPadTop = parseFloat(cs.paddingTop) || 0
+    const textPadBottom = parseFloat(cs.paddingBottom) || 0
+    const lines = Math.max(1, Math.round((textHeight - textPadTop - textPadBottom) / lineHeight))
+    const multiLine = collides || lines > 1
+
+    // Away from the composer, tall text is dead weight: shrink to the empty composer's
+    // one-line silhouette and scroll back to the start. The value is untouched, so
+    // focusing re-runs this effect uncollapsed and the full flow comes straight back.
+    if (collapsed && multiLine) {
+      el.style.overflowY = 'hidden'
+      el.style.height = `${lineHeight + textPadTop + textPadBottom}px`
+      // With only one line left, the buttons now hover over it — end that line before
+      // them so the visible text is never hidden underneath.
+      el.style.paddingRight = `${Math.round(actionsWidth + gap)}px`
+      el.scrollTop = 0
+      setReserveHeight(0)
+      setIsMultiLine(true)
+      setIsCollapsed(true)
+      return
+    }
+
+    el.style.overflowY = ''
     el.style.height = 'auto'
     el.style.height = `${Math.min(textHeight, maxHeight)}px`
 
@@ -79,9 +111,6 @@ export function useComposerFlowLayout(value: string, { gap, maxHeight }: Compose
     // bottom makes them reach up into the line above the last one — which is full width
     // and would sit underneath them. Sink the last line by whatever that overhang is.
     // Measured, not hardcoded, so it self-corrects if the buttons are ever resized.
-    const textPadBottom = parseFloat(cs.paddingBottom) || 0
-    const lines = Math.max(1, Math.round((textHeight - parseFloat(cs.paddingTop) - textPadBottom) / lineHeight))
-
     let reserve = 0
     const container = containerRef.current
     const actions = actionsRef.current
@@ -98,8 +127,9 @@ export function useComposerFlowLayout(value: string, { gap, maxHeight }: Compose
     }
 
     setReserveHeight(Math.max(0, Math.round(reserve)))
-    setIsMultiLine(collides || lines > 1)
-  }, [value, gap, maxHeight])
+    setIsMultiLine(multiLine)
+    setIsCollapsed(false)
+  }, [value, gap, maxHeight, collapsed])
 
-  return { textareaRef, mirrorRef, actionsRef, containerRef, reserveHeight, isMultiLine }
+  return { textareaRef, mirrorRef, actionsRef, containerRef, reserveHeight, isMultiLine, isCollapsed }
 }

@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTYwRjZXMnlHV0NXcml2anVtNmhtYlpHYlBLMDlFNGNiZUNBVVZRdFI1K0ZWY1lMYXp5blNkSmJ4RmIwdjc4a2dNRDZEZTE4VmtlSjdCUEVuYkF1bVFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2ODA4NDkwCWZpbGU6TGV4aWNvbl8wLjkuMTBfeDY0LXNldHVwLmV4ZQoyOUJVbFN3ZzRiOFNZdG14aXY2eTR0R0hDTTRHOXpRZnh1T1pqYlo3NHdkK3FEQWJuVThlTTBzb2N6MTJacFlRQU1ReUprbFJPUnY3VjJLd204ZDJBUT09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.10/Lexicon_0.9.10_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMStpOTBDL0lyL1FwU1I0S054VFlLUFdFbWNHVFZrbFlha2s4Z21IT2J2TlFWYzRGVHZGT09yZExsOFFnY0FhVHhNcXk0djAyMndyeDFKdlRlK3R4WkFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2ODU1MDEzCWZpbGU6TGV4aWNvbl8wLjkuMTFfeDY0LXNldHVwLmV4ZQplYitnQzNFeXp2b3NUc0ZqNFVsRkNpNE1KSTlBZWtnWFd4THNranpOemlQMmpOVWsvVjYrL0U3TEp6NUdLOFYzd2hnYXEwYkEzYkdXMllUbVU4K0xDdz09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.11/Lexicon_0.9.11_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-08-15T15:43:34Z",
-    "version":  "0.9.10",
-    "notes":  "搜索栏多行布局重做：文字绕行按钮 + 布局抖动修复\n1. **修复输入框在换行边界反复抖动**：修复输入框在单行与多行临界点敲击字符时的频繁跳变与 React 崩溃隐患。\n2. **文字绕行按钮的排版模型**：文字始终按满宽排版，右下角按钮只遮挡最后一行，字数增多时平滑延展与沉底。\n3. **消除按钮与文字重叠**：实测几何推导下沉量，避免操作按钮在任何字号与分辨率下盖住上一行文字。\n4. **多行滚动条不再破框**：在多行自适应输入框中优雅隐藏原生 / WebView 滚动条，防止溢出圆角并遮挡按钮。\n5. **占位符单行截断**：未输入时占位符强制保持单行省略，用户真实输入后才平滑多行自适应伸展。\n",
-    "notes_zh":  "搜索栏多行布局重做：文字绕行按钮 + 布局抖动修复\n1. **修复输入框在换行边界反复抖动**：修复输入框在单行与多行临界点敲击字符时的频繁跳变与 React 崩溃隐患。\n2. **文字绕行按钮的排版模型**：文字始终按满宽排版，右下角按钮只遮挡最后一行，字数增多时平滑延展与沉底。\n3. **消除按钮与文字重叠**：实测几何推导下沉量，避免操作按钮在任何字号与分辨率下盖住上一行文字。\n4. **多行滚动条不再破框**：在多行自适应输入框中优雅隐藏原生 / WebView 滚动条，防止溢出圆角并遮挡按钮。\n5. **占位符单行截断**：未输入时占位符强制保持单行省略，用户真实输入后才平滑多行自适应伸展。\n",
-    "notes_en":  "Search bar multi-line layout redesign: text wrap around buttons and layout jitter fix\n1. **Fix layout jitter at line wrap boundary**: Fixed input jitter between single and multi-line states when typing at wrap thresholds.\n2. **Text wrap-around button layout**: Text uses full container width while action buttons float at the bottom right of the last line without feedback loops.\n3. **Eliminate button-text overlap**: Dynamically calculates button sink offset based on element geometry to prevent overlapping preceding text.\n4. **Clean scrollbar behavior**: Suppressed visible scrollbars in compact auto-expanding textareas to avoid breaking rounded card boundaries.\n5. **Single-line placeholder truncation**: Placeholders remain on a single line with ellipsis, expanding to multi-line only upon user input.\n",
+    "pub_date":  "2026-08-16T04:40:12Z",
+    "version":  "0.9.11",
+    "notes":  "长句与段落 AI 翻译规则优化 + 搜索栏失焦收回单行胶囊与布局恢复\n1. 新增：长句/段落的 meaning 调整为忠实全文逐句翻译，禁止概括总结、强行压缩或自造编号，严格保留原始语气、人名与从句结构。\n2. 新增：搜索栏支持失焦时自动折叠收起为一行胶囊并平滑复位，聚焦后秒级展开回多行版式并定位光标。\n3. 优化：针对搜索框收起与展开状态精准计算内边距与换行点，消除文字遮挡按钮问题。\n",
+    "notes_zh":  "长句与段落 AI 翻译规则优化 + 搜索栏失焦收回单行胶囊与布局恢复\n1. 新增：长句/段落的 meaning 调整为忠实全文逐句翻译，禁止概括总结、强行压缩或自造编号，严格保留原始语气、人名与从句结构。\n2. 新增：搜索栏支持失焦时自动折叠收起为一行胶囊并平滑复位，聚焦后秒级展开回多行版式并定位光标。\n3. 优化：针对搜索框收起与展开状态精准计算内边距与换行点，消除文字遮挡按钮问题。\n",
+    "notes_en":  "Faithful Full-Text Sentence Translation \u0026 Auto-Collapsing Search Bar Layout\n1. **New**: Refined AI sentence translation prompt to demand faithful, sentence-by-sentence full translations without summary compression or auto-numbering.\n2. **New**: Search bar auto-collapses into a single-line capsule upon blur and seamlessly expands back with scroll positioning upon re-focus.\n3. **Fix**: Precise right-padding calculations to prevent collapsed single-line text from overlapping the search button.\n",
     "is_major":  false
 }

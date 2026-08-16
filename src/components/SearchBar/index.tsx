@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
@@ -28,9 +28,23 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   const [isFocused, setIsFocused] = useState(false)
   const trimmedQuery = query.trim()
 
-  // gap-3 of clearance from the buttons; 110px ≈ 4 lines before the text scrolls
-  const { textareaRef, mirrorRef, actionsRef, containerRef: pillRef, reserveHeight, isMultiLine } =
-    useComposerFlowLayout(query, { gap: 12, maxHeight: 110 })
+  // gap-3 of clearance from the buttons; 110px ≈ 4 lines before the text scrolls.
+  // Once the caret leaves, a tall composer is just wasted space over the results —
+  // collapse it back to one line until the user comes back to edit.
+  const { textareaRef, mirrorRef, actionsRef, containerRef: pillRef, reserveHeight, isMultiLine, isCollapsed } =
+    useComposerFlowLayout(query, { gap: 12, maxHeight: 110, collapsed: !isFocused })
+
+  // Runs after the layout hook has re-expanded the textarea in this same commit, so the
+  // caret lands in text that is actually laid out and the scroll sticks.
+  const resumeAtEndRef = useRef(false)
+  useLayoutEffect(() => {
+    if (!isFocused || !resumeAtEndRef.current) return
+    resumeAtEndRef.current = false
+    const el = textareaRef.current
+    if (!el) return
+    el.setSelectionRange(el.value.length, el.value.length)
+    el.scrollTop = el.scrollHeight
+  }, [isFocused, textareaRef])
 
   const showSuggestions = suggestions.length > 0
   const showHistory = historyEnabled && isFocused && !trimmedQuery && !showSuggestions
@@ -140,7 +154,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
         <div ref={pillRef} className={`relative flex items-start gap-3 px-4 py-2 min-h-[52px] border transition-all duration-300 shadow-sm overflow-hidden ${
-          isMultiLine ? 'rounded-2xl' : 'rounded-full'
+          isMultiLine && !isCollapsed ? 'rounded-2xl' : 'rounded-full'
         } ${
           isFocused
             ? 'bg-background border-accent ring-4 ring-accent/10 shadow-lg'
@@ -173,8 +187,13 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               placeholder={t('search.placeholder')}
               className="block w-full text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50 resize-none overflow-y-auto no-scrollbar leading-normal py-1"
               onFocus={(e) => {
+                // Coming back to a collapsed long query: resume at the end of the text
+                // instead of selecting it all, which would leave the whole thing one
+                // keystroke away from being wiped. Deferred — the caret can only be
+                // placed once the composer has expanded back to its full height.
+                if (isCollapsed) resumeAtEndRef.current = true
+                else e.target.select()
                 setIsFocused(true)
-                e.target.select()
               }}
               onBlur={() => {
                 suggestRequestRef.current += 1

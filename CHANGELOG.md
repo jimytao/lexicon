@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-08-16 — 长句 meaning 改为忠实全文翻译 + 搜索栏失焦收回一行 (v0.9.11)
+
+### 用户可见
+1. **长句/段落的 `meaning` 是忠实全文翻译，不再是总结**：复现输入 `1/2 Thanks Gavin for an especially thoughtful exchange. I don't usually spend much time on social media but I wanted to engage here because it really brings out the heart of an important conversation.` → 旧 prompt 返回被压缩的「大意」，且把原文的 thread 标记 `1/2` 误当成列表编号，输出成 `1. … 2. …`。现要求逐句对应（**句数与顺序同原文**）、保留每个从句/修饰语/语气词/人名/数字，禁止概括、压缩、合并、加解读，禁止自造编号或小标题（原文自带的 `1/2` 原样保留），译文长度须与原文相当。
+2. **移除旧版首行【主题概括】允许项**：它正是模型退化成「给个总结」的入口；同时 `Keep everything concise` 对 sentence 的 `meaning` 显式豁免（完整性优先于简洁）。短词组（`queryType=phrase`）仍是 1–2 句短释义，不受影响。
+3. **搜索框失焦自动收回一行**：输入多行长文后，一旦点了搜索 / 去看历史记录或结果（光标离开输入框），输入框自动收成一行胶囊、滚回开头，不再占着四行高度挡住下面的内容。文本一个字都不会丢。
+4. **重新聚焦自动展开并跳到结尾**：长文恢复原来的多行版式，光标落在文本末尾、视图滚到底，可直接续写；单行短查询仍保持原来的「聚焦即全选」（长文不全选，避免一个按键清空全文）。
+5. **收起态文字不被按钮盖住**：只剩一行时右下角按钮正好压在这行上，故折叠时按实测宽度给 textarea 加右内边距，文字提前换行让开按钮。
+
+### 工程
+- `aiPhrasePrompt.ts` / `aiCombinedPrompt.ts`：sentence 分轨的 `meaning` 字段描述与规则块重写为「FAITHFUL TRANSLATION, NEVER a summary」清单（两条 AI 链路都改，避免只改一条留下漏网路径）。
+- `useComposerFlowLayout(value, { gap, maxHeight, collapsed })`：新增 `collapsed` 入参与 `isCollapsed` 返回值。折叠只改可视高度 / `scrollTop` / 右内边距，**`value` 不动**，聚焦后 effect 以 `collapsed=false` 重跑即原样恢复；`collapsed` 不由测量结果推导，因此不会重新引入 v0.9.10 修掉的布局反馈环。
+- 测量前先清掉折叠态的右内边距再读 `getComputedStyle`，否则会拿上一轮的窄内容宽算高度。
+- 光标定位放在 `SearchBar` 的 `useLayoutEffect`（声明在 hook 之后）：必须等 hook 先把高度撑回去，否则随后的高度变更会把 `scrollTop` 重置回 0（用 `requestAnimationFrame` 会踩到这个坑）。
+
+### 验证
+- `tsc -b` 通过；`vitest run` 20 文件 / 173 用例全绿（改写了断言旧【主题概括】的测试，并补「禁止总结 / 禁止自造编号」「短词组不受影响」两条用例）。
+- 浏览器实测 306 字符长文：聚焦 textarea 110px / 胶囊 138px / `rounded-2xl` → 失焦 32px / 52px / `rounded-full`、`scrollTop` 归零 → 再聚焦回 110px、光标 306/306、视图贴底；收起态文字内容右边界 568px < 按钮左边界 581px（不重叠）。
+
+### 涉及文件
+- `src/services/aiPhrasePrompt.ts`、`src/services/aiCombinedPrompt.ts`、`src/services/aiPhrasePrompt.test.ts`
+- `src/hooks/useComposerFlowLayout.ts`、`src/components/SearchBar/index.tsx`
+- `lexicon-docs/04-ai-schema.md`、`lexicon-docs/05-components.md`
+
+---
+
 ## 2026-08-16 — 搜索栏多行布局重做：文字绕行按钮 + 布局抖动修复 (v0.9.10)
 
 ### 用户可见
