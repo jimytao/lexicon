@@ -165,7 +165,7 @@ function getSystemPrompt(
   const sceneLabel = monolingualWord ? "2-4 word English context tag" : "2-4字的情景标签"
   const sceneDesc = monolingualWord
     ? "2-4 sentences from a native speaker's perspective: what this meaning concretely IS or evokes (a physical thing, place, moment — paint a picture), when/where it naturally appears in real life, and what it feels like or sounds like in context. NOT a grammar note. NOT just 'used when X'."
-    : "2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述（如"用于表示……的情况"）。"
+    : "2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述（如'用于表示……的情况'）。"
   const partMeaning = monolingualWord ? "meaning in English" : "中文含义（来源语言）"
   const anchorNote = monolingualWord 
     ? "1 sentence in English: how this anchor word embodies the root meaning, helping association"
@@ -705,7 +705,7 @@ function getFullLookupPrompt(
   const sceneLabel = isMono ? "2-4 word English context tag" : "2-4字情景标签"
   const sceneDesc = isMono
     ? "2-4 sentences from a native speaker's perspective: what this meaning concretely IS or evokes (a physical thing, place, moment — paint a picture), when/where it naturally appears in real life, and what it feels like or sounds like in context. NOT a grammar note. NOT just 'used when X'."
-    : "2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述（如"用于表示……的情况"）。"
+    : "2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述（如'用于表示……的情况'）。"
   const partMeaning = isMono ? "meaning in English" : "含义"
   const anchorNote = isMono ? "1 sentence in English: how this anchor word embodies the root meaning, helping association" : "1句话中文：此词如何体现词根，帮助联想"
   const storyDesc = isMono ? "in English" : `1-2句话说明${lang !== 'en' && lang !== 'zh' ? '词汇构成/来源' : '词根词缀/来源'}`

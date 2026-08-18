@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMStpOTBDL0lyL1FwU1I0S054VFlLUFdFbWNHVFZrbFlha2s4Z21IT2J2TlFWYzRGVHZGT09yZExsOFFnY0FhVHhNcXk0djAyMndyeDFKdlRlK3R4WkFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2ODU1MDEzCWZpbGU6TGV4aWNvbl8wLjkuMTFfeDY0LXNldHVwLmV4ZQplYitnQzNFeXp2b3NUc0ZqNFVsRkNpNE1KSTlBZWtnWFd4THNranpOemlQMmpOVWsvVjYrL0U3TEp6NUdLOFYzd2hnYXEwYkEzYkdXMllUbVU4K0xDdz09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.11/Lexicon_0.9.11_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXlIc2xtWnlDWkYyejhGM2VCWGdtZ2Q1TWZVYmZkbFdrQTRlME9iTXFFOXNQM1FONFpRSDVZM2RQUmdNOGhDZ3ZYeHVSU1lpREhjekhBK0NPU1V1SHd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg3MDY1NDM0CWZpbGU6TGV4aWNvbl8wLjkuMTJfeDY0LXNldHVwLmV4ZQpyQldOSTVvMFdobC9Na3h3dEVWTHVEeWt5THlhMmh5SUdlQmhaNkpUa1o1cXRtLzc0OXZ4TklWeFE0UDJ5eFZ1Q3FVekdoa0w2TmxNUXd5WkNBd3JCQT09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.12/Lexicon_0.9.12_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-08-16T04:40:12Z",
-    "version":  "0.9.11",
-    "notes":  "长句与段落 AI 翻译规则优化 + 搜索栏失焦收回单行胶囊与布局恢复\n1. 新增：长句/段落的 meaning 调整为忠实全文逐句翻译，禁止概括总结、强行压缩或自造编号，严格保留原始语气、人名与从句结构。\n2. 新增：搜索栏支持失焦时自动折叠收起为一行胶囊并平滑复位，聚焦后秒级展开回多行版式并定位光标。\n3. 优化：针对搜索框收起与展开状态精准计算内边距与换行点，消除文字遮挡按钮问题。\n",
-    "notes_zh":  "长句与段落 AI 翻译规则优化 + 搜索栏失焦收回单行胶囊与布局恢复\n1. 新增：长句/段落的 meaning 调整为忠实全文逐句翻译，禁止概括总结、强行压缩或自造编号，严格保留原始语气、人名与从句结构。\n2. 新增：搜索栏支持失焦时自动折叠收起为一行胶囊并平滑复位，聚焦后秒级展开回多行版式并定位光标。\n3. 优化：针对搜索框收起与展开状态精准计算内边距与换行点，消除文字遮挡按钮问题。\n",
-    "notes_en":  "Faithful Full-Text Sentence Translation \u0026 Auto-Collapsing Search Bar Layout\n1. **New**: Refined AI sentence translation prompt to demand faithful, sentence-by-sentence full translations without summary compression or auto-numbering.\n2. **New**: Search bar auto-collapses into a single-line capsule upon blur and seamlessly expands back with scroll positioning upon re-focus.\n3. **Fix**: Precise right-padding calculations to prevent collapsed single-line text from overlapping the search button.\n",
+    "pub_date":  "2026-08-18T15:06:00Z",
+    "version":  "0.9.12",
+    "notes":  "修复词根词缀助记生成后清空 Bug 与场景释义提示词画风升级\n1. 修复词根词缀记忆（Generate Mnemonic）生成后内容立即消失以及点击标签清空的 Bug。\n2. 场景释义提示词升级为富有画面感的母语者视角，并强制每一个义项必须包含场景。\n",
+    "notes_zh":  "修复词根词缀助记生成后清空 Bug 与场景释义提示词画风升级\n1. 修复词根词缀记忆（Generate Mnemonic）生成后内容立即消失以及点击标签清空的 Bug。\n2. 场景释义提示词升级为富有画面感的母语者视角，并强制每一个义项必须包含场景。\n",
+    "notes_en":  "Fix Mnemonic Card Reset Bug \u0026 Enhance Scene Description Prompts\n1. Fixed an issue where generated mnemonic content immediately disappeared due to state synchronization hooks.\n2. Enhanced scene description prompts for native-speaker perspectives and enforced scene generation for all meanings.\n",
     "is_major":  false
 }
