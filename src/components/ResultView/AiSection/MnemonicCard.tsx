@@ -49,21 +49,23 @@ export function MnemonicCard({ word, initialMnemonic, isPhrase, onUpdateMnemonic
     const wordChanged = prevWordRef.current !== word
     prevWordRef.current = word
 
-    setMnemonic(initialMnemonic)
-    
     if (wordChanged) {
+      // Word changed: full reset
+      setMnemonic(initialMnemonic)
       setActiveType(initialMnemonic?.bestType)
       setLoading(false)
       setError(null)
       setProposeOpen(false)
       setUserIdea('')
       setSingleLoading(false)
-    } else {
-      if (!activeType && initialMnemonic) {
-        setActiveType(initialMnemonic.bestType)
-      }
+    } else if (initialMnemonic) {
+      // Same word, but initialMnemonic updated (e.g. loaded from store).
+      // Only sync if we don't already have a locally generated mnemonic,
+      // so we never overwrite a freshly generated result.
+      setMnemonic(prev => prev ?? initialMnemonic)
+      setActiveType(prev => prev ?? initialMnemonic.bestType)
     }
-  }, [initialMnemonic, word, activeType])
+  }, [initialMnemonic, word])
 
   const handleGenerate = async () => {
     abortControllerRef.current?.abort()

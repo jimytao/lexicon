@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-08-19 — MnemonicCard 生成后消失 Bug 修复 + 场景释义提示词优化
+
+### 用户可见
+1. **修复词根词缀记忆（Generate Mnemonic）生成后内容立即消失的 Bug**：查询中文词（如"真小气"）时返回多个英文对应词，用户点击 Generate Mnemonic 后，内容一闪而过或反复点击无效。根因是 `MnemonicCard` 的 `useEffect` 依赖数组包含 `activeType`，导致生成成功后 `setActiveType(res.bestType)` 触发 effect 重新运行，将刚生成的 mnemonic 用 `undefined` 的 `initialMnemonic` 覆盖。同理，点击切换类型标签（philology / story / smart）也会触发同一 bug 清空内容。修复后两个触发路径均已消除。
+2. **场景释义（scene.description）内容质量提升**：旧提示词要求 AI 只写"在什么情境下使用"，导致输出短短几字的功能性描述（如"描述壁炉的构造或清理炉灰时使用"）。新提示词要求以母语者视角写出画面感描述：这个义项具体指的是什么东西或场景、母语者在什么具体时刻/地点会用到它、使用时带着什么感受或氛围，禁止功能性和字典式表述。同时强制要求每个 meaning 都必须附有 scene，不得遗漏。
+
+### 工程
+- `MnemonicCard.tsx`：将 `activeType` 从 `useEffect` 依赖数组移除；`wordChanged=false` 分支改用 functional state update（`prev => prev ?? initialMnemonic`），仅在本地无数据时才同步 store 值，不覆盖已生成内容。
+- `ai.ts`（`getSystemPrompt` Instant 模式 + `getFullLookupPrompt` AI Lookup 模式）：重写 `sceneDesc` 变量为母语者视角要求（2-4句画面感描述）；Rules 段新增强制规则：每个 meaning 必须有 scene、禁止功能性用法描述。Pure Core 模式 (`isCore=true`) 不受影响，该模式不输出 meanings scene 字段。
+
+### 涉及文件
+- `src/components/ResultView/AiSection/MnemonicCard.tsx`
+- `src/services/ai.ts`
+
+---
+
 ## 2026-08-16 — 长句 meaning 改为忠实全文翻译 + 搜索栏失焦收回一行 (v0.9.11)
 
 ### 用户可见
