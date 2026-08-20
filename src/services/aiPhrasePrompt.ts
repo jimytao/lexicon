@@ -5,6 +5,7 @@
  */
 
 import { buildProfilePromptContext } from './profile'
+import type { MeaningsAnchor } from './ai'
 
 export type PhrasePromptQueryType = 'phrase' | 'sentence'
 
@@ -18,6 +19,8 @@ export interface BuildPhrasePromptOptions {
   cognitive?: 'lookup' | 'core'
   /** phrase = short idiom/collocation; sentence = clause / multi-sentence text */
   queryType?: PhrasePromptQueryType
+  /** Stage-1 resolution shared by both halves of a split request. */
+  meaningsAnchor?: MeaningsAnchor
 }
 
 function moduleEnabled(modules: Array<{ id: string; enabled: boolean }>, id: string): boolean {
@@ -33,6 +36,7 @@ export function buildPhrasePrompt({
   isMono = false,
   cognitive = 'lookup',
   queryType = 'phrase',
+  meaningsAnchor,
 }: BuildPhrasePromptOptions): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   const isCore = cognitive === 'core'
@@ -215,6 +219,24 @@ ${wantUsage ? `- Provide usageIntro (1 blurb) + 2-4 usage scenes${isCore ? '' : 
       prompt += `\n- culturalLore: PRIORITY for foreign phrases. Provide deep cultural/subculture context.`
     } else {
       prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: 1-2 sentences on register or cultural nuance only. Keep it distinct from usageScenes.`
+    }
+  }
+
+  if (!isMono && lang !== 'en' && lang !== 'zh') {
+    // Non-mono + foreign input: explanations must be Chinese for this audience.
+    prompt += `
+- The input is in ${lang}, but ALL explanatory text (meaning, usageIntro, scenes, notes) MUST be written in Chinese. Keep the original ${lang} text only where it identifies the expression itself.`
+  }
+
+  if (meaningsAnchor?.correctForm) {
+    prompt += `
+
+RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
+- The expression being explained is: "${meaningsAnchor.correctForm}". Use it as correctForm verbatim.`
+    const senses = meaningsAnchor.senses ?? []
+    if (senses.length > 0) {
+      prompt += `
+- Stay consistent with this resolved reading: ${senses.map(sn => sn.zh || sn.en || '').filter(Boolean).join(' / ')}`
     }
   }
 

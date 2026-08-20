@@ -11,6 +11,7 @@ import { AiChatBox } from './AiSection/AiChatBox'
 import { DiffText } from './DiffText'
 import { useT } from '../../i18n'
 import { useSettingsStore, DEFAULT_CORE_MODULES } from '../../stores/settingsStore'
+import { useResultStore } from '../../stores/resultStore'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 import { useAiLookup } from '../../hooks/useAiLookup'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
@@ -56,6 +57,7 @@ export function CoreCognitiveView({
       })
     : {}
   const showDictL1 = Boolean(dictWordResult?.meanings?.length)
+  const corePending = useResultStore(state => state.aiPendingHalves.core)
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
@@ -87,7 +89,7 @@ export function CoreCognitiveView({
 
       <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={word} />
 
-      {aiStatus === 'loading' && (
+      {(aiStatus === 'loading' || (aiStatus === 'success' && corePending)) && (
         <div className="space-y-4">
           <SkeletonBlock lines={3} variant="card" />
           <SkeletonBlock lines={4} variant="pill" />

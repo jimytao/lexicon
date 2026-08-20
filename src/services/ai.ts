@@ -140,13 +140,57 @@ function modulesForPhraseCognitive(config: AiConfig, cognitive: 'lookup' | 'core
   return cognitive === 'core' ? config.corePhraseModules : config.modules
 }
 
+/**
+ * Monolingual mode = "whatever I type, answer me in English", so it is NOT gated
+ * on the input language. Only the query TYPE picks which of the three toggles applies.
+ */
 function getIsMono(query: string, config: AiConfig): boolean {
-  const lang = detectLanguage(query)
-  if (lang !== 'en') return false
   const qType = detectQueryType(query)
   if (qType === 'sentence') return config.monolingualSentence
   if (qType === 'phrase') return config.monolingualPhrase
   return config.monolingualWord
+}
+
+/**
+ * The stage-1 disambiguation contract. Its real job is not to enumerate senses
+ * for their own sake — it is to pin down WHICH English word both halves of a
+ * split request are explaining, so Lookup and Pure Core cannot diverge.
+ */
+export interface MeaningsAnchor {
+  correctForm?: string
+  pos?: string
+  phonetic?: string
+  senses: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>
+}
+
+const ZH_CORE_CONCEPT_MAP_RULE = `\n- ZH-EN CONCEPT MAP MODE: The user typed Chinese and wants to feel how English carves up this concept. Do NOT silently pick one English word and explain only that one.
+- coreConcept: describe how English splits this Chinese concept into distinct senses, and what separates them.
+- synonyms: MUST list the 3-5 competing English candidates; each whenToUse states the exact situation a native reaches for it over the others.
+- wordChoiceContrast: contrast the candidates head to head (feel, register, who says it, what it implies).
+- meanings: the candidate English words, each with the Chinese nuance note that separates it from its neighbours.`
+
+/**
+ * Render the stage-1 anchor into a prompt block. Lookup must reproduce the senses
+ * verbatim; Core is word-level, so it only needs to agree on which word it is about.
+ */
+function buildAnchorBlock(anchor: MeaningsAnchor | undefined, isCore: boolean): string {
+  if (!anchor) return ''
+  const hasSenses = Array.isArray(anchor.senses) && anchor.senses.length > 0
+  if (!anchor.correctForm && !hasSenses) return ''
+
+  let block = '\n' + '\n' + 'RESOLVED TARGET (stage 1 — already decided, do not re-litigate):'
+  if (anchor.correctForm) {
+    block += '\n' + `- The word being explained is: "${anchor.correctForm}". Use it as correctForm verbatim.`
+  }
+  if (hasSenses) {
+    const list = anchor.senses
+      .map((m, i) => `[Sense ${m.senseIndex || i + 1}] ${m.pos ? `(${m.pos}) ` : ''}${m.zh}${m.en ? ` | ${m.en}` : ''}`)
+      .join('\n')
+    block += '\n' + (isCore
+      ? `- These senses were fixed for the same query; stay consistent with them, but do NOT reproduce them as a dictionary wall — Pure Core is word-level.${'\n'}${list}`
+      : `- Use EXACTLY these senses, in this order, for "meanings":${'\n'}${list}`)
+  }
+  return block
 }
 
 function getSystemPrompt(
@@ -695,10 +739,12 @@ function getFullLookupPrompt(
   isFull: boolean = true,
   triLingual: boolean = false,
   monolingualWord: boolean = false,
-  cognitive: 'lookup' | 'core' = 'lookup'
+  cognitive: 'lookup' | 'core' = 'lookup',
+  meaningsAnchor?: MeaningsAnchor
 ): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
-  const isMono = monolingualWord && lang === 'en'
+  // Monolingual is a global "answer in English" switch — not limited to English input.
+  const isMono = monolingualWord
   const isCore = cognitive === 'core'
 
   const meaningsZhDescription = isMono ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'" : "中文释义"
@@ -878,7 +924,15 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
 
   if (isMono) {
     prompt += `\n- ALL output text must be in English only. No Chinese characters anywhere.`
+  } else if (lang !== 'en' && lang !== 'zh') {
+    // Non-mono + foreign input: this app targets Chinese speakers, so explanations must
+    // be Chinese. Previously only implied by roleIntro, and the model drifted to English.
+    prompt += `\n- The input is a ${lang} term, but ALL explanatory text (meanings, scenes, notes, stories) MUST be written in Chinese. Keep the original ${lang} term and its romanization only where they identify the word itself.`
   }
+  if (isCore && lang === 'zh' && !isMono) {
+    prompt += ZH_CORE_CONCEPT_MAP_RULE
+  }
+  prompt += buildAnchorBlock(meaningsAnchor, isCore)
   if (isFull && isEnabled('culture')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign) {
@@ -895,20 +949,22 @@ export async function aiFullLookup(
   word: string,
   isFull: boolean = true,
   signal?: AbortSignal,
-  cognitive: 'lookup' | 'core' = 'lookup'
+  cognitive: 'lookup' | 'core' = 'lookup',
+  opts: { anchor?: MeaningsAnchor; webResults?: string } = {}
 ): Promise<AiFullResult> {
   const config = getConfig()
   const lang = detectLanguage(word)
   
-  // Perform web search if enabled
-  const webResults = await performWebSearch(word, signal)
+  // When both halves run in parallel the caller does ONE shared web search and
+  // passes it in; only fall back to our own when called standalone.
+  const webResults = opts.webResults ?? await performWebSearch(word, signal)
   
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
 
   const activeModules = modulesForCognitive(config, cognitive)
   const cleaned = await callApi(
-    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, config.monolingualWord, cognitive),
+    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, getIsMono(word, config), cognitive, opts.anchor),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -1003,13 +1059,13 @@ export async function aiPhraseQuery(
   phrase: string,
   isFull: boolean = true,
   signal?: AbortSignal,
-  cognitive: 'lookup' | 'core' = 'lookup'
+  cognitive: 'lookup' | 'core' = 'lookup',
+  opts: { anchor?: MeaningsAnchor; webResults?: string } = {}
 ): Promise<PhraseResult> {
   const config = getConfig()
   const lang = detectLanguage(phrase)
 
-  // Perform web search if enabled
-  const webResults = await performWebSearch(phrase, signal)
+  const webResults = opts.webResults ?? await performWebSearch(phrase, signal)
 
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
@@ -1031,6 +1087,7 @@ export async function aiPhraseQuery(
       isMono,
       cognitive,
       queryType: phraseQueryType,
+      meaningsAnchor: opts.anchor,
     }),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
@@ -1835,73 +1892,125 @@ Rules:
 // ── Combined Lookup+Core (v0.9.0) ────────────────────────────────────────────
 
 /**
- * Single AI call that returns both Lookup (understand) and Core (use it) data.
- * The two mode-tab views are populated from this one response.
-/**
- * 阶段一：超轻量极速 Meanings 骨架生成 (0.5s)
- * - 句子 (sentence): 仅 1 条忠实译文
- * - 单词/短语 (word/phrase): 1-4 条核心 Sense
+ * Stage 1 — resolve WHAT we are explaining, as fast and as cheaply as possible.
+ *
+ * This is not "generate the meanings" for its own sake. It is the disambiguation
+ * contract the two parallel halves must share: the corrected headword, and (for
+ * Chinese input, where the target word is genuinely ambiguous) the candidate senses.
+ * Output is deliberately tiny so it lands in well under a second.
  */
-export async function generateMeaningsSkeleton(
+export async function resolveQuerySkeleton(
   query: string,
   queryType: 'word' | 'phrase' | 'sentence',
   isMono: boolean = false,
   signal?: AbortSignal
-): Promise<Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>> {
+): Promise<MeaningsAnchor> {
   const config = getConfig()
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
+
+  const lang = detectLanguage(query)
+  const isSentence = queryType === 'sentence'
+  const isZhInput = lang === 'zh'
 
   const roleDesc = isMono
     ? 'You are a professional English vocabulary analyst.'
     : 'You are a professional English vocabulary analyst for Chinese native speakers.'
 
-  const isSentence = queryType === 'sentence'
+  const shape = isSentence
+    ? `{
+  "correctForm": "the corrected / cleaned form of the input text",
+  "senses": [ { "senseIndex": 1, "zh": "faithful full translation", "en": "original or polished English text" } ]
+}`
+    : `{
+  "correctForm": "the English headword being explained (fix typos; for Chinese input, the single best English equivalent)",
+  "pos": "primary part of speech",
+  "phonetic": "IPA if English, else omit",
+  "senses": [ { "senseIndex": 1, "pos": "n.", "zh": "core sense", "en": "English gloss" } ]
+}`
 
-  const meaningSchema = isSentence
-    ? `Return a JSON array containing EXACTLY 1 item representing the faithful translation of the full text:
-[
-  { "senseIndex": 1, "zh": "完整忠实中文翻译", "en": "Original or polished English text" }
-]`
-    : `Return a JSON array containing 1 to 4 primary dictionary senses ordered by frequency:
-[
-  { "senseIndex": 1, "pos": "n.", "zh": "核心中文词典义项", "en": "English gloss" }
-]`
+  const senseRule = isSentence
+    ? '- senses: EXACTLY 1 item, a faithful translation. Never summarize.'
+    : isZhInput
+      ? '- senses: 2-5 items. The user typed Chinese, so each sense is a DISTINCT English candidate for that concept, ordered best-first, with "en" = the English word and "zh" = the nuance that separates it from the others.'
+      : '- senses: 1-4 primary dictionary senses, ordered by frequency.'
 
   const systemPrompt = `${roleDesc}
 
-Given an input (${queryType}), return ONLY a valid JSON array of its primary meanings/translations.
-No explanations, no markdown formatting outside JSON.
+You are the fast disambiguation pass. Return ONLY a valid JSON object — no markdown, no prose.
 
-${meaningSchema}
+${shape}
 
 Rules:
-${isSentence ? '- EXACTLY 1 item. Faithful translation only, no summary.' : '- 1 to 4 items max. Order by frequency/importance. Include senseIndex 1, 2, 3...'}
-${isMono ? '- ALL output text in English only.' : ''}`
+- correctForm is REQUIRED. It is the single thing every later pass must agree on.
+${senseRule}
+- Be terse. This is a routing decision, not the final answer.${isMono ? '\n- ALL output text in English only.' : ''}`
 
-  const userPrompt = `Input: "${query}"\n\nGenerate the meanings JSON array.`
+  const userPrompt = `Input: "${query}"\n\nReturn the resolution JSON.`
 
   const cleaned = await callApi(systemPrompt, userPrompt, signal)
 
+  const coerce = (raw: unknown): MeaningsAnchor | null => {
+    if (!raw || typeof raw !== 'object') return null
+    // Tolerate a bare array (older prompt shape) and objects using "meanings".
+    if (Array.isArray(raw)) {
+      return { senses: normalizeSenses(raw) }
+    }
+    const o = raw as Record<string, unknown>
+    const senseSrc = Array.isArray(o.senses) ? o.senses : Array.isArray(o.meanings) ? o.meanings : []
+    const senses = normalizeSenses(senseSrc)
+    const correctForm = typeof o.correctForm === 'string' ? o.correctForm.trim() : undefined
+    if (!correctForm && senses.length === 0) return null
+    return {
+      correctForm: correctForm || undefined,
+      pos: typeof o.pos === 'string' ? o.pos : undefined,
+      phonetic: typeof o.phonetic === 'string' ? o.phonetic : undefined,
+      senses,
+    }
+  }
+
   try {
-    const parsed = JSON.parse(cleaned)
-    if (Array.isArray(parsed)) return parsed
+    const hit = coerce(JSON.parse(cleaned))
+    if (hit) return hit
   } catch { /* fall through */ }
 
-  const match = cleaned.match(/\[[\s\S]*\]/)
-  if (match) {
+  const objMatch = cleaned.match(/[[{][\s\S]*[\]}]/)
+  if (objMatch) {
     try {
-      const parsed = JSON.parse(match[0])
-      if (Array.isArray(parsed)) return parsed
+      const hit = coerce(JSON.parse(objMatch[0]))
+      if (hit) return hit
     } catch { /* fall through */ }
   }
 
-  throw new Error('AI returned invalid JSON for meanings skeleton')
+  throw new Error('AI returned invalid JSON for query resolution')
+}
+
+/** Drop malformed sense entries and renumber, so downstream indexing is always dense. */
+function normalizeSenses(raw: unknown[]): MeaningsAnchor['senses'] {
+  const out: MeaningsAnchor['senses'] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const o = item as Record<string, unknown>
+    const zh = typeof o.zh === 'string' ? o.zh.trim() : ''
+    const en = typeof o.en === 'string' ? o.en.trim() : ''
+    if (!zh && !en) continue
+    out.push({
+      senseIndex: out.length + 1,
+      zh: zh || en,
+      en: en || undefined,
+      pos: typeof o.pos === 'string' ? o.pos : undefined,
+    })
+    if (out.length >= 5) break
+  }
+  return out
 }
 
 /**
+ * @deprecated v0.9.15 — superseded by two parallel aiFullLookup() halves.
+ * One mega-JSON is output-token bound and, being non-streaming, cannot paint
+ * anything until all of it lands. Kept for rollback / A-B comparison only.
+ *
  * Single AI call for word — returns both Lookup and Core data.
- * Supports optional meaningsAnchor for fixed 2-stage execution.
  */
 export async function aiCombinedLookup(
   word: string,
@@ -1947,8 +2056,8 @@ export async function aiCombinedLookup(
 }
 
 /**
- * Single AI call for phrase/sentence — returns both Lookup and Core phrase results.
- * Supports optional meaningsAnchor for fixed 2-stage execution.
+ * @deprecated v0.9.15 — superseded by two parallel aiPhraseQuery() halves.
+ * Kept for rollback / A-B comparison only.
  */
 export async function aiCombinedPhraseQuery(
   phrase: string,

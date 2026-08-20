@@ -49,6 +49,8 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const queryType = useSearchStore(s => s.queryType)
   const searchMode = useSearchStore(s => s.mode)
   const isCoreMode = searchMode === 'core'
+  const halfPending = useResultStore(state =>
+    isCoreMode ? state.aiPendingHalves.core : state.aiPendingHalves.lookup)
   const activeModules = isCoreMode ? corePhraseModules : modules
   const phraseCognitive = phraseCognitiveFromSearchMode(searchMode)
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
@@ -280,7 +282,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
 
       <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={phrase} />
 
-      {aiStatus === 'loading' && (
+      {(aiStatus === 'loading' || (aiStatus === 'success' && halfPending)) && (
         <div className="space-y-4">
           <SkeletonBlock lines={2} variant="card" />
           <SkeletonBlock lines={3} variant="pill" />

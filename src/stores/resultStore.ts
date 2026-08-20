@@ -7,6 +7,57 @@ import { aiFullToAnalysis } from '../utils/aiFullToAnalysis'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
 
+/**
+ * Stage-1 resolution skeleton. Its job is NOT to enumerate senses for their own
+ * sake — it is the disambiguation contract both halves must agree on:
+ * which English word are we actually explaining, and (for zh input) which senses.
+ */
+export interface QuerySkeleton {
+  correctForm?: string
+  pos?: string
+  phonetic?: string
+  senses: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>
+}
+
+export type CombinedHalf = 'lookup' | 'core'
+
+/** Which halves of a split combined request are still in flight. */
+export interface PendingHalves { lookup: boolean; core: boolean }
+
+interface CombinedDraft<T> {
+  key: string
+  tag: SearchTag
+  lookup: T | null
+  core: T | null
+}
+
+const NO_PENDING: PendingHalves = { lookup: false, core: false }
+
+function emptyFull(skeleton: QuerySkeleton | null, fallbackWord: string): AiFullResult {
+  return {
+    correctForm: skeleton?.correctForm || fallbackWord,
+    phonetic: skeleton?.phonetic || '',
+    pos: skeleton?.pos || '',
+    meanings: (skeleton?.senses ?? []).map(sn => ({
+      senseIndex: sn.senseIndex,
+      zh: sn.zh,
+      en: sn.en ?? '',
+      pos: sn.pos,
+    })),
+    examples: [],
+  }
+}
+
+function emptyPhrase(skeleton: QuerySkeleton | null, fallbackPhrase: string): PhraseResult {
+  const first = skeleton?.senses?.[0]
+  return {
+    phrase: fallbackPhrase,
+    correctForm: skeleton?.correctForm || fallbackPhrase,
+    meaning: first ? (first.zh || first.en || '') : '',
+    examples: [],
+  }
+}
+
 interface ResultStore {
   wordResult: WordResult | null
   relatedPhrases: SuggestItem[]
@@ -19,6 +70,12 @@ interface ResultStore {
   combinedPhraseResult: CombinedPhraseResult | null
   aiStatus: AiStatus
   aiError: string | null
+  /** Split-call progress: which halves are still in flight (v0.9.15). */
+  aiPendingHalves: PendingHalves
+  /** True while the displayed result is only the stage-1 skeleton preview. */
+  aiIsPartial: boolean
+  /** Stage-1 skeleton for the active query (display only, never cached). */
+  aiSkeleton: QuerySkeleton | null
   aiCache: Record<string, AiAnalysis>
   aiFullCache: Record<string, AiFullResult>
   phraseCache: Record<string, PhraseResult>
@@ -30,7 +87,16 @@ interface ResultStore {
   setRelatedPhrases: (phrases: SuggestItem[]) => void
   setAiStatus: (s: AiStatus) => void
   setAiAnalysis: (word: string, a: AiAnalysis) => void
-  setMeaningsSkeleton: (word: string, meanings: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>) => void
+  /** Start a split combined request: resets the draft accumulator and pending flags. */
+  beginCombined: (query: string, tag: SearchTag, kind: 'word' | 'phrase') => void
+  /** Apply the stage-1 skeleton as an early preview. Never writes to any cache. */
+  applyQuerySkeleton: (query: string, skeleton: QuerySkeleton, kind: 'word' | 'phrase') => void
+  /** Commit one half of a split word request; caches only once both halves land. */
+  commitCombinedHalf: (word: string, half: CombinedHalf, r: AiFullResult, tag?: SearchTag) => void
+  /** Commit one half of a split phrase request. */
+  commitCombinedPhraseHalf: (phrase: string, half: CombinedHalf, r: PhraseResult, tag?: SearchTag) => void
+  /** Mark a half as settled without a result (it failed) so its spinner stops. */
+  settleCombinedHalf: (half: CombinedHalf) => void
   setAiFullResult: (word: string, r: AiFullResult, cognitive?: CognitiveMode) => void
   setPhraseResult: (key: string, r: PhraseResult, cognitive?: CognitiveMode) => void
   /** v0.9.0: store combined result and update active display */
@@ -55,6 +121,15 @@ interface ResultStore {
 
 const CACHE_LIMIT = 100
 
+/**
+ * Transient accumulators for the two halves of a split combined request.
+ * Module-scoped rather than store state: they change on every half and must not
+ * trigger a re-render of their own. Keyed so a late half from a superseded query
+ * is dropped even if the request gate somehow lets it through.
+ */
+let wordDraft: CombinedDraft<AiFullResult> | null = null
+let phraseDraft: CombinedDraft<PhraseResult> | null = null
+
 export const useResultStore = create<ResultStore>()(
   persist(
     (set, get) => ({
@@ -67,6 +142,9 @@ export const useResultStore = create<ResultStore>()(
       combinedPhraseResult: null,
       aiStatus: 'idle',
       aiError: null,
+      aiPendingHalves: NO_PENDING,
+      aiIsPartial: false,
+      aiSkeleton: null,
       aiCache: {},
       aiFullCache: {},
       phraseCache: {},
@@ -75,6 +153,8 @@ export const useResultStore = create<ResultStore>()(
 
       setWordResult: (wordResult, clearAi = true) => {
         if (clearAi) {
+          wordDraft = null
+          phraseDraft = null
           set({ 
             wordResult, 
             relatedPhrases: [], 
@@ -82,7 +162,10 @@ export const useResultStore = create<ResultStore>()(
             aiFullResult: null, 
             phraseResult: null, 
             aiStatus: 'idle', 
-            aiError: null 
+            aiError: null,
+            aiPendingHalves: NO_PENDING,
+            aiIsPartial: false,
+            aiSkeleton: null,
           })
         } else {
           set({ wordResult })
@@ -102,16 +185,139 @@ export const useResultStore = create<ResultStore>()(
         }
         set({ aiCache: cache, aiAnalysis, aiStatus: 'success' })
       },
-      setMeaningsSkeleton: (word, meanings) => {
-        const normalized = normalizeQuery(word)
-        const current = get().aiAnalysis
-        const updated = current
-          ? { ...current, meanings }
-          : ({ meanings } as AiAnalysis)
-        const cache = { ...get().aiCache }
-        delete cache[normalized]
-        cache[normalized] = updated
-        set({ aiCache: cache, aiAnalysis: updated })
+      beginCombined: (query, tag, kind) => {
+        const key = combinedCacheKey(query, tag)
+        if (kind === 'word') {
+          wordDraft = { key, tag, lookup: null, core: null }
+          phraseDraft = null
+        } else {
+          phraseDraft = { key, tag, lookup: null, core: null }
+          wordDraft = null
+        }
+        set({
+          aiStatus: 'loading',
+          aiError: null,
+          aiSkeleton: null,
+          aiIsPartial: false,
+          aiPendingHalves: { lookup: true, core: true },
+        })
+      },
+
+      applyQuerySkeleton: (query, skeleton, kind) => {
+        const draft = kind === 'word' ? wordDraft : phraseDraft
+        // Stale guard: a skeleton for a query we are no longer resolving must not paint.
+        if (!draft || draft.key !== combinedCacheKey(query, draft.tag)) return
+        // Never downgrade: if a real half already landed, the skeleton is obsolete.
+        if (draft.lookup || draft.core) return
+
+        if (kind === 'word') {
+          const preview = emptyFull(skeleton, query)
+          set({
+            aiSkeleton: skeleton,
+            aiIsPartial: true,
+            aiStatus: 'success',
+            combinedResult: { lookup: preview, core: preview },
+            aiFullResult: preview,
+            aiAnalysis: aiFullToAnalysis(preview),
+          })
+        } else {
+          const preview = emptyPhrase(skeleton, query)
+          set({
+            aiSkeleton: skeleton,
+            aiIsPartial: true,
+            aiStatus: 'success',
+            combinedPhraseResult: { lookup: preview, core: preview },
+            phraseResult: preview,
+          })
+        }
+      },
+
+      commitCombinedHalf: (word, half, result, tag = 'normal') => {
+        const key = combinedCacheKey(word, tag)
+        if (!wordDraft || wordDraft.key !== key) return
+        wordDraft[half] = result
+
+        const skeleton = get().aiSkeleton
+        const lookup = wordDraft.lookup ?? emptyFull(skeleton, word)
+        const core = wordDraft.core ?? emptyFull(skeleton, word)
+        const complete = Boolean(wordDraft.lookup && wordDraft.core)
+
+        // A single half is still worth persisting on its own: getCachedCombined's
+        // legacy path can reconstruct from aiFullCache if the other half never lands.
+        const fullCache = { ...get().aiFullCache }
+        const halfKey = cognitiveCacheKey(word, half)
+        delete fullCache[halfKey]
+        fullCache[halfKey] = result
+        const fullKeys = Object.keys(fullCache)
+        if (fullKeys.length > CACHE_LIMIT) delete fullCache[fullKeys[0]]
+
+        const combinedCache = { ...get().combinedCache }
+        if (complete) {
+          delete combinedCache[key]
+          combinedCache[key] = { lookup, core }
+          const keys = Object.keys(combinedCache)
+          if (keys.length > CACHE_LIMIT) delete combinedCache[keys[0]]
+        }
+
+        set({
+          aiFullCache: fullCache,
+          combinedCache,
+          combinedResult: { lookup, core },
+          aiFullResult: lookup,
+          aiAnalysis: aiFullToAnalysis(lookup),
+          aiStatus: 'success',
+          aiError: null,
+          aiIsPartial: !complete,
+          aiPendingHalves: { ...get().aiPendingHalves, [half]: false },
+        })
+      },
+
+      commitCombinedPhraseHalf: (phrase, half, result, tag = 'normal') => {
+        const key = combinedCacheKey(phrase, tag)
+        if (!phraseDraft || phraseDraft.key !== key) return
+        phraseDraft[half] = result
+
+        const skeleton = get().aiSkeleton
+        const lookup = phraseDraft.lookup ?? emptyPhrase(skeleton, phrase)
+        const core = phraseDraft.core ?? emptyPhrase(skeleton, phrase)
+        const complete = Boolean(phraseDraft.lookup && phraseDraft.core)
+
+        const pCache = { ...get().phraseCache }
+        const halfKey = cognitiveCacheKey(phrase, half)
+        delete pCache[halfKey]
+        pCache[halfKey] = result
+        const pKeys = Object.keys(pCache)
+        if (pKeys.length > CACHE_LIMIT) delete pCache[pKeys[0]]
+
+        const combinedPhraseCache = { ...get().combinedPhraseCache }
+        if (complete) {
+          delete combinedPhraseCache[key]
+          combinedPhraseCache[key] = { lookup, core }
+          const keys = Object.keys(combinedPhraseCache)
+          if (keys.length > CACHE_LIMIT) delete combinedPhraseCache[keys[0]]
+        }
+
+        set({
+          phraseCache: pCache,
+          combinedPhraseCache,
+          combinedPhraseResult: { lookup, core },
+          phraseResult: lookup,
+          aiStatus: 'success',
+          aiError: null,
+          aiIsPartial: !complete,
+          aiPendingHalves: { ...get().aiPendingHalves, [half]: false },
+        })
+      },
+
+      settleCombinedHalf: (half) => {
+        const pending = { ...get().aiPendingHalves, [half]: false }
+        const anyLanded = Boolean(wordDraft?.lookup || wordDraft?.core || phraseDraft?.lookup || phraseDraft?.core)
+        set({
+          aiPendingHalves: pending,
+          // Both halves failed and nothing ever rendered — leave partial off so the
+          // caller's setAiError produces a clean error state instead of a stuck shimmer.
+          aiIsPartial: anyLanded ? get().aiIsPartial : false,
+        })
       },
       updateMnemonic: (word, mnemonic) => {
         const normalized = normalizeQuery(word)
@@ -231,7 +437,12 @@ export const useResultStore = create<ResultStore>()(
         }
         set({ phraseCache: cache, phraseResult, aiStatus: 'success' })
       },
-      setAiError: (aiError) => set({ aiError, aiStatus: 'error' }),
+      setAiError: (aiError) => set({
+        aiError,
+        aiStatus: 'error',
+        aiPendingHalves: NO_PENDING,
+        aiIsPartial: false,
+      }),
 
       // v0.9.0: combined cache tagged by normal vs bypass
       setCombinedResult: (word, combinedResult, tag = 'normal') => {
@@ -241,12 +452,16 @@ export const useResultStore = create<ResultStore>()(
         cache[key] = combinedResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
+        wordDraft = { key, tag, lookup: combinedResult.lookup, core: combinedResult.core }
         set({
           combinedCache: cache,
           combinedResult,
           aiFullResult: combinedResult.lookup,
           aiAnalysis: aiFullToAnalysis(combinedResult.lookup),
           aiStatus: 'success',
+          aiPendingHalves: NO_PENDING,
+          aiIsPartial: false,
+          aiSkeleton: null,
         })
       },
       setCombinedPhraseResult: (phrase, combinedPhraseResult, tag = 'normal') => {
@@ -256,11 +471,15 @@ export const useResultStore = create<ResultStore>()(
         cache[key] = combinedPhraseResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
+        phraseDraft = { key, tag, lookup: combinedPhraseResult.lookup, core: combinedPhraseResult.core }
         set({
           combinedPhraseCache: cache,
           combinedPhraseResult,
           phraseResult: combinedPhraseResult.lookup,
           aiStatus: 'success',
+          aiPendingHalves: NO_PENDING,
+          aiIsPartial: false,
+          aiSkeleton: null,
         })
       },
       getCachedCombined: (word, tag = 'normal') => {
@@ -352,7 +571,7 @@ export const useResultStore = create<ResultStore>()(
         }
         return null
       },
-      clearCache: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null }),
+      clearCache: () => { wordDraft = null; phraseDraft = null; return set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
       clearCacheOnly: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {} }),
       evictCacheEntry: (key) => {
         const normalized = normalizeQuery(key)
@@ -372,7 +591,7 @@ export const useResultStore = create<ResultStore>()(
           return { aiCache, aiFullCache, phraseCache, combinedCache, combinedPhraseCache }
         })
       },
-      reset: () => set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null }),
+      reset: () => { wordDraft = null; phraseDraft = null; return set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
     }),
     { 
       name: 'lexicon-results',

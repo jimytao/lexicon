@@ -108,9 +108,15 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
 
           // Scene 优先级：props 传入 > 本地生成 > meaning 本身带有
           const activeScene: Scene | undefined = scenes?.[i] ?? localScenes[i] ?? m.scene
-          const activeImageQuery: string | undefined = m.imageQuery ?? localImageQueries[i]
+          // Freshly generated values win over whatever came in on props, matching
+          // the scene precedence on the line above.
+          const activeImageQuery: string | undefined = localImageQueries[i] ?? m.imageQuery
           const hasScene = !!(activeScene && (activeScene.label || activeScene.description))
-          const showGenerateBtn = enableSceneGenerate && word && !hasScene
+          const canSearchImage = webSearchEnabled && tavilyApiKey
+          // Dictionary entries commonly have a scene but no imageQuery. Gating the
+          // button on !hasScene alone left those senses unable to ever get an image.
+          const showGenerateBtn = enableSceneGenerate && word
+            && (!hasScene || (canSearchImage && !activeImageQuery))
 
           return (
             <div key={i} className="group relative">
@@ -182,7 +188,7 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
                     </div>
                   )}
 
-                  {webSearchEnabled && tavilyApiKey && activeImageQuery && (
+                  {canSearchImage && activeImageQuery && (
                     <div className="mt-1.5">
                       <button
                         onClick={() => handleToggleImage(i, activeImageQuery)}

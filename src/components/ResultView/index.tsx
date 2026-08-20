@@ -54,6 +54,11 @@ export function ResultView({
   const t = useT()
   const { modules } = useSettingsStore()
   const updateMnemonic = useResultStore(state => state.updateMnemonic)
+  // The lookup half may still be in flight while a skeleton preview is on screen;
+  // don't offer per-sense enrichment until the real meanings have landed.
+  const lookupPending = useResultStore(state => state.aiPendingHalves.lookup)
+  const aiReady = mode === 'ai' && aiStatus === 'success' && !lookupPending
+
   const displayedExamples = wordResult.examples.length > 0 ? wordResult.examples : aiAnalysis?.examples ?? []
 
   return (
@@ -84,7 +89,7 @@ export function ResultView({
 
           switch (module.id) {
             case 'dictionary': {
-              const alignedAiMeanings = mode === 'ai' && aiStatus === 'success' && aiAnalysis?.meanings
+              const alignedAiMeanings = aiReady && aiAnalysis?.meanings
                 ? alignAiMeanings(wordResult.meanings, aiAnalysis.meanings)
                 : undefined
 
@@ -106,7 +111,7 @@ export function ResultView({
                     meanings={mergedMeanings}
                     scenes={alignedScenes}
                     word={wordResult.word}
-                    enableSceneGenerate={mode === 'ai' && aiStatus === 'success'}
+                    enableSceneGenerate={aiReady}
                   />
                   {mode === 'instant' && !aiAnalysis?.meanings?.length && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-8 animate-in fade-in duration-700">
@@ -119,15 +124,15 @@ export function ResultView({
             case 'semantic':
               return null
             case 'coreConcept':
-              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.coreConcept && (
+              return aiReady && aiAnalysis?.coreConcept && (
                 <CoreConceptCard key={module.id} coreConcept={aiAnalysis.coreConcept} variant="memory" />
               )
             case 'chunks':
-              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.collocations && (
+              return aiReady && aiAnalysis?.collocations && (
                 <CollocationCard key={module.id} variant="chunks" collocations={aiAnalysis.collocations} />
               )
             case 'collocations':
-              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.collocations && (
+              return aiReady && aiAnalysis?.collocations && (
                 <CollocationCard key={module.id} variant="collocations" collocations={aiAnalysis.collocations} />
               )
             case 'examples':
@@ -156,7 +161,7 @@ export function ResultView({
               )
             }
             case 'synonyms':
-              return mode === 'ai' && aiStatus === 'success' && (aiAnalysis?.synonyms || aiAnalysis?.antonyms) && (
+              return aiReady && (aiAnalysis?.synonyms || aiAnalysis?.antonyms) && (
                 <SynonymList
                   key={module.id}
                   synonyms={aiAnalysis.synonyms}
@@ -165,11 +170,11 @@ export function ResultView({
                 />
               )
             case 'etymology':
-              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.etymology && (
+              return aiReady && aiAnalysis?.etymology && (
                 <EtymologyCard key={module.id} etymology={aiAnalysis.etymology} />
               )
             case 'mnemonic':
-              return mode === 'ai' && aiStatus === 'success' && (
+              return aiReady && (
                 <MnemonicCard
                   key={module.id}
                   word={wordResult.word}
@@ -178,7 +183,7 @@ export function ResultView({
                 />
               )
             case 'practice':
-              return mode === 'ai' && aiStatus === 'success' && (
+              return aiReady && (
                 <PracticeSection
                   key={module.id}
                   mode="meaning-check"
@@ -187,7 +192,7 @@ export function ResultView({
                 />
               )
             case 'culture':
-              return mode === 'ai' && aiStatus === 'success' && aiAnalysis?.culturalLore && (
+              return aiReady && aiAnalysis?.culturalLore && (
                 <CulturalLoreCard key={module.id} lore={aiAnalysis.culturalLore} />
               )
             case 'chat': {

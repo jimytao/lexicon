@@ -1,16 +1,16 @@
 import { useRef, useCallback } from 'react'
 import { useResultStore } from '../stores/resultStore'
-import { useSearchStore, detectQueryType } from '../stores/searchStore'
+import { useSearchStore, detectQueryType, detectLanguage } from '../stores/searchStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import {
   analyzeWord,
   aiFullLookup,
   aiPhraseQuery,
-  aiCombinedLookup,
-  aiCombinedPhraseQuery,
-  generateMeaningsSkeleton,
+  performWebSearch,
+  resolveQuerySkeleton,
   fillMissingCollocationNotes,
   fillMissingConceptExamples,
+  type MeaningsAnchor,
 } from '../services/ai'
 import { recordSentenceCorrectionEvent } from '../services/profile'
 import { combineSignals } from '../utils/abortSignal'
@@ -18,7 +18,8 @@ import { classifyAiRequestError } from '../utils/aiRequestErrors'
 import { createAiRequestGate, shouldCommitAiDisplay } from '../utils/aiRequestGate'
 import { cognitiveFromSearchMode, normalizeQuery } from '../utils/text'
 import { aiFullNeedsExplanationFill, collocationsNeedFill, conceptGraphNeedsFill } from '../utils/aiCompleteness'
-import type { Meaning, CollocationData, ConceptGraph, ConceptGraphExample } from '../types'
+import type { Meaning, CollocationData, ConceptGraph, ConceptGraphExample, PhraseResult } from '../types'
+import type { CombinedHalf } from '../stores/resultStore'
 import type { SearchTag } from '../utils/combinedResult'
 
 function mergeCollocationNotes(
@@ -74,9 +75,104 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
 }
 
+/**
+ * Stage-1 policy for word queries.
+ *
+ * The anchor exists to stop the two parallel halves from explaining different
+ * words. How much we are willing to pay for it depends on how ambiguous the
+ * target actually is:
+ *
+ *   local dictionary hit  -> free, we already know the word and its senses
+ *   Chinese input         -> genuinely ambiguous, worth a serial round trip
+ *   everything else       -> the halves will agree on their own; resolve in the
+ *                            background purely to paint something early
+ *
+ * The old code paid the serial round trip on every out-of-dictionary lookup,
+ * which is why English lookups got slower without anyone seeing anything sooner.
+ */
+async function resolveWordAnchor(
+  word: string,
+  tag: SearchTag,
+  signal: AbortSignal,
+  commitOk: () => boolean,
+): Promise<MeaningsAnchor | undefined> {
+  const store = useResultStore.getState()
+
+  // Force-AI (bypass) deliberately ignores the local entry — the user asked for
+  // AI's own reading, and the displayed wordResult may even be a stale other word.
+  if (tag !== 'bypass') {
+    const wr = store.wordResult
+    if (wr?.meanings?.length && normalizeQuery(wr.word) === normalizeQuery(word)) {
+      return {
+        correctForm: wr.word,
+        pos: wr.pos,
+        phonetic: wr.phonetic,
+        senses: wr.meanings.slice(0, 5).map((m, i) => ({
+          senseIndex: i + 1,
+          zh: m.zh,
+          en: m.en || undefined,
+          pos: m.pos,
+        })),
+      }
+    }
+  }
+
+  const isMono = useSettingsStore.getState().monolingualWord
+
+  if (detectLanguage(word) === 'zh') {
+    try {
+      const skeleton = await resolveQuerySkeleton(word, 'word', isMono, signal)
+      if (commitOk()) useResultStore.getState().applyQuerySkeleton(word, skeleton, 'word')
+      return skeleton
+    } catch (e) {
+      // A real cancel must stop the whole request; a bad-JSON resolution must not.
+      if (classifyAiRequestError(e, signal.reason) === 'abort') throw e
+      return undefined
+    }
+  }
+
+  void previewSkeleton(word, 'word', isMono, signal, commitOk)
+  return undefined
+}
+
+/** Stage-1 policy for phrases/sentences: preview only, never blocking. */
+async function resolvePhraseAnchor(
+  phrase: string,
+  signal: AbortSignal,
+  commitOk: () => boolean,
+): Promise<MeaningsAnchor | undefined> {
+  const isSentence = detectQueryType(phrase) === 'sentence'
+  const settings = useSettingsStore.getState()
+  const isMono = isSentence ? settings.monolingualSentence : settings.monolingualPhrase
+
+  // A sentence has exactly one faithful reading and the halves cannot diverge on
+  // it, so there is nothing to arbitrate — resolve only to paint the gist early.
+  void previewSkeleton(phrase, isSentence ? 'sentence' : 'phrase', isMono, signal, commitOk)
+  return undefined
+}
+
+/**
+ * Fire-and-forget early paint. Deliberately swallows every failure: this never
+ * gates the real halves, and its signal is shared with them so it dies with them.
+ */
+function previewSkeleton(
+  query: string,
+  kind: 'word' | 'phrase' | 'sentence',
+  isMono: boolean,
+  signal: AbortSignal,
+  commitOk: () => boolean,
+): Promise<void> {
+  return resolveQuerySkeleton(query, kind, isMono, signal)
+    .then((skeleton) => {
+      if (!commitOk()) return
+      useResultStore.getState().applyQuerySkeleton(query, skeleton, kind === 'word' ? 'word' : 'phrase')
+    })
+    .catch(() => { /* preview only — the real halves carry the request */ })
+}
+
 export function useAiLookup() {
   const {
-    setAiStatus, setAiAnalysis, setMeaningsSkeleton, setAiFullResult, setPhraseResult, setAiError,
+    setAiStatus, setAiAnalysis, setAiFullResult, setPhraseResult, setAiError,
     getCachedAi, getCachedAiFull, getCachedPhrase,
     setCombinedResult, setCombinedPhraseResult, getCachedCombined, getCachedCombinedPhrase,
   } = useResultStore()
@@ -211,7 +307,14 @@ export function useAiLookup() {
     }
   }, [getCachedPhrase, setPhraseResult, setAiStatus, setAiError])
 
-  /** v0.9.0: Combined AI call — fetches Lookup + Core in one round-trip. */
+  /**
+   * v0.9.15: Split combined call.
+   *
+   * The single {lookup, core} mega-JSON was output-token bound and, being
+   * non-streaming, could not paint anything until the whole thing landed. We now
+   * run the two halves as independent parallel requests so whichever tab the user
+   * is looking at renders as soon as its own half arrives.
+   */
   const triggerCombinedLookup = useCallback(async (word: string, forceRefresh = false, tag: SearchTag = 'normal') => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
@@ -227,52 +330,65 @@ export function useAiLookup() {
       }
     }
 
-    const { signal: combined, dispose } = combineSignals(abortRef.current.signal, 30_000)
+    const { signal, dispose } = combineSignals(abortRef.current.signal, 45_000)
+    const commitOk = () => shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)
+    const store = () => useResultStore.getState()
+    store().beginCombined(word, tag, 'word')
 
-    setAiStatus('loading')
     try {
-      // 阶段 1：确定 Meanings 骨架 (SQLite 本地词库 0ms 拿到；Bypass / OOD 约 0.5s 生成)
-      let meaningsAnchor: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }> | undefined = undefined
-      const wordResult = useResultStore.getState().wordResult
-      if (wordResult?.meanings?.length) {
-        meaningsAnchor = wordResult.meanings.map((m, idx) => ({
-          pos: m.pos,
-          zh: m.zh,
-          en: m.en,
-          senseIndex: idx + 1,
-        }))
-      } else {
+      const anchor = await resolveWordAnchor(word, tag, signal, commitOk)
+
+      // One shared web search instead of one per half (it used to run twice).
+      const webResults = await performWebSearch(word, signal)
+
+      const selected: CombinedHalf = cognitiveFromSearchMode(useSearchStore.getState().mode)
+      const other: CombinedHalf = selected === 'lookup' ? 'core' : 'lookup'
+
+      let landed = 0
+      let lastError: unknown = null
+
+      const runHalf = async (half: CombinedHalf) => {
         try {
-          const isMono = useSettingsStore.getState().monolingualWord
-          const skeleton = await generateMeaningsSkeleton(word, 'word', isMono, combined)
-          if (skeleton && skeleton.length > 0) {
-            meaningsAnchor = skeleton
-            setMeaningsSkeleton(word, skeleton)
-          }
-        } catch {
-          /* if skeleton fails, fall back to single call */
+          const r = await aiFullLookup(word, true, signal, half, { anchor, webResults })
+          if (!commitOk()) { store().settleCombinedHalf(half); return }
+          landed += 1
+          store().commitCombinedHalf(word, half, r, tag)
+        } catch (e) {
+          lastError = e
+          store().settleCombinedHalf(half)
         }
       }
 
-      // 阶段 2 & 3：基于固定的 meaningsAnchor 并发生成 Lookup 与 Pure Core
-      const result = await aiCombinedLookup(word, true, combined, meaningsAnchor)
+      // Both fire immediately; the selected half is simply the one on screen, so it
+      // is the one the user perceives. Ordering between them is not forced.
+      await Promise.all([runHalf(selected), runHalf(other)])
       dispose()
-      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
-      setCombinedResult(word, result, tag)
+
+      if (!commitOk()) return
+      // Only a total failure is an error — one good half is still a usable result.
+      if (landed === 0 && lastError) {
+        const kind = classifyAiRequestError(lastError, signal.reason)
+        if (kind === 'abort') return
+        if (kind === 'timeout') {
+          setAiError(`「${word}」较为生僻，AI 未能在时限内解析，建议直接向 AI 提问`)
+          return
+        }
+        setAiError(errorMessage(lastError))
+      }
     } catch (e) {
       dispose()
-      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
-      const kind = classifyAiRequestError(e, combined.reason)
+      if (!commitOk()) return
+      const kind = classifyAiRequestError(e, signal.reason)
       if (kind === 'abort') return
       if (kind === 'timeout') {
-        setAiError(`「${word}」较为生僻，AI 30 秒内未能解析，建议直接向 AI 提问`)
+        setAiError(`「${word}」较为生僻，AI 未能在时限内解析，建议直接向 AI 提问`)
         return
       }
       setAiError(errorMessage(e))
     }
-  }, [getCachedCombined, setCombinedResult, setMeaningsSkeleton, setAiStatus, setAiError])
+  }, [getCachedCombined, setCombinedResult, setAiError])
 
-  /** v0.9.0: Combined phrase AI call — fetches Lookup + Core phrase results in one round-trip. */
+  /** v0.9.15: Split combined phrase/sentence call — same two-parallel-halves shape. */
   const triggerCombinedPhraseQuery = useCallback(async (phrase: string, forceRefresh = false, tag: SearchTag = 'normal') => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
@@ -288,29 +404,59 @@ export function useAiLookup() {
       }
     }
 
-    setAiStatus('loading')
-    try {
-      const qType = detectQueryType(phrase)
-      const isSentence = qType === 'sentence'
-      const isMono = isSentence ? useSettingsStore.getState().monolingualSentence : useSettingsStore.getState().monolingualPhrase
+    const { signal, dispose } = combineSignals(abortRef.current.signal, 45_000)
+    const commitOk = () => shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)
+    const store = () => useResultStore.getState()
+    store().beginCombined(phrase, tag, 'phrase')
 
-      let meaningsAnchor: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }> | undefined = undefined
-      try {
-        const skeleton = await generateMeaningsSkeleton(phrase, isSentence ? 'sentence' : 'phrase', isMono, abortRef.current.signal)
-        if (skeleton && skeleton.length > 0) {
-          meaningsAnchor = skeleton
-          setMeaningsSkeleton(phrase, skeleton)
+    try {
+      const anchor = await resolvePhraseAnchor(phrase, signal, commitOk)
+      const webResults = await performWebSearch(phrase, signal)
+
+      const selected: CombinedHalf = cognitiveFromSearchMode(useSearchStore.getState().mode)
+      const other: CombinedHalf = selected === 'lookup' ? 'core' : 'lookup'
+
+      let landed = 0
+      let lastError: unknown = null
+      const captured: { lookup: PhraseResult | null } = { lookup: null }
+
+      const runHalf = async (half: CombinedHalf) => {
+        try {
+          const r = await aiPhraseQuery(phrase, true, signal, half, { anchor, webResults })
+          if (!commitOk()) { store().settleCombinedHalf(half); return }
+          landed += 1
+          if (half === 'lookup') captured.lookup = r
+          store().commitCombinedPhraseHalf(phrase, half, r, tag)
+        } catch (e) {
+          lastError = e
+          store().settleCombinedHalf(half)
         }
-      } catch {
-        /* fall back to single combined query if skeleton fails */
       }
 
-      const result = await aiCombinedPhraseQuery(phrase, true, abortRef.current.signal, meaningsAnchor)
-      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
-      setCombinedPhraseResult(phrase, result, tag)
+      await Promise.all([runHalf(selected), runHalf(other)])
+      dispose()
+
+      if (!commitOk()) return
+
+      if (landed === 0 && lastError) {
+        const kind = classifyAiRequestError(lastError, signal.reason)
+        if (kind === 'abort') return
+        if (kind === 'timeout') {
+          setAiError(`「${phrase}」请求超时，请重试或检查网络`)
+          return
+        }
+        setAiError(errorMessage(lastError))
+        return
+      }
+
+      const lr = captured.lookup
+      if (lr && (lr.unnaturalMindModel || lr.correctForm)) {
+        recordSentenceCorrectionEvent(phrase, lr.correctForm, lr.unnaturalMindModel)
+      }
     } catch (e) {
-      if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
-      const kind = classifyAiRequestError(e, abortRef.current?.signal.reason)
+      dispose()
+      if (!commitOk()) return
+      const kind = classifyAiRequestError(e, signal.reason)
       if (kind === 'abort') return
       if (kind === 'timeout') {
         setAiError(`「${phrase}」请求超时，请重试或检查网络`)
@@ -318,7 +464,7 @@ export function useAiLookup() {
       }
       setAiError(errorMessage(e))
     }
-  }, [getCachedCombinedPhrase, setCombinedPhraseResult, setMeaningsSkeleton, setAiStatus, setAiError])
+  }, [getCachedCombinedPhrase, setCombinedPhraseResult, setAiError])
 
   /** Repair only missing collocation notes on current full result (keeps good notes). */
   const repairCollocationNotes = useCallback(async (word: string) => {

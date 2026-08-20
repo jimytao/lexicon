@@ -147,7 +147,7 @@ export function App() {
     lastScrollTopRef.current = 0
   }, [view])
 
-  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, aiStatus, aiError } = useResultStore()
+  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, combinedPhraseResult, aiStatus, aiError } = useResultStore()
   const { selectWord } = useSearch()
   const { triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
@@ -703,7 +703,7 @@ export function App() {
                 ) : showPhraseView ? (
                   <PhraseView
                     phrase={query}
-                    phraseResult={phraseResult}
+                    phraseResult={mode === 'core' ? (combinedPhraseResult?.core ?? phraseResult) : phraseResult}
                     aiStatus={aiStatus}
                     aiError={aiError}
                     onRetry={handleRetry}

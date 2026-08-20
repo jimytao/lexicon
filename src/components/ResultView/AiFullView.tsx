@@ -14,7 +14,6 @@ import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useT } from '../../i18n'
 import { CollocationCard } from './AiSection/CollocationCard'
-import { detectLanguage } from '../../stores/searchStore'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { PrepImageryCard } from './AiSection/PrepImageryCard'
@@ -42,8 +41,10 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
   const searchMode = useSearchStore(s => s.mode)
   const cognitive = cognitiveFromSearchMode(searchMode)
   const { repairCollocationNotes } = useAiLookup()
-  const lang = detectLanguage(word)
-  const shouldHideTranslation = monolingualWord && lang === 'en'
+  // Monolingual = "answer me in English whatever I type", so it is not gated on
+  // the input language — the prompt side stopped gating it too.
+  const shouldHideTranslation = monolingualWord
+  const lookupPending = useResultStore(state => state.aiPendingHalves.lookup)
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
@@ -62,7 +63,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
 
       <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={word} />
 
-      {aiStatus === 'loading' && (
+      {(aiStatus === 'loading' || (aiStatus === 'success' && lookupPending)) && (
         <div className="space-y-4">
           <SkeletonBlock lines={3} variant="card" />
           <SkeletonBlock lines={4} variant="pill" />
