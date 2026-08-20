@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Meaning, Scene } from '../../../types'
 import { useSettingsStore } from '../../../stores/settingsStore'
-import { searchTavilyImage } from '../../../services/ai'
+import { useResultStore } from '../../../stores/resultStore'
+import { searchTavilyImage, generateSingleScene } from '../../../services/ai'
 import { useResolvedDark } from '../../../hooks/useResolvedDark'
 import { useT } from '../../../i18n'
 
 interface MeaningListProps {
   meanings: Meaning[]
   scenes?: (Scene | undefined)[]
+  word?: string
+  enableSceneGenerate?: boolean
 }
 
 const COLLAPSE_THRESHOLD = 5
@@ -20,15 +23,22 @@ const POS_COLORS: Record<string, { bg: string; text: string; darkBg: string; dar
   phrase: { bg: '#FAECE7', text: '#712B13', darkBg: '#3D1608', darkText: '#F0906A' },
 }
 
-export function MeaningList({ meanings, scenes }: MeaningListProps) {
+export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: MeaningListProps) {
   const t = useT()
   const [expanded, setExpanded] = useState(false)
   const darkMode = useResolvedDark()
   const { monolingualWord, webSearchEnabled, tavilyApiKey } = useSettingsStore()
+  const updateMeaningScene = useResultStore(state => state.updateMeaningScene)
 
   const [imageUrls, setImageUrls] = useState<Record<number, string | null>>({})
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({})
   const [expandedImages, setExpandedImages] = useState<Record<number, boolean>>({})
+
+  // 本地生成的 scene 状态
+  const [localScenes, setLocalScenes] = useState<Record<number, Scene>>({})
+  const [sceneGenLoading, setSceneGenLoading] = useState<Record<number, boolean>>({})
+  const [sceneGenErrors, setSceneGenErrors] = useState<Record<number, boolean>>({})
+  const abortRefs = useRef<Record<number, AbortController>>({})
 
   const handleToggleImage = async (index: number, query: string) => {
     if (expandedImages[index]) {
@@ -37,7 +47,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
     }
 
     setExpandedImages(prev => ({ ...prev, [index]: true }))
-    if (imageUrls[index] !== undefined) return // already loaded
+    if (imageUrls[index] !== undefined) return
 
     setLoadingStates(prev => ({ ...prev, [index]: true }))
     try {
@@ -47,6 +57,36 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
       console.error('Failed to load image:', e)
     } finally {
       setLoadingStates(prev => ({ ...prev, [index]: false }))
+    }
+  }
+
+  const handleGenerateScene = async (index: number, meaning: Meaning) => {
+    if (sceneGenLoading[index]) return
+
+    abortRefs.current[index]?.abort()
+    const controller = new AbortController()
+    abortRefs.current[index] = controller
+
+    setSceneGenLoading(prev => ({ ...prev, [index]: true }))
+    setSceneGenErrors(prev => ({ ...prev, [index]: false }))
+
+    try {
+      const scene = await generateSingleScene(
+        word ?? '',
+        { zh: meaning.zh, en: meaning.en },
+        controller.signal
+      )
+      setLocalScenes(prev => ({ ...prev, [index]: scene }))
+      if (word) {
+        updateMeaningScene(word, index, scene)
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name !== 'AbortError') {
+        console.error('Failed to generate scene:', e)
+        setSceneGenErrors(prev => ({ ...prev, [index]: true }))
+      }
+    } finally {
+      setSceneGenLoading(prev => ({ ...prev, [index]: false }))
     }
   }
 
@@ -61,6 +101,11 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
           const palette = POS_COLORS[m.pos ?? ''] ?? { bg: '#F3F4F6', text: '#374151', darkBg: '#1F2937', darkText: '#D1D5DB' }
           const badgeBg = darkMode ? palette.darkBg : palette.bg
           const badgeText = darkMode ? palette.darkText : palette.text
+
+          // Scene 优先级：props 传入 > 本地生成 > meaning 本身带有
+          const activeScene: Scene | undefined = scenes?.[i] ?? localScenes[i] ?? m.scene
+          const hasScene = !!(activeScene && (activeScene.label || activeScene.description))
+          const showGenerateBtn = enableSceneGenerate && word && !hasScene
 
           return (
             <div key={i} className="group relative">
@@ -84,18 +129,51 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                     <p className="text-sm text-foreground-muted mt-1 leading-relaxed font-medium">{m.en}</p>
                   )}
                   
-                  {scenes?.[i] && (scenes[i].label || scenes[i].description) && (
+                  {/* 场景解释卡片 */}
+                  {hasScene && (
                     <div className="mt-1.5 border-l-2 border-l-border bg-background-soft/40 pl-2.5 pr-2 py-1.5 rounded-r-xl">
-                      {scenes[i].label && (
+                      {activeScene!.label && (
                         <div className="mb-0.5">
                           <span className="text-[9px] font-bold text-foreground-muted uppercase tracking-wider">
-                            {scenes[i].label}
+                            {activeScene!.label}
                           </span>
                         </div>
                       )}
                       <p className="text-[11px] text-foreground-muted leading-relaxed font-medium">
-                        {scenes[i].description}
+                        {activeScene!.description}
                       </p>
+                    </div>
+                  )}
+
+                  {/* 按需生成场景按钮 */}
+                  {showGenerateBtn && (
+                    <div className="mt-1.5">
+                      <button
+                        onClick={() => handleGenerateScene(i, m)}
+                        disabled={sceneGenLoading[i]}
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-accent/5 dark:bg-accent/10 border border-accent/10 hover:bg-accent/10 text-[10px] font-bold text-accent transition-all duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {sceneGenLoading[i] ? (
+                          <>
+                            <span className="w-2.5 h-2.5 border border-accent border-t-transparent rounded-full animate-spin shrink-0" />
+                            {t('meaning.generatingScene')}
+                          </>
+                        ) : sceneGenErrors[i] ? (
+                          <>
+                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            {t('meaning.sceneGenFailed')}
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            {t('meaning.generateScene')}
+                          </>
+                        )}
+                      </button>
                     </div>
                   )}
 
@@ -111,7 +189,6 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                         {expandedImages[i] ? t('meaning.hideImage') : t('meaning.viewImage')}
                       </button>
 
-
                       {expandedImages[i] && (
                         <div className="mt-2 rounded-xl overflow-hidden border border-accent/10 bg-accent-soft/20 dark:bg-accent-soft/5 transition-all duration-500 animate-in fade-in slide-in-from-top-2">
                           {loadingStates[i] ? (
@@ -123,7 +200,7 @@ export function MeaningList({ meanings, scenes }: MeaningListProps) {
                             <div className="relative group/img overflow-hidden">
                               <img
                                 src={imageUrls[i]!}
-                                alt={`Visual helper for ${m.zh}`}
+                                alt={`Visual helper for ${m.zh || m.en}`}
                                 className="w-full max-h-48 object-cover rounded-xl transition-transform duration-500 hover:scale-105"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end p-2">

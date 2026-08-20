@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMXlIc2xtWnlDWkYyejhGM2VCWGdtZ2Q1TWZVYmZkbFdrQTRlME9iTXFFOXNQM1FONFpRSDVZM2RQUmdNOGhDZ3ZYeHVSU1lpREhjekhBK0NPU1V1SHd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg3MDY1NDM0CWZpbGU6TGV4aWNvbl8wLjkuMTJfeDY0LXNldHVwLmV4ZQpyQldOSTVvMFdobC9Na3h3dEVWTHVEeWt5THlhMmh5SUdlQmhaNkpUa1o1cXRtLzc0OXZ4TklWeFE0UDJ5eFZ1Q3FVekdoa0w2TmxNUXd5WkNBd3JCQT09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.12/Lexicon_0.9.12_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTIySng4eDVZNzA3bHF4d2JxSWxYZ2hTTTlzNGF6VE10alhiME9YRjdSQXRGZ3VVZW5uem04RGtSYVo3T0FBalhYOGZ0Tm4zV05rM3M3ZGJaR3hlOHdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg3MTg4MjU3CWZpbGU6TGV4aWNvbl8wLjkuMTNfeDY0LXNldHVwLmV4ZQptNGtKSjIrTkRZUjhLdUNDa0QzVWx3bHI0NWFZT0VNQXUwQzVjL2drcXJ6N2VGUUFVa1RZT1JsS1JJZHF2UVpENzdtMDFrLzB0UHIvb1BjZzdiUWZCUT09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.13/Lexicon_0.9.13_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-08-18T15:06:00Z",
-    "version":  "0.9.12",
-    "notes":  "修复词根词缀助记生成后清空 Bug 与场景释义提示词画风升级\n1. 修复词根词缀记忆（Generate Mnemonic）生成后内容立即消失以及点击标签清空的 Bug。\n2. 场景释义提示词升级为富有画面感的母语者视角，并强制每一个义项必须包含场景。\n",
-    "notes_zh":  "修复词根词缀助记生成后清空 Bug 与场景释义提示词画风升级\n1. 修复词根词缀记忆（Generate Mnemonic）生成后内容立即消失以及点击标签清空的 Bug。\n2. 场景释义提示词升级为富有画面感的母语者视角，并强制每一个义项必须包含场景。\n",
-    "notes_en":  "Fix Mnemonic Card Reset Bug \u0026 Enhance Scene Description Prompts\n1. Fixed an issue where generated mnemonic content immediately disappeared due to state synchronization hooks.\n2. Enhanced scene description prompts for native-speaker perspectives and enforced scene generation for all meanings.\n",
+    "pub_date":  "2026-08-20T01:14:20Z",
+    "version":  "0.9.13",
+    "notes":  "场景解释多语言索引对齐与按需生成功能优化\n1. 修复场景解释（Scene）在多义词下的顺序错位 Bug：通过在 Prompt 中注入 [Sense N] 显式索引标记并要求 AI 返回 senseIndex，结合多维对齐算法，实现词典释义与场景解释 100% 精准对应。\n2. 彻底兼容纯英英词典与单语言模式：优先匹配 senseIndex 序号，并在备用匹配中同时支持英文词汇 Token 重合度 (en) 与中文重合度 (zh)。\n3. 新增场景解释按需生成与状态持久化：在 AI Lookup 模式下，缺失场景解释的释义下方新增“生成场景解释”按钮，生成后自动保存至缓存。\n",
+    "notes_zh":  "场景解释多语言索引对齐与按需生成功能优化\n1. 修复场景解释（Scene）在多义词下的顺序错位 Bug：通过在 Prompt 中注入 [Sense N] 显式索引标记并要求 AI 返回 senseIndex，结合多维对齐算法，实现词典释义与场景解释 100% 精准对应。\n2. 彻底兼容纯英英词典与单语言模式：优先匹配 senseIndex 序号，并在备用匹配中同时支持英文词汇 Token 重合度 (en) 与中文重合度 (zh)。\n3. 新增场景解释按需生成与状态持久化：在 AI Lookup 模式下，缺失场景解释的释义下方新增“生成场景解释”按钮，生成后自动保存至缓存。\n",
+    "notes_en":  "Multi-lingual scene alignment \u0026 persistent on-demand scene generation\n1. Fixed Scene ordering mismatch bug for words with multiple senses (e.g. sanction) by injecting explicit [Sense N] index tags into prompts and enforcing senseIndex in AI response schema.\n2. Full support for English monolingual mode \u0026 English-English dictionaries via dual-track (en token + zh) alignment fallback.\n3. Added persistent on-demand scene generation button (\"Generate scene\") for dictionary meanings lacking a scene explanation.\n",
     "is_major":  false
 }

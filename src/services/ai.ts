@@ -175,7 +175,7 @@ function getSystemPrompt(
   const synonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的情感色彩、使用场景或强度差异"
   const antonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的对比含义、使用场景或词义强弱差异"
 
-  let schema = `{\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
+  let schema = `{\n  "meanings": [\n    {\n      "senseIndex": 1,\n      "zh": "${meaningsZhDescription}",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
 
   if (isEnabled('coreConcept')) {
     schema += `,\n  "coreConcept": {\n    "image": "${monolingualWord ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${monolingualWord ? '1 short sentence unifying main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
@@ -233,6 +233,7 @@ ${schema}
 
 Rules:
 - meanings array length must match the number of meanings provided in the user message
+- MUST set senseIndex (1 for [Sense 1], 2 for [Sense 2], etc.). Output meanings matching the exact input sense order.
 ${includeSemantic ? (monolingualWord
     ? `- scene is REQUIRED for EVERY meaning — never omit it. scene.description must be a vivid native-speaker mini-picture (2-4 sentences): what the thing/moment IS, where it lives, what it feels like. NOT a grammar usage note. NOT "used when X".`
     : `- scene是每个义项的必填字段，一个都不能省略。scene.description必须是有画面感的母语者视角（2-4句）：这个东西/场景是什么、在哪里出现、带着什么感受。禁止写成功能性用法说明（如"用于……时"）。`) : ''}
@@ -299,7 +300,7 @@ Rules:
 
 function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>, includeExamples: boolean = false, monolingualWord: boolean = false): string {
   const meaningsText = meanings
-    .map((m, i) => monolingualWord ? `${i + 1}. EN: ${m.en}` : `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
+    .map((m, i) => monolingualWord ? `[Sense ${i + 1}] EN: ${m.en}` : `[Sense ${i + 1}] ZH: ${m.zh} | EN: ${m.en}`)
     .join('\n')
 
   return `Word: ${word}\n\nMeanings from dictionary:\n${meaningsText}${includeExamples ? '\n\nThe dictionary has no example sentences for this word. Generate examples in the JSON.' : ''}\n\nAnalyze this word and return the JSON.`
@@ -1928,4 +1929,71 @@ export async function aiCombinedPhraseQuery(
   }
   throw new Error('AI returned invalid JSON for combined phrase query')
 }
+
+/**
+ * 为单条 meaning 按需生成场景解释（供词库场景缺失时的按需按钮使用）。
+ * 返回 Scene { label, description }
+ */
+export async function generateSingleScene(
+  word: string,
+  meaning: { zh: string; en: string },
+  signal?: AbortSignal
+): Promise<{ label: string; description: string }> {
+  const config = getConfig()
+  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.endpoint) throw new Error('AI endpoint not configured')
+
+  const isMono = config.monolingualWord
+
+  const sceneLabel = isMono ? '2-4 word English context tag' : '2-4字的情景标签'
+  const sceneDesc = isMono
+    ? "2-4 sentences from a native speaker's perspective: what this meaning concretely IS or evokes (a physical thing, place, moment — paint a picture), when/where it naturally appears in real life, and what it feels like or sounds like in context. NOT a grammar note. NOT just 'used when X'."
+    : '2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述。'
+
+  const roleDesc = isMono
+    ? 'You are a professional English vocabulary analyst for learners who prefer English-only explanations.'
+    : 'You are a professional English vocabulary analyst for Chinese native speakers.'
+
+  const systemPrompt = `${roleDesc}
+
+Given a single word and one of its meanings, generate a vivid scene explanation for that meaning.
+
+Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
+
+{
+  "label": "${sceneLabel}",
+  "description": "${sceneDesc}"
+}
+
+Rules:
+- description must be conversational and vivid, NOT dictionary-style
+- Never output anything outside the JSON object${isMono ? '\n- ALL output text must be in English only.' : ''}`
+
+  const meaningText = isMono
+    ? `EN: ${meaning.en || meaning.zh}`
+    : `ZH: ${meaning.zh} | EN: ${meaning.en}`
+
+  const userPrompt = `Word: ${word}
+
+Meaning: ${meaningText}
+
+Generate a vivid scene explanation for this specific meaning and return the JSON.`
+
+  const cleaned = await callApi(systemPrompt, userPrompt, signal)
+
+  try {
+    return JSON.parse(cleaned) as { label: string; description: string }
+  } catch { /* fall through */ }
+
+  const objMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (objMatch) {
+    try {
+      return JSON.parse(objMatch[0]) as { label: string; description: string }
+    } catch { /* fall through */ }
+  }
+
+  console.error('generateSingleScene raw response:', cleaned)
+  throw new Error('AI returned invalid JSON for single scene')
+}
+
 

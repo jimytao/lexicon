@@ -23,6 +23,8 @@ import {
   shouldShowPrepImageryModule,
   shouldShowResultAiChat,
 } from '../../utils/resultAiVisibility'
+import { alignAiMeanings } from '../../utils/alignScenes'
+
 
 export { CoreCognitiveView } from './CoreCognitiveView'
 
@@ -81,19 +83,30 @@ export function ResultView({
           if (!module.enabled) return null
 
           switch (module.id) {
-            case 'dictionary':
-              const mergedMeanings = mode === 'ai' && aiStatus === 'success' && aiAnalysis?.meanings
+            case 'dictionary': {
+              const alignedAiMeanings = mode === 'ai' && aiStatus === 'success' && aiAnalysis?.meanings
+                ? alignAiMeanings(wordResult.meanings, aiAnalysis.meanings)
+                : undefined
+
+              const mergedMeanings = alignedAiMeanings
                 ? wordResult.meanings.map((m, idx) => ({
                     ...m,
-                    imageQuery: aiAnalysis.meanings[idx]?.imageQuery
+                    imageQuery: alignedAiMeanings[idx]?.imageQuery ?? m.imageQuery,
                   }))
-                : wordResult.meanings;
+                : wordResult.meanings
+
+              const alignedScenes = alignedAiMeanings
+                ? alignedAiMeanings.map(am => am?.scene)
+                : undefined
+
               return (
                 <div key={module.id}>
                   <MeaningList
                     key={wordResult.word}
                     meanings={mergedMeanings}
-                    scenes={mode === 'ai' && aiStatus === 'success' ? aiAnalysis?.meanings?.map(m => m.scene) : undefined}
+                    scenes={alignedScenes}
+                    word={wordResult.word}
+                    enableSceneGenerate={mode === 'ai' && aiStatus === 'success'}
                   />
                   {mode === 'instant' && !aiAnalysis?.meanings?.length && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-8 animate-in fade-in duration-700">
@@ -102,6 +115,7 @@ export function ResultView({
                   )}
                 </div>
               )
+            }
             case 'semantic':
               return null
             case 'coreConcept':

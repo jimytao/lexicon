@@ -13,6 +13,7 @@ export interface Scene {
 }
 
 export interface Meaning {
+  senseIndex?: number
   zh: string
   en: string
   pos?: string
@@ -155,7 +156,7 @@ export interface CollocationData {
 
 export interface AiAnalysis {
   coreConcept?: CoreConcept
-  meanings: Array<{ zh: string; pos?: string; scene?: Scene; imageQuery?: string }>
+  meanings: Array<{ senseIndex?: number; zh: string; pos?: string; scene?: Scene; imageQuery?: string }>
   etymology: Etymology
   synonyms: Synonym[]
   antonyms?: Antonym[]
@@ -181,7 +182,7 @@ export interface AiFullResult {
   phonetic: string
   pos: string
   coreConcept?: CoreConcept
-  meanings: Array<{ zh: string; en: string; pos?: string; scene?: Scene; imageQuery?: string }>
+  meanings: Array<{ senseIndex?: number; zh: string; en: string; pos?: string; scene?: Scene; imageQuery?: string }>
   etymology?: Etymology
   synonyms?: Synonym[]
   antonyms?: Antonym[]

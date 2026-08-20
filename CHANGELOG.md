@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-08-20 — 场景解释多语言索引对齐 + 按需生成与持久化 (v0.9.13)
+
+### 用户可见
+1. **修复场景解释（Scene）在多义词下的顺序错位 Bug**：以 `sanction`（含“制裁”与“许可”等多个义项）为例，旧版本 AI Lookup 模式下，AI 返回的场景解释可能与本地 SQLite 词典的义项顺序颠倒（例如“制裁”义项下方显示了“许可”的场景卡片）。现通过在 Prompt 中注入 `[Sense N]` 显式索引标记并要求 AI 返回 `senseIndex`，结合泛型 `alignAiMeanings` 多维对齐算法，实现了词典释义与场景解释的 100% 精准对应。
+2. **彻底兼容纯英英词典与单语言模式**：废弃了只针对中文正则匹配的临时方案。新的对齐逻辑优先匹配 `senseIndex` 序号，并在备用匹配（Fallback）中同时支持英文词汇 Token 重合度 (`en`) 与中文重合度 (`zh`)，在英英模式（`monolingualWord`）、中英双语或多语言词典下均可稳定工作。
+3. **新增场景解释按需生成与状态持久化**：在 AI Lookup 模式下，对于本地词典中缺失场景解释的释义，下方新增统一 UI 规范的“生成场景解释”（英文 UI 下为 "Generate scene"）小按钮。点击生成后，数据自动同步保存至 Zustand `resultStore` 与 LocalStorage 缓存，在 Tab 切换或重新搜索时均保留。
+
+### 工程
+- `src/types/index.ts`：`Meaning` / `AiAnalysis.meanings` / `AiFullResult.meanings` 补充 optional `senseIndex?: number`。
+- `src/services/ai.ts`：`getSystemPrompt` 与 `buildUserPrompt` 添加 `[Sense N]` 与 JSON Schema `senseIndex` 约束；新增 `generateSingleScene` 函数。
+- `src/utils/alignScenes.ts`：新建多语言场景对齐工具函数 `alignAiMeanings`。
+- `src/stores/resultStore.ts`：新增 `updateMeaningScene` Action，同步更新 `aiAnalysis` 与 `combinedResult` / `combinedCache`。
+- `src/components/ResultView/index.tsx` & `MeaningList.tsx`：引入场景对齐，支持多语言场景渲染与按需生成按钮。
+- `src/i18n/index.ts`：补充中英文 i18n key。
+
+### 涉及文件
+- `src/types/index.ts`
+- `src/services/ai.ts`
+- `src/utils/alignScenes.ts`
+- `src/stores/resultStore.ts`
+- `src/components/ResultView/index.tsx`
+- `src/components/ResultView/InstantSection/MeaningList.tsx`
+- `src/i18n/index.ts`
+
+---
+
 ## 2026-08-19 — MnemonicCard 生成后消失 Bug 修复 + 场景释义提示词优化
 
 ### 用户可见

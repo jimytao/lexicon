@@ -37,6 +37,7 @@ interface ResultStore {
   setCombinedPhraseResult: (phrase: string, r: CombinedPhraseResult, tag?: SearchTag) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
+  updateMeaningScene: (word: string, index: number, scene: { label: string; description: string }) => void
   updateFullMnemonic: (word: string, m: Mnemonic, cognitive?: CognitiveMode) => void
   updatePhraseMnemonic: (key: string, m: Mnemonic, cognitive?: CognitiveMode) => void
   getCachedAi: (word: string) => AiAnalysis | null
@@ -110,6 +111,52 @@ export const useResultStore = create<ResultStore>()(
           cache[normalized] = updated
           set({ aiCache: cache, aiAnalysis: updated })
         }
+      },
+      updateMeaningScene: (word, index, scene) => {
+        const normalized = normalizeQuery(word)
+        const current = get().aiAnalysis
+        const combined = get().combinedResult
+        const combinedKey = combinedCacheKey(word, 'normal')
+
+        let updatedAi = current
+        if (current) {
+          const meanings = [...(current.meanings ?? [])]
+          if (meanings[index]) {
+            meanings[index] = { ...meanings[index], scene }
+          } else {
+            meanings[index] = { zh: '', scene }
+          }
+          updatedAi = { ...current, meanings }
+        }
+
+        let updatedCombined = combined
+        const combinedCache = { ...get().combinedCache }
+        if (combined) {
+          const lookupMeanings = [...(combined.lookup.meanings ?? [])]
+          if (lookupMeanings[index]) {
+            lookupMeanings[index] = { ...lookupMeanings[index], scene }
+          } else {
+            lookupMeanings[index] = { zh: '', en: '', scene }
+          }
+          const updatedLookup = { ...combined.lookup, meanings: lookupMeanings }
+          updatedCombined = { ...combined, lookup: updatedLookup }
+          if (combinedCache[combinedKey]) {
+            combinedCache[combinedKey] = updatedCombined
+          }
+        }
+
+        const cache = { ...get().aiCache }
+        if (updatedAi) {
+          delete cache[normalized]
+          cache[normalized] = updatedAi
+        }
+
+        set({
+          aiCache: cache,
+          aiAnalysis: updatedAi,
+          combinedResult: updatedCombined,
+          combinedCache,
+        })
       },
       updateFullMnemonic: (word, mnemonic, cognitive = 'lookup') => {
         const cacheKey = cognitiveCacheKey(word, cognitive)

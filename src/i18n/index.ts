@@ -132,6 +132,10 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'meaning.imageSource': '图片检索自 Tavily 实时引擎',
     'meaning.collapse': '收起',
     'meaning.showMore': '展开更多',
+    'meaning.generateScene': '生成场景解释',
+    'meaning.generatingScene': '生成中…',
+    'meaning.sceneGenFailed': '生成失败，重试',
+
     // ExampleList
     'examples.collapse': '收起',
     'examples.showMore': '展开更多',
@@ -541,6 +545,10 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'meaning.imageSource': 'Image via Tavily',
     'meaning.collapse': 'Collapse',
     'meaning.showMore': 'Show more',
+    'meaning.generateScene': 'Generate scene',
+    'meaning.generatingScene': 'Generating…',
+    'meaning.sceneGenFailed': 'Failed, retry',
+
     // ExampleList
     'examples.collapse': 'Collapse',
     'examples.showMore': 'Show more',
