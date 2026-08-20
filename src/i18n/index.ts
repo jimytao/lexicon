@@ -133,8 +133,10 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'meaning.collapse': '收起',
     'meaning.showMore': '展开更多',
     'meaning.generateScene': '生成场景解释',
+    'meaning.enrichAi': '✨ AI 场景与图片',
     'meaning.generatingScene': '生成中…',
     'meaning.sceneGenFailed': '生成失败，重试',
+
 
     // ExampleList
     'examples.collapse': '收起',
@@ -546,8 +548,10 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'meaning.collapse': 'Collapse',
     'meaning.showMore': 'Show more',
     'meaning.generateScene': 'Generate scene',
+    'meaning.enrichAi': '✨ AI Insights',
     'meaning.generatingScene': 'Generating…',
     'meaning.sceneGenFailed': 'Failed, retry',
+
 
     // ExampleList
     'examples.collapse': 'Collapse',

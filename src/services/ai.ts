@@ -1837,11 +1837,77 @@ Rules:
 /**
  * Single AI call that returns both Lookup (understand) and Core (use it) data.
  * The two mode-tab views are populated from this one response.
+/**
+ * 阶段一：超轻量极速 Meanings 骨架生成 (0.5s)
+ * - 句子 (sentence): 仅 1 条忠实译文
+ * - 单词/短语 (word/phrase): 1-4 条核心 Sense
+ */
+export async function generateMeaningsSkeleton(
+  query: string,
+  queryType: 'word' | 'phrase' | 'sentence',
+  isMono: boolean = false,
+  signal?: AbortSignal
+): Promise<Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>> {
+  const config = getConfig()
+  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.endpoint) throw new Error('AI endpoint not configured')
+
+  const roleDesc = isMono
+    ? 'You are a professional English vocabulary analyst.'
+    : 'You are a professional English vocabulary analyst for Chinese native speakers.'
+
+  const isSentence = queryType === 'sentence'
+
+  const meaningSchema = isSentence
+    ? `Return a JSON array containing EXACTLY 1 item representing the faithful translation of the full text:
+[
+  { "senseIndex": 1, "zh": "完整忠实中文翻译", "en": "Original or polished English text" }
+]`
+    : `Return a JSON array containing 1 to 4 primary dictionary senses ordered by frequency:
+[
+  { "senseIndex": 1, "pos": "n.", "zh": "核心中文词典义项", "en": "English gloss" }
+]`
+
+  const systemPrompt = `${roleDesc}
+
+Given an input (${queryType}), return ONLY a valid JSON array of its primary meanings/translations.
+No explanations, no markdown formatting outside JSON.
+
+${meaningSchema}
+
+Rules:
+${isSentence ? '- EXACTLY 1 item. Faithful translation only, no summary.' : '- 1 to 4 items max. Order by frequency/importance. Include senseIndex 1, 2, 3...'}
+${isMono ? '- ALL output text in English only.' : ''}`
+
+  const userPrompt = `Input: "${query}"\n\nGenerate the meanings JSON array.`
+
+  const cleaned = await callApi(systemPrompt, userPrompt, signal)
+
+  try {
+    const parsed = JSON.parse(cleaned)
+    if (Array.isArray(parsed)) return parsed
+  } catch { /* fall through */ }
+
+  const match = cleaned.match(/\[[\s\S]*\]/)
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[0])
+      if (Array.isArray(parsed)) return parsed
+    } catch { /* fall through */ }
+  }
+
+  throw new Error('AI returned invalid JSON for meanings skeleton')
+}
+
+/**
+ * Single AI call for word — returns both Lookup and Core data.
+ * Supports optional meaningsAnchor for fixed 2-stage execution.
  */
 export async function aiCombinedLookup(
   word: string,
   isFull: boolean = true,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  meaningsAnchor?: Array<{ pos?: string; zh: string; en?: string; senseIndex?: number }>
 ): Promise<CombinedAiResult> {
   const config = getConfig()
   const lang = detectLanguage(word)
@@ -1859,6 +1925,7 @@ export async function aiCombinedLookup(
     isFull,
     triLingual: config.triLingualExamples,
     monolingualWord: config.monolingualWord,
+    meaningsAnchor,
   })
 
   const userMessage = lang === 'zh'
@@ -1881,11 +1948,13 @@ export async function aiCombinedLookup(
 
 /**
  * Single AI call for phrase/sentence — returns both Lookup and Core phrase results.
+ * Supports optional meaningsAnchor for fixed 2-stage execution.
  */
 export async function aiCombinedPhraseQuery(
   phrase: string,
   isFull: boolean = true,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  meaningsAnchor?: Array<{ pos?: string; zh: string; en?: string; senseIndex?: number }>
 ): Promise<CombinedPhraseResult> {
   const config = getConfig()
   const lang = detectLanguage(phrase)
@@ -1911,6 +1980,7 @@ export async function aiCombinedPhraseQuery(
     triLingual: config.triLingualExamples,
     isMono,
     queryType: phraseQueryType,
+    meaningsAnchor,
   })
 
   const userMessage = lang === 'zh'
@@ -1931,14 +2001,14 @@ export async function aiCombinedPhraseQuery(
 }
 
 /**
- * 为单条 meaning 按需生成场景解释（供词库场景缺失时的按需按钮使用）。
- * 返回 Scene { label, description }
+ * 为单条 meaning 按需进行 AI 深度赋能（同时生成场景解释与 Tavily 搜图关键词）。
+ * 返回 { scene: Scene, imageQuery?: string }
  */
-export async function generateSingleScene(
+export async function enrichSingleMeaning(
   word: string,
   meaning: { zh: string; en: string },
   signal?: AbortSignal
-): Promise<{ label: string; description: string }> {
+): Promise<{ scene: { label: string; description: string }; imageQuery?: string }> {
   const config = getConfig()
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
@@ -1956,17 +2026,23 @@ export async function generateSingleScene(
 
   const systemPrompt = `${roleDesc}
 
-Given a single word and one of its meanings, generate a vivid scene explanation for that meaning.
+Given a single word and one of its specific meanings, generate BOTH:
+1. A vivid scene explanation (scene: { label, description })
+2. A 3-6 word English noun phrase query for web image search (imageQuery) that vividly visualizes this specific meaning.
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
 {
-  "label": "${sceneLabel}",
-  "description": "${sceneDesc}"
+  "scene": {
+    "label": "${sceneLabel}",
+    "description": "${sceneDesc}"
+  },
+  "imageQuery": "3-6 word descriptive English noun phrase for web image search"
 }
 
 Rules:
 - description must be conversational and vivid, NOT dictionary-style
+- imageQuery MUST be a concrete English noun phrase (3-6 words) depicting this specific sense
 - Never output anything outside the JSON object${isMono ? '\n- ALL output text must be in English only.' : ''}`
 
   const meaningText = isMono
@@ -1977,23 +2053,43 @@ Rules:
 
 Meaning: ${meaningText}
 
-Generate a vivid scene explanation for this specific meaning and return the JSON.`
+Generate both the scene explanation and the image query for this specific meaning, then return the JSON.`
 
   const cleaned = await callApi(systemPrompt, userPrompt, signal)
 
   try {
-    return JSON.parse(cleaned) as { label: string; description: string }
+    const parsed = JSON.parse(cleaned) as { scene?: { label: string; description: string }; imageQuery?: string; label?: string; description?: string }
+    if (parsed.scene && parsed.scene.description) {
+      return { scene: parsed.scene, imageQuery: parsed.imageQuery }
+    }
+    // Fallback if AI flattened scene
+    if (parsed.label || parsed.description) {
+      return {
+        scene: { label: parsed.label || '', description: parsed.description || '' },
+        imageQuery: parsed.imageQuery,
+      }
+    }
   } catch { /* fall through */ }
 
   const objMatch = cleaned.match(/\{[\s\S]*\}/)
   if (objMatch) {
     try {
-      return JSON.parse(objMatch[0]) as { label: string; description: string }
+      const parsed = JSON.parse(objMatch[0]) as { scene?: { label: string; description: string }; imageQuery?: string; label?: string; description?: string }
+      if (parsed.scene && parsed.scene.description) {
+        return { scene: parsed.scene, imageQuery: parsed.imageQuery }
+      }
+      if (parsed.label || parsed.description) {
+        return {
+          scene: { label: parsed.label || '', description: parsed.description || '' },
+          imageQuery: parsed.imageQuery,
+        }
+      }
     } catch { /* fall through */ }
   }
 
-  console.error('generateSingleScene raw response:', cleaned)
-  throw new Error('AI returned invalid JSON for single scene')
+  console.error('enrichSingleMeaning raw response:', cleaned)
+  throw new Error('AI returned invalid JSON for single meaning enrichment')
 }
+
 
 

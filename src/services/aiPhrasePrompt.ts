@@ -4,6 +4,8 @@
  * situational / native-mind content goes to usageIntro + usageScenes.
  */
 
+import { buildProfilePromptContext } from './profile'
+
 export type PhrasePromptQueryType = 'phrase' | 'sentence'
 
 export interface BuildPhrasePromptOptions {
@@ -214,6 +216,10 @@ ${wantUsage ? `- Provide usageIntro (1 blurb) + 2-4 usage scenes${isCore ? '' : 
     } else {
       prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: 1-2 sentences on register or cultural nuance only. Keep it distinct from usageScenes.`
     }
+  }
+
+  if (queryType === 'sentence') {
+    prompt += buildProfilePromptContext()
   }
 
   return prompt

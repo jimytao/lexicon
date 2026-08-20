@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import type { Meaning, Scene } from '../../../types'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { useResultStore } from '../../../stores/resultStore'
-import { searchTavilyImage, generateSingleScene } from '../../../services/ai'
+import { searchTavilyImage, enrichSingleMeaning } from '../../../services/ai'
 import { useResolvedDark } from '../../../hooks/useResolvedDark'
 import { useT } from '../../../i18n'
 
@@ -28,17 +28,18 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
   const [expanded, setExpanded] = useState(false)
   const darkMode = useResolvedDark()
   const { monolingualWord, webSearchEnabled, tavilyApiKey } = useSettingsStore()
-  const updateMeaningScene = useResultStore(state => state.updateMeaningScene)
 
   const [imageUrls, setImageUrls] = useState<Record<number, string | null>>({})
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({})
   const [expandedImages, setExpandedImages] = useState<Record<number, boolean>>({})
 
-  // 本地生成的 scene 状态
+  // 本地生成的 scene 与 imageQuery 状态
   const [localScenes, setLocalScenes] = useState<Record<number, Scene>>({})
+  const [localImageQueries, setLocalImageQueries] = useState<Record<number, string>>({})
   const [sceneGenLoading, setSceneGenLoading] = useState<Record<number, boolean>>({})
   const [sceneGenErrors, setSceneGenErrors] = useState<Record<number, boolean>>({})
   const abortRefs = useRef<Record<number, AbortController>>({})
+  const updateMeaningExtension = useResultStore(state => state.updateMeaningExtension)
 
   const handleToggleImage = async (index: number, query: string) => {
     if (expandedImages[index]) {
@@ -60,7 +61,7 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
     }
   }
 
-  const handleGenerateScene = async (index: number, meaning: Meaning) => {
+  const handleEnrichMeaning = async (index: number, meaning: Meaning) => {
     if (sceneGenLoading[index]) return
 
     abortRefs.current[index]?.abort()
@@ -71,18 +72,21 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
     setSceneGenErrors(prev => ({ ...prev, [index]: false }))
 
     try {
-      const scene = await generateSingleScene(
+      const result = await enrichSingleMeaning(
         word ?? '',
         { zh: meaning.zh, en: meaning.en },
         controller.signal
       )
-      setLocalScenes(prev => ({ ...prev, [index]: scene }))
+      setLocalScenes(prev => ({ ...prev, [index]: result.scene }))
+      if (result.imageQuery) {
+        setLocalImageQueries(prev => ({ ...prev, [index]: result.imageQuery! }))
+      }
       if (word) {
-        updateMeaningScene(word, index, scene)
+        updateMeaningExtension(word, index, { scene: result.scene, imageQuery: result.imageQuery })
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== 'AbortError') {
-        console.error('Failed to generate scene:', e)
+        console.error('Failed to enrich meaning:', e)
         setSceneGenErrors(prev => ({ ...prev, [index]: true }))
       }
     } finally {
@@ -104,6 +108,7 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
 
           // Scene 优先级：props 传入 > 本地生成 > meaning 本身带有
           const activeScene: Scene | undefined = scenes?.[i] ?? localScenes[i] ?? m.scene
+          const activeImageQuery: string | undefined = m.imageQuery ?? localImageQueries[i]
           const hasScene = !!(activeScene && (activeScene.label || activeScene.description))
           const showGenerateBtn = enableSceneGenerate && word && !hasScene
 
@@ -145,11 +150,11 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
                     </div>
                   )}
 
-                  {/* 按需生成场景按钮 */}
+                  {/* 按需 AI 赋能按钮 (生成场景解释 + 搜图词) */}
                   {showGenerateBtn && (
                     <div className="mt-1.5">
                       <button
-                        onClick={() => handleGenerateScene(i, m)}
+                        onClick={() => handleEnrichMeaning(i, m)}
                         disabled={sceneGenLoading[i]}
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-accent/5 dark:bg-accent/10 border border-accent/10 hover:bg-accent/10 text-[10px] font-bold text-accent transition-all duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                       >
@@ -170,17 +175,17 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
                             <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
-                            {t('meaning.generateScene')}
+                            {t('meaning.enrichAi')}
                           </>
                         )}
                       </button>
                     </div>
                   )}
 
-                  {webSearchEnabled && tavilyApiKey && m.imageQuery && (
+                  {webSearchEnabled && tavilyApiKey && activeImageQuery && (
                     <div className="mt-1.5">
                       <button
-                        onClick={() => handleToggleImage(i, m.imageQuery!)}
+                        onClick={() => handleToggleImage(i, activeImageQuery)}
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-accent/5 dark:bg-accent/10 border border-accent/10 hover:bg-accent/10 text-[10px] font-bold text-accent transition-all duration-300 cursor-pointer"
                       >
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

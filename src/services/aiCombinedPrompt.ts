@@ -17,6 +17,7 @@ export interface CombinedPromptOptions {
   isFull?: boolean
   triLingual?: boolean
   monolingualWord?: boolean
+  meaningsAnchor?: Array<{ pos?: string; zh: string; en?: string; senseIndex?: number }>
 }
 
 export interface CombinedPhrasePromptOptions {
@@ -28,6 +29,7 @@ export interface CombinedPhrasePromptOptions {
   triLingual?: boolean
   isMono?: boolean
   queryType?: 'phrase' | 'sentence'
+  meaningsAnchor?: Array<{ pos?: string; zh: string; en?: string; senseIndex?: number }>
 }
 
 function mod(modules: Array<{ id: string; enabled: boolean }>, id: string): boolean {
@@ -44,8 +46,9 @@ export function buildCombinedWordPrompt({
   isFull = true,
   triLingual = false,
   monolingualWord = false,
+  meaningsAnchor,
 }: CombinedPromptOptions): string {
-  const isMono = monolingualWord && lang === 'en'
+  const isMono = monolingualWord
   const isZh = lang === 'zh'
   const isForeign = lang !== 'en' && lang !== 'zh'
 
@@ -235,13 +238,18 @@ The user typed Chinese. This is a Chinese→English translation request from an 
 - They want to FIND and LEARN the natural English word/phrase for this Chinese concept.
 - Do NOT analyze the Chinese word itself.
 - lookup.correctForm: the best single English word/phrase equivalent.
-- lookup.meanings: 2-5 English candidates with nuance notes in Chinese.
 - core.correctForm: same as lookup.correctForm (the English word).
-- core section: teach the learner how to USE that English word natively — mental image, feel, when natives reach for it.
-- core.meanings: the top 1-2 English candidates with brief nuance note.
+${isMono ? '- ALL meanings, scenes, etymology, and core cognitive explanations MUST BE IN ENGLISH ONLY (Monolingual English Dictionary mode). Do NOT output Chinese text in meanings or scenes.' : '- lookup.meanings: 2-5 English candidates with nuance notes in Chinese.\n- core.meanings: the top 1-2 English candidates with brief nuance note.'}
 ` : ''
 
-  const prompt = `${roleIntro}
+  const anchorText = meaningsAnchor && meaningsAnchor.length > 0 ? `
+
+FIXED MEANINGS ANCHOR:
+The meanings for this query have been fixed in Stage 1. You MUST use these exact meanings in the "lookup.meanings" array:
+${meaningsAnchor.map((m, i) => `[Sense ${m.senseIndex || i + 1}]: ${m.pos ? `(${m.pos}) ` : ''}${m.zh}${m.en ? ` | ${m.en}` : ''}`).join('\n')}
+- Ensure all scenes, collocations, etymology, and pure core cognitive stories match these exact senses in order.` : ''
+
+  const prompt = `${roleIntro}${anchorText}
 
 Given a ${langLabel} input, return ONE JSON object with EXACTLY two top-level keys: "lookup" and "core".
 ${webSearchResults ? `\nADDITIONAL CONTEXT (Web Search):\n${webSearchResults}\nUse this to ensure accuracy.\n` : ''}
@@ -294,6 +302,7 @@ export function buildCombinedPhrasePrompt({
   triLingual = false,
   isMono = false,
   queryType = 'phrase',
+  meaningsAnchor,
 }: CombinedPhrasePromptOptions): string {
   const isZh = lang === 'zh'
   const isForeign = lang !== 'en' && lang !== 'zh'
@@ -397,12 +406,17 @@ The user typed Chinese. This is a Chinese→English learning request.
 - correctForm (in BOTH lookup and core): the most accurate English translation of the full Chinese input.
 - nativeForm: an elevated, highly idiomatic native English translation.
 - correctionNote: omit (this is translation, not correction).
-- lookup: provide English usage context and scenes for the translated expression.
-- core: teach the learner how a native speaker FEELS and USES this English expression — feel, emotion, communicative intent.
-- unnaturalMindModel: if a literal Chinese-style English would be tempting, contrast that transfer error with the native concept.
+${isMono ? '- ALL output text MUST BE IN ENGLISH ONLY (Monolingual English mode). Absolutely NO Chinese characters in meanings, scenes, or notes.' : '- lookup: provide usage context and scenes for the translated expression.\n- core: teach the learner how a native speaker FEELS and USES this English expression.'}
 ` : ''
 
-  const prompt = `${roleIntro}
+  const anchorText = meaningsAnchor && meaningsAnchor.length > 0 ? `
+
+FIXED MEANINGS ANCHOR:
+The meanings for this query have been fixed in Stage 1. You MUST use these exact meanings in the "lookup.meanings" array:
+${meaningsAnchor.map((m, i) => `[Sense ${m.senseIndex || i + 1}]: ${m.pos ? `(${m.pos}) ` : ''}${m.zh}${m.en ? ` | ${m.en}` : ''}`).join('\n')}
+- Ensure all scenes, collocations, and pure core cognitive stories match these exact senses in order.` : ''
+
+  const prompt = `${roleIntro}${anchorText}
 
 Given a ${langLabel} phrase or sentence, return ONE JSON object with EXACTLY two top-level keys: "lookup" and "core".
 ${webSearchResults ? `\nADDITIONAL CONTEXT (Web Search):\n${webSearchResults}\n` : ''}

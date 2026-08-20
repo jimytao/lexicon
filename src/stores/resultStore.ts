@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode, CombinedAiResult, CombinedPhraseResult } from '../types'
+import type { WordResult, AiAnalysis, AiFullResult, PhraseResult, SuggestItem, Mnemonic, CognitiveMode, CombinedAiResult, CombinedPhraseResult, Scene } from '../types'
 import { normalizeQuery, cognitiveCacheKey } from '../utils/text'
 import { combinedCacheKey, reconstructFromLegacy, reconstructPhraseFromLegacy, type SearchTag } from '../utils/combinedResult'
 import { aiFullToAnalysis } from '../utils/aiFullToAnalysis'
@@ -30,6 +30,7 @@ interface ResultStore {
   setRelatedPhrases: (phrases: SuggestItem[]) => void
   setAiStatus: (s: AiStatus) => void
   setAiAnalysis: (word: string, a: AiAnalysis) => void
+  setMeaningsSkeleton: (word: string, meanings: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>) => void
   setAiFullResult: (word: string, r: AiFullResult, cognitive?: CognitiveMode) => void
   setPhraseResult: (key: string, r: PhraseResult, cognitive?: CognitiveMode) => void
   /** v0.9.0: store combined result and update active display */
@@ -37,7 +38,7 @@ interface ResultStore {
   setCombinedPhraseResult: (phrase: string, r: CombinedPhraseResult, tag?: SearchTag) => void
   setAiError: (e: string) => void
   updateMnemonic: (word: string, m: Mnemonic) => void
-  updateMeaningScene: (word: string, index: number, scene: { label: string; description: string }) => void
+  updateMeaningExtension: (word: string, index: number, ext: { scene?: Scene; imageQuery?: string }) => void
   updateFullMnemonic: (word: string, m: Mnemonic, cognitive?: CognitiveMode) => void
   updatePhraseMnemonic: (key: string, m: Mnemonic, cognitive?: CognitiveMode) => void
   getCachedAi: (word: string) => AiAnalysis | null
@@ -101,6 +102,17 @@ export const useResultStore = create<ResultStore>()(
         }
         set({ aiCache: cache, aiAnalysis, aiStatus: 'success' })
       },
+      setMeaningsSkeleton: (word, meanings) => {
+        const normalized = normalizeQuery(word)
+        const current = get().aiAnalysis
+        const updated = current
+          ? { ...current, meanings }
+          : ({ meanings } as AiAnalysis)
+        const cache = { ...get().aiCache }
+        delete cache[normalized]
+        cache[normalized] = updated
+        set({ aiCache: cache, aiAnalysis: updated })
+      },
       updateMnemonic: (word, mnemonic) => {
         const normalized = normalizeQuery(word)
         const current = get().aiAnalysis
@@ -112,7 +124,7 @@ export const useResultStore = create<ResultStore>()(
           set({ aiCache: cache, aiAnalysis: updated })
         }
       },
-      updateMeaningScene: (word, index, scene) => {
+      updateMeaningExtension: (word, index, ext) => {
         const normalized = normalizeQuery(word)
         const current = get().aiAnalysis
         const combined = get().combinedResult
@@ -122,9 +134,17 @@ export const useResultStore = create<ResultStore>()(
         if (current) {
           const meanings = [...(current.meanings ?? [])]
           if (meanings[index]) {
-            meanings[index] = { ...meanings[index], scene }
+            meanings[index] = {
+              ...meanings[index],
+              ...(ext.scene ? { scene: ext.scene } : {}),
+              ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
+            }
           } else {
-            meanings[index] = { zh: '', scene }
+            meanings[index] = {
+              zh: '',
+              ...(ext.scene ? { scene: ext.scene } : {}),
+              ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
+            }
           }
           updatedAi = { ...current, meanings }
         }
@@ -134,9 +154,18 @@ export const useResultStore = create<ResultStore>()(
         if (combined) {
           const lookupMeanings = [...(combined.lookup.meanings ?? [])]
           if (lookupMeanings[index]) {
-            lookupMeanings[index] = { ...lookupMeanings[index], scene }
+            lookupMeanings[index] = {
+              ...lookupMeanings[index],
+              ...(ext.scene ? { scene: ext.scene } : {}),
+              ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
+            }
           } else {
-            lookupMeanings[index] = { zh: '', en: '', scene }
+            lookupMeanings[index] = {
+              zh: '',
+              en: '',
+              ...(ext.scene ? { scene: ext.scene } : {}),
+              ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
+            }
           }
           const updatedLookup = { ...combined.lookup, meanings: lookupMeanings }
           updatedCombined = { ...combined, lookup: updatedLookup }

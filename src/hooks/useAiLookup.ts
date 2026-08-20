@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { useResultStore } from '../stores/resultStore'
-import { useSearchStore } from '../stores/searchStore'
+import { useSearchStore, detectQueryType } from '../stores/searchStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import {
   analyzeWord,
@@ -8,6 +8,7 @@ import {
   aiPhraseQuery,
   aiCombinedLookup,
   aiCombinedPhraseQuery,
+  generateMeaningsSkeleton,
   fillMissingCollocationNotes,
   fillMissingConceptExamples,
 } from '../services/ai'
@@ -75,7 +76,7 @@ function errorMessage(e: unknown): string {
 
 export function useAiLookup() {
   const {
-    setAiStatus, setAiAnalysis, setAiFullResult, setPhraseResult, setAiError,
+    setAiStatus, setAiAnalysis, setMeaningsSkeleton, setAiFullResult, setPhraseResult, setAiError,
     getCachedAi, getCachedAiFull, getCachedPhrase,
     setCombinedResult, setCombinedPhraseResult, getCachedCombined, getCachedCombinedPhrase,
   } = useResultStore()
@@ -230,7 +231,31 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const result = await aiCombinedLookup(word, true, combined)
+      // 阶段 1：确定 Meanings 骨架 (SQLite 本地词库 0ms 拿到；Bypass / OOD 约 0.5s 生成)
+      let meaningsAnchor: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }> | undefined = undefined
+      const wordResult = useResultStore.getState().wordResult
+      if (wordResult?.meanings?.length) {
+        meaningsAnchor = wordResult.meanings.map((m, idx) => ({
+          pos: m.pos,
+          zh: m.zh,
+          en: m.en,
+          senseIndex: idx + 1,
+        }))
+      } else {
+        try {
+          const isMono = useSettingsStore.getState().monolingualWord
+          const skeleton = await generateMeaningsSkeleton(word, 'word', isMono, combined)
+          if (skeleton && skeleton.length > 0) {
+            meaningsAnchor = skeleton
+            setMeaningsSkeleton(word, skeleton)
+          }
+        } catch {
+          /* if skeleton fails, fall back to single call */
+        }
+      }
+
+      // 阶段 2 & 3：基于固定的 meaningsAnchor 并发生成 Lookup 与 Pure Core
+      const result = await aiCombinedLookup(word, true, combined, meaningsAnchor)
       dispose()
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
       setCombinedResult(word, result, tag)
@@ -245,7 +270,7 @@ export function useAiLookup() {
       }
       setAiError(errorMessage(e))
     }
-  }, [getCachedCombined, setCombinedResult, setAiStatus, setAiError])
+  }, [getCachedCombined, setCombinedResult, setMeaningsSkeleton, setAiStatus, setAiError])
 
   /** v0.9.0: Combined phrase AI call — fetches Lookup + Core phrase results in one round-trip. */
   const triggerCombinedPhraseQuery = useCallback(async (phrase: string, forceRefresh = false, tag: SearchTag = 'normal') => {
@@ -265,7 +290,22 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const result = await aiCombinedPhraseQuery(phrase, true, abortRef.current.signal)
+      const qType = detectQueryType(phrase)
+      const isSentence = qType === 'sentence'
+      const isMono = isSentence ? useSettingsStore.getState().monolingualSentence : useSettingsStore.getState().monolingualPhrase
+
+      let meaningsAnchor: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }> | undefined = undefined
+      try {
+        const skeleton = await generateMeaningsSkeleton(phrase, isSentence ? 'sentence' : 'phrase', isMono, abortRef.current.signal)
+        if (skeleton && skeleton.length > 0) {
+          meaningsAnchor = skeleton
+          setMeaningsSkeleton(phrase, skeleton)
+        }
+      } catch {
+        /* fall back to single combined query if skeleton fails */
+      }
+
+      const result = await aiCombinedPhraseQuery(phrase, true, abortRef.current.signal, meaningsAnchor)
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
       setCombinedPhraseResult(phrase, result, tag)
     } catch (e) {
@@ -278,7 +318,7 @@ export function useAiLookup() {
       }
       setAiError(errorMessage(e))
     }
-  }, [getCachedCombinedPhrase, setCombinedPhraseResult, setAiStatus, setAiError])
+  }, [getCachedCombinedPhrase, setCombinedPhraseResult, setMeaningsSkeleton, setAiStatus, setAiError])
 
   /** Repair only missing collocation notes on current full result (keeps good notes). */
   const repairCollocationNotes = useCallback(async (word: string) => {

@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 2026-08-21 — 锚点骨架双轨 AI 架构 (0.5s 极速响应) + 单语言英英沉浸 + 知识库激活 (v0.9.14)
+
+### 用户可见
+1. **0.5 秒极速骨架响应与双轨并发呈现**：重构了 AI 请求管道。第一阶段在 0.5 秒内极速吐出 `meanings` 释义骨架并直接解锁 UI（对于本地词典 hit 则为 0 毫秒）；随后以该骨架为固定 Anchor，并发拉起 Lookup 增量细节（场景、搭配、词根）与 Pure Core 深度认知（空间记忆、画面故事）。彻底消除了大 JSON 等待的卡顿感，且无论在哪个 Tab 均无缝对齐。
+2. **长句 1 条忠实译文流转约束**：长句子/长段落输入时，第一阶段极速骨架严格仅吐出 1 条忠实全文翻译义项，绝不上多条散文总结，保持了对长句翻译完整度与精度的严格控制。
+3. **彻底沉浸式单语言（英英词典）模式**：升级了单语言模式（`monolingualWord` / `monolingualPhrase` / `monolingualSentence`）。勾选后，即使输入中文（如“制裁”），AI 第一步定位目标英文词（`sanction`），随后所有的含义释义、场景描述、搭配、词根及认知故事 **100% 全部用纯英文生成**，提供原汁原味的英英词典使用体验。
+4. **单条义项按需 AI 深度赋能**：在 AI Lookup 模式下，对于缺少补充内容的义项，显示 `✨ AI 场景与图片`（英文 UI 下为 `✨ AI Insights`）小按钮。点击后一键并行生成场景解释与 Tavily 搜图词，生成后自动展开场景卡片并亮起标准“查看图片释义”按钮。
+5. **用户知识库（记忆库）导师级活化**：在长句语法纠错与 AI 问答中自动提取 `profileStore` 中积累的用户历史语法弱点与常错类型，提供针对性的专属导师提示。
+
+### 工程
+- `src/services/ai.ts`：新增 `generateMeaningsSkeleton` 超轻量骨架生成函数与 `enrichSingleMeaning` 函数。
+- `src/services/aiCombinedPrompt.ts`：升级 `buildCombinedWordPrompt` 与 `buildCombinedPhrasePrompt` 支持 `meaningsAnchor` 约束与单语言模式 Option B 提示词逻辑。
+- `src/services/aiPhrasePrompt.ts`：长句 Prompt 注入 `buildProfilePromptContext()`。
+- `src/services/profile.ts`：导出 `buildProfilePromptContext` 格式化工具。
+- `src/stores/resultStore.ts`：新增 `setMeaningsSkeleton` 与 `updateMeaningExtension` 状态调度。
+- `src/hooks/useAiLookup.ts`：重构 `triggerCombinedLookup` 和 `triggerCombinedPhraseQuery` 为渐进式两段/双轨流转。
+- `src/components/ResultView/InstantSection/MeaningList.tsx`：升级为按需 AI 赋能交互。
+
+### 涉及文件
+- `src/services/ai.ts`
+- `src/services/aiCombinedPrompt.ts`
+- `src/services/aiPhrasePrompt.ts`
+- `src/services/profile.ts`
+- `src/stores/resultStore.ts`
+- `src/hooks/useAiLookup.ts`
+- `src/components/ResultView/InstantSection/MeaningList.tsx`
+- `src/i18n/index.ts`
+
+---
+
 ## 2026-08-20 — 场景解释多语言索引对齐 + 按需生成与持久化 (v0.9.13)
 
 ### 用户可见

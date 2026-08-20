@@ -74,6 +74,26 @@ export function getProfile(): UserLanguageProfile {
   }
 }
 
+export function buildProfilePromptContext(): string {
+  const profile = getProfile()
+  if (!profile || (!profile.weaknessPatterns?.length && !profile.recentExplorationFocus?.length)) {
+    return ''
+  }
+  const weaknesses = (profile.weaknessPatterns || [])
+    .map(w => `- [${w.track || 'grammar'}]: ${w.description || ''}${w.contrastExample ? ` (e.g. ${w.contrastExample})` : ''}`)
+    .join('\n')
+  const focus = (profile.recentExplorationFocus || [])
+    .map(f => `- Category: ${f.category} (${(f.searchedItems || []).slice(0, 5).join(', ')})`)
+    .join('\n')
+
+  let res = '\n\n=== USER LEARNING PROFILE & HISTORY ===\n'
+  if (weaknesses) res += `Known Weak Spots & Recurring Errors:\n${weaknesses}\n`
+  if (focus) res += `Recent Focus Areas:\n${focus}\n`
+  res += 'INSTRUCTION: If this query is a sentence or grammar check, reference the user\'s past weak spots if relevant to provide a personalized, encouraging mentor tip.\n'
+  return res
+}
+
+
 export function saveProfile(profile: UserLanguageProfile): void {
   try {
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile))
