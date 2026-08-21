@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## 2026-08-21 — Lookup / Pure Core 双请求真并发提速 + 中文输入概念心智地图 + 单语言口径统一 (v0.9.15)
+
+### 用户可见
+1. **AI 查询真正提速：选中的模式先出来**：v0.9.14 的「双轨并发」实际上仍是一次 AI 调用返回 `{lookup, core}` 一整坨大 JSON。LLM 输出 token 是串行的，一次吐两份内容耗时就是两倍；且响应非流式，JSON 没吐完连一个字段都拿不到，所以「先看选中的那个模式」在架构上无法实现。现改为 Lookup 与 Pure Core 各发一个独立请求真并发，共用一次联网搜索，谁先回谁先渲染。你正在看的那个 Tab 一拿到自己那半就立刻出内容，另一半在后台继续、落地后静默补上，切 Tab 依然免等待。首屏时间从「整坨大 JSON 的生成时间」降到「单半边的生成时间」。
+2. **极速骨架预览这次真的显示出来了**：v0.9.14 的第一阶段骨架只写进了 store，却没有解锁任何 UI（所有视图都卡在 `aiStatus === 'success'` 才渲染），骨架回来了界面上依然是一片骨架屏，用户一个字都没提前看到，白白多付一个往返。现在骨架落地即渲染释义列表，未到位的模块单独显示 shimmer，等待期不再是空屏。
+3. **第一阶段改为「按场景收费」，英文查词不再交冤枉税**：旧逻辑对所有词库外的查询都串行等一次骨架请求，把中文输入才有的歧义成本摊到了每一次英文查词上。现在本地词典命中直接跳过（0 延迟）；中文输入才付这一个串行往返（Pure Core 必须先知道锚定哪个英文词）；其余情况骨架在后台并发跑，只用于提前渲染，绝不阻塞两个半边。
+4. **中文输入的 Pure Core 改为概念心智地图**：输入中文（如「尴尬」）时，Pure Core 不再偷偷挑一个英文词然后只讲那一个（而且界面上还不告诉你讲的是哪个）。现在它呈现英语如何切分这个中文概念：列出 3-5 个竞争候选词（awkward / embarrassing / cringe …），逐个说明母语者在什么情况下会选它而不是别的，并做两两感觉对照。输入英文时 Pure Core 完全不变，仍是原有的母语者心智模拟。
+5. **单语言模式口径统一，修复中文输入译文栏空白**：单语言的定义是「无论我输入什么，都用纯英文回答我」。此前 `getIsMono`、`getFullLookupPrompt`、`AiFullView` 三处都额外要求 `lang === 'en'`；v0.9.14 只解开了词条 Prompt 那一处，UI 层仍在按旧规则渲染，导致开启单语言 + 输入中文时 AI 已返回纯英文、界面却仍去取中文译文字段，显示为空白。现三处口径完全一致。
+6. **非单语言模式下的外语输入明确要求中文解释**：输入日语、法语等外语且未开单语言时，本应得到全中文解释，此前只靠角色设定隐式暗示，模型经常飘成英文。现已作为显式规则写入词条与短语两套 Prompt。
+7. **修复短语 / 句子在 Pure Core 模式下显示的是 Lookup 数据**：词条路径一直有 `combinedResult?.core` 的取值分支，短语路径从 v0.9.0 起就漏了，导致短语切到 Pure Core 后模块是 Core 的、内容却是 Lookup 那一半的，Core 短语内容从未真正显示过。
+8. **修复「有场景、无搜图词」的义项永远拿不到图片按钮**：按需 AI 赋能按钮此前只看「有没有场景」来决定是否显示，而本地词库里大量义项恰恰是有场景但没有 `imageQuery`，这些义项因此永远无法生成搜图词、图片功能对其完全不可达。现在缺任意一项都会显示按钮。
+9. **修复强制 AI（Bypass）串用上一个词的释义**：对词库外的词点 Bypass 时，锚点会直接读取当前显示的 `wordResult`，而该值可能还是上一次查询的另一个词，导致把别的词的义项塞进本次 Prompt。因走的是 AiFullView 不渲染 `wordResult`，界面上看不出异常，但生成结果已被污染。现已校验归一化词形是否一致，且 Bypass 一律不采用本地词典锚点（用户要的就是 AI 自己的判断）。
+10. **修复第一阶段结果跨词污染与取消失效**：旧 `setMeaningsSkeleton` 以「当前显示中的 `aiAnalysis`」为基底合并新查询的释义，会把上一个词的词源、例句、助记全部继承进新词的缓存条目，同时把界面上那个词的分析也换成混血对象，两个词互相污染；且该写入未经过请求闸门，已取消的旧搜索照样能落库。此外第一阶段的失败被空 catch 吞掉，用户取消或切词后请求仍会继续往下走。现均已修复。
+
+### 工程
+- `src/hooks/useAiLookup.ts`：`triggerCombinedLookup` / `triggerCombinedPhraseQuery` 重写为「阶段一裁决 → 一次共享联网搜索 → 两半 `Promise.all` 真并发」；新增 `resolveWordAnchor`（按场景决定锚点成本、校验本地词条归属、Bypass 跳过本地锚点、区分取消与解析失败）、`resolvePhraseAnchor`、`previewSkeleton`（fire-and-forget 早期渲染）；单半失败不再整体报错，仅两半皆失败才 `setAiError`。
+- `src/services/ai.ts`：`generateMeaningsSkeleton` 重构为 `resolveQuerySkeleton`，语义从「生成释义」改为「裁决解释对象」，返回 `correctForm` + `senses` 并对畸形条目做 `normalizeSenses` 清洗与重新编号；新增 `MeaningsAnchor` 类型与 `buildAnchorBlock`（Lookup 逐条复用、Core 仅对齐词形）；`aiFullLookup` / `aiPhraseQuery` 新增 `opts: { anchor, webResults }`，联网搜索由调用方共享注入，避免每半边各跑一次；`getIsMono` 与 `getFullLookupPrompt` 去除 `lang === 'en'` 门槛；新增外语输入中文解释规则与 `ZH_CORE_CONCEPT_MAP_RULE`；`aiCombinedLookup` / `aiCombinedPhraseQuery` 标记 `@deprecated`，保留供回滚与 A/B 对比。
+- `src/stores/resultStore.ts`：移除 `setMeaningsSkeleton`；新增 `QuerySkeleton` / `CombinedHalf` / `PendingHalves` 类型与 `aiPendingHalves` / `aiIsPartial` / `aiSkeleton` 状态；新增 `beginCombined`、`applyQuerySkeleton`（仅渲染、不写任何缓存、拒绝过期查询、不覆盖已落地的半边）、`commitCombinedHalf` / `commitCombinedPhraseHalf`（两半齐全才写 `combinedCache`，单半通过 `aiFullCache` 走既有 legacy 重建路径兜底）、`settleCombinedHalf`；`setAiError`、`setWordResult`、`clearCache`、`reset` 一并清理并发标志与草稿累加器。
+- `src/services/aiPhrasePrompt.ts`：`BuildPhrasePromptOptions` 新增 `meaningsAnchor`；补充外语输入中文解释规则与 `RESOLVED TARGET` 锚点段。
+- `src/App.tsx`：Pure Core 模式下短语视图改取 `combinedPhraseResult?.core`，与词条路径对齐。
+- `src/components/ResultView/AiFullView.tsx`：`shouldHideTranslation` 去除语言门槛；Lookup 半边在途时显示 shimmer。
+- `src/components/ResultView/CoreCognitiveView.tsx` / `PhraseView.tsx`：按各自对应的半边显示 shimmer。
+- `src/components/ResultView/index.tsx`：新增 `aiReady`（`mode === 'ai' && success && !lookupPending`），骨架预览期间不误开按需赋能与场景对齐。
+- `src/components/ResultView/InstantSection/MeaningList.tsx`：本地生成的 `imageQuery` 优先级与场景一致（本地优先）；按需赋能按钮在「缺场景」或「缺搜图词」任一情况下均显示。
+- `src/stores/resultStoreSplit.test.ts`（新增）：11 项，覆盖部分结果不进缓存、单半兜底持久化、过期半边与过期骨架丢弃、骨架不降级已落地内容、Bypass 与普通结果分槽、跨词污染、并发标志流转。
+- `src/services/aiSplitContract.test.ts`（新增）：15 项，覆盖单语言三处口径一致、外语输入中文规则、锚点透传、两半并发与共享联网搜索、本地锚点归属校验、取消不被吞。
+
+### 涉及文件
+- `src/App.tsx`
+- `src/components/ResultView/AiFullView.tsx`
+- `src/components/ResultView/CoreCognitiveView.tsx`
+- `src/components/ResultView/PhraseView.tsx`
+- `src/components/ResultView/index.tsx`
+- `src/components/ResultView/InstantSection/MeaningList.tsx`
+- `src/hooks/useAiLookup.ts`
+- `src/services/ai.ts`
+- `src/services/aiPhrasePrompt.ts`
+- `src/stores/resultStore.ts`
+- `src/services/aiSplitContract.test.ts`
+- `src/stores/resultStoreSplit.test.ts`
+
+---
+
 ## 2026-08-21 — 锚点骨架双轨 AI 架构 (0.5s 极速响应) + 单语言英英沉浸 + 知识库激活 (v0.9.14)
 
 ### 用户可见
