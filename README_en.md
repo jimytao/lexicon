@@ -54,7 +54,7 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 ### 4. Image & Comic Translation
 - **Camera Capture & Batch Import**: Take instant photo on iOS / Android / Web / PC, or batch import local images for parallel OCR and AI translation.
 - **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated text.
-- **Export & Archive**: Supports long-image exports.
+- **Compare & Transient Reading**: Side-by-side comparison and instant translation overlay reading.
 
 ### 5. Flexible AI Engines & Real-Time Web Search
 - **Universal Provider Integration**: Supports Google Gemini, OpenAI, DeepSeek, Claude, OpenRouter, SiliconFlow, and local privacy-first Ollama models.
@@ -130,7 +130,7 @@ To activate AI enhancements, configure an API Key for your preferred provider. L
 
 - **Ctrl + Enter**: Force full AI query execution.
 - **AI icon on search bar (✨)**: Bypass local dictionary and query AI directly.
-- **Comic / Image Workflow**: Import images → Batch translate → Side-by-side read → Export long image.
+- **Comic / Image Workflow**: Take photo / Import images → Batch translate → Side-by-side read.
 - **Cache Management**: Clear history and cache at the bottom of the Settings page.
 
 ---
