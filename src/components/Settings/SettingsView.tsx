@@ -253,6 +253,7 @@ export function SettingsView() {
     pronunciationAccent, setPronunciationAccent,
     autoPlayPronunciation, setAutoPlayPronunciation,
     enableProfileDiagnostic, setEnableProfileDiagnostic,
+    savePhotoToGallery, setSavePhotoToGallery,
   } = useSettingsStore()
 
   const { status, checkUpdate, currentVersion } = useUpdateStore()
@@ -738,7 +739,7 @@ export function SettingsView() {
             <RowDivider />
 
             {/* Pronunciation Settings */}
-            <div className="space-y-3 px-4 py-3">
+            <div className="space-y-3 px-4 pt-3 pb-1">
               <div className="flex-1 min-w-0 pr-3">
                 <span className="text-sm font-bold text-foreground block">{t('settings.pronunciationSettings')}</span>
                 <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.pronunciationDesc')}</p>
@@ -754,10 +755,18 @@ export function SettingsView() {
                   <option value="uk">{t('settings.accentUk')}</option>
                 </select>
               </div>
-              <div className="pl-4 -mx-4 -mb-3">
-                <ToggleRow label={t('settings.autoPlayPronunciation')} value={autoPlayPronunciation} onChange={setAutoPlayPronunciation} />
-              </div>
+              <ToggleRow label={t('settings.autoPlayPronunciation')} value={autoPlayPronunciation} onChange={setAutoPlayPronunciation} indent />
             </div>
+
+            <RowDivider />
+
+            {/* Photo Gallery Setting */}
+            <ToggleRow
+              label={t('settings.savePhotoToGallery')}
+              desc={t('settings.savePhotoToGalleryDesc')}
+              value={savePhotoToGallery}
+              onChange={setSavePhotoToGallery}
+            />
           </Group>
         </div>
 

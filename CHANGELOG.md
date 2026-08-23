@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 2026-08-23 — 图像翻译支持跨平台相机拍照 (v0.9.16)
+
+### 用户可见
+1. **图像翻译新增相机拍照功能 (Take Photo)**：在图像翻译模式（Image Translator）下，新增了全平台“拍照”按键。支持直接唤起系统相机拍摄文本照片并自动送入翻译列表。
+2. **Web / PC 桌面端实时摄像头支持**：在 Web 浏览器以及 Tauri PC 端（Windows / macOS）点击拍照，会自动弹出内置的摄像头实时预览模态框 (`CameraModal`)，支持实时画面捕捉与前后置摄像头切换。
+3. **移动端 (iOS 16+ / Android 9-17) 原生相机唤起**：通过集成 `@capacitor/camera`，自动在移动端调用操作系统原生拍照界面，并处理不同 Android/iOS 版本的权限与存储映射。
+
+### 工程
+- `package.json`: 引入 `@capacitor/camera` 依赖。
+- `src/services/camera.ts`: 新增平台相机抽象服务，提供统一 `captureNativePhoto()` 方法。
+- `src/components/ImageTranslate/CameraModal.tsx`: 新增 WebRTC 摄像头实时流预览与拍摄模态框组件。
+- `src/components/ImageTranslate/index.tsx`: 整合相机拍照入口，空态引导与操作栏支持拍照追加图片。
+- `src/i18n/index.ts`: 添加相机拍照相关多语言文案。
+- `ios/App/App/Info.plist`: 补全 `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` / `NSPhotoLibraryAddUsageDescription` 隐私声明。
+- `android/app/src/main/AndroidManifest.xml`: 补充 `android.permission.CAMERA` 与 `android.hardware.camera` 声明。
+
+### 涉及文件
+- `package.json`
+- `src/services/camera.ts`
+- `src/components/ImageTranslate/CameraModal.tsx`
+- `src/components/ImageTranslate/index.tsx`
+- `src/i18n/index.ts`
+- `ios/App/App/Info.plist`
+- `android/app/src/main/AndroidManifest.xml`
+- `lexicon-docs/01-architecture.md`
+- `lexicon-docs/05-components.md`
+- `README.md`
+- `README_en.md`
+- `AGENT.md`
+
 ## 2026-08-21 — Lookup / Pure Core 双请求真并发提速 + 中文输入概念心智地图 + 单语言口径统一 (v0.9.15)
 
 ### 用户可见

@@ -18,6 +18,7 @@
     │
     ├── (view === 'translate')
     │   └── <ImageTranslateView />
+    │       └── <CameraModal />            # Web / Desktop 摄像头实时拍照模态框
     │
     └── (view === 'settings')
         └── <SettingsView />           # Group + Accordion + ProfileModal

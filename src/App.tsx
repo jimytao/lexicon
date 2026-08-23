@@ -26,6 +26,7 @@ import { planDictHitNormalSearch } from './utils/searchPath'
 import { decideHistoryClickRoute } from './utils/historyDecisionTree'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { warmupDictionary } from './services/db'
+import { cleanCameraCacheDir } from './services/camera'
 import {
   applyDocumentAppearance,
   getSystemPrefersDark,
@@ -156,6 +157,7 @@ export function App() {
     // Initial check and cleanup
     checkUpdate()
     cleanupOldApks()
+    void cleanCameraCacheDir()
 
     // Legacy Android safe area fix (Android 8-10 often report 0 for env(safe-area-inset-top))
     const initSafeArea = async () => {

@@ -52,7 +52,7 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 - Single metaphor "Regenerate" button for targeted spatial refresh.
 
 ### 4. Image & Comic Translation
-- **Batch Import & Parallel Processing**: Multi-image OCR and parallel AI translation with progress tracking.
+- **Camera Capture & Batch Import**: Take instant photo on iOS / Android / Web / PC, or batch import local images for parallel OCR and AI translation.
 - **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated text.
 - **Export & Archive**: Supports long-image exports.
 

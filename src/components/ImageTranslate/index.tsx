@@ -1,8 +1,12 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useImageStore } from '../../stores/imageStore'
 import { aiImageTranslateFast } from '../../services/ai'
 import { TranslationList } from './TranslationList'
 import { ImageViewer, type ImageViewerHandle } from './ImageViewer'
+import { CameraModal } from './CameraModal'
+import { captureNativePhoto } from '../../services/camera'
+import { isCapacitor } from '../../services/platform'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { useT } from '../../i18n'
 
 const LANG_OPTIONS = [
@@ -21,6 +25,7 @@ const TARGET_OPTIONS = [
 
 export function ImageTranslateView() {
   const t = useT()
+  const savePhotoToGallery = useSettingsStore((s) => s.savePhotoToGallery)
   const {
     images, currentIndex,
     sourceLang, targetLang,
@@ -28,6 +33,8 @@ export function ImageTranslateView() {
     updateBlock, setImageBase64At, setBlocksAt, setStatusAt,
     setSourceLang, setTargetLang,
   } = useImageStore()
+
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false)
 
   const current = images[currentIndex] ?? null
   const imageUrl = current?.imageUrl ?? null
@@ -57,6 +64,23 @@ export function ImageTranslateView() {
     if (index < 0 || index >= images.length) return
     setCurrentIndex(index)
   }, [images.length, setCurrentIndex])
+
+  const handleTakePhoto = useCallback(async () => {
+    if (isCapacitor()) {
+      try {
+        const file = await captureNativePhoto({ saveToGallery: savePhotoToGallery })
+        if (file) addImages([file])
+      } catch (err: any) {
+        if (err?.message === 'PERMISSION_DENIED') {
+          alert(t('image.cameraPermissionDenied'))
+        } else {
+          console.warn('Native camera capture error:', err)
+        }
+      }
+    } else {
+      setIsCameraModalOpen(true)
+    }
+  }, [addImages, savePhotoToGallery, t])
 
   async function getBase64At(imgIndex: number): Promise<string> {
     const entry = images[imgIndex]
@@ -119,13 +143,36 @@ export function ImageTranslateView() {
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-12 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+          className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl py-10 px-4 transition-colors"
         >
-          <svg className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-          </svg>
-          <p className="text-sm text-gray-400 dark:text-gray-500">{t('image.uploadHint')}</p>
+          <div className="flex items-center gap-3 mb-4">
+            {/* Take Photo Button */}
+            <button
+              type="button"
+              onClick={handleTakePhoto}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:scale-95 text-white font-medium text-sm shadow-md shadow-blue-500/20 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+              </svg>
+              <span>{t('image.takePhoto')}</span>
+            </button>
+
+            {/* Choose Local File Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 text-gray-700 dark:text-gray-200 font-medium text-sm transition-all"
+            >
+              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+              </svg>
+              <span>{t('image.chooseLocalImage')}</span>
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-400 dark:text-gray-500">{t('image.uploadHint')}</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -153,6 +200,22 @@ export function ImageTranslateView() {
                   ? t('image.retranslateAll')
                   : t('image.translateAll')}
             </button>
+
+            {/* Camera photo button in action bar */}
+            <button
+              type="button"
+              onClick={handleTakePhoto}
+              className="w-11 h-11 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title={t('image.takePhoto')}
+              aria-label={t('image.takePhoto')}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+              </svg>
+            </button>
+
+            {/* Add local file button in action bar */}
             <button
               type="button"
               onClick={() => addFileInputRef.current?.click()}
@@ -290,6 +353,13 @@ export function ImageTranslateView() {
 
         </div>
       )}
+
+      {/* Web/Desktop Camera Capture Modal */}
+      <CameraModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCapture={(file) => addImages([file])}
+      />
     </div>
   )
 }

@@ -66,13 +66,22 @@ export const useImageStore = create<ImageState>((set, get) => ({
 
   removeCurrentImage() {
     const { images, currentIndex } = get()
-    images[currentIndex]?.imageUrl && URL.revokeObjectURL(images[currentIndex].imageUrl)
+    const current = images[currentIndex]
+    if (current) {
+      if (current.imageUrl) URL.revokeObjectURL(current.imageUrl)
+      current.imageBase64 = null
+      current.blocks = []
+    }
     const next = images.filter((_, i) => i !== currentIndex)
     set({ images: next, currentIndex: Math.min(currentIndex, Math.max(0, next.length - 1)) })
   },
 
   clearAll() {
-    get().images.forEach(img => URL.revokeObjectURL(img.imageUrl))
+    get().images.forEach((img) => {
+      if (img.imageUrl) URL.revokeObjectURL(img.imageUrl)
+      img.imageBase64 = null
+      img.blocks = []
+    })
     set({ images: [], currentIndex: 0 })
   },
 

@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.10**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.16**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 
@@ -255,7 +255,10 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 ### 最近一次重要改动
 
-**2026-08-16（未发版）** — 搜索栏多行布局重做：文字满宽排版、右下角按钮只遮最后一行、撞到按钮才长高；修复 v0.9.9 的换行抖动（布局反馈环）与按钮压字。新增 `useComposerFlowLayout`（详见 `05-components.md`，含硬约束）。
+**2026-08-23（v0.9.16）** — 图像翻译（Image Translator）功能扩展全平台相机拍照（Take Photo）：
+- 移动端 (Capacitor iOS 16+ / Android 9-17)：自动唤起系统原生拍照，整合权限与 Scoped Storage 保存。
+- Web / PC 桌面端 (Tauri Windows/macOS)：新增 `CameraModal` WebRTC 摄像头实时流预览与拍照。
+- 服务抽象 `src/services/camera.ts`，导出标准 `File` 对象直接对接 `useImageStore`，不打破已有代码与翻译流水线。
 
 此前（v0.9.9）：搜索栏与 AI 提问框升级为多行自适应 textarea；Tavily Web 搜索开关全站联动。  
 更早版本见 `CHANGELOG.md`（发版真相源）。

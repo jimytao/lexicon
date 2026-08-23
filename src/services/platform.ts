@@ -11,3 +11,10 @@ export function isCapacitor(): boolean {
 export function isWeb(): boolean {
   return !isTauri() && !isCapacitor()
 }
+
+export function isDesktopDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  if (isTauri()) return true
+  if (isCapacitor()) return false
+  return !/Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent)
+}

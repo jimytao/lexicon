@@ -189,6 +189,7 @@ interface SettingsStore {
   pronunciationAccent: 'uk' | 'us'
   autoPlayPronunciation: boolean
   enableProfileDiagnostic: boolean
+  savePhotoToGallery: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
   setAiModel: (v: string) => void
@@ -216,6 +217,7 @@ interface SettingsStore {
   setPronunciationAccent: (v: 'uk' | 'us') => void
   setAutoPlayPronunciation: (v: boolean) => void
   setEnableProfileDiagnostic: (v: boolean) => void
+  setSavePhotoToGallery: (v: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -248,6 +250,8 @@ export const useSettingsStore = create<SettingsStore>()(
       pronunciationAccent: 'us',
       autoPlayPronunciation: false,
       enableProfileDiagnostic: true,
+      savePhotoToGallery: false,
+      setSavePhotoToGallery: (savePhotoToGallery: boolean) => set({ savePhotoToGallery }),
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,

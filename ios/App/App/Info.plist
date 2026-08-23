@@ -8,6 +8,12 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
         <string>Lexicon</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Lexicon需要访问您的相机以拍摄图片进行即时翻译。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Lexicon需要访问您的相册以选择翻译图片。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Lexicon需要保存拍摄的翻译图片至相册。</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
