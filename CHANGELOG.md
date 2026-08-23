@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-08-23 — 图像翻译“拍照”与“选择图片”UI/UX全量统一与跨端对称 (v0.9.17)
+
+### 用户可见
+1. **“拍照”与“选择本地图片”按键 UI/UX 100% 统一**：统一了两个按键的边框色调、背景微光、圆角 (`rounded-xl`)、Theme Accent 品牌图标与文字字号，消除了视觉层级与色差隔阂。
+2. **多端 50%/50% 响应式等宽对称**：引入 `grid grid-cols-2` 响应式网格。在移动端屏幕下两按键自动 50%/50% 均分宽度，桌面 PC/macOS 居中展现完美左右等宽对称。
+3. **全平台解镜像与 AI/UI 视角 100% 一致**：优化前置摄像头与 PC/macOS 桌面 Webcam 捕获逻辑，导出画面自动平移解镜像，确保人类 UI 查看与 AI OCR 识字均为正向正常文本。
+4. **README 描述同步纠偏**：修正中英文 README 中已废弃的“导出长图”描述，更正为无痕对比翻译与正常阅读流程。
+
+### 工程
+- `src/components/ImageTranslate/index.tsx`: 优化按键 CSS 结构与 `grid grid-cols-2` 布局。
+- `README.md` & `README_en.md`: 修订图像翻译功能描述。
+- `AGENT.md`: 更新日志与版本记录。
+
+### 涉及文件
+- `src/components/ImageTranslate/index.tsx`
+- `README.md`
+- `README_en.md`
+- `AGENT.md`
+- `CHANGELOG.md`
+
 ## 2026-08-23 — 图像翻译支持跨平台相机拍照 (v0.9.16)
 
 ### 用户可见
