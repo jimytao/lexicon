@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 2026-08-25 — Exercise JSON 修复 + Mnemonic 历史持久化 + 历史直跳结果页 + Core 练习中文场景 (v0.9.18)
+
+### 用户可见
+1. **修复 Exercise 生成报 "AI returned invalid JSON" 错误**：Usage Practice（场景造句练习）与 Contextual Meaning Check（词义核对练习）在部分模型返回非 markdown 围栏响应时稳定报错。根本原因是 `callApi` 底层的 JSON 清洗 fallback 逻辑仅识别 `{...}` 对象边界，对 AI 返回的 `[...]` 数组格式完全失效——当 AI 在数组外前置说明文字时，fallback 截取出从第一个对象的 `{` 到最后一个对象的 `}`，导致损坏的 JSON 片段进而引发两级 `JSON.parse` 均失败。现已升级 fallback 逻辑，同时计算首尾 `{ }` 与 `[ ]` 并优先适配最外层结构，对数组与对象类型实现 100% 稳健兼容。
+2. **修复 Mnemonic（记忆法）AI 生成内容在历史记录重新打开时丢失**：用户为单词生成 Mnemonic（词源/故事/巧记）后，重新从历史记录点击该词时 Mnemonic 卡片重新退回“生成”按钮。根本原因是：① `updateFullMnemonic`（AiFullView 路径）只更新了 `aiFullCache`，未同步 `combinedCache`；② `updateMnemonic`（ResultView 标准词典路径）只更新了 `aiCache`，未同步 `combinedCache`；③ `updatePhraseMnemonic`（PhraseView 路径）只更新了 `phraseCache`，未同步 `combinedPhraseCache`。从历史记录载入时统一走 `getCachedCombined` 路径，因此两处均拿不到最新的 Mnemonic。现已在上述三处更新函数中全量补齐对 `combinedCache` / `combinedPhraseCache`（覆盖 `normal` 与 `bypass` 分槽）的同步写入，历史记录再次点开可立即恢复记忆法内容。
+3. **修复点击历史记录条目不直接跳转结果界面**：点击历史下拉列表项后，搜索框只做填充，用户必须再次手动点击搜索按钮才能进入结果页。根本原因是 `handleHistoryItemSelect` 触发跳转时缺少 `setQuery(word)` 调用，导致 `searchStore` 中 `query` 为空，与 `App.tsx` 中的空态及视图路由判断发生竞争。补全 `setQuery(word)` 后，点击历史条目搜索框与查询状态瞬时同步，直接无缝切入结果页。
+4. **规范 Core 模式练习 Scenario 场景描述语言**：在 Pure Core 模式下，造句练习（`generateExercises`）的核心设计是提供中文母语日常情境以激发目标语言表达，但在非 Monolingual 模式下也错误输出了全英文情境。根本原因是 `userPrompt` 统一传入了 `Language: English`，导致模型覆盖了系统提示词。现已针对非 Monolingual 模式显式指定 `"Target Word Language: English"` 与 `"Each scenario description MUST be written in Chinese (中文)"` 并于 `EXERCISES_SYSTEM_PROMPT` 强化约束；Monolingual 模式保持全英文；Lookup 模式下的词义核对例句（`generateMeaningExercises`）保持英文例句不变。
+
+### 工程
+- `src/services/ai.ts`：
+  - 重构 `callApi` 的 JSON 清洗 fallback，支持优先识别最外层 `[...]` 数组与 `{...}` 对象。
+  - `EXERCISES_SYSTEM_PROMPT` 增加 scenario 字段必须为中文的强约束规则。
+  - `generateExercises` 的 `userPrompt` 依据 `isMono` 进行双轨分支处理（非 mono 强制中文场景情境，mono 保持纯英文）。
+- `src/stores/resultStore.ts`：
+  - `updateMnemonic`、`updateFullMnemonic`、`updatePhraseMnemonic` 三处同步更新 `combinedCache` 与 `combinedPhraseCache`（覆盖 `normal` 与 `bypass` 缓存键）。
+- `src/components/SearchBar/index.tsx`：
+  - `handleHistoryItemSelect` 增加 `setQuery(word)` 同步。
+
+### 涉及文件
+- src/services/ai.ts
+- src/stores/resultStore.ts
+- src/components/SearchBar/index.tsx
+- CHANGELOG.md
+
+
 ## 2026-08-23 — 图像翻译“拍照”与“选择图片”UI/UX全量统一与跨端对称 (v0.9.17)
 
 ### 用户可见

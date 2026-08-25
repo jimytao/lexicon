@@ -319,7 +319,8 @@ Return ONLY a valid JSON array. No markdown. No explanation.
 ]
 
 Rules:
-- The learner should be expected to use the target word/phrase in its original language.
+- The "scenario" field MUST ALWAYS be written in Chinese (中文), regardless of the target word's language.
+- The learner should be expected to use the target word/phrase (in its original language) in their response.
 - Prioritize the most COMMON and PRACTICAL meanings/usages.
 - Never output anything outside the JSON array`
 
@@ -457,10 +458,19 @@ async function callApi(
     if (fenceMatch) {
       cleaned = fenceMatch[1].trim()
     } else {
-      // If no fences, try to find the first '{' and last '}' to extract JSON
-      const firstBrace = cleaned.indexOf('{')
-      const lastBrace = cleaned.lastIndexOf('}')
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      // If no fences, try to extract JSON object {...} or array [...]
+      // Choose whichever opening delimiter appears first in the response.
+      const firstBrace   = cleaned.indexOf('{')
+      const firstBracket = cleaned.indexOf('[')
+      const lastBrace    = cleaned.lastIndexOf('}')
+      const lastBracket  = cleaned.lastIndexOf(']')
+
+      const useArray = firstBracket !== -1 && lastBracket !== -1
+        && (firstBrace === -1 || firstBracket < firstBrace)
+
+      if (useArray && lastBracket > firstBracket) {
+        cleaned = cleaned.slice(firstBracket, lastBracket + 1)
+      } else if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
         cleaned = cleaned.slice(firstBrace, lastBrace + 1)
       }
     }
@@ -588,7 +598,9 @@ export async function generateExercises(
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'the target language'
 
-  const userPrompt = `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios for learning this ${langName} expression.`
+  const userPrompt = isMono
+    ? `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios for learning this ${langName} expression.`
+    : `Target Word Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios. Each scenario description MUST be written in Chinese (中文). The learner will write their response using the target word in ${langName}.`
   const cleaned = await callApi(getExercisesSystemPrompt(isMono), userPrompt, signal)
 
   // Primary parse

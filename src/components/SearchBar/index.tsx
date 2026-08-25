@@ -85,6 +85,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   function handleHistoryItemSelect(word: string) {
     setSuggestions([])
     setActiveIndex(-1)
+    setQuery(word)
     textareaRef.current?.blur()
     onHistorySelect(word)
   }

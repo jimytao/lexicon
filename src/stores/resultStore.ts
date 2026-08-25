@@ -327,9 +327,24 @@ export const useResultStore = create<ResultStore>()(
           const cache = { ...get().aiCache }
           delete cache[normalized]
           cache[normalized] = updated
-          set({ aiCache: cache, aiAnalysis: updated })
+
+          // Also sync combinedCache lookup half so history re-opens pick up the mnemonic.
+          // (ResultView uses aiAnalysis, but history loads restore via combinedCache.)
+          const combinedCache = { ...get().combinedCache }
+          for (const tag of ['normal', 'bypass'] as const) {
+            const ck = combinedCacheKey(word, tag)
+            if (combinedCache[ck]) {
+              combinedCache[ck] = {
+                ...combinedCache[ck],
+                lookup: { ...combinedCache[ck].lookup, mnemonic },
+              }
+            }
+          }
+
+          set({ aiCache: cache, aiAnalysis: updated, combinedCache })
         }
       },
+
       updateMeaningExtension: (word, index, ext) => {
         const normalized = normalizeQuery(word)
         const current = get().aiAnalysis
@@ -401,7 +416,22 @@ export const useResultStore = create<ResultStore>()(
           const cache = { ...get().aiFullCache }
           delete cache[cacheKey]
           cache[cacheKey] = updated
-          set({ aiFullCache: cache, aiFullResult: updated })
+
+          // Also sync combinedCache so history re-opens pick up the mnemonic.
+          // The mnemonic lives in the 'lookup' or 'core' half matching `cognitive`.
+          const half = cognitive === 'core' ? 'core' : 'lookup'
+          const combinedCache = { ...get().combinedCache }
+          for (const tag of ['normal', 'bypass'] as const) {
+            const ck = combinedCacheKey(word, tag)
+            if (combinedCache[ck]) {
+              combinedCache[ck] = {
+                ...combinedCache[ck],
+                [half]: { ...combinedCache[ck][half], mnemonic },
+              }
+            }
+          }
+
+          set({ aiFullCache: cache, aiFullResult: updated, combinedCache })
         }
       },
       updatePhraseMnemonic: (key, mnemonic, cognitive = 'lookup') => {
@@ -412,9 +442,24 @@ export const useResultStore = create<ResultStore>()(
           const cache = { ...get().phraseCache }
           delete cache[cacheKey]
           cache[cacheKey] = updated
-          set({ phraseCache: cache, phraseResult: updated })
+
+          // Also sync combinedPhraseCache so history re-opens pick up the mnemonic.
+          const half = cognitive === 'core' ? 'core' : 'lookup'
+          const combinedPhraseCache = { ...get().combinedPhraseCache }
+          for (const tag of ['normal', 'bypass'] as const) {
+            const ck = combinedCacheKey(key, tag)
+            if (combinedPhraseCache[ck]) {
+              combinedPhraseCache[ck] = {
+                ...combinedPhraseCache[ck],
+                [half]: { ...combinedPhraseCache[ck][half], mnemonic },
+              }
+            }
+          }
+
+          set({ phraseCache: cache, phraseResult: updated, combinedPhraseCache })
         }
       },
+
       setAiFullResult: (word, aiFullResult, cognitive = 'lookup') => {
         const cacheKey = cognitiveCacheKey(word, cognitive)
         const cache = { ...get().aiFullCache }
