@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { TextBlock } from '../types'
 
 type TranslateStatus = 'idle' | 'loading' | 'done' | 'error'
@@ -18,6 +19,8 @@ interface ImageState {
   currentIndex: number
   sourceLang: string
   targetLang: string
+  customSourceLangs: string[]
+  customTargetLangs: string[]
 
   addImages: (files: File[]) => void
   removeCurrentImage: () => void
@@ -31,6 +34,10 @@ interface ImageState {
 
   setSourceLang: (lang: string) => void
   setTargetLang: (lang: string) => void
+  addCustomSourceLang: (lang: string) => void
+  addCustomTargetLang: (lang: string) => void
+  removeCustomSourceLang: (lang: string) => void
+  removeCustomTargetLang: (lang: string) => void
 }
 
 function makeEntry(file: File): ImageEntry {
@@ -49,73 +56,127 @@ function updateAt(images: ImageEntry[], index: number, patch: Partial<ImageEntry
   return images.map((img, i) => i === index ? { ...img, ...patch } : img)
 }
 
-export const useImageStore = create<ImageState>((set, get) => ({
-  images: [],
-  currentIndex: 0,
-  sourceLang: 'auto',
-  targetLang: 'Chinese',
+export const useImageStore = create<ImageState>()(
+  persist(
+    (set, get) => ({
+      images: [],
+      currentIndex: 0,
+      sourceLang: 'auto',
+      targetLang: '中文',
+      customSourceLangs: [],
+      customTargetLangs: [],
 
-  addImages(files) {
-    const newEntries = Array.from(files)
-      .filter(f => f.type.startsWith('image/'))
-      .map(makeEntry)
-    if (newEntries.length === 0) return
-    const { images } = get()
-    set({ images: [...images, ...newEntries], currentIndex: images.length })
-  },
+      addImages(files) {
+        const newEntries = Array.from(files)
+          .filter(f => f.type.startsWith('image/'))
+          .map(makeEntry)
+        if (newEntries.length === 0) return
+        const { images } = get()
+        set({ images: [...images, ...newEntries], currentIndex: images.length })
+      },
 
-  removeCurrentImage() {
-    const { images, currentIndex } = get()
-    const current = images[currentIndex]
-    if (current) {
-      if (current.imageUrl) URL.revokeObjectURL(current.imageUrl)
-      current.imageBase64 = null
-      current.blocks = []
+      removeCurrentImage() {
+        const { images, currentIndex } = get()
+        const current = images[currentIndex]
+        if (current) {
+          if (current.imageUrl) URL.revokeObjectURL(current.imageUrl)
+          current.imageBase64 = null
+          current.blocks = []
+        }
+        const next = images.filter((_, i) => i !== currentIndex)
+        set({ images: next, currentIndex: Math.min(currentIndex, Math.max(0, next.length - 1)) })
+      },
+
+      clearAll() {
+        get().images.forEach((img) => {
+          if (img.imageUrl) URL.revokeObjectURL(img.imageUrl)
+          img.imageBase64 = null
+          img.blocks = []
+        })
+        set({ images: [], currentIndex: 0 })
+      },
+
+      setCurrentIndex(index) {
+        const { images } = get()
+        if (index >= 0 && index < images.length) set({ currentIndex: index })
+      },
+
+      updateBlock(index, partial) {
+        const { images, currentIndex } = get()
+        const entry = images[currentIndex]
+        if (!entry) return
+        const blocks = [...entry.blocks]
+        if (blocks[index]) {
+          blocks[index] = { ...blocks[index], ...partial }
+          set({ images: updateAt(images, currentIndex, { blocks }) })
+        }
+      },
+
+      setImageBase64At(imageIndex, b64) {
+        const { images } = get()
+        set({ images: updateAt(images, imageIndex, { imageBase64: b64 }) })
+      },
+
+      setBlocksAt(imageIndex, blocks) {
+        const { images } = get()
+        set({ images: updateAt(images, imageIndex, { blocks }) })
+      },
+
+      setStatusAt(imageIndex, status, error) {
+        const { images } = get()
+        set({ images: updateAt(images, imageIndex, { status, error: error ?? null }) })
+      },
+
+      setSourceLang: (lang) => set({ sourceLang: lang }),
+      setTargetLang: (lang) => set({ targetLang: lang }),
+
+      addCustomSourceLang(lang) {
+        const trimmed = lang.trim()
+        if (!trimmed) return
+        const { customSourceLangs } = get()
+        if (customSourceLangs.includes(trimmed)) return
+        set({ customSourceLangs: [...customSourceLangs, trimmed] })
+      },
+
+      addCustomTargetLang(lang) {
+        const trimmed = lang.trim()
+        if (!trimmed) return
+        const { customTargetLangs } = get()
+        if (customTargetLangs.includes(trimmed)) return
+        set({ customTargetLangs: [...customTargetLangs, trimmed] })
+      },
+
+      removeCustomSourceLang(lang) {
+        const { customSourceLangs, sourceLang } = get()
+        const next = customSourceLangs.filter(l => l !== lang)
+        const patch: Partial<ImageState> = { customSourceLangs: next }
+        if (sourceLang === lang) {
+          patch.sourceLang = 'auto'
+        }
+        set(patch)
+      },
+
+      removeCustomTargetLang(lang) {
+        const { customTargetLangs, targetLang } = get()
+        const next = customTargetLangs.filter(l => l !== lang)
+        const patch: Partial<ImageState> = { customTargetLangs: next }
+        if (targetLang === lang) {
+          patch.targetLang = '中文'
+        }
+        set(patch)
+      },
+    }),
+
+    {
+      name: 'lexicon-image-prefs',
+      // Only persist language preferences — images contain File objects that can't be serialized
+      partialize: (state) => ({
+        sourceLang: state.sourceLang,
+        targetLang: state.targetLang,
+        customSourceLangs: state.customSourceLangs,
+        customTargetLangs: state.customTargetLangs,
+      }),
     }
-    const next = images.filter((_, i) => i !== currentIndex)
-    set({ images: next, currentIndex: Math.min(currentIndex, Math.max(0, next.length - 1)) })
-  },
+  )
+)
 
-  clearAll() {
-    get().images.forEach((img) => {
-      if (img.imageUrl) URL.revokeObjectURL(img.imageUrl)
-      img.imageBase64 = null
-      img.blocks = []
-    })
-    set({ images: [], currentIndex: 0 })
-  },
-
-  setCurrentIndex(index) {
-    const { images } = get()
-    if (index >= 0 && index < images.length) set({ currentIndex: index })
-  },
-
-  updateBlock(index, partial) {
-    const { images, currentIndex } = get()
-    const entry = images[currentIndex]
-    if (!entry) return
-    const blocks = [...entry.blocks]
-    if (blocks[index]) {
-      blocks[index] = { ...blocks[index], ...partial }
-      set({ images: updateAt(images, currentIndex, { blocks }) })
-    }
-  },
-
-  setImageBase64At(imageIndex, b64) {
-    const { images } = get()
-    set({ images: updateAt(images, imageIndex, { imageBase64: b64 }) })
-  },
-
-  setBlocksAt(imageIndex, blocks) {
-    const { images } = get()
-    set({ images: updateAt(images, imageIndex, { blocks }) })
-  },
-
-  setStatusAt(imageIndex, status, error) {
-    const { images } = get()
-    set({ images: updateAt(images, imageIndex, { status, error: error ?? null }) })
-  },
-
-  setSourceLang: (lang) => set({ sourceLang: lang }),
-  setTargetLang: (lang) => set({ targetLang: lang }),
-}))

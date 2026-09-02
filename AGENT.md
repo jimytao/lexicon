@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.18**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.19**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
 
 ---
 

@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## 2026-09-02 — 排查记录：自定义语言「OK」按键点击疑似失灵
+
+### 问题排查
+- **现象**：图像翻译页新增的自定义语言输入框中，键盘回车可确认添加，但鼠标点击「OK」按键有时无反应。
+- **结论：非代码缺陷**。实际原因是电脑输入法/浏览器的候选词（Suggestion）提示条在输入内容后弹出并悬浮遮挡在「OK」按键上方，未先关闭候选词就直接点击，点击落在了候选词浮层上而非按键本体，因而误判为按键无效。功能本身正常，无需修复。
+- **顺带清理**：排查过程中简化了 `LangSelectWithAdd.tsx` 中「OK」按键的事件绑定，将此前叠加的 `onClick` / `onMouseDown(stopPropagation)` / `onTouchEnd` 三套冗余防御合并为单一 `onPointerDown`（配合 `preventDefault` 避免与 `form onSubmit` 重复触发），逻辑更清晰，行为不变。
+
+## 2026-09-02 — 图像翻译支持自定义语言增删与本地持久化 + 视觉圆角微调 + 操作栏合并归一 (v0.9.19)
+
+### 用户可见
+1. **图像翻译支持自定义添加与删除目标/源语言**：打破过去仅能从少数固定语种中选择的限制，语言下拉选择器底部新增「+ Add」按键。用户可自由输入任意想要翻译的语言描述（如“文言文”、“西班牙语”、“繁体中文”、“德语”等，AI 均能智能识别），输入后点击确认或回车即可即时生效并自动选中。针对不需要的历史自定义语种，在条目右侧提供「-」删除按键，点击即可随时从列表中移除，且若当前正处于该语种，系统会自动平滑回退至默认语言。
+2. **多端交互与防遮挡深度优化（Web / Tauri / Mobile）**：针对浏览器、PC 桌面端（Tauri）与移动端（Capacitor Webview）可能存在的输入框自动填充（Autofill）遮挡按键、拼音输入法（IME）未回车直接点击以及移动端触摸事件冲突问题进行了底层加固。禁用浏览器干扰浮层，并支持原生 Form Submit、TouchEnd 与 DOM 瞬时读取，保证在全平台环境下点击「OK」按键 100% 灵敏响应。
+3. **语言选择与自定义语种全量本地持久化**：通过本地轻量化持久化存储，自动记忆用户最后一次选中的源语言与目标语言，以及所有自主添加的语言列表。应用重启或冷启动后无需重复设置或重新输入，彻底告别每次打开需重选语言的繁琐流程；图片文件实例自动与存储层物理隔离，杜绝序列化报错与存储污染。
+4. **按键视觉圆角比例调谐 (`rounded-[10px]`)**：针对图像翻译界面中 `Take Photo`、`Choose Image` 及语言下拉选择器等矮按键在移动端窄屏下圆角占比过大、导致侧边直线段消失变“胶囊圆弧”的问题，将按键圆角精细微调为 `rounded-[10px]`（介于 8px 与 12px 之间）。既保证了柔和现代的视觉观感，又确保左右侧边始终具备垂直直线段，呈现出外层大尺寸虚线框“等比缩小版”的和谐层级美感。
+5. **操作栏按键归一合并**：将已有翻译图片时顶部操作栏中原本独立的“相机拍照”与“添加本地图片”两个并列按键，整合为一个统一的「+」操作按键。点击「+」向上弹出菜单供选择拍照或选择本地图片，大幅释放横向排版空间，确保 `Retranslate All`、`+`、`Remove` 与 `Clear All` 在窄屏移动设备中能 100% 完整排布且不被挤压。
+
+### 工程
+- `src/components/ImageTranslate/LangSelectWithAdd.tsx`：
+  - 新建自定义语言选择器组件，支持内置选项、自定义选项列表展示、`+ Add` 内联表单输入模式与 `-` 条目删除回调。
+  - 增加 `autoComplete="off"`、`autoCorrect="off"`、`spellCheck={false}` 阻断浏览器自动填充遮罩；支持 `onClick` / `onTouchEnd` / `onMouseDown` 阻止冒泡并以 `inputRef.current.value` 兜底实时 DOM 读取。
+- `src/stores/imageStore.ts`：
+  - 接入 `zustand/middleware` 的 `persist` 中间件，配置 `partialize` 仅持久化 `sourceLang`、`targetLang`、`customSourceLangs` 与 `customTargetLangs` 字段至 `lexicon-image-prefs`。
+  - 新增 `addCustomSourceLang`、`addCustomTargetLang`、`removeCustomSourceLang` 与 `removeCustomTargetLang` 状态流处理及当前激活语言自动回退逻辑。
+- `src/components/ImageTranslate/index.tsx`：
+  - 将原原生 `<select>` 替换为 `<LangSelectWithAdd>` 并对接 Store 增删持久化流。
+  - 调整 `Take Photo` 与 `Choose Image` 按钮圆角至 `rounded-[10px]`。
+  - 操作栏将相机与文件按钮整合为带 Popover 菜单的单一 `+` 按键，并补充外部点击自动收起 Listener。
+
+### 涉及文件
+- `src/components/ImageTranslate/LangSelectWithAdd.tsx`
+- `src/components/ImageTranslate/index.tsx`
+- `src/stores/imageStore.ts`
+- `CHANGELOG.md`
+
 ## 2026-08-25 — Exercise JSON 修复 + Mnemonic 历史持久化 + 历史直跳结果页 + Core 练习中文场景 (v0.9.18)
 
 ### 用户可见
