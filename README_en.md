@@ -41,6 +41,7 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 - **Pure Core**: Replaces definition walls with **usage imagery (short gloss, feel anchors, emotional tone)**, concept trees, collocations, register notes, and output practice cards. Modules are reorderable via drag-and-drop.
 - **Auto-Expanding Input**: Search bar dynamically expands from 1 to 4 lines with strict text wrapping for smooth mobile typing.
 - **Dual-Track Cache & Comparison**: Single AI request generates both Lookup and Pure Core analyses, allowing instant 0ms track switching.
+- **Learner Profile & Weakness Heat Engine**: Lightweight learner profile engine tracks weak patterns with confidence and recency heat scoring; compact profile context is injected into word lookup, Pure Core, and chat, presenting contextual insight chips on matching weak spots.
 
 ### 2. Dual Local Dictionaries & Smart Routing
 - **Dual Oxford Engines**: Oxford 9th Edition Bilingual (~52k entries) + 10th Edition Monolingual (~84k entries).
@@ -75,11 +76,11 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.19_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.19_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.20_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.20_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.19)
-- **[Lexicon_0.9.19_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.20)
+- **[Lexicon_0.9.20_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -90,9 +91,9 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.19)
-- **[Lexicon_0.9.19_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.19](https://github.com/jimytao/lexicon/releases/tag/v0.9.19).
+### Android (v0.9.20)
+- **[Lexicon_0.9.20_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.20](https://github.com/jimytao/lexicon/releases/tag/v0.9.20).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).

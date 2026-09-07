@@ -41,6 +41,7 @@
 - **Pure Core (母语者用法与感觉锚)**：摒弃传统“中文释义墙”，直接展示**用法意象（短对译 gloss / 感觉锚 / 情绪底色）**、概念树、语境搭配、语域与造句练习。支持模组拖拽排序。
 - **多行自适应输入**：主搜索框与 AI 提问框支持 1 至 4 行自适应扩展（严格换行，不溢出），移动端光标调准更流畅。
 - **双轨缓存与对比**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套分析，双轨缓存支持 0 秒无缝对比切换。
+- **个人画像与弱点热度引擎**：内置学习画像引擎，自动根据练习记录识别薄弱语法点与混淆项，按置信度与时间衰减排序并分层；在单词查询、Pure Core 与追问中智能注入画像上下文，遇到薄弱点即时弹出轻量 Chip 提示。
 
 ### 2. 离线双本地词库与智能路由
 - **权威双词库**：牛津高阶第 9 版中英双解（约 5.2 万条）+ 第 10 版纯英英（约 8.4 万条）。
@@ -75,11 +76,11 @@
 > **Windows** 桌面端与 **Android** 移动端原生支持**软件内自动检测与一键升级**。当发布新版本时，软件会自动弹出更新提醒，您也可在 Settings 设置页面直接检查更新并在线升级，无需每次重新手动下载安装包。
 
 ### Windows
-- **[Lexicon_0.9.19_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_x64-setup.exe)**（推荐，支持软件内自动更新）
-- **[Lexicon_0.9.19_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_x64_en-US.msi)**（MSI 安装包）
+- **[Lexicon_0.9.20_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_x64-setup.exe)**（推荐，支持软件内自动更新）
+- **[Lexicon_0.9.20_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_x64_en-US.msi)**（MSI 安装包）
 
-### macOS 桌面端 (v0.9.19)
-- **[Lexicon_0.9.19_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
+### macOS 桌面端 (v0.9.20)
+- **[Lexicon_0.9.20_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
 
 > **⚠️ macOS 首次打开提示“无法验证开发者”或“已损坏”解决方案（三种方式）：**  
 > 由于独立开源版本未购买 Apple 付费开发者 ID 证书，macOS Gatekeeper 默认会阻挡未签名应用。请按以下任意一种方法解除限制：
@@ -90,9 +91,9 @@
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android 手机 / 平板 (v0.9.19)
-- **[Lexicon_0.9.19_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.19/Lexicon_0.9.19_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
-- 更多架构分包请见 [Releases v0.9.19](https://github.com/jimytao/lexicon/releases/tag/v0.9.19)。
+### Android 手机 / 平板 (v0.9.20)
+- **[Lexicon_0.9.20_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.20/Lexicon_0.9.20_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
+- 更多架构分包请见 [Releases v0.9.20](https://github.com/jimytao/lexicon/releases/tag/v0.9.20)。
 
 ### iOS（自签侧载）
 1. 安装 **[Sideloadly](https://sideloadly.io/)**（需官网版 iTunes + iCloud）。
