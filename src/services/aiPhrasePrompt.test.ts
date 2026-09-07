@@ -159,3 +159,17 @@ describe('source wiring — phrase prompt + PhraseView usageIntro', () => {
     )
   })
 })
+
+describe('Direction A — phrase prompt personalization hook', () => {
+  it('declares an optional, omit-by-default "profileInsight" field', () => {
+    const prompt = buildPhrasePrompt({ modules: LOOKUP_MODULES, lang: 'en', queryType: 'phrase' })
+    expect(prompt).toContain('"profileInsight"')
+    expect(prompt).toMatch(/OMIT[\s\S]{0,160}?(recurring|confusion|weak)/i)
+  })
+
+  it('appends the compact learner context for a plain phrase, the full one for a sentence', () => {
+    expect(readFileSync(join(__dirname, 'aiPhrasePrompt.ts'), 'utf8')).toMatch(
+      /buildProfilePromptContext\(\s*queryType === ['"]sentence['"] \? ['"]full['"] : ['"]compact['"]\s*\)/,
+    )
+  })
+})

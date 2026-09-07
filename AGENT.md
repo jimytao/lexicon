@@ -255,12 +255,16 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 ### 最近一次重要改动
 
-**2026-08-23（v0.9.16）** — 图像翻译（Image Translator）功能扩展全平台相机拍照（Take Photo）：
-- 移动端 (Capacitor iOS 16+ / Android 9-17)：自动唤起系统原生拍照，整合权限与 Scoped Storage 保存。
-- Web / PC 桌面端 (Tauri Windows/macOS)：新增 `CameraModal` WebRTC 摄像头实时流预览与拍照。
-- 服务抽象 `src/services/camera.ts`，导出标准 `File` 对象直接对接 `useImageStore`，不打破已有代码与翻译流水线。
+**2026-09-07** — Brave Search 适配（桌面走 Rust HTTP）+ 联网图片候选轮询 + 联网判定收敛：
+- 联网是否发请求，唯一入口 `webSearchReady(config)`（`ai.ts`）：`webSearchEnabled === true && searchApiKey.length > 0`。开关切换**不**清结果缓存。
+- 新增第二个联网搜索服务商 Brave Search：`settingsStore` 增 `searchProvider: 'tavily' | 'brave'` + `searchApiKeys`（按服务商分槽，旧 `tavilyApiKey` 经 `merge` 迁移、双写兼容）；Settings 内按钮式选择（复用 AI Provider 网格样式），`isWeb() && brave` 时显示「网页版不可用」提示。
+- **Brave 平台差异**：Brave API 无浏览器 CORS 头。新增 `searchFetch()`（`ai.ts`）：`isTauri()` → 动态 import `@tauri-apps/plugin-http` 的 `fetch`（Rust 发请求、无 CORS）；否则全局 `fetch`。4 个搜索函数统一经它。新依赖 `tauri-plugin-http`（crate + `@tauri-apps/plugin-http`），`capabilities/default.json` 放行 `api.search.brave.com` / `api.tavily.com`。**Brave 仅桌面 / 移动可用，纯网页不可用。**
+- `searchTavilyImage` → `searchWebImage`，返回 `string[]` 候选列表；`MeaningList` 逐个 `<img>` 尝试、`onError` 幂等前进、全挂落「无图 / Reload」。`braveTextSearch` 去 HTML + 追加 `extra_snippets`，200 无结果时 `console.warn` 打字段名。
+- `vite.config.ts` dev COEP `require-corp` → `credentialless`（仍解锁 SharedArrayBuffer，但放行公共跨域图；仅 dev，Safari 不支持 `credentialless`，详见文件内注释）。
+- **未验证**：`tauri:dev` 下 Brave 经 Rust 真正取回结果（需真机手测；`cargo build` + 能力校验已过，解析已 curl 对过，漂移有 `console.warn` 兜底，插件失败回退全局 `fetch`）。
 
-此前（v0.9.9）：搜索栏与 AI 提问框升级为多行自适应 textarea；Tavily Web 搜索开关全站联动。  
+此前（v0.9.16）：图像翻译扩展全平台相机拍照（Take Photo）；`src/services/camera.ts` 服务抽象。  
+此前（v0.9.9）：搜索栏与 AI 提问框升级为多行自适应 textarea；Web 搜索开关全站联动。  
 更早版本见 `CHANGELOG.md`（发版真相源）。
 
 ### 关键实现备忘
@@ -271,7 +275,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - sql.js **不能**加入 `optimizeDeps.exclude`，否则浏览器无法 import CJS，词库加载失败  
   （注意：部分旧文档示例仍写 `exclude: ['sql.js']`，以本备忘与实际 `vite.config` 为准）
 - `historyStore`：Zustand persist（localStorage），不走 `DBService.addHistory`
-- `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；含 `appearance`、`coreModules`、`enableProfileDiagnostic` 等
+- `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；`searchProvider`（`tavily`\|`brave`）+ `searchApiKeys` 同理；含 `appearance`、`coreModules`、`enableProfileDiagnostic` 等。解析当前联网搜索 Key 用导出的 `resolveSearchApiKey()`；联网是否生效只看 `ai.ts` 的 `webSearchReady()`
 - `searchStore`：`queryType`（word / phrase / sentence），`setQuery` 时自动推断
 - `capacitor.config.ts`：`server.androidScheme: 'http'`；`plugins.CapacitorHttp.enabled: true`；`plugins.Keyboard.resize: 'none'`
 - Android：`windowSoftInputMode="adjustResize"`；键盘遮挡由 `App.tsx` 监听 Capacitor Keyboard 事件动态处理
@@ -296,8 +300,9 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ## 跨平台打包
 
 - **Tauri（PC）**：`src-tauri/`；`npm run tauri:dev` / `npm run tauri:build`
-  - Vite 通过 `TAURI_ENV_PLATFORM` 检测 Tauri，跳过 COOP/COEP headers
+  - Vite 通过 `TAURI_ENV_PLATFORM` 检测 Tauri，跳过 COOP/COEP headers（dev COEP 已从 `require-corp` 改 `credentialless`，见 `vite.config.ts` 注释）
   - PC 继续用 sql.js（WebView2），无需替换存储层
+  - 插件：`process` / `updater` / `opener` / **`http`**（`tauri-plugin-http`，联网搜索经 Rust 绕 CORS，让 Brave 在 PC 可用；作用域在 `capabilities/default.json`）
   - 签名与发版细节见 `workflow.md`
 - **Capacitor（Android）**：`android/`；`npx cap sync android` 后 Gradle 构建
   - 词库从 `dist/` 复制到 Android assets

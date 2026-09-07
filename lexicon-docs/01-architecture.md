@@ -34,15 +34,28 @@ export default defineConfig({
     exclude: ['sql.js'],
   },
   server: {
-    headers: {
+    // 跨域隔离 → SharedArrayBuffer（sql.js / Tesseract）。
+    // COEP 用 `credentialless` 而非 `require-corp`：一样解锁 SharedArrayBuffer，
+    // 但允许无凭据加载公共跨域子资源（联网配图），不会把不发 CORP 头的图源一律拦掉。
+    // 仅 dev server；不进 dist/，Tauri 里跳过（见 vite.config.ts 的 isTauri 分支与注释）。
+    headers: isTauri ? {} : {
       'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
     },
   },
 })
 // 注意：tesseract.js 的 WASM + worker 文件由 Vite 自动处理，无需额外配置
 // CDN 下载 traineddata 语言包（如 jpn.traineddata ~16MB），首次加载后浏览器缓存
 ```
+
+### Tauri 插件
+
+| 插件（Rust crate / JS 包） | 用途 |
+|---|---|
+| `tauri-plugin-process` / `@tauri-apps/plugin-process` | 进程控制（重启等） |
+| `tauri-plugin-updater` / `@tauri-apps/plugin-updater` | 桌面端自更新 |
+| `tauri-plugin-opener` | 打开外部链接 |
+| `tauri-plugin-http` / `@tauri-apps/plugin-http` | **联网搜索专用**：Tauri 桌面端经 Rust（reqwest）发 HTTP，绕过 WebView CORS，让 Brave Search API 在 PC 上可用。作用域在 `src-tauri/capabilities/default.json` 的 `http:default` 里放行 `api.search.brave.com` / `api.tavily.com`。前端只有 `src/services/ai.ts` 的 `searchFetch()` 在 `isTauri()` 时动态 import 它；Web / Capacitor 仍走全局 `fetch`。 |
 
 ## 分层架构
 

@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getProfile, triggerProfileDiagnostic } from '../../services/profile'
-import type { UserLanguageProfile } from '../../types'
+import type { UserLanguageProfile, WeaknessPattern } from '../../types'
 import { useT } from '../../i18n'
+import {
+  DEFAULT_CONFIDENCE,
+  sortActiveByHeat,
+  weaknessHeat,
+  weaknessTier,
+  type WeaknessTier,
+} from '../../utils/profileHeat'
 
 interface ProfileModalProps {
   isOpen: boolean
@@ -35,8 +42,32 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
     }
   }
 
-  const activeWeaknesses = profile?.weaknessPatterns.filter((w) => w.status !== 'mastered') ?? []
+  const now = Date.now()
+  const activeByHeat = profile ? sortActiveByHeat(profile, now) : []
+  const tiers: Array<{ tier: WeaknessTier; label: string; dot: string; items: WeaknessPattern[] }> = [
+    { tier: 'hot', label: t('profile.tierHot'), dot: 'bg-red-500', items: [] },
+    { tier: 'warm', label: t('profile.tierWarm'), dot: 'bg-amber-500', items: [] },
+    { tier: 'cool', label: t('profile.tierCool'), dot: 'bg-foreground-muted/40', items: [] },
+  ]
+  for (const w of activeByHeat) {
+    tiers.find((g) => g.tier === weaknessTier(weaknessHeat(w, now)))!.items.push(w)
+  }
   const masteredWeaknesses = profile?.weaknessPatterns.filter((w) => w.status === 'mastered') ?? []
+
+  const ConfidenceBar = ({ value }: { value?: number }) => {
+    const conf = typeof value === 'number' ? value : DEFAULT_CONFIDENCE
+    const filled = Math.max(0, Math.min(3, Math.round(conf * 3)))
+    return (
+      <span className="inline-flex gap-0.5 items-center shrink-0" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={`w-3 h-1.5 rounded-full ${i < filled ? 'bg-green-500/70' : 'bg-foreground/10'}`}
+          />
+        ))}
+      </span>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -75,39 +106,52 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm">🎯</span>
               <span className="text-[10px] font-black text-foreground-muted/60 uppercase tracking-widest">
-                {t('profile.activeGaps').replace('{count}', String(activeWeaknesses.length))}
+                {t('profile.activeGaps').replace('{count}', String(activeByHeat.length))}
               </span>
             </div>
-            {activeWeaknesses.length === 0 ? (
+            {activeByHeat.length === 0 ? (
               <div className="p-4 rounded-2xl border border-dashed border-border text-center text-xs text-foreground-muted">
                 {t('profile.activeEmpty')}
               </div>
             ) : (
-              <div className="space-y-2.5">
-                {activeWeaknesses.map((w) => (
-                  <div
-                    key={w.id}
-                    className="p-3.5 rounded-2xl bg-background-soft border border-border flex flex-col gap-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-foreground">{w.description}</span>
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0 whitespace-nowrap">
-                        {t('profile.exposure')
-                          .replace('{track}', w.track)
-                          .replace('{count}', String(w.occurrenceCount))}
+              <div className="space-y-4">
+                {tiers.filter((g) => g.items.length > 0).map((g) => (
+                  <div key={g.tier} className="space-y-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${g.dot}`} />
+                      <span className="text-[10px] font-bold text-foreground-muted/60 uppercase tracking-widest">
+                        {g.label} ({g.items.length})
                       </span>
                     </div>
-                    {w.contrastExample && (
-                      <div className="p-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[11px] text-foreground-muted font-mono leading-relaxed">
-                        <span className="font-bold text-amber-600 dark:text-amber-400">{t('profile.contrast')} </span>
-                        {w.contrastExample}
+                    {g.items.map((w) => (
+                      <div
+                        key={w.id}
+                        className="p-3.5 rounded-2xl bg-background-soft border border-border flex flex-col gap-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-foreground">{w.description}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <ConfidenceBar value={w.confidence} />
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                              {t('profile.exposure')
+                                .replace('{track}', w.track)
+                                .replace('{count}', String(w.occurrenceCount))}
+                            </span>
+                          </div>
+                        </div>
+                        {w.contrastExample && (
+                          <div className="p-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[11px] text-foreground-muted font-mono leading-relaxed">
+                            <span className="font-bold text-amber-600 dark:text-amber-400">{t('profile.contrast')} </span>
+                            {w.contrastExample}
+                          </div>
+                        )}
+                        {w.sourceTrigger && (
+                          <p className="text-[10px] text-foreground-muted/70 truncate">
+                            {t('profile.source')}: {w.sourceTrigger}
+                          </p>
+                        )}
                       </div>
-                    )}
-                    {w.sourceTrigger && (
-                      <p className="text-[10px] text-foreground-muted/70 truncate">
-                        {t('profile.source')}: {w.sourceTrigger}
-                      </p>
-                    )}
+                    ))}
                   </div>
                 ))}
               </div>

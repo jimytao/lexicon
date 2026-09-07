@@ -18,6 +18,7 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { PrepImageryCard } from './AiSection/PrepImageryCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { ProfileInsightChip } from './ProfileInsightChip'
 import { detectSpatialPreps } from '../../utils/prepDetect'
 import {
   shouldShowPrepImageryModule,
@@ -38,6 +39,8 @@ interface ResultViewProps {
   onRetry: () => void
   onWordClick: (word: string) => void
   onGoToSettings?: () => void
+  /** Direction A — carried from combinedResult.lookup (this view renders the L1 + increment). */
+  profileInsight?: string
 }
 
 export function ResultView({
@@ -50,6 +53,7 @@ export function ResultView({
   onRetry,
   onWordClick,
   onGoToSettings,
+  profileInsight,
 }: ResultViewProps) {
   const t = useT()
   const { modules } = useSettingsStore()
@@ -67,6 +71,16 @@ export function ResultView({
       <div className="my-2">
         <LexiconMemoryBadge word={wordResult.word} />
       </div>
+
+      {profileInsight && (
+        <div className="mb-3">
+          <ProfileInsightChip
+            insight={profileInsight}
+            dismissKey={wordResult.word}
+            onOpen={() => onGoToSettings?.()}
+          />
+        </div>
+      )}
 
       {/* AI Status & Loading state for AI mode */}
 

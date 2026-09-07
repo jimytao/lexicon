@@ -17,7 +17,7 @@
 | 简洁主界面与三大查词模式 (Home Screen) | 自由 AI 服务商与联网配置 (Settings) |
 | :---: | :---: |
 | ![Home Screen](./docs/images/01_home_screen.png) | ![Settings Panel](./docs/images/05_settings.png) |
-| *极简玻璃拟态 UI，支持 Instant / AI Lookup / Pure Core 模式* | *配置 Gemini (Flash Lite)、DeepSeek、OpenAI、Ollama 与 Tavily 联网* |
+| *极简玻璃拟态 UI，支持 Instant / AI Lookup / Pure Core 模式* | *配置 Gemini (Flash Lite)、DeepSeek、OpenAI、Ollama 与 Tavily / Brave 联网搜索* |
 
 ---
 
@@ -56,9 +56,11 @@
 - **高帧率平移与无级缩放**：内置缩放查看器，原图与双语翻译版本秒级叠加对比。
 - **对比浏览与无痕暂存**：支持原图与双语译文左右/重叠对照阅读。
 
-### 5. 自由 AI 引擎与 Tavily 联网搜索
+### 5. 自由 AI 引擎与联网搜索（Tavily / Brave）
 - **支持全球主流 AI 平台**：原生支持 Google Gemini、OpenAI、DeepSeek、Claude、OpenRouter、硅基流动等云端服务，以及 Ollama 本地私密模型。
-- **Tavily 实时联网补全**：遇到最新流行语、专业缩写或冷门词汇时，AI 可实时检索全球最新网讯进行增强解析。
+- **实时联网补全（Tavily / Brave Search）**：遇到最新流行语、专业缩写或冷门词汇时，AI 可实时检索全球最新网讯进行增强解析。可在设置中按钮式切换搜索服务商，两个 API Key 各自独立保存；关闭「Web Search」开关即彻底停用联网检索。
+  - Tavily 四端（Web / 桌面 / Android / iOS）均可用；**Brave 因浏览器 CORS 限制，仅桌面端与移动端可用**（网页版会给出提示）。
+- **联网配图**：结果页可为义项配一张联网检索到的图片；某张加载失败会自动尝试下一张，均不可用时显示「无图」占位。
 
 ### 6. 全平台多端覆盖
 - **桌面端**：Windows (Tauri v2) / macOS (dmg)
@@ -116,6 +118,7 @@
 | **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Claude Haiku` 轻量系列 |
 | **Ollama (本地私有大模型)** | [Ollama 官网](https://ollama.com/) | 零费用私密模型，配置 Endpoint 填 `http://localhost:11434/v1` |
 | **Tavily (网络实时搜索)** | [Tavily AI Platform](https://tavily.com/) | 专为 AI 实时联网查词设计的 Web 搜索 API |
+| **Brave Search (网络实时搜索)** | [Brave Search API](https://brave.com/search/api/) | 独立索引的 Web 搜索 API；Tavily 之外的可选联网服务商（桌面端 / 移动端可用，网页版受浏览器 CORS 限制） |
 
 ### 快速配置 5 步走：
 1. 从上表申请复制您的 API Key。

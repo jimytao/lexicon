@@ -15,8 +15,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { useState, useRef, useMemo } from 'react'
-import { useSettingsStore, DEFAULT_CORE_PHRASE_MODULES } from '../../stores/settingsStore'
-import type { AppModule } from '../../stores/settingsStore'
+import { useSettingsStore, DEFAULT_CORE_PHRASE_MODULES, resolveSearchApiKey } from '../../stores/settingsStore'
+import type { AppModule, SearchProviderId } from '../../stores/settingsStore'
+import { isWeb } from '../../services/platform'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
@@ -76,6 +77,18 @@ const PROVIDERS: ProviderDef[] = [
   { id: 'zhipu', name: '智谱 GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4' },
   { id: 'yi', name: '零一万物', endpoint: 'https://api.lingyiwanwu.com/v1' },
   { id: 'custom', name: '自定义', endpoint: '' },
+]
+
+interface SearchProviderDef {
+  id: SearchProviderId
+  name: string
+  placeholder: string
+}
+
+/** 联网搜索服务商——按钮式选择，风格对齐上方 AI Provider 网格 */
+const SEARCH_PROVIDERS: SearchProviderDef[] = [
+  { id: 'tavily', name: 'Tavily', placeholder: 'tvly-...' },
+  { id: 'brave', name: 'Brave Search', placeholder: 'BSA...' },
 ]
 
 type FetchStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -233,9 +246,10 @@ export function SettingsView() {
   const t = useT()
   const {
     aiProvider, aiEndpoint, aiModel, aiApiKeys, aiModels, historyEnabled, appearance,
-    webSearchEnabled, tavilyApiKey, maxExercises,
+    webSearchEnabled, tavilyApiKey, searchProvider, searchApiKeys,
+    setSearchProvider, setSearchApiKeyForProvider, maxExercises,
     setAiProvider, setAiEndpoint, setAiModel, setApiKeyForProvider,
-    setHistoryEnabled, setAppearance, setWebSearchEnabled, setTavilyApiKey, setMaxExercises,
+    setHistoryEnabled, setAppearance, setWebSearchEnabled, setMaxExercises,
     performanceMode, setPerformanceMode,
     defaultSearchMode, setDefaultSearchMode,
     historyPreferCognitive, setHistoryPreferCognitive,
@@ -258,6 +272,8 @@ export function SettingsView() {
 
   const { status, checkUpdate, currentVersion } = useUpdateStore()
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
+  const activeSearchKey = resolveSearchApiKey({ searchProvider, searchApiKeys, tavilyApiKey })
+  const activeSearchProvider = SEARCH_PROVIDERS.find((sp) => sp.id === searchProvider) ?? SEARCH_PROVIDERS[0]
 
   const [showKey, setShowKey] = useState(false)
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
@@ -289,7 +305,11 @@ export function SettingsView() {
       setTestStatus('success'); setTestMessage(reply)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      setTestStatus('error'); setTestMessage((e as Error).message)
+      // testConnection tags known failures with a stable `code` → localise it here;
+      // anything else (raw server text) falls through untranslated.
+      const code = (e as { code?: string }).code
+      setTestStatus('error')
+      setTestMessage(code ? t(`settings.testErr.${code}`) : (e as Error).message)
     }
   }
 
@@ -537,14 +557,46 @@ export function SettingsView() {
             {/* Web Search */}
             <ToggleRow label={t('settings.webSearch')} desc={t('settings.webSearchDesc')} value={webSearchEnabled} onChange={setWebSearchEnabled} />
             {webSearchEnabled && (
-              <div className="px-4 pb-4">
-                <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1">{t('settings.tavilyKey')}</label>
-                <input
-                  type="password" value={tavilyApiKey}
-                  onChange={(e) => setTavilyApiKey(e.target.value)}
-                  placeholder="tvly-..."
-                  className="w-full text-xs border border-border rounded-xl px-3 py-2 outline-none focus:border-accent bg-background text-foreground transition-all"
-                />
+              <div className="px-4 pb-4 space-y-3">
+                {/* 搜索服务商：按钮式选择，风格对齐 AI Provider 网格 */}
+                <div>
+                  <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-2">
+                    {t('settings.searchProviderLabel')}
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {SEARCH_PROVIDERS.map((sp) => (
+                      <button
+                        key={sp.id}
+                        type="button"
+                        onClick={() => setSearchProvider(sp.id)}
+                        className={`text-xs px-3 py-2.5 rounded-xl border transition-all text-left truncate font-medium cursor-pointer ${
+                          searchProvider === sp.id
+                            ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
+                            : 'bg-background border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
+                        }`}
+                      >
+                        {sp.name}
+                      </button>
+                    ))}
+                  </div>
+                  {isWeb() && searchProvider === 'brave' && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-amber-600 dark:text-amber-500">
+                      {t('settings.searchBraveWebNote')}
+                    </p>
+                  )}
+                </div>
+                {/* 当前服务商的 API Key */}
+                <div>
+                  <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1">
+                    {t('settings.searchApiKey')}
+                  </label>
+                  <input
+                    type="password" value={activeSearchKey}
+                    onChange={(e) => setSearchApiKeyForProvider(searchProvider, e.target.value)}
+                    placeholder={activeSearchProvider.placeholder}
+                    className="w-full text-xs border border-border rounded-xl px-3 py-2 outline-none focus:border-accent bg-background text-foreground transition-all"
+                  />
+                </div>
               </div>
             )}
           </Group>

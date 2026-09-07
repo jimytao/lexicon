@@ -10,7 +10,7 @@
     ├── (view === 'dictionary')
     │   ├── <SearchBar /> + <SegmentedControl />   # Instant / AI / Core
     │   └── 条件渲染
-    │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge 只读)
+    │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge 只读 + ProfileInsightChip)
     │       ├── <CoreCognitiveView />  # Mode 3 Core（Usage Image + WordGraph + WordChoice…；无置顶 NativeMind）
     │       ├── <AiFullView />         # 词库无结果全量查词 (+ Badge 只读)
     │       └── <PhraseView />         # 词组/句子；Lookup vs Core 分轨（Core：感觉/情绪附释义；wordChoice 可拖）
@@ -22,7 +22,15 @@
     │
     └── (view === 'settings')
         └── <SettingsView />           # Group + Accordion + ProfileModal
-            └── <ProfileModal />       # Profile 弱项查看/重置（首页看板 Digest 已雪藏）
+            └── <ProfileModal />       # Profile 弱项查看/重置（首页看板 Digest 已雪藏）；按热度排序 + hot/warm/cool 三段 + ConfidenceBar
+
+### Profile 细化（Direction A + G，2026-09-07）
+
+- **`src/utils/profileHeat.ts`**（纯函数）：`recencyWeight` / `weaknessHeat` / `weaknessTier` / `sortActiveByHeat` / `hotWeaknesses(limit=3)` + `DEFAULT_CONFIDENCE = 0.2`。详见 `08-ai-learning-system-and-profile.md` §4.2.1。
+- **`WeaknessPattern`** 新增可选 `confidence?: number`（0–1）+ `lastExposedAt?: string`（ISO）；`getProfile()` 读时回填。
+- **`buildProfilePromptContext(variant: 'full' | 'compact' = 'full')`**（`src/services/profile.ts`）：`'compact'` 仅注入 `hotWeaknesses`，无 hot → `''`。live 注入点见 §4.2.2 表。
+- **`AiFullResult` / `PhraseResult`** 新增可选 `profileInsight?: string`（AI 按需返回；`JSON.parse` 透传）。
+- **`<ProfileInsightChip insight dismissKey onOpen />`**（`src/components/ResultView/ProfileInsightChip.tsx`）：结果头部浅色 chip，`sessionStorage` 记 dismiss；挂载于 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）+ `AiFullView` / `CoreCognitiveView` / `PhraseView`。
 
 # SHELVED（未挂载，勿接回导航 / 结果页）
 # ├── <MemoryView />
@@ -103,6 +111,10 @@ interface SettingsStore {
   aiApiKeys: Record<string, string>  // 按 providerId 存储，如 { gemini: 'AIza...' }
   historyEnabled: boolean
   appearance: 'light' | 'dark' | 'system'  // 外观偏好；system 跟随 OS；persist
+  webSearchEnabled: boolean          // 联网搜索总开关；OFF（非 === true）时 performWebSearch/searchWebImage 直接返回空，不发请求
+  searchProvider: 'tavily' | 'brave' // 联网搜索服务商（按钮式选择，语义同 aiProvider），默认 'tavily'
+  searchApiKeys: Record<string, string> // 按 searchProvider 存储，如 { tavily: 'tvly-...', brave: 'BSA...' }
+  tavilyApiKey: string               // @deprecated 旧字段；与 searchApiKeys.tavily 双写，merge 时迁移
   maxExercises: number            // 练习题数，1–10，默认 5
   activeDictionary: 'lexicon.db' | 'lexicon_en.db' // 当前本地词库文件
   autoSwitchDictionary: boolean    // 是否开启单语言模式自动切换词典
@@ -114,6 +126,9 @@ interface SettingsStore {
   setAiModel: (v: string) => void
   setApiKeyForProvider: (providerId: string, key: string) => void
   setHistoryEnabled: (v: boolean) => void
+  setWebSearchEnabled: (v: boolean) => void
+  setSearchProvider: (v: 'tavily' | 'brave') => void
+  setSearchApiKeyForProvider: (providerId: 'tavily' | 'brave', key: string) => void
   setAppearance: (v: 'light' | 'dark' | 'system') => void
   setMaxExercises: (v: number) => void
   setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
@@ -145,10 +160,16 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'lexicon-settings',
       // merge: legacy `darkMode: boolean` → appearance light|dark；无值则 system
+      //        legacy `tavilyApiKey: string` → searchApiKeys.tavily
     }
   )
 )
 ```
+
+- 导出纯函数 `resolveSearchApiKey({ searchProvider, searchApiKeys, tavilyApiKey })` → 返回「当前联网搜索服务商」对应的 Key（含旧 `tavilyApiKey` 兼容）。`ai.ts` 的 `getConfig()` 与 `SettingsView` / `MeaningList` 均经此解析，不要各自读 `searchApiKeys[...]`。
+- 联网搜索是否发请求，唯一入口在 `ai.ts` 的 `webSearchReady(config)`：`webSearchEnabled === true && searchApiKey.length > 0`。开关切换**不**触碰结果缓存。
+- `ai.ts` 的 `searchFetch(url, init)`：4 个搜索函数专用的 `fetch`——`isTauri()` 时动态 import `@tauri-apps/plugin-http` 的 `fetch`（Rust 发请求、无 CORS，Brave 桌面端靠它），否则全局 `fetch`（Capacitor 上已是原生）；插件加载失败回退全局 `fetch`。
+- `searchWebImage(query)` 返回 `string[]`（按可靠度排序的候选图 URL，`[]` = 无）。`MeaningList` 逐个 `<img>` 尝试，`onError` 按 `failedSrc` 幂等前进，全挂 → 「无图 / Reload」。
 
 ### appearance（主题解析）
 

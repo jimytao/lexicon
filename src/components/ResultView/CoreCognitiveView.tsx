@@ -13,6 +13,7 @@ import { useT } from '../../i18n'
 import { useSettingsStore, DEFAULT_CORE_MODULES } from '../../stores/settingsStore'
 import { useResultStore } from '../../stores/resultStore'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { ProfileInsightChip } from './ProfileInsightChip'
 import { useAiLookup } from '../../hooks/useAiLookup'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { PracticeSection } from './AiSection/PracticeSection'
@@ -67,6 +68,16 @@ export function CoreCognitiveView({
         </span>
         <LexiconMemoryBadge word={aiFullResult?.correctForm || dictWordResult?.word || word} />
       </div>
+
+      {aiFullResult?.profileInsight && (
+        <div className="mb-3">
+          <ProfileInsightChip
+            insight={aiFullResult.profileInsight}
+            dismissKey={aiFullResult?.correctForm || word}
+            onOpen={() => onGoToSettings?.()}
+          />
+        </div>
+      )}
 
       {showDictL1 && dictWordResult && (
         <div className="mb-3 space-y-2">

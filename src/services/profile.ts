@@ -1,6 +1,7 @@
-import type { CognitiveMode, UserLanguageProfile, UnnaturalMindModel } from '../types'
+import type { CognitiveMode, UserLanguageProfile, UnnaturalMindModel, WeaknessPattern } from '../types'
 import { useSettingsStore } from '../stores/settingsStore'
 import { detectLanguage } from '../stores/searchStore'
+import { DEFAULT_CONFIDENCE, hotWeaknesses } from '../utils/profileHeat'
 
 export interface DiagnosticEvent {
   /** Stable id for success-only dequeue */
@@ -57,15 +58,31 @@ export const DEFAULT_PROFILE: UserLanguageProfile = {
   recommendations: [],
 }
 
+function clamp01(n: unknown): number | undefined {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return undefined
+  return n < 0 ? 0 : n > 1 ? 1 : n
+}
+
+/** Back-fill Direction G heat fields on read so legacy / partial profiles still sort by heat. */
+function normalizeWeaknesses(list: unknown, profileLastUpdated: string): WeaknessPattern[] {
+  if (!Array.isArray(list)) return []
+  return list.map((w: WeaknessPattern) => ({
+    ...w,
+    confidence: clamp01(w.confidence) ?? DEFAULT_CONFIDENCE,
+    lastExposedAt: w.lastExposedAt || profileLastUpdated,
+  }))
+}
+
 export function getProfile(): UserLanguageProfile {
   try {
     const raw = localStorage.getItem(PROFILE_STORAGE_KEY)
     if (!raw) return makeDefaultProfile()
     const parsed = JSON.parse(raw)
+    const lastUpdated = parsed.lastUpdated || new Date().toISOString()
     return {
-      lastUpdated: parsed.lastUpdated || new Date().toISOString(),
+      lastUpdated,
       totalDiagnosticsRun: parsed.totalDiagnosticsRun || 0,
-      weaknessPatterns: Array.isArray(parsed.weaknessPatterns) ? parsed.weaknessPatterns : [],
+      weaknessPatterns: normalizeWeaknesses(parsed.weaknessPatterns, lastUpdated),
       recentExplorationFocus: Array.isArray(parsed.recentExplorationFocus) ? parsed.recentExplorationFocus : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
     }
@@ -74,14 +91,35 @@ export function getProfile(): UserLanguageProfile {
   }
 }
 
-export function buildProfilePromptContext(): string {
+const weaknessLine = (w: WeaknessPattern) =>
+  `- [${w.track || 'grammar'}]: ${w.description || ''}${w.contrastExample ? ` (e.g. ${w.contrastExample})` : ''}`
+
+/**
+ * Learner-profile context for AI prompts.
+ * - `'full'`   — every active weak spot + focus areas + mentor-tip instruction.
+ *                Used by the full-sentence correction prompt.
+ * - `'compact'`— only the *hot* weaknesses (Direction G heat, ≤3) + a soft, opt-in
+ *                instruction. Injected into everyday word / phrase / chat prompts so
+ *                the profile can inform them without steering every answer.
+ * Returns `''` when there is nothing worth injecting.
+ */
+export function buildProfilePromptContext(variant: 'full' | 'compact' = 'full'): string {
   const profile = getProfile()
-  if (!profile || (!profile.weaknessPatterns?.length && !profile.recentExplorationFocus?.length)) {
+
+  if (variant === 'compact') {
+    const hot = hotWeaknesses(profile, Date.now(), 3)
+    if (hot.length === 0) return ''
+    return (
+      "\n\n=== LEARNER'S RECURRING CONFUSIONS (optional personalization) ===\n" +
+      hot.map(weaknessLine).join('\n') +
+      '\nINSTRUCTION: ONLY IF this query clearly relates to one of the confusions above, you MAY add one short contrast note. Never force it; if there is no clear link, ignore this section.\n'
+    )
+  }
+
+  if (!profile.weaknessPatterns?.length && !profile.recentExplorationFocus?.length) {
     return ''
   }
-  const weaknesses = (profile.weaknessPatterns || [])
-    .map(w => `- [${w.track || 'grammar'}]: ${w.description || ''}${w.contrastExample ? ` (e.g. ${w.contrastExample})` : ''}`)
-    .join('\n')
+  const weaknesses = (profile.weaknessPatterns || []).map(weaknessLine).join('\n')
   const focus = (profile.recentExplorationFocus || [])
     .map(f => `- Category: ${f.category} (${(f.searchedItems || []).slice(0, 5).join(', ')})`)
     .join('\n')
@@ -332,6 +370,8 @@ Intelligent Upsert Rules:
 4. DELETE/PRUNE (删/剪枝): Mark resolved or overcome items as status: "mastered". Maintain between 8 and 12 active items (status: "learning"). Prune stale/minor active items if active count exceeds 12.
 5. RECENT FOCUS: Synthesize 2~4 active exploration categories in recentExplorationFocus.
 6. RECOMMENDATIONS: Provide 3~5 high-value, deep recommendations with 1-sentence explanations directly linked to active weakness patterns or recent searches.
+7. CONFIDENCE (置信度): For every weakness set "confidence" (0..1) = your estimate that the learner has internalised the fix. LOWER it toward 0 when the pattern recurs in this batch; RAISE it toward 1 when the pattern is absent and the learner uses the correct form. Keep the prior value if there is no new evidence.
+8. LAST EXPOSED: Set "lastExposedAt" to the ISO timestamp of the most recent event in this batch that touched the pattern. If untouched this batch, keep the prior value.
 
 Schema requirements:
 {
@@ -343,7 +383,9 @@ Schema requirements:
       "track": "vocabulary" | "phrase_metaphor" | "syntax_thought",
       "status": "learning" | "mastered",
       "occurrenceCount": 2,
-      "contrastExample": "My eyesight is deep -> My vision is poor / I'm short-sighted"
+      "contrastExample": "My eyesight is deep -> My vision is poor / I'm short-sighted",
+      "confidence": 0.3,
+      "lastExposedAt": "2026-09-07T12:00:00.000Z"
     }
   ],
   "recentExplorationFocus": [
@@ -403,11 +445,22 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
 
   if (!parsed) return null
 
+  const nowIso = new Date().toISOString()
+  const priorById = new Map(currentProfile.weaknessPatterns.map((w) => [w.id, w]))
+  const mergeHeatFields = (w: WeaknessPattern): WeaknessPattern => {
+    const prior = priorById.get(w.id)
+    return {
+      ...w,
+      confidence: clamp01(w.confidence) ?? prior?.confidence ?? DEFAULT_CONFIDENCE,
+      lastExposedAt: w.lastExposedAt || prior?.lastExposedAt || nowIso,
+    }
+  }
+
   return {
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: nowIso,
     totalDiagnosticsRun: (currentProfile.totalDiagnosticsRun || 0) + 1,
     weaknessPatterns: Array.isArray(parsed.weaknessPatterns)
-      ? parsed.weaknessPatterns
+      ? (parsed.weaknessPatterns as WeaknessPattern[]).map(mergeHeatFields)
       : currentProfile.weaknessPatterns,
     recentExplorationFocus: Array.isArray(parsed.recentExplorationFocus)
       ? parsed.recentExplorationFocus

@@ -121,6 +121,9 @@ export function buildPhrasePrompt({
     }
   }
 
+  // Direction A — optional personalization hook; OMITTED unless clearly relevant.
+  schema += `,\n  "profileInsight": "OPTIONAL — OMIT this field entirely unless this phrase clearly relates to one of the learner's listed recurring confusions; then ONE short sentence naming the link"`
+
   schema += `\n}`
 
   const basePrompt = isCore
@@ -240,9 +243,7 @@ RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
     }
   }
 
-  if (queryType === 'sentence') {
-    prompt += buildProfilePromptContext()
-  }
+  prompt += buildProfilePromptContext(queryType === 'sentence' ? 'full' : 'compact')
 
   return prompt
 }

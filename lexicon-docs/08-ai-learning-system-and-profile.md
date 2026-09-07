@@ -54,6 +54,10 @@ export interface UserLanguageProfile {
     track: 'vocabulary' | 'phrase_metaphor' | 'syntax_thought';
     status: 'learning' | 'mastered';
     occurrenceCount: number;  // 出现/暴露频次
+    contrastExample?: string; // 错例 -> 正例
+    // Direction G (2026-09-07) — 本地「热度」引擎输入：
+    confidence?: number;      // 0~1，AI 估计「用户是否已改过来」。复犯降、用对升。缺省 0.2
+    lastExposedAt?: string;   // ISO，最近一次触碰该弱点的事件时间。缺省 profile.lastUpdated
   }>;
   
   // 近期探索偏好与思维倾向
@@ -98,6 +102,33 @@ export interface UserLanguageProfile {
 在发送给 AI 的诊断 Prompt 规则中显式定义权重层级：
 * **🔥 高权重 (High Priority)**：AI 追问记录与句子订正（代表用户最显性的思维误区与未解困惑）。
 * **💡 常规权重 (Normal Priority)**：常规查词列表与查看过的 Core 意象（代表潜意识里的知识边界拓展）。
+
+### 4.2.1 本地「热度」引擎（Direction G，2026-09-07）
+
+纯本地、零 token。`src/utils/profileHeat.ts`：
+
+- `recencyWeight(lastExposedAt)` → 0~1：≤3 天平台期为 1.0，之后 `exp(-(days-3)/8)` 衰减（~21 天 ≈ 0.1）。缺时间戳 → 0。
+- `weaknessHeat(w)` = `(1 - clamp01(confidence ?? 0.2)) × recencyWeight(...)`。
+- `weaknessTier(heat)`：`hot ≥ 0.55` / `warm ≥ 0.25` / `cool`。
+- `sortActiveByHeat(profile)`：排除 `mastered`，按 heat 降序（等值稳定）。
+- `hotWeaknesses(profile, now?, limit=3)`：tier === 'hot' 的前 N 条。
+
+用途：① `ProfileModal` 按 heat 排序 + 三段分层（正在攻克/正在巩固/快好了）+ confidence 小条；② Direction A 决定往 prompt 里塞哪几条弱点、结果页 chip 何时可能出现。`getProfile()` 读时对旧 profile 回填 `confidence`/`lastExposedAt`。
+
+### 4.2.2 Profile 上下文注入所有 AI 出口（Direction A，2026-09-07）
+
+`buildProfilePromptContext(variant)`（`src/services/profile.ts`）：
+
+| variant | 内容 | 注入点 |
+|--|--|--|
+| `'full'`（默认） | 全部 active 弱项 + 探索偏好 + 「mentor tip」指令 | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
+| `'compact'` | 仅 `hotWeaknesses(≤3)` + 一句 opt-in 指令；无 hot → `''` | `ai.ts` `getFullLookupPrompt`（单词 Lookup/Core）、`aiPhrasePrompt.ts` `buildPhrasePrompt`（词组）、`ai.ts` `askQuestion`（追问 system prompt） |
+
+> 注入点是 **live 路径**；`aiCombinedPrompt.ts`（`buildCombinedWordPrompt` 等）自 v0.9.15 起 `@deprecated`，不在注入范围。
+
+**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 的可选 `profileInsight?: string`。单词/词组 prompt 的 schema 声明它，并强指令「除非本词明确关联某条已列出的反复混淆，否则整段省略」。`aiFullLookup` / `aiPhraseQuery` 的 `JSON.parse` 直接透传（无字段白名单）。
+
+**`ProfileInsightChip`**（`src/components/ResultView/ProfileInsightChip.tsx`）：结果带 `profileInsight` 且未被 `sessionStorage`（`lexicon-dismissed-insights`，key = 规范化 query）dismiss 时，在结果头部渲染一条浅色 chip；点击 → `onGoToSettings()`。挂载于 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）、`AiFullView` / `CoreCognitiveView` / `PhraseView`（各自读自身结果 prop 的 `profileInsight`）。
 
 ### 4.3 动态剪枝与进化机制 (Pruning & Evolution)
 * **自动淘汰 (Mastered Pruning)**：当某个弱项在过去 30 天内未再暴露，且用户多次正确使用时，AI 在生成新 Profile 时将其标记为 `mastered` 或从 Active 列表中移除。

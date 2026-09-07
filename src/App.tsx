@@ -743,6 +743,7 @@ export function App() {
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
+                    profileInsight={combinedResult?.lookup?.profileInsight}
                   />
                 ) : (
                   <div className="fixed inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none text-foreground-muted px-6">

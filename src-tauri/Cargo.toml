@@ -18,6 +18,8 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-process = "2"
+# Rust-side HTTP so web-search providers (Brave) bypass the WebView's CORS.
+tauri-plugin-http = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

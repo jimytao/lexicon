@@ -18,6 +18,7 @@ import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { CoreConceptCard } from './AiSection/CoreConceptCard'
 import { PrepImageryCard } from './AiSection/PrepImageryCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { ProfileInsightChip } from './ProfileInsightChip'
 import { cognitiveFromSearchMode } from '../../utils/text'
 import { detectSpatialPreps } from '../../utils/prepDetect'
 import { shouldShowPrepImageryModule } from '../../utils/resultAiVisibility'
@@ -55,6 +56,16 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
         <LexiconMemoryBadge word={aiFullResult?.correctForm || word} />
       </div>
 
+      {aiFullResult?.profileInsight && (
+        <div className="mb-3">
+          <ProfileInsightChip
+            insight={aiFullResult.profileInsight}
+            dismissKey={aiFullResult?.correctForm || word}
+            onOpen={() => onGoToSettings?.()}
+          />
+        </div>
+      )}
+
       {aiStatus !== 'success' && (
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] max-w-full">{word}</h1>
@@ -89,6 +100,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   <div key={module.id}>
                     <MeaningList
                       key={word}
+                      word={word}
                       meanings={(aiFullResult.meanings ?? []).map((m) => ({ zh: m.zh, en: m.en, pos: m.pos, imageQuery: m.imageQuery }))}
                       scenes={(aiFullResult.meanings ?? []).map((m) => m.scene)}
                     />

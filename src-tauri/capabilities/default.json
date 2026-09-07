@@ -9,6 +9,13 @@
     "core:window:allow-set-theme",
     "core:window:allow-show",
     "core:window:allow-theme",
-    "allow-persist-boot-appearance"
+    "allow-persist-boot-appearance",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.search.brave.com/*" },
+        { "url": "https://api.tavily.com/*" }
+      ]
+    }
   ]
 }

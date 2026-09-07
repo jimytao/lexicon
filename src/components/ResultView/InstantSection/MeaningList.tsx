@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import type { Meaning, Scene } from '../../../types'
-import { useSettingsStore } from '../../../stores/settingsStore'
+import { useSettingsStore, resolveSearchApiKey } from '../../../stores/settingsStore'
 import { useResultStore } from '../../../stores/resultStore'
-import { searchTavilyImage, enrichSingleMeaning } from '../../../services/ai'
+import { searchWebImage, enrichSingleMeaning } from '../../../services/ai'
 import { useResolvedDark } from '../../../hooks/useResolvedDark'
 import { useT } from '../../../i18n'
 
@@ -27,9 +27,16 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
   const t = useT()
   const [expanded, setExpanded] = useState(false)
   const darkMode = useResolvedDark()
-  const { monolingualWord, webSearchEnabled, tavilyApiKey } = useSettingsStore()
+  const settings = useSettingsStore()
+  const { monolingualWord, webSearchEnabled } = settings
+  const searchApiKey = resolveSearchApiKey(settings)
 
-  const [imageUrls, setImageUrls] = useState<Record<number, string | null>>({})
+  // 每条义项的图片候选 URL 列表（best-first）；undefined = 未拉取，[] = 拉取过但无结果
+  const [imageCandidates, setImageCandidates] = useState<Record<number, string[]>>({})
+  // 当前正在尝试展示第几个候选；<img> 加载失败时 +1 跳下一个
+  const [imageIdx, setImageIdx] = useState<Record<number, number>>({})
+  // 当前候选是否已成功 onLoad（用于在此之前维持 loading 占位，避免闪裂图）
+  const [imageResolved, setImageResolved] = useState<Record<number, boolean>>({})
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({})
   const [expandedImages, setExpandedImages] = useState<Record<number, boolean>>({})
 
@@ -41,24 +48,49 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
   const abortRefs = useRef<Record<number, AbortController>>({})
   const updateMeaningExtension = useResultStore(state => state.updateMeaningExtension)
 
-  const handleToggleImage = async (index: number, query: string) => {
+  const fetchImages = async (index: number, query: string) => {
+    setLoadingStates(prev => ({ ...prev, [index]: true }))
+    setImageResolved(prev => ({ ...prev, [index]: false }))
+    try {
+      const urls = await searchWebImage(query)
+      setImageCandidates(prev => ({ ...prev, [index]: urls }))
+      setImageIdx(prev => ({ ...prev, [index]: 0 }))
+    } catch (e) {
+      console.error('Failed to load image:', e)
+      setImageCandidates(prev => ({ ...prev, [index]: [] }))
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [index]: false }))
+    }
+  }
+
+  const handleToggleImage = (index: number, query: string) => {
     if (expandedImages[index]) {
       setExpandedImages(prev => ({ ...prev, [index]: false }))
       return
     }
-
     setExpandedImages(prev => ({ ...prev, [index]: true }))
-    if (imageUrls[index] !== undefined) return
+    if (imageCandidates[index] === undefined) fetchImages(index, query)
+  }
 
-    setLoadingStates(prev => ({ ...prev, [index]: true }))
-    try {
-      const url = await searchTavilyImage(query)
-      setImageUrls(prev => ({ ...prev, [index]: url }))
-    } catch (e) {
-      console.error('Failed to load image:', e)
-    } finally {
-      setLoadingStates(prev => ({ ...prev, [index]: false }))
-    }
+  // <img> 加载失败：跳到下一个候选 URL（用尽后 UI 自动落到「无图」空态）。
+  // 按 failedSrc 幂等——只有「当前正在展示的候选」报错才前进，忽略换 src 后
+  // 迟到 / 重复的 error 事件（否则会一次跳过 2 个候选，漏掉能加载的那张）。
+  const handleImageError = (index: number, failedSrc: string) => {
+    setImageIdx(prev => {
+      const cands = imageCandidates[index]
+      const cur = prev[index] ?? 0
+      if (!cands || cands[cur] !== failedSrc) return prev
+      return { ...prev, [index]: cur + 1 }
+    })
+  }
+
+  const handleReloadImage = (index: number, query: string) => {
+    setImageCandidates(prev => {
+      const next = { ...prev }
+      delete next[index]
+      return next
+    })
+    fetchImages(index, query)
   }
 
   const handleEnrichMeaning = async (index: number, meaning: Meaning) => {
@@ -111,8 +143,17 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
           // Freshly generated values win over whatever came in on props, matching
           // the scene precedence on the line above.
           const activeImageQuery: string | undefined = localImageQueries[i] ?? m.imageQuery
+          // Anchor the image search on the headword — for named entities (e.g. a game
+          // character) the AI's scene phrase alone drifts to unrelated stock images.
+          const imageSearchQuery = [word, activeImageQuery].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
           const hasScene = !!(activeScene && (activeScene.label || activeScene.description))
-          const canSearchImage = webSearchEnabled && tavilyApiKey
+          const canSearchImage = webSearchEnabled && !!searchApiKey
+
+          // 图片候选：逐个尝试，全部加载失败 → imgExhausted → 落到「无图 / 重试」
+          const imgCands = imageCandidates[i]
+          const imgCurrent = imgCands?.[imageIdx[i] ?? 0]
+          const imgExhausted = imgCands !== undefined && !loadingStates[i] && imgCurrent === undefined
+          const imgResolved = !!imageResolved[i]
           // Dictionary entries commonly have a scene but no imageQuery. Gating the
           // button on !hasScene alone left those senses unable to ever get an image.
           const showGenerateBtn = enableSceneGenerate && word
@@ -191,7 +232,7 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
                   {canSearchImage && activeImageQuery && (
                     <div className="mt-1.5">
                       <button
-                        onClick={() => handleToggleImage(i, activeImageQuery)}
+                        onClick={() => handleToggleImage(i, imageSearchQuery)}
                         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-accent/5 dark:bg-accent/10 border border-accent/10 hover:bg-accent/10 text-[10px] font-bold text-accent transition-all duration-300 cursor-pointer"
                       >
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -202,38 +243,38 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
 
                       {expandedImages[i] && (
                         <div className="mt-2 rounded-xl overflow-hidden border border-accent/10 bg-accent-soft/20 dark:bg-accent-soft/5 transition-all duration-500 animate-in fade-in slide-in-from-top-2">
-                          {loadingStates[i] ? (
-                            <div className="flex flex-col items-center justify-center py-6 text-foreground-muted gap-2">
-                              <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                              <span className="text-[10px] font-medium tracking-wide">{t('meaning.imageLoading')}</span>
-                            </div>
-                          ) : imageUrls[i] ? (
-                            <div className="relative group/img overflow-hidden">
-                              <img
-                                src={imageUrls[i]!}
-                                alt={`Visual helper for ${m.zh || m.en}`}
-                                className="w-full max-h-48 object-cover rounded-xl transition-transform duration-500 hover:scale-105"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end p-2">
-                                <span className="text-[8px] font-bold text-white/70 tracking-wider">{t('meaning.imageSource')}</span>
-                              </div>
-                            </div>
-                          ) : (
+                          {imgExhausted ? (
                             <div className="flex flex-col items-center justify-center py-5 text-foreground-muted gap-1 text-[10px]">
                               <span>{t('meaning.imageNone')}</span>
                               <button
-                                onClick={() => {
-                                  setImageUrls(prev => {
-                                    const next = { ...prev };
-                                    delete next[i];
-                                    return next;
-                                  });
-                                  handleToggleImage(i, m.imageQuery!);
-                                }}
+                                onClick={() => handleReloadImage(i, imageSearchQuery)}
                                 className="text-accent underline font-bold mt-1 cursor-pointer"
                               >
                                 {t('meaning.imageRetry')}
                               </button>
+                            </div>
+                          ) : (
+                            <div className="relative group/img overflow-hidden">
+                              {!imgResolved && (
+                                <div className="flex flex-col items-center justify-center py-6 text-foreground-muted gap-2">
+                                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                                  <span className="text-[10px] font-medium tracking-wide">{t('meaning.imageLoading')}</span>
+                                </div>
+                              )}
+                              {imgCurrent && (
+                                <img
+                                  src={imgCurrent}
+                                  alt={`Visual helper for ${m.zh || m.en}`}
+                                  onLoad={() => setImageResolved(prev => ({ ...prev, [i]: true }))}
+                                  onError={() => handleImageError(i, imgCurrent)}
+                                  className={`w-full max-h-48 object-cover rounded-xl transition-transform duration-500 hover:scale-105 ${imgResolved ? '' : 'hidden'}`}
+                                />
+                              )}
+                              {imgResolved && (
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-end p-2">
+                                  <span className="text-[8px] font-bold text-white/70 tracking-wider">{t('meaning.imageSource')}</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

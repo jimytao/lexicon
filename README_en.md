@@ -17,7 +17,7 @@
 | Clean Home Interface & 3 Modes (Home Screen) | Flexible AI Provider & Web Search (Settings) |
 | :---: | :---: |
 | ![Home Screen](./docs/images/01_home_screen.png) | ![Settings Panel](./docs/images/05_settings.png) |
-| *Minimalist glassmorphic UI; supports Instant / AI Lookup / Pure Core modes* | *Configurable Gemini (Flash Lite), DeepSeek, OpenAI, Ollama & Tavily Web Search* |
+| *Minimalist glassmorphic UI; supports Instant / AI Lookup / Pure Core modes* | *Configurable Gemini (Flash Lite), DeepSeek, OpenAI, Ollama & Tavily / Brave Web Search* |
 
 ---
 
@@ -56,9 +56,11 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 - **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated text.
 - **Compare & Transient Reading**: Side-by-side comparison and instant translation overlay reading.
 
-### 5. Flexible AI Engines & Real-Time Web Search
+### 5. Flexible AI Engines & Real-Time Web Search (Tavily / Brave)
 - **Universal Provider Integration**: Supports Google Gemini, OpenAI, DeepSeek, Claude, OpenRouter, SiliconFlow, and local privacy-first Ollama models.
-- **Tavily AI Search Extension**: Live web search integration for slang, trending news terms, jargon, and contemporary phrases.
+- **Live Web Search (Tavily / Brave Search)**: Web retrieval for slang, trending news terms, jargon, and contemporary phrases. Switch search provider with a button in Settings — each keeps its own API key; turning the "Web Search" toggle off fully disables web retrieval.
+  - Tavily works on all targets (Web / desktop / Android / iOS); **Brave works on desktop and mobile only** (blocked by browser CORS on the web build — Settings shows a note).
+- **Web images for senses**: a result sense can show an image found via web search; if one fails to load the next candidate is tried automatically, falling back to a "no image" placeholder.
 
 ### 6. Cross-Platform Coverage
 - **Desktop**: Windows (Tauri v2) / macOS (dmg)
@@ -116,6 +118,7 @@ To activate AI enhancements, configure an API Key for your preferred provider. L
 | **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Claude Haiku` lightweight series |
 | **Ollama (Local Private)** | [Ollama Website](https://ollama.com/) | Privacy-first local models; set endpoint to `http://localhost:11434/v1` |
 | **Tavily (Real-Time Search)** | [Tavily AI Platform](https://tavily.com/) | Real-time web retrieval API tailored for AI contextual analysis |
+| **Brave Search (Real-Time Search)** | [Brave Search API](https://brave.com/search/api/) | Independent-index web search API; an alternative to Tavily (desktop / mobile only — blocked by browser CORS on the web build) |
 
 ### Quick 5-Step Setup:
 1. Obtain an API Key from any provider portal above.

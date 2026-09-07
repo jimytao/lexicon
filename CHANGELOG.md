@@ -1,5 +1,99 @@
 # CHANGELOG
 
+## 2026-09-07 — User Profile 细化 A + G：弱点热度引擎 + 全 AI 出口注入 + 结果页画像 chip
+
+### 用户可见
+1. **Profile 弹窗按「热度」分层**：活跃弱点不再平铺，按 `(1 - confidence) × 时间衰减` 排序，分「正在攻克 / 正在巩固 / 快好了」三段，每行一个 3 段小进度条（confidence 越高越绿）。让用户一眼看出「今天该管哪几个」。
+2. **Profile 影响所有 AI 出口**（此前仅整句订正）：单词查询 / Pure Core / 词组 / AI 追问的 prompt 现会注入**精简版画像上下文** —— 只塞热度最高的 ≤3 条弱点 + 一句 opt-in 指令（「只有明确相关才补一句对比，别硬凑」）。没有热弱点时完全静默。
+3. **结果页画像 chip**：AI 判断当前词/词组确实撞上某个反复犯的点时，会在结果头部给一条浅色小 chip（🧠 一句话说明关联）。点击进设置看画像，`×` 本会话内对该词不再提示。
+
+### 工程
+- **类型**（`src/types/index.ts`）：`WeaknessPattern` 加 `confidence?: number`（0–1，默认 0.2）+ `lastExposedAt?: string`（ISO，默认 profile.lastUpdated）；`AiFullResult` / `PhraseResult` 加可选 `profileInsight?: string`。
+- **新 `src/utils/profileHeat.ts`**（纯函数）：`recencyWeight`（3 天平台期后按 `exp(-(d-3)/8)` 衰减）、`weaknessHeat`、`weaknessTier`（hot ≥0.55 / warm ≥0.25 / cool）、`sortActiveByHeat`、`hotWeaknesses(limit=3)`。
+- `src/services/profile.ts`：
+  - `getProfile()` 读时回填缺失的 `confidence` / `lastExposedAt`（旧 profile 兼容）。
+  - `buildProfilePromptContext(variant)`：`'full'` = 原行为（整句订正用）；`'compact'` = 仅 `hotWeaknesses` + 短 opt-in 指令，无 hot 时返回 `''`。默认 `'full'`。
+  - 诊断 prompt schema/规则加 `confidence` + `lastExposedAt`（复犯降、用对升；漏给则按 id 继承旧值，clamp 0–1）。
+- **注入点**（live 路径，非已 `@deprecated` 的 `aiCombinedPrompt.ts`）：`ai.ts` 的 `getFullLookupPrompt`（单词 Lookup/Core，schema 加 `profileInsight` + 末尾 append `'compact'`）；`aiPhrasePrompt.ts` 的 `buildPhrasePrompt`（词组 `'compact'`、句子 `'full'`，schema 加 `profileInsight`）；`ai.ts` 的 `askQuestion`（system prompt 拼 `'compact'`）。`aiFullLookup` / `aiPhraseQuery` 的 `JSON.parse` 透传 `profileInsight`（无白名单）。
+- **新组件 `src/components/ResultView/ProfileInsightChip.tsx`**：`insight` 存在且未被 `sessionStorage` dismiss 时渲染；挂载在 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）、`AiFullView`、`CoreCognitiveView`、`PhraseView`。点击 → `onGoToSettings()`。
+- `src/components/Settings/ProfileModal.tsx`：热度排序 + 三段分层 + `ConfidenceBar`。
+- `src/i18n/index.ts`：`profile.insightPrefix` / `profile.insightDismiss` / `profile.tierHot|Warm|Cool`（中/英）。
+
+### 测试（TDD，新增 ~44 例）
+- `src/utils/profileHeat.test.ts`：recency 曲线 / heat / tier 边界 / 排序排除 mastered / hotWeaknesses 过滤与截断。
+- `src/services/profile.test.ts`：`getProfile` 回填与 clamp；`buildProfilePromptContext` compact 只含 hot、无 hot 返回 ''、截 3、软指令；full 保留 mentor-tip；默认 = full。
+- `src/services/profileWiring.test.ts`：`getFullLookupPrompt` / 词组 prompt / `askQuestion` 注入 compact；chip 挂载 4 处。
+- `src/services/aiPhrasePrompt.test.ts` / `src/utils/combinedResult.test.ts`：`profileInsight` schema 与解析透传。
+
+### 未在本环境验证
+- 浏览器实测「compact 上下文进真实 AI 请求 + chip 从真实 `profileInsight` 渲染」—— 自动化难以稳定触发一次 AI Lookup 搜索。链路每一环（`hotWeaknesses` 选中、`buildProfilePromptContext` 输出、`getFullLookupPrompt` 拼接、chip 挂载）均已单测/契约覆盖；ProfileModal 分层与小条已用 seed 数据截图确认，热度数值与弹窗一致。
+
+### 涉及文件
+- src/types/index.ts
+- src/utils/profileHeat.ts（新）
+- src/services/profile.ts
+- src/services/ai.ts
+- src/services/aiPhrasePrompt.ts
+- src/components/ResultView/ProfileInsightChip.tsx（新）
+- src/components/ResultView/{index,AiFullView,CoreCognitiveView,PhraseView}.tsx
+- src/components/Settings/ProfileModal.tsx
+- src/App.tsx
+- src/i18n/index.ts
+- lexicon-docs/08-ai-learning-system-and-profile.md
+- lexicon-docs/04-ai-schema.md
+- lexicon-docs/05-components.md
+- CHANGELOG.md
+- 测试：src/utils/profileHeat.test.ts（新）/ src/services/profileWiring.test.ts（新）/ src/services/profile.test.ts / src/services/aiPhrasePrompt.test.ts / src/utils/combinedResult.test.ts
+
+## 2026-09-07 — Brave Search 适配（桌面走 Rust HTTP）+ 联网图片候选轮询兜底 + 联网判定收敛
+
+### 用户可见
+1. **新增 Brave Search 作为第二个联网搜索服务商**：设置「联网搜索」展开后，新增与「AI 提供商」一致的按钮式服务商选择（Tavily / Brave Search），两个 API Key 各自独立保存、切哪个用哪个（同 `aiApiKeys` 模式）。文案随界面语言（中/英）适配。
+2. **Brave 的平台可用性**：Brave Search API 不发浏览器 CORS 头，纯网页版调不通。**桌面端（Tauri Win/mac）改为经 Rust HTTP 插件发请求，绕过 WebView CORS**；移动端（Capacitor）本就走原生 HTTP。网页版选中 Brave 时，服务商按钮下方给出「网页版不可用」浅色提示。Tavily 四端均可用，不受影响。
+3. **联网配图不再出现裂图**：`searchWebImage` 改为返回**候选图 URL 列表**（Tavily 给的多张；Brave `thumbnail.src` 代理图优先、原图次之）。UI 逐个尝试，某张加载失败静默换下一张，全部失败才落到「无图 / Reload」空态；展示前维持转圈直到真正 `onLoad`。
+4. **联网判定收敛为单一入口**：是否真正发起联网请求只看 `ai.ts` 的 `webSearchReady(config)` = 「开关开启 **且** 当前服务商已配置 Key」；`webSearchEnabled` 严格 `=== true`。**不改动结果缓存行为**（开关切换不清缓存）。
+5. **配图更贴题**：联网搜图关键词改为「词头 + AI 场景短语」（如 `petrichor rain falling on dry soil`），并去掉 `" photo"` 后缀 —— 专有名词（如游戏角色）不再漂到无关的图库照片。`AiFullView` 之前漏传 `word` 给 `MeaningList`，一并补上。
+6. **英文界面下「测试连接」报错改用英文**：`testConnection` 失败时带稳定 `code`（`no-key` / `no-endpoint` / `unauthorized` / `not-found` / `rate-limit`），`SettingsView` 按 `code` 取 i18n 文案，不再硬编码中文。
+
+### 工程
+- **依赖新增**：`@tauri-apps/plugin-http`（JS）+ `tauri-plugin-http`（Rust crate）。`src-tauri/src/lib.rs` 注册 `tauri_plugin_http::init()`；`src-tauri/capabilities/default.json` 加 `http:default` 作用域，放行 `https://api.search.brave.com/*` 与 `https://api.tavily.com/*`。
+- `vite.config.ts`：dev server 的 `Cross-Origin-Embedder-Policy` 从 `require-corp` 改为 `credentialless` —— 仍解锁 `SharedArrayBuffer`（sql.js / Tesseract），但允许无凭据加载公共跨域子资源（联网配图）。**仅 dev server**，不进 `dist/`，Tauri / Capacitor / 网页部署版均不受影响（Safari 尚不支持 `credentialless`，见文件内备注）。
+- `src/stores/settingsStore.ts`：新增 `searchProvider: 'tavily' | 'brave'`（默认 `tavily`）+ `searchApiKeys: Record<string,string>`（按服务商分槽）；setter `setSearchProvider` / `setSearchApiKeyForProvider`（纯 `set()`）；`setTavilyApiKey` 与 `searchApiKeys.tavily` 双写；`merge` 迁移旧 `tavilyApiKey`。导出 `resolveSearchApiKey()`。
+- `src/services/ai.ts`：
+  - `AiConfig` 用 `searchProvider` + 已解析 `searchApiKey` 取代 `tavilyApiKey`；新增 `webSearchReady()`。
+  - 新增 `searchFetch()`：Tauri → 动态 `import('@tauri-apps/plugin-http').fetch`（Rust 发请求，无 CORS）；其它 → 全局 `fetch`（Capacitor 上已是原生）。插件加载失败回退全局 `fetch`。4 个搜索函数（`tavily/braveTextSearch`、`tavily/braveImageSearch`）统一经它。
+  - `searchTavilyImage` → 重命名 `searchWebImage`，返回 `string[]` 候选列表。图片检索去掉 `" photo"` 后缀。
+  - `braveTextSearch`：解析 `web.results[].{title,description}`，`stripHtml()` 去标签/实体，每条追加最多 2 段 `extra_snippets`；HTTP 200 但无 `web.results` 时 `console.warn` 打出顶层字段名（首次真机跑用于发现结构漂移）。
+  - `testConnection` 失败改抛带 `code` 的 Error（`testConnError()`），不再硬编码中文文案。
+- `src/components/ResultView/InstantSection/MeaningList.tsx`：图片候选轮询（`imageCandidates` / `imageIdx` / `imageResolved`），`<img> onError` 幂等前进（按 failedSrc 比对，避免一次跳 2 张）；`Reload` 重拉候选。搜图关键词改为 `[word, activeImageQuery].join(' ')`（词头锚定）。
+- `src/components/ResultView/AiFullView.tsx`：`<MeaningList>` 补传 `word={word}`（否则搜图关键词无词头）。
+- `src/components/Settings/SettingsView.tsx`：`SEARCH_PROVIDERS` 常量 + 按钮网格；`isWeb() && searchProvider==='brave'` 时显示 `settings.searchBraveWebNote`；`handleTest` catch 按 `code` 走 `t('settings.testErr.<code>')`。
+- `src/i18n/index.ts`：新增 `settings.searchProviderLabel` / `settings.searchApiKey` / `settings.searchBraveWebNote` / `settings.testErr.*`（中/英）；移除弃用的 `settings.tavilyKey`；`settings.webSearchDesc`、`meaning.imageSource` 去除 Tavily 专属措辞。
+
+### 验证
+- Web 端：Brave 判定 / Tavily 文字+配图 / 图片候选轮询 / 英文报错 / 搜图关键词词头锚定 —— 均已在浏览器实测。
+- **真机手测**：用户在 `npm run tauri:dev`（Windows）下确认 **Brave 经 Rust HTTP 取回结果、AI 认出「舍玛 = 丝之歌 NPC」**（`cargo build` + 能力校验已过；解析路径 curl 对过；结构漂移有 `console.warn` 兜底；插件失败回退全局 `fetch`）。
+- 待观察：Brave 图片相关度（首版靠 `thumbnail.src` 代理图 + 词头锚定关键词）。
+
+### 涉及文件
+- src/stores/settingsStore.ts
+- src/services/ai.ts
+- src/components/Settings/SettingsView.tsx
+- src/components/ResultView/InstantSection/MeaningList.tsx
+- src/components/ResultView/AiFullView.tsx
+- src/i18n/index.ts
+- src/services/platform.ts（仅新增 import 引用）
+- vite.config.ts
+- src-tauri/Cargo.toml
+- src-tauri/src/lib.rs
+- src-tauri/capabilities/default.json
+- package.json / package-lock.json
+- lexicon-docs/01-architecture.md
+- lexicon-docs/05-components.md
+- README.md / README_en.md
+- AGENT.md
+- CHANGELOG.md
+
 ## 2026-09-02 — 排查记录：自定义语言「OK」按键点击疑似失灵
 
 ### 问题排查

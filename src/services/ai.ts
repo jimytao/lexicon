@@ -3,11 +3,15 @@ import {
   normalizeCoreModules,
   normalizeCorePhraseModules,
   normalizeModules,
+  resolveSearchApiKey,
   seedCorePhraseModulesFromCore,
   type AppModule,
+  type SearchProviderId,
 } from '../stores/settingsStore'
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
+import { isTauri } from './platform'
+import { buildProfilePromptContext } from './profile'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
@@ -28,7 +32,9 @@ interface AiConfig {
   coreModules: ModuleFlag[]
   corePhraseModules: ModuleFlag[]
   webSearchEnabled: boolean
-  tavilyApiKey: string
+  searchProvider: SearchProviderId
+  /** 已解析出的当前服务商 key（空串 = 未配置） */
+  searchApiKey: string
   triLingualExamples: boolean
   monolingualWord: boolean
   monolingualPhrase: boolean
@@ -80,6 +86,8 @@ function getConfig(): AiConfig {
         corePhraseModules?: ModuleFlag[]
         webSearchEnabled?: boolean
         tavilyApiKey?: string
+        searchProvider?: string
+        searchApiKeys?: Record<string, string>
         triLingualExamples?: boolean
         monolingualWord?: boolean
         monolingualPhrase?: boolean
@@ -98,6 +106,7 @@ function getConfig(): AiConfig {
     const corePhraseModules = s.corePhraseModules?.length
       ? normalizeCorePhraseModules(s.corePhraseModules as AppModule[])
       : seedCorePhraseModulesFromCore(coreModules)
+    const searchProvider: SearchProviderId = s.searchProvider === 'brave' ? 'brave' : 'tavily'
     return {
       endpoint: s.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || '',
       model: s.aiModels?.[providerId] || s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
@@ -105,8 +114,14 @@ function getConfig(): AiConfig {
       modules,
       coreModules,
       corePhraseModules,
-      webSearchEnabled: s.webSearchEnabled ?? false,
-      tavilyApiKey: s.tavilyApiKey ?? '',
+      // 严格布尔化：任何非 true 值都视为关闭
+      webSearchEnabled: s.webSearchEnabled === true,
+      searchProvider,
+      searchApiKey: resolveSearchApiKey({
+        searchProvider,
+        searchApiKeys: s.searchApiKeys,
+        tavilyApiKey: s.tavilyApiKey,
+      }),
       triLingualExamples: s.triLingualExamples ?? false,
       monolingualWord: s.monolingualWord ?? false,
       monolingualPhrase: s.monolingualPhrase ?? false,
@@ -121,7 +136,8 @@ function getConfig(): AiConfig {
       coreModules: normalizeCoreModules(DEFAULT_CORE_MODULE_FLAGS as AppModule[]),
       corePhraseModules: normalizeCorePhraseModules(DEFAULT_CORE_PHRASE_MODULE_FLAGS as AppModule[]),
       webSearchEnabled: false,
-      tavilyApiKey: '',
+      searchProvider: 'tavily',
+      searchApiKey: '',
       triLingualExamples: false,
       monolingualWord: false,
       monolingualPhrase: false,
@@ -482,55 +498,153 @@ async function callApi(
   }
 }
 
+/**
+ * 联网搜索是否真正可用：开关开启 **且** 当前服务商已配置 key。
+ * 任何缺失 / 非法状态一律回退为「关闭」——这是 OFF 语义的唯一判定点。
+ */
+function webSearchReady(config: AiConfig): boolean {
+  return config.webSearchEnabled === true && config.searchApiKey.length > 0
+}
+
+/**
+ * `fetch` for the web-search providers only.
+ * - Tauri (PC): route through the Rust HTTP plugin — no WebView CORS, so Brave works.
+ * - Web / Capacitor: the global `fetch` (on Capacitor it's already patched to native HTTP).
+ * Same call signature as `fetch`; falls back to global `fetch` if the plugin can't load.
+ */
+type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
+let tauriFetch: FetchLike | null | undefined
+async function searchFetch(url: string, init?: RequestInit): Promise<Response> {
+  if (!isTauri()) return fetch(url, init)
+  if (tauriFetch === undefined) {
+    try {
+      tauriFetch = (await import('@tauri-apps/plugin-http')).fetch as unknown as FetchLike
+    } catch {
+      tauriFetch = null
+    }
+  }
+  return (tauriFetch ?? fetch)(url, init)
+}
+
+/** Brave `description` / `extra_snippets` carry `<strong>` tags + HTML entities; AI context wants plain text. */
+function stripHtml(s: string): string {
+  return s
+    .replace(/<[^>]*>/g, '')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function tavilyTextSearch(apiKey: string, query: string, signal?: AbortSignal): Promise<string> {
+  const response = await searchFetch('https://api.tavily.com/search', {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5 }),
+  })
+  if (!response.ok) return ''
+  const data = await response.json() as { results?: Array<{ content: string; title: string }> }
+  return (data.results ?? []).map(r => `[${r.title}]: ${r.content}`).join('\n\n')
+}
+
+async function braveTextSearch(apiKey: string, query: string, signal?: AbortSignal): Promise<string> {
+  const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`
+  const response = await searchFetch(url, {
+    method: 'GET',
+    signal,
+    headers: { Accept: 'application/json', 'X-Subscription-Token': apiKey },
+  })
+  if (!response.ok) return ''
+  const data = await response.json() as {
+    web?: { results?: Array<{ title?: string; description?: string; extra_snippets?: string[] }> }
+  }
+  const results = data.web?.results ?? []
+  if (results.length === 0) {
+    // 200 but nothing parseable → the response shape drifted; surface it for the first real run.
+    console.warn('[webSearch] Brave 200 but no web.results; top-level keys:', Object.keys(data))
+    return ''
+  }
+  return results
+    .map(r => {
+      const head = `[${stripHtml(r.title ?? '')}]: ${stripHtml(r.description ?? '')}`
+      const extra = (r.extra_snippets ?? []).slice(0, 2).map(stripHtml).filter(Boolean)
+      return extra.length ? `${head}\n${extra.join('\n')}` : head
+    })
+    .join('\n\n')
+}
+
 export async function performWebSearch(query: string, signal?: AbortSignal): Promise<string> {
   const config = getConfig()
-  if (!config.webSearchEnabled || !config.tavilyApiKey) return ''
+  if (!webSearchReady(config)) return ''
 
   try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: config.tavilyApiKey,
-        query,
-        search_depth: 'basic',
-        max_results: 5,
-      }),
-    })
-
-    if (!response.ok) return ''
-    const data = await response.json() as { results: Array<{ content: string; title: string }> }
-    return data.results.map(r => `[${r.title}]: ${r.content}`).join('\n\n')
+    return config.searchProvider === 'brave'
+      ? await braveTextSearch(config.searchApiKey, query, signal)
+      : await tavilyTextSearch(config.searchApiKey, query, signal)
   } catch (e) {
     console.error('Web search failed:', e)
     return ''
   }
 }
 
-export async function searchTavilyImage(query: string, signal?: AbortSignal): Promise<string | null> {
+const isNonEmptyString = (u: unknown): u is string => typeof u === 'string' && u.length > 0
+
+async function tavilyImageSearch(apiKey: string, query: string, signal?: AbortSignal): Promise<string[]> {
+  const response = await searchFetch('https://api.tavily.com/search', {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey, query, include_images: true, max_results: 1 }),
+  })
+  if (!response.ok) return []
+  const data = await response.json() as { images?: unknown[] }
+  // Tavily returns the publisher-origin URLs directly (no proxy); some are hotlink-protected.
+  return (data.images ?? []).filter(isNonEmptyString)
+}
+
+async function braveImageSearch(apiKey: string, query: string, signal?: AbortSignal): Promise<string[]> {
+  // No " photo" suffix — it biases toward stock photography and away from game art /
+  // named entities (e.g. a game NPC). The query already carries the headword + scene.
+  const url = `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(query)}&count=5`
+  const response = await searchFetch(url, {
+    method: 'GET',
+    signal,
+    headers: { Accept: 'application/json', 'X-Subscription-Token': apiKey },
+  })
+  if (!response.ok) return []
+  const data = await response.json() as {
+    results?: Array<{ properties?: { url?: string }; thumbnail?: { src?: string } }>
+  }
+  // Proxy-first: `thumbnail.src` (imgs.search.brave.com — built for embedding, reliably loads)
+  // before `properties.url` (original source, often hotlink-protected). Order is easy to flip.
+  const urls: string[] = []
+  for (const r of data.results ?? []) {
+    if (isNonEmptyString(r.thumbnail?.src)) urls.push(r.thumbnail.src)
+    if (isNonEmptyString(r.properties?.url)) urls.push(r.properties.url)
+  }
+  return urls
+}
+
+/**
+ * 联网图片检索（Tavily / Brave 自适应）。返回**按可靠度排序的候选 URL 列表**——
+ * UI 逐个尝试，加载失败自动跳下一个。关闭或未配置 key 时返回 `[]`。
+ */
+export async function searchWebImage(query: string, signal?: AbortSignal): Promise<string[]> {
   const config = getConfig()
-  if (!config.webSearchEnabled || !config.tavilyApiKey) return null
+  if (!webSearchReady(config)) return []
 
   try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: config.tavilyApiKey,
-        query: `${query} photo`,
-        include_images: true,
-        max_results: 1,
-      }),
-    })
-
-    if (!response.ok) return null
-    const data = await response.json() as { images?: string[] }
-    return data.images?.[0] || null
+    return config.searchProvider === 'brave'
+      ? await braveImageSearch(config.searchApiKey, query, signal)
+      : await tavilyImageSearch(config.searchApiKey, query, signal)
   } catch (e) {
-    console.error('Tavily image search failed:', e)
-    return null
+    console.error('Web image search failed:', e)
+    return []
   }
 }
 
@@ -874,6 +988,9 @@ function getFullLookupPrompt(
     schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "explanation": "${isMono ? '1 sentence explaining why this branch derives from the root core' : '1句话解释该分支领域为何会从 Core 衍生出来'}",\n        "examples": [\n          {\n            "phrase": "${isMono ? 'typical phrase or short expression' : '典型表达/短语'}",\n            "meaning": "${exMeaning}",\n            "mindHint": "${exMind}"\n          }\n        ]\n      }\n    ]\n  }`
   }
 
+  // Direction A — optional personalization hook; OMITTED unless clearly relevant.
+  schema += `,\n  "profileInsight": "OPTIONAL — OMIT this field entirely unless this word clearly relates to one of the learner's listed recurring confusions; then ONE short sentence naming the link"`
+
   schema += `\n}`
 
   const basePrompt = isCore
@@ -953,6 +1070,8 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
       prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: focus on register, cultural origin, or usage shift. Do NOT repeat etymology.`
     }
   }
+
+  prompt += buildProfilePromptContext('compact')
 
   return prompt
 }
@@ -1136,9 +1255,12 @@ export async function askQuestion(
   const richSection = richContext
     ? `\n\nHere is the analysis already displayed to the user for reference:\n${richContext}\n\nAnswer based on this context where relevant.`
     : ''
+  // Direction A — the learner's hot weak spots, so a follow-up answer can connect
+  // the dots when relevant (opt-in; empty when nothing is hot).
+  const profileSection = buildProfilePromptContext('compact')
   const systemPrompt = isMono
-    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.`
-    : `You are a helpful English learning assistant for Chinese native speakers.\nThe user is currently studying: "${context}".${richSection}\nAnswer their questions in Chinese, with English examples where appropriate.\nKeep answers concise and practical.`
+    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.`
+    : `You are a helpful English learning assistant for Chinese native speakers.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in Chinese, with English examples where appropriate.\nKeep answers concise and practical.`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },
@@ -1705,10 +1827,16 @@ export async function aiImageTranslateFast(
   return callImageTranslateAPI(imageBase64, sourceLang, targetLang, prompt, signal)
 }
 
+/** Error carrying a stable `code` so the UI can localise it (see SettingsView). */
+export type TestConnErrorCode = 'no-key' | 'no-endpoint' | 'unauthorized' | 'not-found' | 'rate-limit'
+function testConnError(code: TestConnErrorCode, fallback: string): Error {
+  return Object.assign(new Error(fallback), { code })
+}
+
 export async function testConnection(signal?: AbortSignal): Promise<string> {
   const config = getConfig()
-  if (!config.apiKey) throw new Error('未填写 API Key')
-  if (!config.endpoint) throw new Error('未填写 Endpoint')
+  if (!config.apiKey) throw testConnError('no-key', 'API key is not set')
+  if (!config.endpoint) throw testConnError('no-endpoint', 'Endpoint is not set')
 
   const response = await fetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
@@ -1726,12 +1854,10 @@ export async function testConnection(signal?: AbortSignal): Promise<string> {
 
   if (!response.ok) {
     const text = await response.text()
-    const hint =
-      response.status === 401 ? 'API Key 无效或无权限' :
-      response.status === 404 ? '模型不存在或 Endpoint 有误' :
-      response.status === 429 ? '请求过于频繁，稍后重试' :
-      text.slice(0, 120)
-    throw new Error(hint)
+    if (response.status === 401) throw testConnError('unauthorized', 'API key invalid or lacks permission')
+    if (response.status === 404) throw testConnError('not-found', 'Model not found or wrong endpoint')
+    if (response.status === 429) throw testConnError('rate-limit', 'Too many requests, retry later')
+    throw new Error(text.slice(0, 120))
   }
 
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
@@ -2122,7 +2248,7 @@ export async function aiCombinedPhraseQuery(
 }
 
 /**
- * 为单条 meaning 按需进行 AI 深度赋能（同时生成场景解释与 Tavily 搜图关键词）。
+ * 为单条 meaning 按需进行 AI 深度赋能（同时生成场景解释与联网搜图关键词）。
  * 返回 { scene: Scene, imageQuery?: string }
  */
 export async function enrichSingleMeaning(

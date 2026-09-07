@@ -18,6 +18,7 @@ import { playPronunciation } from '../../services/audio'
 
 import { UnnaturalMindModelCard } from './AiSection/UnnaturalMindModelCard'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
+import { ProfileInsightChip } from './ProfileInsightChip'
 import { SectionHeading } from './SectionHeading'
 import { phraseCognitiveFromSearchMode } from '../../utils/text'
 import { migrateNativeMindToCoreFields } from '../../utils/coreMindsetPipeline'
@@ -111,6 +112,16 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         </span>
         <LexiconMemoryBadge word={targetPhrase} />
       </div>
+
+      {phraseResult?.profileInsight && (
+        <div className="mb-3">
+          <ProfileInsightChip
+            insight={phraseResult.profileInsight}
+            dismissKey={targetPhrase}
+            onOpen={() => onGoToSettings?.()}
+          />
+        </div>
+      )}
 
       {/* Correct form (white title) folds alone; DiffText + amber why-changed stay outside */}
       <div className="mb-3">

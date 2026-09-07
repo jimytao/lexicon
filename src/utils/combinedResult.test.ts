@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   combinedCacheKey,
   splitCombinedJson,
+  splitCombinedPhraseJson,
   reconstructFromLegacy,
   reconstructPhraseFromLegacy,
   isValidCombinedAiResult,
@@ -120,6 +121,38 @@ describe('reconstructFromLegacy', () => {
     const combined = reconstructPhraseFromLegacy(p, null)
     expect(combined.lookup.phrase).toBe('flat chat')
     expect(combined.core.phrase).toBe('flat chat')
+  })
+})
+
+// ── profileInsight passthrough (Direction A) ─────────────────────────────────
+
+describe('splitCombinedJson — profileInsight', () => {
+  it('carries a per-half profileInsight through when the model returns one', () => {
+    const raw = JSON.stringify({
+      lookup: { ...makeFullResult('vision'), profileInsight: 'Ties to your "deep = poor eyesight" habit.' },
+      core: makeFullResult('vision'),
+    })
+    const r = splitCombinedJson(raw)
+    expect(r.lookup.profileInsight).toBe('Ties to your "deep = poor eyesight" habit.')
+    expect(r.core.profileInsight).toBeUndefined()
+  })
+
+  it('leaves profileInsight undefined when absent', () => {
+    const raw = JSON.stringify({ lookup: makeFullResult('x'), core: makeFullResult('x') })
+    const r = splitCombinedJson(raw)
+    expect(r.lookup.profileInsight).toBeUndefined()
+  })
+})
+
+describe('splitCombinedPhraseJson — profileInsight', () => {
+  it('carries profileInsight through for phrase results', () => {
+    const raw = JSON.stringify({
+      lookup: { ...makePhraseResult('bring up'), profileInsight: 'Relates to your phrasal-verb-with-up focus.' },
+      core: makePhraseResult('bring up'),
+    })
+    const r = splitCombinedPhraseJson(raw, 'bring up')
+    expect(r.lookup.profileInsight).toBe('Relates to your phrasal-verb-with-up focus.')
+    expect(r.core.profileInsight).toBeUndefined()
   })
 })
 

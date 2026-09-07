@@ -5,6 +5,21 @@ import { useResultStore } from './resultStore'
 
 export type { AppearanceMode }
 
+/** 联网搜索服务商（按钮式选择，语义与 aiProvider 一致） */
+export type SearchProviderId = 'tavily' | 'brave'
+
+/** 解析当前联网搜索服务商对应的 API Key（含旧 `tavilyApiKey` 字段兼容） */
+export function resolveSearchApiKey(s: {
+  searchProvider: SearchProviderId
+  searchApiKeys?: Record<string, string>
+  tavilyApiKey?: string
+}): string {
+  const keyed = s.searchApiKeys?.[s.searchProvider]?.trim()
+  if (keyed) return keyed
+  if (s.searchProvider === 'tavily') return (s.tavilyApiKey ?? '').trim()
+  return ''
+}
+
 
 export interface AppModule {
   id: string
@@ -168,7 +183,12 @@ interface SettingsStore {
   /** User appearance preference; `system` follows OS via prefers-color-scheme. */
   appearance: AppearanceMode
   webSearchEnabled: boolean
+  /** @deprecated 迁移到 `searchApiKeys.tavily`；保留字段仅为旧 persist 兼容 */
   tavilyApiKey: string
+  /** 联网搜索服务商（按钮式选择，风格对齐 aiProvider） */
+  searchProvider: SearchProviderId
+  /** 按 searchProvider 存储的 key，如 { tavily: 'tvly-...', brave: 'BSA...' } */
+  searchApiKeys: Record<string, string>
   maxExercises: number
   performanceMode: boolean
   defaultSearchMode: 'instant' | 'ai' | 'core'
@@ -199,6 +219,8 @@ interface SettingsStore {
   setAppearance: (v: AppearanceMode) => void
   setWebSearchEnabled: (v: boolean) => void
   setTavilyApiKey: (v: string) => void
+  setSearchProvider: (v: SearchProviderId) => void
+  setSearchApiKeyForProvider: (providerId: SearchProviderId, key: string) => void
   setMaxExercises: (v: number) => void
   setPerformanceMode: (v: boolean) => void
   setDefaultSearchMode: (v: 'instant' | 'ai' | 'core') => void
@@ -232,6 +254,8 @@ export const useSettingsStore = create<SettingsStore>()(
       appearance: 'system',
       webSearchEnabled: false,
       tavilyApiKey: '',
+      searchProvider: 'tavily',
+      searchApiKeys: {},
       maxExercises: 5,
       performanceMode: false,
       defaultSearchMode: 'instant',
@@ -270,7 +294,17 @@ export const useSettingsStore = create<SettingsStore>()(
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
       setAppearance: (appearance) => set({ appearance }),
       setWebSearchEnabled: (webSearchEnabled) => set({ webSearchEnabled }),
-      setTavilyApiKey: (tavilyApiKey) => set({ tavilyApiKey }),
+      setTavilyApiKey: (tavilyApiKey) =>
+        set((state) => ({
+          tavilyApiKey,
+          searchApiKeys: { ...state.searchApiKeys, tavily: tavilyApiKey },
+        })),
+      setSearchProvider: (searchProvider) => set({ searchProvider }),
+      setSearchApiKeyForProvider: (providerId, key) =>
+        set((state) => ({
+          searchApiKeys: { ...state.searchApiKeys, [providerId]: key },
+          ...(providerId === 'tavily' ? { tavilyApiKey: key } : {}),
+        })),
       setMaxExercises: (maxExercises) => set({ maxExercises }),
       setPerformanceMode: (performanceMode) => set({ performanceMode }),
       setDefaultSearchMode: (defaultSearchMode) => set({ defaultSearchMode }),
@@ -324,6 +358,14 @@ export const useSettingsStore = create<SettingsStore>()(
             persistedState.corePhraseModules
               ?? seedCorePhraseModulesFromCore(persistedState.coreModules)
           ),
+          // 联网搜索：旧版单一 tavilyApiKey → 新的按服务商分槽 searchApiKeys
+          searchProvider: persistedState.searchProvider === 'brave' ? 'brave' : 'tavily',
+          searchApiKeys:
+            persistedState.searchApiKeys && Object.keys(persistedState.searchApiKeys).length > 0
+              ? persistedState.searchApiKeys
+              : persistedState.tavilyApiKey
+                ? { tavily: persistedState.tavilyApiKey }
+                : {},
         }
       },
     }

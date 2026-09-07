@@ -29,16 +29,21 @@ const memoryStorage = vi.hoisted(() => {
 import { useSettingsStore } from '../stores/settingsStore'
 import {
   CHAT_IDLE_MS,
+  buildProfilePromptContext,
   flushPendingProfileDiagnostics,
   getPendingEvents,
+  getProfile,
   getUnprocessedCount,
   recordAiChatEvent,
   recordLookupEvent,
   recordSentenceCorrectionEvent,
   resetProfile,
   resumePendingProfileDiagnostics,
+  saveProfile,
   __resetProfileRuntimeForTests,
 } from './profile'
+import { DEFAULT_CONFIDENCE } from '../utils/profileHeat'
+import type { UserLanguageProfile, WeaknessPattern } from '../types'
 
 const PROFILE_KEY = 'lexicon-user-profile'
 const COUNT_KEY = 'lexicon-unprocessed-count'
@@ -407,5 +412,130 @@ describe('resumePendingProfileDiagnostics — cold start', () => {
 describe('CHAT_IDLE_MS constant', () => {
   it('is 90 seconds', () => {
     expect(CHAT_IDLE_MS).toBe(90_000)
+  })
+})
+
+// ── Direction G: heat fields normalisation + Direction A: compact prompt context ──
+
+const FIXED_NOW = new Date('2026-09-07T12:00:00.000Z')
+const DAY = 86_400_000
+const isoDaysAgo = (n: number) => new Date(FIXED_NOW.getTime() - n * DAY).toISOString()
+
+function mkWeakness(over: Partial<WeaknessPattern>): WeaknessPattern {
+  return {
+    id: over.id ?? 'w',
+    description: over.description ?? 'desc',
+    sourceTrigger: over.sourceTrigger ?? 'src',
+    track: over.track ?? 'vocabulary',
+    status: over.status ?? 'learning',
+    occurrenceCount: over.occurrenceCount ?? 1,
+    ...over,
+  }
+}
+
+function seedProfile(weaknessPatterns: WeaknessPattern[], extra: Partial<UserLanguageProfile> = {}) {
+  const p: UserLanguageProfile = {
+    lastUpdated: isoDaysAgo(1),
+    totalDiagnosticsRun: 3,
+    weaknessPatterns,
+    recentExplorationFocus: [],
+    recommendations: [],
+    ...extra,
+  }
+  saveProfile(p)
+  return p
+}
+
+describe('getProfile — heat field back-compat normalisation', () => {
+  beforeEach(() => vi.setSystemTime(FIXED_NOW))
+
+  it('fills missing confidence with DEFAULT_CONFIDENCE and missing lastExposedAt with profile.lastUpdated', () => {
+    localStorage.setItem(
+      PROFILE_KEY,
+      JSON.stringify({
+        lastUpdated: isoDaysAgo(2),
+        totalDiagnosticsRun: 1,
+        weaknessPatterns: [
+          { id: 'a', description: 'x', sourceTrigger: 's', track: 'vocabulary', status: 'learning', occurrenceCount: 2 },
+        ],
+        recentExplorationFocus: [],
+        recommendations: [],
+      }),
+    )
+    const w = getProfile().weaknessPatterns[0]!
+    expect(w.confidence).toBe(DEFAULT_CONFIDENCE)
+    expect(w.lastExposedAt).toBe(isoDaysAgo(2))
+  })
+
+  it('preserves existing in-range confidence and lastExposedAt', () => {
+    seedProfile([mkWeakness({ id: 'a', confidence: 0.7, lastExposedAt: isoDaysAgo(4) })])
+    const w = getProfile().weaknessPatterns[0]!
+    expect(w.confidence).toBe(0.7)
+    expect(w.lastExposedAt).toBe(isoDaysAgo(4))
+  })
+
+  it('clamps an out-of-range confidence on read', () => {
+    seedProfile([mkWeakness({ id: 'a', confidence: 9 as number, lastExposedAt: isoDaysAgo(1) })])
+    expect(getProfile().weaknessPatterns[0]!.confidence).toBe(1)
+  })
+})
+
+describe('buildProfilePromptContext', () => {
+  beforeEach(() => vi.setSystemTime(FIXED_NOW))
+
+  it('returns "" for an empty profile in either variant', () => {
+    expect(buildProfilePromptContext('full')).toBe('')
+    expect(buildProfilePromptContext('compact')).toBe('')
+  })
+
+  it('compact: includes only hot weaknesses (excludes cool ones)', () => {
+    seedProfile([
+      mkWeakness({ id: 'hot', description: 'confuses deep with poor eyesight', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
+      mkWeakness({ id: 'cool', description: 'article overuse before uncountables', confidence: 0.2, lastExposedAt: isoDaysAgo(40) }),
+    ])
+    const out = buildProfilePromptContext('compact')
+    expect(out).toContain('confuses deep with poor eyesight')
+    expect(out).not.toContain('article overuse before uncountables')
+  })
+
+  it('compact: returns "" when no weakness is hot', () => {
+    seedProfile([
+      mkWeakness({ id: 'a', confidence: 0.2, lastExposedAt: isoDaysAgo(40) }),
+      mkWeakness({ id: 'b', confidence: 0.95, lastExposedAt: isoDaysAgo(0) }),
+    ])
+    expect(buildProfilePromptContext('compact')).toBe('')
+  })
+
+  it('compact: caps at 3 hot weaknesses', () => {
+    seedProfile(
+      Array.from({ length: 5 }, (_, i) =>
+        mkWeakness({ id: `h${i}`, description: `HOTMARK_${i}`, confidence: 0.05, lastExposedAt: isoDaysAgo(0) }),
+      ),
+    )
+    const out = buildProfilePromptContext('compact')
+    const hits = [...out.matchAll(/HOTMARK_/g)].length
+    expect(hits).toBe(3)
+  })
+
+  it('compact: instruction is soft / opt-in (no forced mentor tip)', () => {
+    seedProfile([mkWeakness({ id: 'hot', confidence: 0.1, lastExposedAt: isoDaysAgo(0) })])
+    const out = buildProfilePromptContext('compact').toLowerCase()
+    expect(out).toMatch(/only if|optional|may add|do not force|never force/)
+  })
+
+  it('full: still emits the existing mentor-tip instruction and all active weaknesses', () => {
+    seedProfile([
+      mkWeakness({ id: 'a', description: 'AA gap', confidence: 0.2, lastExposedAt: isoDaysAgo(40) }),
+      mkWeakness({ id: 'b', description: 'BB gap', confidence: 0.2, lastExposedAt: isoDaysAgo(0) }),
+    ])
+    const out = buildProfilePromptContext('full')
+    expect(out).toContain('AA gap')
+    expect(out).toContain('BB gap')
+    expect(out.toLowerCase()).toContain('mentor')
+  })
+
+  it('defaults to the full variant when no argument is given', () => {
+    seedProfile([mkWeakness({ id: 'a', description: 'AA gap', confidence: 0.2, lastExposedAt: isoDaysAgo(40) })])
+    expect(buildProfilePromptContext()).toBe(buildProfilePromptContext('full'))
   })
 })
