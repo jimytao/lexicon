@@ -1,5 +1,5 @@
 import type { CognitiveMode, SuggestItem, WordResult, UserWordMemory } from '../types'
-import { isCapacitor } from './platform'
+import { isCapacitor, isExtension } from './platform'
 
 export interface DBService {
   /** 前缀搜索（只返回单词，不返回短语），最多 limit 条 */
@@ -46,6 +46,15 @@ async function loadImpl(): Promise<DBService> {
         } catch (e) {
           console.warn('[db] native SQLite init failed, falling back to sql.js', e)
         }
+      }
+
+      // 扩展：db.extension 注入 OPFS/远程字节来源后，转发 db.web 的实现
+      //（查询与并发逻辑不重复实现，见 db.extension.ts 头注释）
+      if (isExtension()) {
+        const mod = await import('./db.extension') as DbModule
+        _impl = mod.webDB!
+        _warmup = () => mod.warmupDictionary()
+        return
       }
 
       const mod = await import('./db.web') as DbModule

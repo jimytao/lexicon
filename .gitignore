@@ -58,3 +58,7 @@ app-icon.png
 *.msi
 *.sig
 *.idsig
+
+# 浏览器扩展产物 / 词库清单产物
+dist-ext
+dist-dictionaries

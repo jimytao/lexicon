@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lexicon</title>
+    <meta name="color-scheme" content="light dark" />
+    <!--
+      与 index.html 的差异（都是 MV3 约束导致的，勿照搬回 index.html）：
+
+      1. 无内联深色模式启动脚本 —— MV3 CSP 的 `script-src 'self'` 禁止内联脚本。
+         该逻辑已移入 src/entries/sidepanel.tsx 顶部，在 createRoot 之前执行。
+      2. 无 Google Fonts 外链 —— MV3 CSP 禁远程资源；且实测那三个装饰字体
+         在 src/ 内零引用，本就是死链接。
+      3. 无 favicon 外链 —— 扩展图标由 manifest 提供。
+      4. viewport 去掉了 viewport-fit / interactive-widget —— 侧栏无刘海、无软键盘。
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/entries/sidepanel.tsx"></script>
+  </body>
+</html>

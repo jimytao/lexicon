@@ -38,6 +38,13 @@ Vite + React（核心，不改动）
   → 触发：推 tag（v*）自动构建；或 Actions 页面手动 workflow_dispatch
   → 存储层：@capacitor-community/sqlite（db.native.ts，与 iOS 共用）；失败 fallback sql.js
   → 词库：public/assets/databases/*.db → copyFromAssets
+
+阶段5：浏览器扩展（MV3 / Chromium） 📐 设计阶段，未实现
+  → 完整方案见 lexicon-docs/10-browser-extension.md
+  → 形态：Side Panel 跑 App.tsx + Content Script 选词气泡 + SW 网络代理
+  → 存储层：新增 db.extension.ts（复用 db.ops.ts）；词库首启远程下载至 OPFS，不打包进 CRX
+  → 网络：SW 代理豁免 CORS → Brave 可用、Tavily 图片经 dataURL + declarativeNetRequest 剥 Referer
+  → 硬约束：sql.js 必须在 Side Panel，绝不放 Service Worker
 ```
 
 ## iOS 构建流程（无 Mac 方案）

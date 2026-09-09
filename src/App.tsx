@@ -25,6 +25,8 @@ import {
 import { planDictHitNormalSearch } from './utils/searchPath'
 import { decideHistoryClickRoute } from './utils/historyDecisionTree'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { DictionaryStatus } from './components/DictionaryStatus'
+import { useDictionaryStore } from './stores/dictionaryStore'
 import { warmupDictionary } from './services/db'
 import { cleanCameraCacheDir } from './services/camera'
 import {
@@ -647,6 +649,10 @@ export function App() {
   const showPhraseView = searchSource === 'phrase'
   const showAiFullView = searchSource === 'ai-full'
   // 任意默认模式：无查询、无结果时一律显示小书空态（不被 Core 空壳抢走）
+  // 词库下载/校验中：空态文案让位给进度（非扩展平台此值恒为 false）
+  const dictionaryPhase = useDictionaryStore((s) => s.phase)
+  const dictionaryBusy = dictionaryPhase !== 'idle' && dictionaryPhase !== 'ready'
+
   const showEmptyHome = searchSource === 'none'
     && !wordResult
     && !phraseResult
@@ -698,9 +704,15 @@ export function App() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                       </svg>
                     </div>
-                    <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
-                      {t('home.emptyPlaceholder')}
-                    </p>
+                    {/* 扩展首启下载词库时，状态接管这两行提示文案（不新增卡片，
+                        见 09-ui-ux-design-system.md §2.2）；其余情况走原文案。 */}
+                    {dictionaryBusy ? (
+                      <DictionaryStatus />
+                    ) : (
+                      <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
+                        {t('home.emptyPlaceholder')}
+                      </p>
+                    )}
                   </div>
                 ) : showPhraseView ? (
                   <PhraseView
@@ -752,9 +764,15 @@ export function App() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                       </svg>
                     </div>
-                    <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
-                      {t('home.emptyPlaceholder')}
-                    </p>
+                    {/* 扩展首启下载词库时，状态接管这两行提示文案（不新增卡片，
+                        见 09-ui-ux-design-system.md §2.2）；其余情况走原文案。 */}
+                    {dictionaryBusy ? (
+                      <DictionaryStatus />
+                    ) : (
+                      <p className="text-xs font-medium text-foreground-muted/70 text-center max-w-[270px] leading-relaxed mx-auto">
+                        {t('home.emptyPlaceholder')}
+                      </p>
+                    )}
                   </div>
                 )}
 

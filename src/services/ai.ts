@@ -10,7 +10,7 @@ import {
 } from '../stores/settingsStore'
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
-import { isTauri } from './platform'
+import { isExtension, isTauri } from './platform'
 import { buildProfilePromptContext } from './profile'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
@@ -382,7 +382,7 @@ export async function analyzeWord(
   const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
-    const response = await fetch(`${config.endpoint}/chat/completions`, {
+    const response = await aiFetch(`${config.endpoint}/chat/completions`, {
       method: 'POST',
       signal: merged,
       headers: {
@@ -443,7 +443,7 @@ async function callApi(
   const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
-    const response = await fetch(`${config.endpoint}/chat/completions`, {
+    const response = await aiFetch(`${config.endpoint}/chat/completions`, {
       method: 'POST',
       signal: merged,
       headers: {
@@ -515,6 +515,12 @@ function webSearchReady(config: AiConfig): boolean {
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 let tauriFetch: FetchLike | null | undefined
 async function searchFetch(url: string, init?: RequestInit): Promise<Response> {
+  // 扩展：交给 SW 执行 → 豁免 CORS。Brave 与 Tavily 在浏览器页面里都被拦，
+  // 这一条是扩展形态的主要收益来源（见 10-browser-extension.md §5.0）。
+  if (isExtension()) {
+    const { proxyFetch } = await import('./extensionProxy')
+    return proxyFetch(url, init)
+  }
   if (!isTauri()) return fetch(url, init)
   if (tauriFetch === undefined) {
     try {
@@ -524,6 +530,23 @@ async function searchFetch(url: string, init?: RequestInit): Promise<Response> {
     }
   }
   return (tauriFetch ?? fetch)(url, init)
+}
+
+/**
+ * 主 AI 调用的统一出口（`{endpoint}/chat/completions`）。
+ *
+ * 扩展下走 SW 代理，因此用户自填的自建 / 中转端点即便没有 CORS 头也能用 ——
+ * 这是 Web 版做不到的。其他平台行为与原来的裸 `fetch` 完全一致。
+ *
+ * 注意：`ai.ts` 全程**非流式**（无 `getReader` / SSE，见 §4），
+ * 所以 message 通道足够。若将来引入流式渲染，这里必须改成长连接分片。
+ */
+async function aiFetch(url: string, init?: RequestInit): Promise<Response> {
+  if (isExtension()) {
+    const { proxyFetch } = await import('./extensionProxy')
+    return proxyFetch(url, init)
+  }
+  return fetch(url, init)
 }
 
 /** Brave `description` / `extra_snippets` carry `<strong>` tags + HTML entities; AI context wants plain text. */
@@ -1267,7 +1290,7 @@ export async function askQuestion(
     ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
   ]
 
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
+  const response = await aiFetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {
@@ -1766,7 +1789,7 @@ async function callImageTranslateAPI(
     { type: 'text' as const, text: `Detect all text in this image and translate everything to ${targetDisplay}.${langHint} Return the JSON.` },
   ]
 
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
+  const response = await aiFetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {
@@ -1838,7 +1861,7 @@ export async function testConnection(signal?: AbortSignal): Promise<string> {
   if (!config.apiKey) throw testConnError('no-key', 'API key is not set')
   if (!config.endpoint) throw testConnError('no-endpoint', 'Endpoint is not set')
 
-  const response = await fetch(`${config.endpoint}/chat/completions`, {
+  const response = await aiFetch(`${config.endpoint}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {

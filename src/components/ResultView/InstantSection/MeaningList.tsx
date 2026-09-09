@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Meaning, Scene } from '../../../types'
+import { isExtension } from '../../../services/platform'
 import { useSettingsStore, resolveSearchApiKey } from '../../../stores/settingsStore'
 import { useResultStore } from '../../../stores/resultStore'
 import { searchWebImage, enrichSingleMeaning } from '../../../services/ai'
@@ -84,12 +85,45 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
     })
   }
 
+  // 防盗链兜底（仅扩展）：所有候选的 <img> 都加载失败后，改由 SW 取字节转 dataURL。
+  //
+  // 刻意只在**耗尽后**才做，不给正常路径加开销 —— P-1 实测扩展页里 83% 的原始 URL
+  // 本来就能直连（见 10-browser-extension.md §5.0）。
+  // 也刻意**不用** declarativeNetRequest 全局剥 Referer：那条规则会作用于用户浏览的
+  // 每个网站的每张图片，风险远大于这 17% 的收益。
+  const proxyTried = useRef<Record<number, boolean>>({})
+
+  useEffect(() => {
+    if (!isExtension()) return
+    for (const key of Object.keys(imageCandidates)) {
+      const index = Number(key)
+      const cands = imageCandidates[index]
+      if (!cands || cands.length === 0) continue
+      if ((imageIdx[index] ?? 0) < cands.length) continue // 还有候选没试完
+      if (proxyTried.current[index]) continue
+      proxyTried.current[index] = true
+
+      void (async () => {
+        const { proxyFetchDataUrl } = await import('../../../services/extensionProxy')
+        for (const url of cands) {
+          if (url.startsWith('data:')) continue // 已经是代理产物，别套娃
+          const dataUrl = await proxyFetchDataUrl(url).catch(() => null)
+          if (!dataUrl) continue
+          setImageCandidates(prev => ({ ...prev, [index]: [...(prev[index] ?? []), dataUrl] }))
+          return
+        }
+      })()
+    }
+  }, [imageCandidates, imageIdx])
+
   const handleReloadImage = (index: number, query: string) => {
     setImageCandidates(prev => {
       const next = { ...prev }
       delete next[index]
       return next
     })
+    // 重新取图 = 重新给一次代理兜底的机会
+    delete proxyTried.current[index]
     fetchImages(index, query)
   }
 

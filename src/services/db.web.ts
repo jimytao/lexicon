@@ -22,6 +22,29 @@ import { useSettingsStore } from '../stores/settingsStore'
 const DB_ENZH_URL = '/assets/databases/lexicon.db'
 const DB_ENEN_URL = '/assets/databases/lexicon_en.db'
 
+/**
+ * 词库字节的来源。抽成可注入是为了让浏览器扩展复用本文件里
+ * 全套 epoch / gate 并发与失效逻辑，只替换「字节从哪来」这一层。
+ *
+ * 返回 `null` 表示该词库不可用 —— 英英库走既有的降级到双语库路径。
+ * 见 lexicon-docs/10-browser-extension.md §3。
+ */
+export type DictionaryId = 'enzh' | 'enen'
+export type DbBytesSource = (dict: DictionaryId) => Promise<ArrayBuffer | null>
+
+const httpBytesSource: DbBytesSource = async (dict) => {
+  const response = await fetch(dict === 'enen' ? DB_ENEN_URL : DB_ENZH_URL)
+  if (!response.ok) return null
+  return response.arrayBuffer()
+}
+
+let _bytesSource: DbBytesSource = httpBytesSource
+
+/** 必须在首次查词前调用（db.extension.ts 在模块加载时即注入）。 */
+export function setDbBytesSource(source: DbBytesSource): void {
+  _bytesSource = source
+}
+
 let _SQL: SqlJsStatic | null = null
 let _SQLLoading: Promise<SqlJsStatic> | null = null
 
@@ -85,6 +108,17 @@ useSettingsStore.subscribe((state, prev) => {
   invalidateEnEn()
 })
 
+/**
+ * 让两本词库的内存实例作废，下次查词重新走字节来源。
+ *
+ * 扩展侧「删除已下载词库」必须调它 —— 只删 OPFS 文件是不够的，
+ * sql.js 的 Database 仍在内存里，删完照样能查，用户会以为没生效。
+ */
+export function invalidateDictionaries(): void {
+  invalidateEnZh()
+  invalidateEnEn()
+}
+
 function isDbInvalidatedError(e: unknown): boolean {
   return e instanceof Error && e.name === 'DbInvalidated'
 }
@@ -129,11 +163,10 @@ async function getDbEnZh(): Promise<Database> {
     const epoch = _enzhEpoch
     const loading = (async () => {
       const SQL = await getSQL()
-      const response = await fetch(DB_ENZH_URL)
-      if (!response.ok) {
+      const buffer = await _bytesSource('enzh')
+      if (!buffer) {
         throw new Error('lexicon.db not found — place it under public/assets/databases/')
       }
-      const buffer = await response.arrayBuffer()
       const db = new SQL.Database(new Uint8Array(buffer))
       if (epoch !== _enzhEpoch) {
         closeDb(db)
@@ -180,20 +213,19 @@ async function getDbEnEn(): Promise<Database> {
     const epoch = _enenEpoch
     const loading = (async () => {
       const SQL = await getSQL()
-      let response: Response
+      let buffer: ArrayBuffer | null
       try {
-        response = await fetch(DB_ENEN_URL)
-        if (!response.ok) {
-          console.warn('lexicon_en.db not found, falling back to lexicon.db')
-          if (epoch === _enenEpoch) _enenUnavailable = true
-          return getDbEnZh()
-        }
+        buffer = await _bytesSource('enen')
       } catch (err) {
         console.warn('Error fetching lexicon_en.db, falling back to lexicon.db:', err)
         if (epoch === _enenEpoch) _enenUnavailable = true
         return getDbEnZh()
       }
-      const buffer = await response.arrayBuffer()
+      if (!buffer) {
+        console.warn('lexicon_en.db not found, falling back to lexicon.db')
+        if (epoch === _enenEpoch) _enenUnavailable = true
+        return getDbEnZh()
+      }
       const db = new SQL.Database(new Uint8Array(buffer))
       if (epoch !== _enenEpoch) {
         closeDb(db)

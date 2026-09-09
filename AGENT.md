@@ -45,8 +45,17 @@
 | `lexicon-docs/07-cognitive-and-settings-architecture.md` | 深度认知、Mode 3 (Pure Core)、设置架构 |
 | `lexicon-docs/08-ai-learning-system-and-profile.md` | User Profile、Lexicon Memory |
 | `lexicon-docs/09-ui-ux-design-system.md` | UI/UX 规范、间距、反模式（**改 UI 必读**） |
+| `lexicon-docs/10-browser-extension.md` | 浏览器扩展（MV3）：**P0–P2 已完成，P3 交互层进行中**（动扩展相关代码前必读） |
 | `lexicon-docs/README.md` | docs 目录总览 |
 | `workflow.md`（根目录） | 发版 SOP（版本号、Release Notes、打包） |
+
+### 扩展开发专用 skill（按需启用）
+
+做**浏览器扩展相关工作**（`10-browser-extension.md` 的 P0 及之后）时，本项目需装 Anthropic 的
+**Chrome Extensions and Chrome Web Store** skill —— 提供 MV3 API 与商店上架的最新规范。
+
+- **按需启用**：只在动扩展代码时打开，平时不必常驻，避免污染常规查词功能的上下文
+- 未做扩展工作的会话**不需要**它
 
 ---
 
@@ -63,7 +72,7 @@ Capacitor 8（Android / iOS）
 Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ```
 
-目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）  
+目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）→ 浏览器扩展（MV3 / Chromium，**P0–P2 已完成，`npm run build:ext` → `dist-ext/`；词库远程下载+OPFS，网络走 SW 代理绕 CORS**；见 `10-browser-extension.md`）  
 **产品阶段**：多端已可构建；功能迭代以 Web 为开发基准。
 
 ---
@@ -155,8 +164,13 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 - 所有数据库操作必须通过 `src/services/db.ts` 的 `DBService`
 - 组件和 hook **绝对不能**直接调用 sql.js / Capacitor SQLite API
-- 实现分流：`db.web.ts` / `db.native.ts`，共享逻辑在 `db.ops.ts`
+- 实现分流：`db.web.ts` / `db.native.ts` / `db.extension.ts`，共享逻辑在 `db.ops.ts`
 - 目的：后续切换原生 SQLite 时不改上层
+- **扩展实现不复制查询与并发逻辑**：`db.web.ts` 的词库字节来源可注入（`setDbBytesSource`），
+  `db.extension.ts` 只提供 OPFS + 远程下载这一层，再转发 `db.web` 的 `webDB`。改 `db.web.ts` 的
+  加载/失效逻辑时，扩展会一起受影响（这是设计意图）。详见 `10-browser-extension.md` §3
+- 删除已下载词库必须同时调 `invalidateDictionaries()` —— 只删 OPFS 文件的话，
+  sql.js 的 `Database` 仍在内存里，删完照样能查
 
 ### AI 调用
 
