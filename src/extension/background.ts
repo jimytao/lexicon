@@ -12,13 +12,64 @@
  *   - 不含 prompt / 业务逻辑 —— 这里永远只是哑代理
  */
 import type { ProxyRequest, ProxyAbort, ProxyResult } from '../services/extensionProxy'
+import { writePendingQuery } from '../services/pendingQuery'
 
-// setPanelBehavior 只需设一次，但 SW 会被反复唤醒，
+const CONTEXT_MENU_ID = 'lexicon-lookup-selection'
+
+// setPanelBehavior 与右键菜单都只需设一次，但 SW 会被反复唤醒，
 // 所以放在 onInstalled 而不是模块顶层的副作用里。
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.sidePanel
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((e: unknown) => console.error('[lexicon] setPanelBehavior failed', e))
+
+  chrome.contextMenus.create({
+    id: CONTEXT_MENU_ID,
+    // %s 会被替换为用户选中的文字；菜单文案由 SW 提供，拿不到 i18n 的 t()，
+    // 所以走 chrome.i18n 之外的最简做法：中英同列，避免为一行菜单再搭一套机制。
+    title: 'Lexicon: "%s"',
+    contexts: ['selection'],
+  })
+})
+
+/* ---------------- 选词 → 侧栏 ---------------- */
+
+/**
+ * 把词交给侧栏。
+ *
+ * 顺序很重要：**先写 storage，再尝试开侧栏**。
+ * `sidePanel.open()` 的手势要求很脆（见 pendingQuery.ts 头注释），
+ * 失败时词已经存住了，用户下次打开侧栏照样会查 —— 功能不会丢。
+ */
+async function dispatchSelection(text: string, tabId: number | undefined): Promise<void> {
+  await writePendingQuery(text)
+
+  if (tabId === undefined) return
+  try {
+    await chrome.sidePanel.open({ tabId })
+  } catch (e) {
+    // 侧栏已开时本就无需 open；未开且手势被拒时退化为「下次打开即查」
+    console.debug('[lexicon] sidePanel.open 未成功（已写入待查词，不影响功能）:', e)
+  }
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== CONTEXT_MENU_ID) return
+  if (!info.selectionText) return
+  void dispatchSelection(info.selectionText, tab?.id)
+})
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command !== 'lookup-selection') return
+  const tabId = tab?.id
+  if (tabId === undefined) return
+  // content script 才拿得到选区；SW 没有 DOM
+  chrome.tabs.sendMessage(tabId, { kind: 'getSelection' }, (reply?: { text?: string }) => {
+    // 页面没有注入 content script（chrome:// 等）时 lastError 会被置上，忽略即可
+    if (chrome.runtime.lastError) return
+    if (!reply?.text) return
+    void dispatchSelection(reply.text, tabId)
+  })
 })
 
 /* ---------------- 网络代理 ---------------- */
@@ -75,8 +126,23 @@ function handleAbort(msg: ProxyAbort): ProxyResult {
   return { ok: false, error: 'aborted', aborted: true }
 }
 
+/** content script 的悬浮按钮点击 */
+interface LookupSelectionMessage {
+  kind: 'lookupSelection'
+  text: string
+}
+
 chrome.runtime.onMessage.addListener(
-  (msg: ProxyRequest | ProxyAbort, _sender, sendResponse: (r: ProxyResult) => void) => {
+  (
+    msg: ProxyRequest | ProxyAbort | LookupSelectionMessage,
+    sender,
+    sendResponse: (r: ProxyResult | { ok: true }) => void,
+  ) => {
+    if (msg?.kind === 'lookupSelection') {
+      void dispatchSelection(msg.text, sender.tab?.id).then(() => sendResponse({ ok: true }))
+      return true
+    }
+
     if (msg?.kind === 'abortFetch') {
       sendResponse(handleAbort(msg))
       return false

@@ -34,9 +34,28 @@ function manifestPlugin(): Plugin {
         side_panel: { default_path: 'sidepanel.html' },
         background: { service_worker: 'background.js', type: 'module' },
 
-        // 按阶段追加，只声明真正用到的：多声明会让 Chrome 弹出更吓人的授权提示。
-        //   P3 → contextMenus、commands
-        permissions: ['sidePanel', 'storage'],
+        permissions: ['sidePanel', 'storage', 'contextMenus'],
+
+        // 悬浮查词按钮。注入所有页面是它的固有代价（用户已确认接受）：
+        // Chrome 安装时会提示「读取和更改所有网站数据」。
+        // 缓解在实现里：选中文字前只挂一个监听、不做任何事；另有全局开关。
+        content_scripts: [
+          {
+            matches: ['<all_urls>'],
+            js: ['content.js'],
+            run_at: 'document_idle',
+            // 只在主框架注入：iframe 里选词的价值低，注入成本却翻倍
+            all_frames: false,
+          },
+        ],
+
+        // 快捷键路径最可靠（走 action 点击路径开侧栏），见 pendingQuery.ts 头注释
+        commands: {
+          'lookup-selection': {
+            suggested_key: { default: 'Alt+L' },
+            description: 'Look up the selected text in Lexicon',
+          },
+        },
 
         // P2：SW 代理需要它才能豁免 CORS。
         //

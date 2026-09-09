@@ -180,6 +180,8 @@ interface SettingsStore {
   aiApiKeys: Record<string, string>  // keyed by providerId
   aiModels: Record<string, string>   // keyed by providerId
   historyEnabled: boolean
+  /** 扩展专用：网页选词悬浮按钮。其他平台无意义。 */
+  selectionButtonEnabled: boolean
   /** User appearance preference; `system` follows OS via prefers-color-scheme. */
   appearance: AppearanceMode
   webSearchEnabled: boolean
@@ -216,6 +218,7 @@ interface SettingsStore {
   setApiKeyForProvider: (providerId: string, key: string) => void
   setAiModelForProvider: (providerId: string, model: string) => void
   setHistoryEnabled: (v: boolean) => void
+  setSelectionButtonEnabled: (v: boolean) => void
   setAppearance: (v: AppearanceMode) => void
   setWebSearchEnabled: (v: boolean) => void
   setTavilyApiKey: (v: string) => void
@@ -251,6 +254,7 @@ export const useSettingsStore = create<SettingsStore>()(
       aiApiKeys: {},
       aiModels: {},
       historyEnabled: true,
+      selectionButtonEnabled: true,
       appearance: 'system',
       webSearchEnabled: false,
       tavilyApiKey: '',
@@ -292,6 +296,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setAiModelForProvider: (providerId, model) =>
         set((state) => ({ aiModels: { ...state.aiModels, [providerId]: model } })),
       setHistoryEnabled: (historyEnabled) => set({ historyEnabled }),
+      setSelectionButtonEnabled: (selectionButtonEnabled) => set({ selectionButtonEnabled }),
       setAppearance: (appearance) => set({ appearance }),
       setWebSearchEnabled: (webSearchEnabled) => set({ webSearchEnabled }),
       setTavilyApiKey: (tavilyApiKey) =>

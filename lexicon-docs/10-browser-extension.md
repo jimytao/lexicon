@@ -1,6 +1,6 @@
 # 10 — 浏览器扩展（MV3）设计文档
 
-> **状态：P-1 / P0 / P1 / P2 全部完成（§8）。下一步 P3 扩展独有交互（选词气泡 / 右键菜单）。**
+> **状态：P-1 / P0 / P1 / P2 / P3 全部完成（§8）。下一步 P4 打磨与分发。**
 > 唯一外部依赖：词库尚需上传到 GitHub Release tag `dictionaries`（见 §3 末）。
 > 本文件是扩展形态的权威设计来源。
 > 开始实现后，每阶段完成需回填「实现状态」并同步 `AGENT.md` 与 `06-crossplatform.md`。
@@ -62,10 +62,10 @@
         ▲ sendMessage
         │
 ┌─ Content Script（扩展独有交互）──────────────────────┐
-│  • 选中 / 双击单词 → Shadow DOM 浮层气泡              │
-│  • L1 结果向 SW 要（自身无词库）                      │
-│  • 「深入」→ 打开 Side Panel 跑 AI Lookup / Pure Core │
-│  • 可选：抓当前页正文作为 AI 上下文                   │
+│  • 选中文字 → Shadow DOM 悬浮按钮（只是开关，不显结果）│
+│  • 词经 storage.session 交给侧栏，结果一律侧栏渲染    │
+│  • 机会主义 sidePanel.open()，失败也不丢词            │
+│  ✗ 不抓页面正文喂 AI（隐私分量不同，见 §9）           │
 └──────────────────────────────────────────────────────┘
 
 ┌─ Offscreen Document（可选，P3+）─────────────────────┐
@@ -434,12 +434,64 @@ node scripts/gen-dictionary-manifest.mjs   # → dist-dictionaries/manifest.json
 > 大量依赖切词时 abort 旧请求。这条坏掉的表现是「切词后旧结果覆盖新结果」，
 > 属于极难排查的那类 bug，所以用测试锁住而不是靠手测。
 
-### P3 — 扩展独有交互
-- [ ] Content script 选词气泡（**Shadow DOM 隔离**，勿污染宿主页样式）
-- [ ] 右键菜单「用 Lexicon 查」+ 快捷键
-- [ ] 设置子集镜像到 `chrome.storage.local` + 变更广播
-- [ ] 可选：页面正文注入为 AI 上下文
-- [ ] 验收：任意网页选词出 L1；「深入」能带词进侧栏并复用现有缓存分轨
+### P3 — 扩展独有交互 ✅ 已完成（2026-09-09）
+
+**产品决策变更：不做「页内气泡显示结果」，改为「悬浮按钮把词送进侧栏」。**
+
+用户决策（2026-09-09）。理由：
+1. AI 结果信息量大（四条渲染路径 + 模组拖拽 + Chat 追问），气泡要么砍成残废版，
+   要么维护第二套结果 UI —— 违背 §0「复用 App.tsx，不 fork」。
+2. 气泡浮在宿主页上，要跟别人的 CSS / z-index / 滚动容器搏斗；侧栏是我们自己的 origin。
+3. 侧栏 ~400px 正好是既有移动端布局，零适配。
+
+→ 按钮**只是一个开关**，不显示任何结果。
+
+- [x] `pendingQuery` 通道（`chrome.storage.session`）+ `App.tsx` 订阅
+- [x] 右键菜单「Lexicon: "%s"」+ `lookup-selection` 快捷键（默认 Alt+L）
+- [x] Content script 悬浮按钮（Shadow DOM 隔离）
+- [x] 设置镜像 `extensionMirror.ts` → `chrome.storage.local`（开关 + 深浅色）
+- [x] 设置页开关「网页选词按钮」+ i18n zh/en
+- [x] `manifest` 加 `contextMenus` / `content_scripts` / `commands`
+- [x] `vite.config.content.ts` —— content script 必须单文件 IIFE，Rollup 一次构建
+      只能出一种 format，所以拆成第二次构建（`build:ext` 串联两次）
+- [ ] 页面正文注入为 AI 上下文 —— **刻意不做**，见 §9
+
+**关键设计：不依赖程序化打开侧栏**
+
+`chrome.sidePanel.open()` 要求用户手势，但手势穿过 `sendMessage` 到 SW 时可能被消耗，
+右键菜单点击也不总被认作手势（[Chromium 355266358](https://issues.chromium.org/issues/355266358)、
+[415694848](https://issues.chromium.org/issues/415694848)）。
+因此把「捕获词」与「打开侧栏」解耦：**先写 `storage.session`，再机会主义尝试 `open()`**。
+`open()` 失败也不丢词 —— 用户下次打开侧栏时 `takePendingQuery()` 会补查。
+
+**复用而非新写**：`pendingQuery` 最终调用 `App.tsx` 的 `handleWordSelect` ——
+那就是「按 Enter / 点联想词」的同一个入口，所以中文反查、词组/句子分流、缓存分轨、
+历史双轨、Profile 事件全部自动继承，P3 没有新增任何查词逻辑。
+
+**P3 实测**（harness 模拟宿主页：注入 chrome 桩 + 加载真实构建的 `content.js`）
+
+| 项 | 结果 |
+|---|---|
+| 悬浮按钮定位 | ✅ 选区 right/bottom + 6px，实测 113→118.75 / 172→178.47 |
+| Shadow DOM 双向隔离 | ✅ 宿主页 `button{background:red!important;border:6px dashed}` 与 `*{box-sizing:content-box!important}` 均未渗入（我们仍是 `border-box`、白底 1px）；宿主自己的按钮也未被我们改变 |
+| 选区保护 | ✅ `mousedown` 被 `preventDefault`，点击后选区仍在（否则拿不到文字） |
+| 点击 → 消息 | ✅ 发出 `{kind:'lookupSelection', text:'bank'}`，按钮随即收起 |
+| 侧栏已开：实时到达 | ✅ 搜索框填入 `bank`，结果含词库 L1 + AI 板块；pendingQuery 被清除 |
+| 侧栏冷启动：预置词 | ✅ 挂载即查 `river`，pendingQuery 被清除（这就是 `open()` 被拒时的路径） |
+| 开关镜像 | ✅ 设置页切换 → `chrome.storage.local` 双向同步；关闭后立即隐藏且新选区不再出现 |
+| 深浅色镜像 | ✅ `isDark` → 按钮底色 `#0A0A0A`（我们的 dark token，**不跟宿主页**） |
+| 非扩展平台 | ✅ Web 构建：两个扩展专属设置行都不出现、无重复分隔线、无注入、无 console 错误 |
+| 回归 | ✅ 261 测试通过；Web 与扩展构建均无错误 |
+
+> **实现期修正的三处**
+> 1. **滚动不再隐藏按钮，改为重新定位**。原先 `scroll`/`resize` 直接 `hide()`，
+>    但触控板选完词常有惯性滚动，按钮会在用户点到之前消失。现在只在
+>    「选区消失 / 点了别处 / 按 Esc」时收起。
+> 2. **Shadow root 用 `open` 而非 `closed`**。`closed` 买到的隔离很有限
+>    （恶意页面本来就能直接移除宿主元素），却让线上问题完全无法诊断。
+>    样式隔离靠 Shadow DOM 本身，与 mode 无关。
+> 3. **视口尺寸为 0 时跳过边界收敛**。隐藏标签页会让 `innerWidth/innerHeight` 报 0，
+>    原先的收敛式会算出负值再被夹到左上角，看起来像「按钮跑到角落」。
 
 ### P4 — 打磨与分发
 - [ ] `updateStore` Tauri updater 改动态 import / alias 空实现
@@ -456,3 +508,21 @@ node scripts/gen-dictionary-manifest.mjs   # → dist-dictionaries/manifest.json
 - **Image Tab 是否进扩展？** 侧栏内的图片模式交互价值待评估，倾向 P3 之后再定。
 - **词库托管带宽**：GitHub Release 是否够用；用户量上来后是否需要 CDN。
 - **Firefox 支持？** MV3 在 Firefox 上 `sidePanel`（对应 `sidebar_action`）与 `declarativeNetRequest` 行为有差异。当前设计**只面向 Chromium**。
+
+### P3 期新增的已决 / 待议
+
+- **选词后查到哪一层 —— 已定：完全等同用户手打一遍。**
+  走既有 `defaultSearchMode`，**不加专用设置项**。用户明确要求「不要搞得更复杂」；
+  且悬浮按钮必须点一下才触发，那一下就是确认，不存在误触发 AI 花钱的问题。
+- **页面正文注入为 AI 上下文 —— 已定：不做（本批次）。**
+  它会把用户浏览的页面内容发到第三方 AI 端点，隐私分量与查词完全不同。
+  若将来要做，必须是独立的、默认关闭的明确 opt-in，不能混在选词功能里。
+- **站点黑名单**：`content.ts` 已能消费 `lexicon:siteBlocklist`，但**还没有 UI**。
+  P3c 再补（需要「当前站点禁用」入口，而侧栏拿不到当前 tab 的 hostname，
+  得经 SW 查 `chrome.tabs`）。
+- **网页选词是否该计入历史与 Profile 诊断？** 目前**计入**（因为复用了
+  `handleWordSelect`）。边浏览边选词可能冲掉 100 条历史，也会推高
+  Profile 诊断的 12 次累计、稀释学习画像。尚未观测到实际影响，先不动 ——
+  但这是 P3c 要盯的第一件事。
+- **iframe 内选词无按钮**：`all_frames: false`，只在主框架注入。
+  iframe 里选词价值低而注入成本翻倍；若将来有需求再评估。

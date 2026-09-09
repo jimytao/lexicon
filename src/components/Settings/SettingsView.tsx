@@ -28,6 +28,7 @@ import { SETTINGS_CHOICE_ROW_LAYOUT } from '../../utils/settingsChoiceRowLayout'
 import { Accordion } from './Accordion'
 import { ProfileModal } from './ProfileModal'
 import { DictionaryStorageRow } from './DictionaryStorageRow'
+import { SelectionButtonRow } from './SelectionButtonRow'
 import { resetProfile } from '../../services/profile'
 
 
@@ -971,6 +972,8 @@ export function SettingsView() {
             {/* 词库管理（仅扩展；其他平台组件自身返回 null，连带自己的分隔线一起消失，
                 避免留下两条相邻的 RowDivider） */}
             <DictionaryStorageRow />
+
+            <SelectionButtonRow />
 
             <RowDivider />
 

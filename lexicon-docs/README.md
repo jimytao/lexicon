@@ -15,7 +15,7 @@
 | `07-cognitive-and-settings-architecture.md` | 深度认知体系、Mode 3、设置 UI 架构 |
 | `08-ai-learning-system-and-profile.md` | User Profile、Lexicon Memory |
 | `09-ui-ux-design-system.md` | UI/UX 规范（改 UI 必读） |
-| `10-browser-extension.md` | 浏览器扩展（MV3）设计方案 — **P0–P2 已完成，P3 进行中** |
+| `10-browser-extension.md` | 浏览器扩展（MV3）设计方案 — **P0–P3 已完成，P4 进行中** |
 | `CC-INSTRUCTIONS.md` | 历史初始化步骤档案 + 少量持续 Agent 指令 |
 | `scripts/check-doc-sync.sh` | 文档同步检查（开发文件变动是否漏更 docs） |
 

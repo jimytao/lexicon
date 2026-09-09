@@ -45,7 +45,7 @@
 | `lexicon-docs/07-cognitive-and-settings-architecture.md` | 深度认知、Mode 3 (Pure Core)、设置架构 |
 | `lexicon-docs/08-ai-learning-system-and-profile.md` | User Profile、Lexicon Memory |
 | `lexicon-docs/09-ui-ux-design-system.md` | UI/UX 规范、间距、反模式（**改 UI 必读**） |
-| `lexicon-docs/10-browser-extension.md` | 浏览器扩展（MV3）：**P0–P2 已完成，P3 交互层进行中**（动扩展相关代码前必读） |
+| `lexicon-docs/10-browser-extension.md` | 浏览器扩展（MV3）：**P0–P3 已完成，P4 打磨与分发**（动扩展相关代码前必读） |
 | `lexicon-docs/README.md` | docs 目录总览 |
 | `workflow.md`（根目录） | 发版 SOP（版本号、Release Notes、打包） |
 
@@ -72,7 +72,7 @@ Capacitor 8（Android / iOS）
 Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ```
 
-目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）→ 浏览器扩展（MV3 / Chromium，**P0–P2 已完成，`npm run build:ext` → `dist-ext/`；词库远程下载+OPFS，网络走 SW 代理绕 CORS**；见 `10-browser-extension.md`）  
+目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）→ 浏览器扩展（MV3 / Chromium，**P0–P3 已完成，`npm run build:ext` → `dist-ext/`；词库远程下载+OPFS，网络走 SW 代理绕 CORS，网页选词经 pendingQuery 交侧栏**；见 `10-browser-extension.md`）  
 **产品阶段**：多端已可构建；功能迭代以 Web 为开发基准。
 
 ---

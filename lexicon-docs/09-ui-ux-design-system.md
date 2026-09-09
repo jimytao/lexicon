@@ -115,6 +115,21 @@ Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
 
 ---
 
+## 5.1 Content Script UI — 唯一的 Tailwind 豁免（勿"修正"）
+
+浏览器扩展的**悬浮查词按钮**（`src/extension/content.ts`）活在**宿主网页**里，不是我们的页面：
+
+- 我们的 Tailwind 产物不在宿主页中，**utility class 在那里无效**
+- 必须用 **Shadow DOM** 隔离（否则宿主页 CSS 渗进来、我们的样式也漏出去）
+
+因此它是全项目**唯一**允许手写 CSS 的地方 —— 样式字符串注入 shadow root 内。
+
+**这是窄豁免，不是先例**：
+- 取值仍必须照本文档的 token（accent `#6366F1` / dark `#818CF8`、radius `8px`、border `#E2E8F0` / dark `#1F1F1F`）
+- 深浅色跟随**我们自己的**外观设置（经 `chrome.storage.local` 镜像），**不跟宿主页**
+- 除 `content.ts` 外，任何组件出现手写 CSS 仍属违规
+- 实测确认过双向隔离（宿主页的 `!important` 全局样式无法渗入），见 `10-browser-extension.md` §8 P3
+
 ## 6. Agent Directives
 When modifying or creating UI components in Lexicon:
 1. **Always** ensure home empty state has NO extra cards, only Book icon + 2-line centered prompt.
@@ -124,3 +139,5 @@ When modifying or creating UI components in Lexicon:
 5. **Always** use `flex-1 min-w-0 pr-3` on row title containers to ensure clean left-aligned text layout.
 6. **Always** i18n all bottom-nav labels (`nav.dict` / `nav.image` / `nav.settings`).
 7. **Always** use `SectionHeading` (or identical typography) for result-page section titles; never reintroduce decorative dots, emoji headers, or per-module AI badges.
+8. **Do not** "fix" the hand-written CSS in `src/extension/content.ts` into Tailwind utilities — see §5.1; utilities do not work in a host page's Shadow DOM.
+9. **Extension-only settings rows** (`DictionaryStorageRow`, `SelectionButtonRow`) must carry their own divider and return `null` on other platforms — otherwise the Local Data group shows two adjacent `RowDivider`s.

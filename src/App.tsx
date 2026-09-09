@@ -27,6 +27,8 @@ import { decideHistoryClickRoute } from './utils/historyDecisionTree'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DictionaryStatus } from './components/DictionaryStatus'
 import { useDictionaryStore } from './stores/dictionaryStore'
+import { subscribePendingQuery, takePendingQuery } from './services/pendingQuery'
+import { mirrorDark, mirrorSelectionButton } from './services/extensionMirror'
 import { warmupDictionary } from './services/db'
 import { cleanCameraCacheDir } from './services/camera'
 import {
@@ -101,7 +103,11 @@ export function App() {
   useEffect(() => {
     if (!settingsHydrated) return
     const apply = (systemDark: boolean) => {
-      applyDocumentAppearance(resolveDark(appearance, systemDark))
+      const dark = resolveDark(appearance, systemDark)
+      applyDocumentAppearance(dark)
+      // 悬浮按钮活在宿主页里、读不到我们的 localStorage，
+      // 所以深浅色要镜像出去（仅扩展；其他平台是空操作）
+      mirrorDark(dark)
     }
     apply(getSystemPrefersDark())
     void syncNativeWindowTheme(appearance, resolveDark(appearance, getSystemPrefersDark()))
@@ -652,6 +658,37 @@ export function App() {
   // 词库下载/校验中：空态文案让位给进度（非扩展平台此值恒为 false）
   const dictionaryPhase = useDictionaryStore((s) => s.phase)
   const dictionaryBusy = dictionaryPhase !== 'idle' && dictionaryPhase !== 'ready'
+
+  // 网页选词 → 侧栏（仅扩展）。
+  //
+  // 刻意复用 handleWordSelect —— 它就是「按 Enter / 点联想词」的入口，
+  // 所以中文反查、词组/句子分流、缓存分轨、历史双轨、Profile 事件全部自动继承，
+  // 这里不新写任何查词逻辑。
+  const handleWordSelectRef = useRef(handleWordSelect)
+  useEffect(() => {
+    handleWordSelectRef.current = handleWordSelect
+  })
+
+  // 悬浮按钮开关也要镜像给 content script
+  const selectionButtonEnabled = useSettingsStore((s) => s.selectionButtonEnabled)
+  useEffect(() => {
+    if (!settingsHydrated) return
+    mirrorSelectionButton(selectionButtonEnabled)
+  }, [selectionButtonEnabled, settingsHydrated])
+
+  useEffect(() => {
+    const run = (text: string) => {
+      // 词到达时用户可能停在 Image / Settings 页，必须切回查词页否则结果看不见
+      setView('dictionary')
+      void handleWordSelectRef.current(text)
+    }
+    // 侧栏冷启动：消费打开之前积压的词（sidePanel.open 手势被拒时就靠这条）
+    void takePendingQuery().then((text) => {
+      if (text) run(text)
+    })
+    // 侧栏运行期间：后续选词实时到达
+    return subscribePendingQuery(run)
+  }, [])
 
   const showEmptyHome = searchSource === 'none'
     && !wordResult
