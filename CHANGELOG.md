@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 2026-09-14 — Chromium 浏览器扩展（侧栏/划词/OPFS离线词库）+ 义项 AI Insights 稀疏数组防崩溃 (v0.9.21)
+
+### 用户可见
+1. **全新 Chromium 浏览器扩展版（Side Panel 侧边栏）**：支持在 Chrome/Edge 等 Chromium 内核浏览器中以侧边栏形式常驻，查词体验与主 App 保持高度一致（三大模式 Instant / AI Lookup / Pure Core、双语本地词库、AI 深度解析）。
+2. **网页划词与悬浮查词气泡**：在任意网页选中英文单词或句子，弹出快捷查词气泡，点击一键投递至侧边栏查词并自动展开；支持快捷键（Alt+L）直接开启侧栏查词。可在设置中自由开关网页划词悬浮按钮。
+3. **扩展端离线双词库 OPFS 高速缓存**：首次使用通过远程流式下载牛津双解与纯英英词库，并持久化保存在浏览器专属的 OPFS（Origin Private File System）私有文件系统中，后续查词 0 网络依赖、毫秒级离线响应。
+4. **修复义项 AI Insights 稀疏数组与错误持久化 Bug**：针对字典中未自动生成场景解释的底部冷门义项，点击「AI Insights」单条生成后，不再因索引越界导致内存数据稀疏化崩溃（`Cannot read properties of undefined (reading 'zh')`）；修复后读取历史词或已有缓存时会自动净化异常空洞。
+
+### 工程
+- **Manifest V3 构建链路**：新增 `vite.config.extension.ts` 与 `vite.config.content.ts`，构建产物输出至 `dist-ext/`；脚本 `npm run build:ext` 实现一键打包。
+- **扩展专属入口与通信**：新增 `src/entries/sidepanel.tsx`、`src/extension/background.ts` 与 `src/extension/content.ts`；新增 `src/services/pendingQuery.ts` 处理网页选词向侧边栏的通信与消费。
+- **OPFS 词库持久化**：新增 `src/services/db.extension.ts` 注入 OPFS 词库字节与远端分块校验，完全复用 `db.web.ts` 查询核心。
+- **防盗链图片与网络代理**：新增 `src/services/extensionProxy.ts`，由 Service Worker 代理绕过公共图床防盗链与 CORS 限制。
+- **Store 边界判定与缓存净化**：完善 `src/stores/resultStore.ts` 边界判定，防止生成稀疏数组；使用 `Array.from().filter(Boolean)` 净化存量脏缓存；`MeaningList.tsx` 增加防御性判断，并补充单测 `resultStoreSplit.test.ts`。
+
+### 涉及文件
+- sidepanel.html (新)
+- src/entries/sidepanel.tsx (新)
+- src/extension/{background,content}.ts (新)
+- src/services/{db.extension,extensionMirror,extensionProxy,pendingQuery}.ts (新)
+- src/components/{DictionaryStatus,Settings/DictionaryStorageRow,Settings/SelectionButtonRow}.tsx (新)
+- vite.config.{extension,content}.ts (新)
+- scripts/gen-dictionary-manifest.mjs (新)
+- src/components/ResultView/InstantSection/MeaningList.tsx
+- src/stores/{dictionaryStore,resultStore,settingsStore}.ts
+- src/services/{ai,db,db.web,platform}.ts
+- src/stores/resultStoreSplit.test.ts
+- lexicon-docs/10-browser-extension.md (新)
+- CHANGELOG.md
+
 ## 2026-09-07 — Brave Search 适配 + 用户弱点热度引擎全出口注入 + 联网配图轮询兜底 (v0.9.20)
 
 ### 用户可见（User Profile 细化 A + G）
