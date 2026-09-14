@@ -199,3 +199,39 @@ describe('pending flags drive the per-half shimmer', () => {
     expect(st.aiSkeleton).toBeNull()
   })
 })
+
+describe('updateMeaningExtension safety', () => {
+  it('does not create sparse array holes when sense index exceeds existing aiAnalysis meanings', () => {
+    const s = useResultStore.getState()
+    s.setAiAnalysis('plane', {
+      meanings: [
+        { zh: '飞机', scene: { label: '飞行', description: '空中交通' } }
+      ],
+      etymology: { parts: [], story: '', derivedWords: [] },
+      synonyms: [],
+    })
+    // Attempt to enrich index 5 (which does not exist in aiAnalysis.meanings)
+    s.updateMeaningExtension('plane', 5, {
+      scene: { label: '平面', description: '几何学概念' },
+      imageQuery: 'geometric plane',
+    })
+    const st = useResultStore.getState()
+    // Must NOT contain undefined holes in meanings
+    expect(st.aiAnalysis?.meanings.some(m => !m)).toBe(false)
+    expect(st.aiAnalysis?.meanings).toHaveLength(1)
+  })
+
+  it('sanitizes legacy sparse arrays on getCachedAi', () => {
+    const s = useResultStore.getState()
+    const corruptedMeanings: any = [{ zh: 'm0' }]
+    corruptedMeanings[3] = { zh: 'm3' }
+    s.setAiAnalysis('test', {
+      meanings: corruptedMeanings,
+      etymology: { parts: [], story: '', derivedWords: [] },
+      synonyms: [],
+    })
+    const retrieved = s.getCachedAi('test')
+    expect(retrieved?.meanings.some(m => !m)).toBe(false)
+    expect(retrieved?.meanings).toHaveLength(2)
+  })
+})

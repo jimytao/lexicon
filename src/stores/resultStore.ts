@@ -360,14 +360,13 @@ export const useResultStore = create<ResultStore>()(
               ...(ext.scene ? { scene: ext.scene } : {}),
               ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
             }
-          } else {
-            meanings[index] = {
-              zh: '',
-              ...(ext.scene ? { scene: ext.scene } : {}),
-              ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
-            }
+            updatedAi = { ...current, meanings }
           }
-          updatedAi = { ...current, meanings }
+          // If index is out of range (dict has more senses than AI meanings array),
+          // do NOT write to aiAnalysis — it would create a sparse JS array with
+          // undefined holes, causing "Cannot read properties of undefined" crashes
+          // in MeaningList when iterating the meanings.
+          // The scene is still persisted via combinedResult / localScenes below.
         }
 
         let updatedCombined = combined
@@ -380,7 +379,8 @@ export const useResultStore = create<ResultStore>()(
               ...(ext.scene ? { scene: ext.scene } : {}),
               ...(ext.imageQuery ? { imageQuery: ext.imageQuery } : {}),
             }
-          } else {
+          } else if (index < lookupMeanings.length) {
+            // Only fill if index is within array bounds — never create sparse arrays.
             lookupMeanings[index] = {
               zh: '',
               en: '',
@@ -582,8 +582,16 @@ export const useResultStore = create<ResultStore>()(
         if (cache[normalized]) {
           // Touch: move to end
           const updated = { ...cache }
-          const val = updated[normalized]
+          let val = updated[normalized]
           delete updated[normalized]
+          // Sanitize: filter out any empty slots / undefined holes left by legacy sparse-array bug
+          // Note: Array.from turns empty slots into undefined so filter(Boolean) can drop them.
+          if (Array.isArray(val.meanings)) {
+            const cleaned = Array.from(val.meanings).filter(Boolean)
+            if (cleaned.length !== val.meanings.length) {
+              val = { ...val, meanings: cleaned }
+            }
+          }
           updated[normalized] = val
           set({ aiCache: updated })
           return val

@@ -168,6 +168,10 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
       <h2 className="text-[10px] font-black text-foreground-muted/50 uppercase tracking-widest mb-3">{t('meaning.heading')}</h2>
       <div className="space-y-3.5">
         {visible.map((m, i) => {
+          // Defensive guard: meanings array should never contain undefined, but
+          // guard here to prevent a crash if the store was left in an inconsistent
+          // state (e.g. sparse array from a previous bug / stale cache entry).
+          if (!m) return null
           const palette = POS_COLORS[m.pos ?? ''] ?? { bg: '#F3F4F6', text: '#374151', darkBg: '#1F2937', darkText: '#D1D5DB' }
           const badgeBg = darkMode ? palette.darkBg : palette.bg
           const badgeText = darkMode ? palette.darkText : palette.text
