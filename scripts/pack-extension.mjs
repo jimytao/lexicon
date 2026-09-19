@@ -6,8 +6,24 @@ const pkg = JSON.parse(await readFile(resolve('package.json'), 'utf8'))
 const outputPath = resolve('lexicon-extension-' + pkg.version + '.zip')
 await rm(outputPath, { force: true })
 
-const result = spawnSync('tar', ['-a', '-c', '-f', outputPath, '-C', resolve('dist-ext'), '.'], {
-  stdio: 'inherit',
-})
+const distPath = resolve('dist-ext')
+const result = process.platform === 'win32'
+  ? spawnSync(
+      'pwsh.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "Compress-Archive -Path (Join-Path $env:LEXICON_DIST_PATH '*') -DestinationPath $env:LEXICON_OUTPUT_PATH -CompressionLevel Optimal",
+      ],
+      {
+        stdio: 'inherit',
+        env: { ...process.env, LEXICON_DIST_PATH: distPath, LEXICON_OUTPUT_PATH: outputPath },
+      },
+    )
+  : spawnSync('zip', ['-q', '-r', outputPath, '.'], {
+      cwd: distPath,
+      stdio: 'inherit',
+    })
 if (result.status !== 0) process.exit(result.status ?? 1)
 console.log('Created ' + outputPath)
