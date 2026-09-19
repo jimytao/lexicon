@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "build:ext": "tsc -b && vite build --config vite.config.extension.ts && vite build --config vite.config.content.ts"
+    "build:ext": "tsc -b && vite build --config vite.config.extension.ts && vite build --config vite.config.content.ts",
+    "pack:ext": "npm run build:ext && node scripts/pack-extension.mjs"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.0",

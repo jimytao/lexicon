@@ -1,6 +1,6 @@
 # Lexicon
 
-**AI-Powered English Dictionary & Context Comprehension Tool for Desktop & Mobile** | **[中文版](./README.md)**
+**AI-Powered English Dictionary & Context Comprehension Tool for Browser, Desktop & Mobile** | **[中文版](./README.md)**
 
 > 💡 **Not a flashcard app, but a deep reading & context comprehension assistant.**  
 > Lexicon combines **dual offline local dictionaries (Oxford 9th Bilingual + Oxford 10th Monolingual)** with **multimodal AI context analysis**. Instead of force-feeding flashcards or spaced repetition, Lexicon is built for real-world reading, translation, comics, and writing—helping you **instantly look up definitions and deeply understand tone, feel anchors, preposition metaphors, and native speaker usage**.
@@ -66,11 +66,32 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 ### 6. Cross-Platform Coverage
 - **Desktop**: Windows (Tauri v2) / macOS (dmg)
 - **Mobile**: Android (APK) / iOS (Capacitor 8)
-- **Browser Extension**: Chrome / Edge / Chromium (MV3 Side Panel & in-page selection)
+- **Browser Extension**: Chrome / Edge / Chromium (MV3 Side Panel, in-page selection, context menu and Alt+L lookup; source build: npm run pack:ext)
 - **Web**: WASM SQLite offline web app
 
 ---
 
+## 🌐 Browser Extension (Preview)
+
+The Lexicon extension reuses the complete App experience: Dict / Image / Settings and all three modes—Instant, AI Lookup, and Pure Core. It runs in the Chrome/Edge Side Panel, while settings, history, and AI caches stay in browser-local storage.
+
+### Install
+
+1. Download **lexicon-extension-0.9.21.zip** from the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview). This is the only extension file end users need.
+2. Extract the ZIP, then open chrome://extensions or edge://extensions.
+3. Enable Developer mode, choose Load unpacked, and select the extracted folder.
+4. Click the Lexicon toolbar icon to open the Side Panel. On first use, the default bilingual dictionary downloads automatically and then works offline.
+
+> The lexicon.db and lexicon_en.db files in the dictionaries Preview Release are remotely managed dictionary assets; users should not download them manually. lexicon.db is the default English–Chinese dictionary. lexicon_en.db downloads on demand only after switching to monolingual English in Settings.
+
+### Select text on a page
+
+- Select text and click the nearby Lexicon button: the extension opens the Side Panel and starts the lookup.
+- You can also use the Lexicon context-menu item or press Alt+L for the current selection.
+- If Chromium refuses to open the panel because of a page/user-gesture restriction, the query is preserved; clicking the Lexicon toolbar icon resumes it.
+- The selection button can be disabled in Settings. Lexicon reads only text you actively select, never the full page.
+
+---
 ## 📦 Download & Installation
 
 > 🔄 **In-App Auto-Update Notice**:  

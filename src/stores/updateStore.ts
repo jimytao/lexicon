@@ -1,10 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { check } from '@tauri-apps/plugin-updater'
-import { relaunch } from '@tauri-apps/plugin-process'
-import { Filesystem, Directory } from '@capacitor/filesystem'
-import { FileOpener } from '@capawesome-team/capacitor-file-opener'
-import { Device } from '@capacitor/device'
 import { isCapacitor, isTauri } from '../services/platform'
 import { tStatic } from '../i18n'
 
@@ -170,6 +165,7 @@ export const useUpdateStore = create<UpdateState>()(
           // 2. If on Tauri, check native updater
           if (isTauri()) {
             try {
+              const { check } = await import('@tauri-apps/plugin-updater')
               const tauriUpdate = await check()
               if (tauriUpdate) {
                 const tauriComp = compareVersions(tauriUpdate.version, get().currentVersion)
@@ -243,6 +239,7 @@ export const useUpdateStore = create<UpdateState>()(
 
         try {
           if (isTauri()) {
+            const { check } = await import('@tauri-apps/plugin-updater')
             const update = await check()
             if (update) {
               let downloaded = 0
@@ -268,6 +265,10 @@ export const useUpdateStore = create<UpdateState>()(
             }
           } else {
             // Android Capacitor
+            const [{ Device }, { Filesystem, Directory }] = await Promise.all([
+              import('@capacitor/device'),
+              import('@capacitor/filesystem'),
+            ])
             const info = await Device.getInfo()
             if (info.platform !== 'android') {
               // iOS or other: just open URL
@@ -315,8 +316,13 @@ export const useUpdateStore = create<UpdateState>()(
       installUpdate: async () => {
         try {
           if (isTauri()) {
+            const { relaunch } = await import('@tauri-apps/plugin-process')
             await relaunch()
           } else {
+            const [{ Filesystem, Directory }, { FileOpener }] = await Promise.all([
+              import('@capacitor/filesystem'),
+              import('@capawesome-team/capacitor-file-opener'),
+            ])
             const { manifest } = get()
             if (!manifest) return
             const rawVersion = manifest.version.replace(/^v/i, '')
@@ -377,6 +383,10 @@ export const useUpdateStore = create<UpdateState>()(
         try {
           if (!isCapacitor()) return
 
+          const [{ Device }, { Filesystem, Directory }] = await Promise.all([
+            import('@capacitor/device'),
+            import('@capacitor/filesystem'),
+          ])
           const info = await Device.getInfo()
           if (info.platform !== 'android') return
 

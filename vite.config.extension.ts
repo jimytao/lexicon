@@ -19,6 +19,17 @@ const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8')
  * manifest.json 由构建期生成，**版本号从 package.json 注入** ——
  * 与 workflow.md 的「版本号单一来源」约定一致，避免发版时漏改。
  */
+function extensionNativeAlias(): Plugin {
+  return {
+    name: 'lexicon-extension-native-alias',
+    enforce: 'pre',
+    resolveId(source) {
+      if (source === './db.native') return resolve(__dirname, 'src/services/db.extension-build-stub.ts')
+      return null
+    },
+  }
+}
+
 function manifestPlugin(): Plugin {
   return {
     name: 'lexicon-manifest',
@@ -31,8 +42,17 @@ function manifestPlugin(): Plugin {
 
         // 点扩展图标即打开侧栏（行为在 background.ts 里用 setPanelBehavior 设定）
         action: { default_title: 'Lexicon' },
+        icons: {
+          16: 'icons/icon-16.png',
+          32: 'icons/icon-32.png',
+          48: 'icons/icon-48.png',
+          128: 'icons/icon-128.png',
+        },
         side_panel: { default_path: 'sidepanel.html' },
         background: { service_worker: 'background.js', type: 'module' },
+        content_security_policy: {
+          extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+        },
 
         permissions: ['sidePanel', 'storage', 'contextMenus'],
 
@@ -91,12 +111,17 @@ function manifestPlugin(): Plugin {
           source: readFileSync(resolve(wasmDir, file)),
         })
       }
+
+      const iconSource = readFileSync(resolve(__dirname, 'src-tauri/icons/128x128.png'))
+      for (const size of [16, 32, 48, 128]) {
+        this.emitFile({ type: 'asset', fileName: 'icons/icon-' + size + '.png', source: iconSource })
+      }
     },
   }
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), manifestPlugin()],
+  plugins: [extensionNativeAlias(), react(), tailwindcss(), manifestPlugin()],
 
   // 关键：默认的 public/ 里有 70MB 词库，绝不能拷进扩展包。
   // 词库改为首启远程下载至 OPFS（P1，见 §3）。
@@ -104,6 +129,24 @@ export default defineConfig({
   //（P0 验收只要求侧栏渲染空态首页）。P1 需为 sql.js 的 wasm 单独安排产物路径。
   publicDir: false,
 
+  resolve: {
+    alias: {
+      [resolve(__dirname, 'src/services/db.native.ts')]: resolve(__dirname, 'src/services/db.extension-build-stub.ts'),
+      '@capacitor-community/sqlite': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capacitor/core': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capacitor/device': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capacitor/keyboard': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capacitor/preferences': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capacitor/filesystem': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capacitor/camera': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@capawesome-team/capacitor-file-opener': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@tauri-apps/plugin-http': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@tauri-apps/plugin-updater': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@tauri-apps/plugin-process': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@tauri-apps/api/window': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+      '@tauri-apps/api/core': resolve(__dirname, 'src/services/extension-native-stub.ts'),
+    },
+  },
   build: {
     outDir: 'dist-ext',
     emptyOutDir: true,

@@ -292,3 +292,7 @@ Capacitor 的 webview 在 Android 上有时会拦截 HTTPS 请求（证书问题
 ```
 
 iOS 的 ATS（App Transport Security）要求所有请求使用 HTTPS，所有主流 AI API 都满足，无需额外配置。
+
+## Chromium 浏览器扩展
+
+MV3 扩展以 sidepanel.html 复用同一 React App。词典从远程清单下载到 OPFS，联网请求由无状态 Service Worker 代理，content script 只处理用户主动选择的文本。构建使用 npm run build:ext，商店 ZIP 使用 npm run pack:ext；原生 API 在扩展构建中替换为空实现。完整架构见 10-browser-extension.md。

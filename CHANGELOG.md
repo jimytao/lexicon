@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-09-19 — 划词按钮主动打开侧栏 + Extension Preview 文档与分发
+
+- 修复网页划词按钮先等待 storage 写入、导致 Chrome 用户手势过期而无法主动打开 Side Panel 的问题；现在收到点击消息后立即调用 sidePanel.open，并行保存待查词作为失败兜底。
+- 中英文 README 新增 Extension Preview 安装、使用、划词、隐私与自动词库下载说明，明确普通用户只需下载扩展 ZIP，不要手动下载两个 DB。
+- 新增侧栏用户手势顺序契约测试；准备独立 extension-preview Release，避免与 dictionaries 资产频道混淆。
+## 2026-09-19 — 扩展词库 Preview 上线与 MV3 WASM CSP 修复
+
+- 创建 GitHub Preview Release dictionaries，上传双语/英英 SQLite 词库与 SHA-256 manifest。
+- 修复扩展 manifest 缺少 wasm-unsafe-eval，导致 sql.js 被 MV3 CSP 阻止、查询只进历史但不显示结果的问题。
+- 真实 Chromium 诊断确认远程 manifest HTTP 200，并新增扩展 manifest 契约测试。
+## 2026-09-19 — 搜索框回车提交修复
+
+- 修复输入最后一个字符后立即按 Enter 时，可能因 React state 尚未提交而读取旧查询、无法正常搜索的问题；提交时优先读取 textarea 当前值。
+- 输入法仍在组词时，Enter 只确认候选，不再误触发半成品查询。
+## 2026-09-18 — Chromium 扩展 P4 打磨与分发准备
+
+- 将 App 与更新模块中的 Tauri / Capacitor 静态导入改为平台守卫后的动态加载；扩展构建以空实现替换原生模块，避免原生第三方运行时代码进入 MV3 产物。
+- 扩展 manifest 增加应用图标，新增 npm run pack:ext，生成可提交商店的版本化 ZIP。
+- 新增浏览器扩展中英双语隐私与权限说明；workflow.md 增加构建、开发者模式加载、人工验收与商店提交 SOP。
+- P4 自动验证：263 个测试通过；扩展生产构建通过；产物依赖扫描通过。
 ## 2026-09-14 — Chromium 浏览器扩展（侧栏/划词/OPFS离线词库）+ 义项 AI Insights 稀疏数组防崩溃 (v0.9.21)
 
 ### 用户可见

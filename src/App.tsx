@@ -14,8 +14,6 @@ import { PhraseView } from './components/ResultView/PhraseView'
 import { CoreCognitiveView } from './components/ResultView/CoreCognitiveView'
 import { SettingsView } from './components/Settings/SettingsView'
 import { ImageTranslateView } from './components/ImageTranslate'
-import { Keyboard } from '@capacitor/keyboard'
-import { Device } from '@capacitor/device'
 import { useUpdateStore } from './stores/updateStore'
 import { UpdateModal } from './components/Settings/UpdateModal'
 import {
@@ -171,6 +169,7 @@ export function App() {
     const initSafeArea = async () => {
       const isCap = typeof window !== 'undefined' && (window as any).Capacitor
       if (isCap) {
+        const { Device } = await import('@capacitor/device')
         const info = await Device.getInfo()
         if (info.platform === 'android') {
           // If env() is supported but returns 0, it usually means the WebView isn't reporting it.
@@ -530,7 +529,10 @@ export function App() {
     const initKeyboardFix = async () => {
       const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor
       let deviceInfo: any = null
-      if (isCapacitor) deviceInfo = await Device.getInfo()
+      if (isCapacitor) {
+        const { Device } = await import('@capacitor/device')
+        deviceInfo = await Device.getInfo()
+      }
 
       const isLegacyAndroid = isCapacitor && deviceInfo?.platform === 'android' && parseInt(deviceInfo?.osVersion) <= 10
       const isModernAndroid = isCapacitor && deviceInfo?.platform === 'android' && parseInt(deviceInfo?.osVersion) > 10
@@ -573,6 +575,7 @@ export function App() {
 
       if (isCapacitor) {
         try {
+          const { Keyboard } = await import('@capacitor/keyboard')
           const updateScroll = (height: number) => {
             // Modern Android (11+) handles adjustResize natively, often NO JS needed.
             // However, we keep visualViewport logic for iOS and as a safety for modern Android.

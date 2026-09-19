@@ -1,6 +1,6 @@
 # Lexicon
 
-**AI 驱动的桌面与移动端英语深度查词与语境理解工具** | **[English Version](./README_en.md)**
+**AI 驱动的浏览器、桌面与移动端英语深度查词与语境理解工具** | **[English Version](./README_en.md)**
 
 > 💡 **不是背单词软件，而是面向阅读与运用的英语深度助手。**  
 > Lexicon 结合**离线双本地词库（牛津 9 中英双解 + 牛津 10 纯英英）**与**多模态 AI 语境解析**。它不搞死记硬背与强迫复习，而是帮助你在阅读英文书籍、论文、漫画及写作时，**瞬时查询释义，彻底搞懂单词在真实语境中的情感色彩、感觉锚点、介词隐喻与母语者用法**。
@@ -66,11 +66,32 @@
 ### 6. 全平台多端覆盖
 - **桌面端**：Windows (Tauri v2) / macOS (dmg)
 - **移动端**：Android (APK) / iOS (Capacitor 8)
-- **浏览器扩展端**：Chrome / Edge / Chromium（MV3 侧边栏常驻与网页划词）
+- **浏览器扩展端**：Chrome / Edge / Chromium（MV3 侧边栏常驻、网页划词、右键/Alt+L 查词；源码构建：npm run pack:ext）
 - **Web 端**：WASM SQLite 离线运行
 
 ---
 
+## 🌐 浏览器扩展（Preview）
+
+Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 Instant、AI Lookup、Pure Core 三种模式。在 Chrome、Edge 等 Chromium 浏览器中，它以 Side Panel 常驻侧栏运行，设置、历史和 AI 缓存均保存在浏览器本地。
+
+### 安装
+
+1. 从 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview) 下载 **lexicon-extension-0.9.21.zip**。这是普通用户唯一需要下载的扩展文件。
+2. 解压 ZIP；打开 chrome://extensions 或 edge://extensions。
+3. 开启「开发者模式」，点击「加载已解压的扩展」，选择解压后的文件夹。
+4. 点击工具栏 Lexicon 图标打开侧栏。首次使用会自动下载默认的中英双解词库，完成后即可离线查词。
+
+> dictionaries Preview Release 中的 lexicon.db 和 lexicon_en.db 是扩展自动管理的远程词库资产，用户无需手动下载。lexicon.db 是默认中英双解词库；只有在 Settings 切换为英英模式时，扩展才会按需下载 lexicon_en.db。
+
+### 网页划词
+
+- 在网页中选中文字，点击选区旁的 Lexicon 按钮：扩展会打开侧栏并立即查询。
+- 也可以右键选择 Lexicon，或按 Alt+L 查询当前选区。
+- 如果 Chromium 因页面或手势限制未能自动打开侧栏，查询不会丢失；手动点击一次 Lexicon 图标后会继续显示该查询。
+- 可在 Settings 关闭网页选词按钮。扩展只读取用户主动选中的文本，不读取整页正文。
+
+---
 ## 📦 下载安装 (Download & Install)
 
 > 🔄 **软件内自动更新提示 (Auto-Update Notice)**：  

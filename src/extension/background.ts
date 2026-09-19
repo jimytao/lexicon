@@ -37,18 +37,23 @@ chrome.runtime.onInstalled.addListener(() => {
 /**
  * 把词交给侧栏。
  *
- * 顺序很重要：**先写 storage，再尝试开侧栏**。
+ * 顺序很重要：必须在用户手势有效时先启动 sidePanel.open，再异步写 storage。
  * `sidePanel.open()` 的手势要求很脆（见 pendingQuery.ts 头注释），
  * 失败时词已经存住了，用户下次打开侧栏照样会查 —— 功能不会丢。
  */
 async function dispatchSelection(text: string, tabId: number | undefined): Promise<void> {
+  // Start open synchronously while the click's user activation is still alive.
+  // Awaiting storage first makes Chrome reject sidePanel.open().
+  const openPromise = tabId === undefined
+    ? Promise.resolve()
+    : chrome.sidePanel.open({ tabId })
+
   await writePendingQuery(text)
 
-  if (tabId === undefined) return
   try {
-    await chrome.sidePanel.open({ tabId })
+    await openPromise
   } catch (e) {
-    // 侧栏已开时本就无需 open；未开且手势被拒时退化为「下次打开即查」
+    // The query remains pending if Chromium still refuses to open the panel.
     console.debug('[lexicon] sidePanel.open 未成功（已写入待查词，不影响功能）:', e)
   }
 }

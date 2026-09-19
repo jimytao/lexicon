@@ -11,7 +11,7 @@
 
 ## 项目简介
 
-**Lexicon** — 面向中文母语者的英语单词学习工具。  
+**Lexicon** — 面向中文母语者的英语单词学习工具。
 开发者：Julian（中文母语，英语学习者）
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
@@ -45,7 +45,7 @@
 | `lexicon-docs/07-cognitive-and-settings-architecture.md` | 深度认知、Mode 3 (Pure Core)、设置架构 |
 | `lexicon-docs/08-ai-learning-system-and-profile.md` | User Profile、Lexicon Memory |
 | `lexicon-docs/09-ui-ux-design-system.md` | UI/UX 规范、间距、反模式（**改 UI 必读**） |
-| `lexicon-docs/10-browser-extension.md` | 浏览器扩展（MV3）：**P0–P3 已完成，P4 打磨与分发**（动扩展相关代码前必读） |
+| `lexicon-docs/10-browser-extension.md` | 浏览器扩展（MV3）：**P0–P4 已完成，待 Chromium 人工验收与商店提交**（动扩展相关代码前必读） |
 | `lexicon-docs/README.md` | docs 目录总览 |
 | `workflow.md`（根目录） | 发版 SOP（版本号、Release Notes、打包） |
 
@@ -72,7 +72,7 @@ Capacitor 8（Android / iOS）
 Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ```
 
-目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）→ 浏览器扩展（MV3 / Chromium，**P0–P3 已完成，`npm run build:ext` → `dist-ext/`；词库远程下载+OPFS，网络走 SW 代理绕 CORS，网页选词经 pendingQuery 交侧栏**；见 `10-browser-extension.md`）  
+目标平台：Web → Android（Capacitor）→ iOS（Capacitor / Actions）→ PC（Tauri: Windows / macOS）→ 浏览器扩展（MV3 / Chromium，**P0–P4 已完成，`npm run build:ext` → `dist-ext/`；词库远程下载+OPFS，网络走 SW 代理绕 CORS，网页选词经 pendingQuery 交侧栏**；见 `10-browser-extension.md`）
 **产品阶段**：多端已可构建；功能迭代以 Web 为开发基准。
 
 ---
@@ -137,11 +137,11 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 ### 信息渲染顺序（出厂默认；设置可拖拽覆盖）
 
-**AI Lookup（理解与记忆）**  
-释义 → 轻量 coreConcept → 词根 → 助记 → 例句 → 相关词组 → 介词意象 → **释义核对练习** → Chat  
+**AI Lookup（理解与记忆）**
+释义 → 轻量 coreConcept → 词根 → 助记 → 例句 → 相关词组 → 介词意象 → **释义核对练习** → Chat
 
-**Pure Core（母语者用法）**  
-加厚 coreConcept（含 **gloss 短对译** + feelAnchor / emotionalTone）→ 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用（`whenToUse` 含适用心智 / 为何仍选主词）→ 用法场景 → 语域 → **场景造句练习** → Chat  
+**Pure Core（母语者用法）**
+加厚 coreConcept（含 **gloss 短对译** + feelAnchor / emotionalTone）→ 概念树 → **常用介词词组 (`chunks`)** → **其他常用词组 (`collocations`)** → 近义选用（`whenToUse` 含适用心智 / 为何仍选主词）→ 用法场景 → 语域 → **场景造句练习** → Chat
 （以上模组均可在设置中拖拽/开关；旧 `wordChoice` / `nativeMindModel` 仅作缓存兼容。**搭配规则 C**：innit 类尾缀若只会重复概念树句架，AI 可返回空搭配，UI 不展示空卡；实词仍正常出搭配。）
 
 ### Lookup vs Pure Core 认知分轨
@@ -277,8 +277,8 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - `vite.config.ts` dev COEP `require-corp` → `credentialless`（仍解锁 SharedArrayBuffer，但放行公共跨域图；仅 dev，Safari 不支持 `credentialless`，详见文件内注释）。
 - **未验证**：`tauri:dev` 下 Brave 经 Rust 真正取回结果（需真机手测；`cargo build` + 能力校验已过，解析已 curl 对过，漂移有 `console.warn` 兜底，插件失败回退全局 `fetch`）。
 
-此前（v0.9.16）：图像翻译扩展全平台相机拍照（Take Photo）；`src/services/camera.ts` 服务抽象。  
-此前（v0.9.9）：搜索栏与 AI 提问框升级为多行自适应 textarea；Web 搜索开关全站联动。  
+此前（v0.9.16）：图像翻译扩展全平台相机拍照（Take Photo）；`src/services/camera.ts` 服务抽象。
+此前（v0.9.9）：搜索栏与 AI 提问框升级为多行自适应 textarea；Web 搜索开关全站联动。
 更早版本见 `CHANGELOG.md`（发版真相源）。
 
 ### 关键实现备忘
@@ -286,7 +286,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - 存储层：仅经 `DBService`；禁止直调 sql.js / Capacitor SQLite
 - 词库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`
 - Tailwind **v4**（非 v3），配置在 `src/index.css`
-- sql.js **不能**加入 `optimizeDeps.exclude`，否则浏览器无法 import CJS，词库加载失败  
+- sql.js **不能**加入 `optimizeDeps.exclude`，否则浏览器无法 import CJS，词库加载失败
   （注意：部分旧文档示例仍写 `exclude: ['sql.js']`，以本备忘与实际 `vite.config` 为准）
 - `historyStore`：Zustand persist（localStorage），不走 `DBService.addHistory`
 - `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；`searchProvider`（`tavily`\|`brave`）+ `searchApiKeys` 同理；含 `appearance`、`coreModules`、`enableProfileDiagnostic` 等。解析当前联网搜索 Key 用导出的 `resolveSearchApiKey()`；联网是否生效只看 `ai.ts` 的 `webSearchReady()`

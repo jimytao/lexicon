@@ -100,7 +100,9 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
 
   function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault()
-    const finalQuery = query.trim()
+    // Read the DOM value first: a rapid final keystroke + Enter can arrive
+    // before React has committed the controlled state update.
+    const finalQuery = (textareaRef.current?.value ?? query).trim()
     if (!finalQuery) return
 
     if (activeIndex >= 0) {
@@ -126,6 +128,9 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
+      // Enter confirms an IME candidate while composition is active; it must
+      // not also submit a stale/partial query.
+      if (e.nativeEvent.isComposing) return
       e.preventDefault()
       handleSubmit()
       return

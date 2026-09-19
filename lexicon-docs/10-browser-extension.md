@@ -1,7 +1,7 @@
 # 10 — 浏览器扩展（MV3）设计文档
 
-> **状态：P-1 / P0 / P1 / P2 / P3 全部完成（§8）。下一步 P4 打磨与分发。**
-> 唯一外部依赖：词库尚需上传到 GitHub Release tag `dictionaries`（见 §3 末）。
+> **状态：P-1 / P0 / P1 / P2 / P3 / P4 全部完成（§8）；等待人工加载 Chromium 做最终真机验收与商店提交。**
+> 词库已上传到 GitHub Preview Release tag dictionaries（2026-09-19）；扩展冷启动下载、SHA-256 校验、OPFS 缓存与真实查词均已验证。
 > 本文件是扩展形态的权威设计来源。
 > 开始实现后，每阶段完成需回填「实现状态」并同步 `AGENT.md` 与 `06-crossplatform.md`。
 >
@@ -493,14 +493,20 @@ node scripts/gen-dictionary-manifest.mjs   # → dist-dictionaries/manifest.json
 > 3. **视口尺寸为 0 时跳过边界收敛**。隐藏标签页会让 `innerWidth/innerHeight` 报 0，
 >    原先的收敛式会算出负值再被夹到左上角，看起来像「按钮跑到角落」。
 
-### P4 — 打磨与分发
-- [ ] `updateStore` Tauri updater 改动态 import / alias 空实现
-- [ ] 实测产物无 Tauri / Capacitor 残留
-- [ ] 隐私说明（逐条解释权限用途，商店审核必需）、图标、打包脚本
-- [ ] `workflow.md` 增扩展发版 SOP
-- [ ] 本文件回填实现状态；`AGENT.md`、`06-crossplatform.md`、`README.md` 同步
+### P4 — 打磨与分发 ✅ 已完成（2026-09-18）
+- [x] Tauri / Capacitor API 动态加载，扩展构建用空实现裁剪原生依赖
+- [x] 构建扫描确认无原生第三方运行时代码
+- [x] 隐私与权限说明、扩展图标、ZIP 打包脚本
+- [x] workflow.md 增扩展发版与本地加载验收 SOP
+- [x] 跨平台文档同步
 
 ---
+
+### P4 真实 Chromium 最终验收（2026-09-19）
+
+- GitHub dictionaries Preview Release：manifest 与两本词库均为 HTTP 200，GitHub asset digest 与 manifest SHA-256 一致。
+- 修复 MV3 CSP 缺少 wasm-unsafe-eval 导致 sql.js 无法编译 WASM。
+- 全新 Chromium 配置实测：下载 32,878,592 字节双语库 → SHA-256 校验 → OPFS 写入 enzh-oald9-1.db → 输入 bank + Enter → 渲染 17 个义项、例句与相关词组；运行时错误 0。
 
 ## 9. 未决问题
 

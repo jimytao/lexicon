@@ -416,3 +416,13 @@ Remove-Item -Recurse -Force src-tauri\target -ErrorAction SilentlyContinue
 
 - **保持环境整洁**：工作区不残留已发布二进制；临时 release notes **不要** commit。  
 - **密钥**：`.env.release` / `*.key` / `*.keystore` 永不入库。
+
+---
+
+## 5. 浏览器扩展（Chromium MV3）发版 SOP
+
+1. 确认 dictionaries Release 已包含 manifest.json、lexicon.db、lexicon_en.db，且 SHA-256 一致。
+2. 执行 npm test、npm run build:ext；确认 dist-ext 内 manifest、icons、content.js、background.js、sidepanel.html 和 WASM 均存在。
+3. 执行 npm run pack:ext，生成 lexicon-extension-X.Y.Z.zip；ZIP 根目录必须直接包含 manifest.json。
+4. 在 chrome://extensions 或 edge://extensions 开启开发者模式，加载已解压的 dist-ext。验证词库下载、查词、网页选词、右键菜单、Alt+L、AI、Tavily/Brave、删除并重下词库。
+5. 商店提交使用 docs/browser-extension-privacy.md 的权限与隐私说明；上传前仍须通过 §0 文档门禁。
