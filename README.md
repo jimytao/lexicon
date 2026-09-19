@@ -75,12 +75,37 @@
 
 Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 Instant、AI Lookup、Pure Core 三种模式。在 Windows 和 macOS 的 Chrome、Edge 等 Chromium 浏览器中，它以 Side Panel 常驻侧栏运行，设置、历史和 AI 缓存均保存在浏览器本地。
 
-### 安装
+### 下载与首次安装
 
-1. 从 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview) 下载与你的系统对应的文件：Windows / Linux 下载 **lexicon-extension-0.9.21.zip**；macOS 下载 **lexicon-extension-0.9.21-macos.zip**。两者功能相同，不需要下载任何 DB 文件。
-2. 解压 ZIP；打开 chrome://extensions 或 edge://extensions。
-3. 开启「开发者模式」，点击「加载已解压的扩展」，选择解压后的文件夹。
-4. 点击工具栏 Lexicon 图标打开侧栏。首次使用会自动下载默认的中英双解词库，完成后即可离线查词。
+1. 打开 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview)，在页面底部的 **Assets** 中下载最新版本：
+   - Windows / Linux：`lexicon-extension-<版本号>.zip`
+   - macOS：`lexicon-extension-<版本号>-macos.zip`
+   - 两个包的功能相同；不要下载 Source code，也不需要下载任何 `.db` 文件。
+2. 将 ZIP **完整解压**到一个准备长期保留的文件夹，例如 `Documents/Lexicon Extension`。不要直接在压缩包内打开，也不要在安装后删除或移动这个文件夹。
+3. 打开浏览器扩展管理页：
+   - Chrome：在地址栏输入 `chrome://extensions`
+   - Edge：在地址栏输入 `edge://extensions`
+4. 打开页面右上角或左侧的「开发者模式（Developer mode）」。
+5. 点击「加载已解压的扩展（Load unpacked）」，选择刚才解压出来、**里面直接能看到 `manifest.json`** 的文件夹。如果外面还有一层同名目录，请进入内层后再选择。
+6. 安装成功后，可将 Lexicon 固定到浏览器工具栏；点击 Lexicon 图标即可打开侧栏。首次查词会自动下载默认中英双解词库，下载完成后即可离线使用 Instant 查词。
+
+### 更新 Extension
+
+Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩展内会显示更新提示；点击提示会直接打开上面的 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview)。当前 Preview 采用开发者模式安装，不会像商店扩展一样自动替换文件。
+
+1. 从 Release 的 **Assets** 下载对应系统的最新版 ZIP，并完整解压。
+2. 推荐用新版解压目录替换旧版目录，同时保持最终目录位置不变；不要把新版文件零散混入旧目录。
+3. 回到 `chrome://extensions` 或 `edge://extensions`，找到 Lexicon，点击卡片上的「重新加载（Reload）」按钮。
+4. 打开 Lexicon 侧栏，在 **Settings → 当前版本** 确认版本号已经更新。
+
+浏览器本地保存的设置、历史、AI 缓存和已下载词库存放在扩展自己的存储空间。使用相同的 Extension ID 正常覆盖并重新加载时会继续保留；如果先删除扩展再重新安装，浏览器可能同时清除这些本地数据，因此更新时不要点击「移除」。
+
+### 常见安装问题
+
+- 浏览器提示找不到 manifest：选择错了目录，请选择其中直接包含 `manifest.json` 的那一层。
+- 更新后仍显示旧版本：确认已覆盖完整目录，并在扩展管理页点击「重新加载」；必要时关闭后重新打开侧栏。
+- 扩展目录被删除或移动后失效：把目录放回原位置，或在扩展管理页移除失效项后重新「加载已解压的扩展」。
+- 公司或学校管理的浏览器可能禁用开发者模式；这种策略限制无法由 Lexicon 绕过。
 
 > dictionaries Preview Release 中的 lexicon.db 和 lexicon_en.db 是扩展自动管理的远程词库资产，用户无需手动下载。lexicon.db 是默认中英双解词库；只有在 Settings 切换为英英模式时，扩展才会按需下载 lexicon_en.db。
 
@@ -98,11 +123,11 @@ Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 In
 > **Windows** 桌面端与 **Android** 移动端原生支持**软件内自动检测与一键升级**。当发布新版本时，软件会自动弹出更新提醒，您也可在 Settings 设置页面直接检查更新并在线升级，无需每次重新手动下载安装包。
 
 ### Windows
-- **[Lexicon_0.9.21_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_x64-setup.exe)**（推荐，支持软件内自动更新）
-- **[Lexicon_0.9.21_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_x64_en-US.msi)**（MSI 安装包）
+- **[Lexicon_0.9.22_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64-setup.exe)**（推荐，支持软件内自动更新）
+- **[Lexicon_0.9.22_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64_en-US.msi)**（MSI 安装包）
 
-### macOS 桌面端 (v0.9.21)
-- **[Lexicon_0.9.21_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
+### macOS 桌面端 (v0.9.22)
+- **[Lexicon_0.9.22_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
 
 > **⚠️ macOS 首次打开提示“无法验证开发者”或“已损坏”解决方案（三种方式）：**  
 > 由于独立开源版本未购买 Apple 付费开发者 ID 证书，macOS Gatekeeper 默认会阻挡未签名应用。请按以下任意一种方法解除限制：
@@ -113,9 +138,9 @@ Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 In
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android 手机 / 平板 (v0.9.21)
-- **[Lexicon_0.9.21_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
-- 更多架构分包请见 [Releases v0.9.21](https://github.com/jimytao/lexicon/releases/tag/v0.9.21)。
+### Android 手机 / 平板 (v0.9.22)
+- **[Lexicon_0.9.22_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
+- 更多架构分包请见 [Releases v0.9.22](https://github.com/jimytao/lexicon/releases/tag/v0.9.22)。
 
 ### iOS（自签侧载）
 1. 安装 **[Sideloadly](https://sideloadly.io/)**（需官网版 iTunes + iCloud）。

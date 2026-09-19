@@ -7,9 +7,10 @@ const outputPath = resolve('lexicon-extension-' + pkg.version + '.zip')
 await rm(outputPath, { force: true })
 
 const distPath = resolve('dist-ext')
+const psExe = spawnSync('where.exe', ['pwsh.exe']).status === 0 ? 'pwsh.exe' : 'powershell.exe'
 const result = process.platform === 'win32'
   ? spawnSync(
-      'pwsh.exe',
+      psExe,
       [
         '-NoProfile',
         '-NonInteractive',

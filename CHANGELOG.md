@@ -1,9 +1,28 @@
 # CHANGELOG
 
+## 2026-09-19 — 义项母语语感增强 + Android 10 慢设备 AI 结果补全修复 (v0.9.22)
+
+### 用户可见
+1. **义项场景解释更接近母语者真实语感**：`scene.description` 不再只描述“在什么场景使用”，现在必须说明该义项通常的褒贬色彩、说话者态度、母语者对动机/状态的推断，以及典型限制、代价或社会暗示。若确有容易混淆的近义词，给出可观察的选词边界；没有可靠区别时不强行造对比。
+2. **不再强行美化负面或克制含义**：Prompt 明确区分“词本身的通常倾向”与“特定语境可能产生的解读”，不再把克制、匮乏、算计或自我牺牲统一包装成积极品质。中英双语和 Monolingual 英文模式均使用同一契约。
+3. **修复旧 Android 手机首次搜索缺场景/图片按钮**：在 Android 10 等较慢 WebView 上，Lookup 与 Pure Core 并行请求的任意一半先返回时，旧逻辑会过早将整体标为 `success`，并用空壳代替尚未返回的另一半；表现为 AI 已生成并写入缓存，当前页面却不显示场景解释、`imageQuery` 或 View Image 按钮，必须从历史重新进入才恢复。
+4. **Lookup / Core 按页面独立结算**：两个半请求现在分别维护 loading / success / failure；Core 先到不再覆盖 Lookup 的当前展示，第二半到达后原子合并完整结果，单边失败也不再被另一边的成功掩盖。词组/句子查询同步适配。
+5. **冷启动搜索增加 hydration 门闩**：发起词典与 AI 查询前，先等待 Settings 与 Result Cache 恢复完成，避免老设备在应用刚打开时读到默认模组、默认联网搜图开关或未恢复缓存。
+6. **Extension 更新提示直达正确下载页**：浏览器扩展继续跟随根目录版本号检测更新；发现新版后使用扩展专属提示，点击直接打开长期维护的 `extension-preview` GitHub Release，不再误入 Android APK 或桌面端安装流程。
+7. **Extension 安装与升级说明补全**：README 详细说明 Windows/Linux 与 macOS 包的选择、完整解压、Chrome/Edge 开发者模式、选择含 `manifest.json` 的目录、重新加载升级及本地数据保留注意事项。
+
+### 工程
+- 新增 `src/services/aiPromptGuidance.ts`，统一管理 Lookup 合并请求、分离请求与单义项 AI Insights 的母语语感契约，消除三条 prompt 路径的规则漂移。
+- `resultStore` 新增 `aiFailedHalves`，与 `aiPendingHalves` 组成单边状态机；只有 Lookup 真实结果到达时才更新 `aiFullResult` / `aiAnalysis`，不再将 Core-first 的占位结果写入 Lookup 展示。
+- `App.tsx` 为 Lookup / Core 计算独立页面状态，并在 `handleWordSelect` 读取词典或 AI 设置前等待 Zustand persist hydration。
+- 新增慢顺序与 hydration 契约测试，覆盖 Core-first → Lookup 补全 `scene` / `imageQuery`、单边失败以及冷启动立即搜索。全量 274 个测试与生产构建通过。
+- Extension 运行时版本改为读取 `chrome.runtime.getManifest().version`；更新操作固定跳转 `extension-preview` Release，扩展生产构建验证通过。
+
 ## 2026-09-19 — macOS Chromium 扩展兼容与独立下载包
 
 - 扩展 manifest 增加 macOS 专用 `Command+Shift+L` 划词快捷键，Windows / Linux 继续使用 `Alt+L`。
 - Extension Preview Release 新增明确命名的 macOS ZIP；中英文 README 与 Release 说明补充 Chrome / Edge 的 macOS 安装步骤和平台下载指引。
+- 修复 Windows 扩展 ZIP 包内路径分隔符不兼容的问题；打包脚本现在统一写入正斜杠路径，避免解压后出现带反斜杠的异常文件名或目录层级，保证 Chrome / Edge “加载已解压的扩展程序”可直接识别。
 
 ## 2026-09-19 — 划词按钮主动打开侧栏 + Extension Preview 文档与分发
 

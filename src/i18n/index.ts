@@ -114,6 +114,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'aifull.queryLabel': 'AI 查询',
     'aifull.youEntered': '你输入的是',
     'aifull.culturalContext': '文化背景 & 趣味百科',
+    'aifull.halfFailed': '这一页的 AI 结果加载失败，请重试',
     // Phrase Exercises
     'phraseEx.heading': '练习',
     'phraseEx.scenario': '场景',
@@ -301,10 +302,13 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     // Update Modal
     'update.title': '软件版本更新',
     'update.desc': 'Lexicon 已推出新版本。更新可确保您获得最新的 AI 模型支持与性能优化。',
+    'update.extensionTitle': '浏览器扩展版本更新',
+    'update.extensionDesc': 'Lexicon 扩展有新版本。打开 GitHub Extension Release 下载最新版 ZIP，并按 README 指引覆盖更新。',
     'update.recentRelease': '最新版本',
     'update.skipVersion': '跳过此版本',
     'update.dismiss': '暂不更新',
     'update.updateNow': '立即更新',
+    'update.openExtensionRelease': '打开 Extension Release',
     'update.downloading': '正在下载更新...',
     'update.downloadComplete': '下载完成',
     'update.installRelaunch': '安装并重启应用',
@@ -572,6 +576,7 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     'aifull.queryLabel': 'AI Query',
     'aifull.youEntered': 'You entered',
     'aifull.culturalContext': 'Cultural Context',
+    'aifull.halfFailed': 'This AI result failed to load. Please retry.',
     // Phrase Exercises
     'phraseEx.heading': 'Practice',
     'phraseEx.scenario': 'Scenario',
@@ -759,10 +764,13 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
     // Update Modal
     'update.title': 'Software Update',
     'update.desc': 'A new version of Lexicon is available. Updating ensures you have the latest AI models and performance fixes.',
+    'update.extensionTitle': 'Browser Extension Update',
+    'update.extensionDesc': 'A new Lexicon extension is available. Open the GitHub Extension Release, download the latest ZIP, and follow the README to update.',
     'update.recentRelease': 'Recent Release',
     'update.skipVersion': 'Skip this version',
     'update.dismiss': 'Dismiss',
     'update.updateNow': 'Update Now',
+    'update.openExtensionRelease': 'Open Extension Release',
     'update.downloading': 'Downloading Update...',
     'update.downloadComplete': 'Download Complete',
     'update.installRelaunch': 'Install & Relaunch',

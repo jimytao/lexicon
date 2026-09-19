@@ -75,12 +75,37 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 
 The Lexicon extension reuses the complete App experience: Dict / Image / Settings and all three modes—Instant, AI Lookup, and Pure Core. It runs in the Chrome/Edge Side Panel on Windows and macOS, while settings, history, and AI caches stay in browser-local storage.
 
-### Install
+### Download & First Installation
 
-1. Download the file for your system from the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview): **lexicon-extension-0.9.21.zip** for Windows / Linux, or **lexicon-extension-0.9.21-macos.zip** for macOS. They provide the same features; do not download any DB files.
-2. Extract the ZIP, then open chrome://extensions or edge://extensions.
-3. Enable Developer mode, choose Load unpacked, and select the extracted folder.
-4. Click the Lexicon toolbar icon to open the Side Panel. On first use, the default bilingual dictionary downloads automatically and then works offline.
+1. Open the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview), and download the latest version for your system under **Assets**:
+   - Windows / Linux: `lexicon-extension-<version>.zip`
+   - macOS: `lexicon-extension-<version>-macos.zip`
+   - Both packages have the same features; do not download Source code or any `.db` files.
+2. **Extract the ZIP completely** into a permanent folder, such as `Documents/Lexicon Extension`. Do not run directly inside the archive, and do not move or delete this folder after installation.
+3. Open your browser's extension management page:
+   - Chrome: Navigate to `chrome://extensions`
+   - Edge: Navigate to `edge://extensions`
+4. Turn on **Developer mode** (top-right or left sidebar).
+5. Click **Load unpacked**, and select the extracted folder that **directly contains `manifest.json`**. If there is an outer folder of the same name, open it and select the inner folder.
+6. Once loaded, pin Lexicon to your browser toolbar; click the Lexicon icon to open the Side Panel. On first search, it will automatically download the default bilingual dictionary for offline Instant lookup.
+
+### Updating Extension
+
+The extension version tracks the main Lexicon releases. When an update is detected, the extension will display an in-app notice; clicking it opens the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview). Because preview builds are installed unpacked, browsers cannot auto-replace local files.
+
+1. Download the latest ZIP for your system from the Release **Assets**, and extract it completely.
+2. Replace your previous extracted directory with the new one while keeping the folder path unchanged; do not loosely mix new files into the old directory.
+3. Return to `chrome://extensions` or `edge://extensions`, find Lexicon, and click the **Reload** button on the extension card.
+4. Open the Lexicon Side Panel, and verify the new version in **Settings → Current Version**.
+
+Locally saved settings, search history, AI cache, and downloaded dictionaries reside in the extension's dedicated storage. They will be preserved across directory replacements as long as the extension is reloaded under the same extension ID; do not click "Remove" unless you intend to reset local data.
+
+### Troubleshooting Installation
+
+- Browser cannot find manifest: Check your selected folder; choose the directory directly containing `manifest.json`.
+- Version does not update after replacing files: Verify files were replaced, and click **Reload** in the extensions manager; restart the Side Panel if necessary.
+- Extension corrupted or folder missing: Move the folder back to its original path, or remove the broken entry and click **Load unpacked** again.
+- Managed enterprise/school browsers may disable Developer mode by policy, which cannot be bypassed by Lexicon.
 
 > The lexicon.db and lexicon_en.db files in the dictionaries Preview Release are remotely managed dictionary assets; users should not download them manually. lexicon.db is the default English–Chinese dictionary. lexicon_en.db downloads on demand only after switching to monolingual English in Settings.
 
@@ -98,11 +123,11 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.21_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.21_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.22_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.22_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.21)
-- **[Lexicon_0.9.21_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.22)
+- **[Lexicon_0.9.22_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -113,9 +138,9 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.21)
-- **[Lexicon_0.9.21_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.21/Lexicon_0.9.21_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.21](https://github.com/jimytao/lexicon/releases/tag/v0.9.21).
+### Android (v0.9.22)
+- **[Lexicon_0.9.22_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.22](https://github.com/jimytao/lexicon/releases/tag/v0.9.22).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).

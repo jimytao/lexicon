@@ -14,6 +14,7 @@ import { isExtension, isTauri } from './platform'
 import { buildProfilePromptContext } from './profile'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
+import { buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
 import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult } from '../types'
 
@@ -223,9 +224,7 @@ function getSystemPrompt(
     ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'"
     : "（情景前缀）中文释义"
   const sceneLabel = monolingualWord ? "2-4 word English context tag" : "2-4字的情景标签"
-  const sceneDesc = monolingualWord
-    ? "2-4 sentences from a native speaker's perspective: what this meaning concretely IS or evokes (a physical thing, place, moment — paint a picture), when/where it naturally appears in real life, and what it feels like or sounds like in context. NOT a grammar note. NOT just 'used when X'."
-    : "2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述（如'用于表示……的情况'）。"
+  const sceneDesc = buildNativeSceneDescription(monolingualWord)
   const partMeaning = monolingualWord ? "meaning in English" : "中文含义（来源语言）"
   const anchorNote = monolingualWord 
     ? "1 sentence in English: how this anchor word embodies the root meaning, helping association"
@@ -294,9 +293,8 @@ ${schema}
 Rules:
 - meanings array length must match the number of meanings provided in the user message
 - MUST set senseIndex (1 for [Sense 1], 2 for [Sense 2], etc.). Output meanings matching the exact input sense order.
-${includeSemantic ? (monolingualWord
-    ? `- scene is REQUIRED for EVERY meaning — never omit it. scene.description must be a vivid native-speaker mini-picture (2-4 sentences): what the thing/moment IS, where it lives, what it feels like. NOT a grammar usage note. NOT "used when X".`
-    : `- scene是每个义项的必填字段，一个都不能省略。scene.description必须是有画面感的母语者视角（2-4句）：这个东西/场景是什么、在哪里出现、带着什么感受。禁止写成功能性用法说明（如"用于……时"）。`) : ''}
+${includeSemantic ? `${monolingualWord ? '- scene is REQUIRED for EVERY meaning — never omit it.' : '- scene是每个义项的必填字段，一个都不能省略。'}
+${buildNativeSceneRules(monolingualWord)}` : ''}
 ${isEnabled('etymology') ? `- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)
 - For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 ${monolingualWord ? 'English' : 'Chinese'} sentence: how the anchor word embodies the root meaning)
 - For pure prefixes/suffixes (e.g. in-, -tion, -ual): omit sourceForm, anchor, anchorNote
@@ -899,9 +897,7 @@ function getFullLookupPrompt(
   const meaningsZhDescription = isMono ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'" : "中文释义"
   const meaningsEnDescription = "English definition (or original language equivalent)"
   const sceneLabel = isMono ? "2-4 word English context tag" : "2-4字情景标签"
-  const sceneDesc = isMono
-    ? "2-4 sentences from a native speaker's perspective: what this meaning concretely IS or evokes (a physical thing, place, moment — paint a picture), when/where it naturally appears in real life, and what it feels like or sounds like in context. NOT a grammar note. NOT just 'used when X'."
-    : "2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述（如'用于表示……的情况'）。"
+  const sceneDesc = buildNativeSceneDescription(isMono)
   const partMeaning = isMono ? "meaning in English" : "含义"
   const anchorNote = isMono ? "1 sentence in English: how this anchor word embodies the root meaning, helping association" : "1句话中文：此词如何体现词根，帮助联想"
   const storyDesc = isMono ? "in English" : `1-2句话说明${lang !== 'en' && lang !== 'zh' ? '词汇构成/来源' : '词根词缀/来源'}`
@@ -1048,7 +1044,8 @@ ${isCore ? `- Do NOT fill a full dictionary meanings wall for English input (mea
 ${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase, meaning, mindHint }; never bare strings or N/A. mindHint = how this phrase grows from rootCore only (not whole-word emotion).' : ''}
 - PRIORITY for Pure Core: coreConcept > conceptGraph > prep chunks > other collocations > synonyms > usageScenes > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency) — dictionary-style glosses, not scene essays.
 - coreConcept: LIGHT memory anchor (short image + short unifying line). Do NOT invent nativeMindModel, conceptGraph, or wordChoiceContrast.
-- scene is REQUIRED for EVERY meaning in the meanings array — never omit it for any sense, even rare ones. scene.description must be a vivid native-speaker mini-picture (2-4 sentences): what the thing/moment/place concretely IS, where it lives in real life, what it feels like. NOT a grammar note. NOT just "used when X".${isMono ? '' : ' 禁止写成"用于……时"这类功能性描述。'}
+- scene is REQUIRED for EVERY meaning in the meanings array — never omit it for any sense, even rare ones.
+${buildNativeSceneRules(isMono)}
 - PRIORITY for Lookup: coreConcept > meanings/scenes > etymology > examples.`}
 - For abbreviations, explain what each letter stands for.
 - If the input is CHINESE: 
@@ -2286,9 +2283,7 @@ export async function enrichSingleMeaning(
   const isMono = config.monolingualWord
 
   const sceneLabel = isMono ? '2-4 word English context tag' : '2-4字的情景标签'
-  const sceneDesc = isMono
-    ? "2-4 sentences from a native speaker's perspective: what this meaning concretely IS or evokes (a physical thing, place, moment — paint a picture), when/where it naturally appears in real life, and what it feels like or sounds like in context. NOT a grammar note. NOT just 'used when X'."
-    : '2-4句中文，以母语者视角写：这个义项具体指的是什么东西或什么场景（画面感，而非字典解释），母语者在什么具体时刻/地点会用到它，以及使用这个词时带着什么感受或氛围。禁止写成纯功能性描述。'
+  const sceneDesc = buildNativeSceneDescription(isMono)
 
   const roleDesc = isMono
     ? 'You are a professional English vocabulary analyst for learners who prefer English-only explanations.'
@@ -2312,6 +2307,7 @@ Return ONLY a valid JSON object. No markdown code fences. No explanation. No pre
 
 Rules:
 - description must be conversational and vivid, NOT dictionary-style
+${buildNativeSceneRules(isMono)}
 - imageQuery MUST be a concrete English noun phrase (3-6 words) depicting this specific sense
 - Never output anything outside the JSON object${isMono ? '\n- ALL output text must be in English only.' : ''}`
 

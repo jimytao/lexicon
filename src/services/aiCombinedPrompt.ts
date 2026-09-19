@@ -9,6 +9,8 @@
  * Schema: { "lookup": { ...AiFullResult fields }, "core": { ...AiFullResult fields } }
  */
 
+import { buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
+
 export interface CombinedPromptOptions {
   lookupModules: Array<{ id: string; enabled: boolean }>
   coreModules: Array<{ id: string; enabled: boolean }>
@@ -60,9 +62,7 @@ export function buildCombinedWordPrompt({
       : '词典式中文对译：等价词/义项 + 一句义核，如「难为情的；在意别人看法的 — 过分在意自己给人的印象」。禁止只写情景散文'
   const lookupEnDesc = isZh ? 'English candidate word/phrase' : (isMono ? 'English sense paraphrase (lexical, not a scene essay)' : 'English definition (lexical)')
   const sceneLabel = isMono ? '2-4 word English context tag' : '2-4字情景标签'
-  const sceneDesc = isMono
-    ? '1-3 sentences in English: when this meaning occurs, tone, and how it differs'
-    : '1-3句口语化中文，解释这个含义在什么情境下使用'
+  const sceneDesc = buildNativeSceneDescription(isMono)
   const exZh = isMono ? 'English meaning / explanation' : '中文翻译'
 
   let lookupSchema = `"correctForm": "corrected spelling (fix typos if any)",
@@ -266,6 +266,8 @@ The JSON must follow this exact schema:
 }
 
 Rules:
+- lookup.scene is REQUIRED for every lookup meaning when the input is not Chinese.
+${!isZh ? buildNativeSceneRules(isMono) : ''}
 ${chineseInputRule}
 - BOTH sections share the same input word — they are two perspectives on the SAME word.
 - lookup = "understand & remember": focus on lexical meanings (gloss first), etymology, examples, light core concept.

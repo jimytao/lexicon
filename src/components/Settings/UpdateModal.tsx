@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useUpdateStore } from '../../stores/updateStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useT } from '../../i18n'
+import { isExtension } from '../../services/platform'
 
 interface UpdateModalProps {
   onClose?: () => void
@@ -12,6 +13,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
   const appLanguage = useSettingsStore((s) => s.appLanguage)
   const t = useT()
   const [isIgnored, setIsIgnored] = useState(false)
+  const extension = isExtension()
 
   if (!manifest) return null
 
@@ -43,8 +45,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </div>
-            <h3 className="text-xl font-black tracking-tight text-foreground">{t('update.title')}</h3>
-            <p className="text-foreground-muted text-xs leading-relaxed">{t('update.desc')}</p>
+            <h3 className="text-xl font-black tracking-tight text-foreground">{t(extension ? 'update.extensionTitle' : 'update.title')}</h3>
+            <p className="text-foreground-muted text-xs leading-relaxed">{t(extension ? 'update.extensionDesc' : 'update.desc')}</p>
           </div>
 
           {/* Version & Notes */}
@@ -116,7 +118,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ onClose }) => {
                     onClick={startDownload}
                     className="flex-[2] h-12 rounded-xl font-bold text-xs uppercase tracking-wider bg-accent text-white hover:opacity-90 active:scale-95 transition-all shadow-md shadow-accent/20 cursor-pointer"
                   >
-                    {t('update.updateNow')}
+                    {t(extension ? 'update.openExtensionRelease' : 'update.updateNow')}
                   </button>
                 </>
               ) : isReady ? (

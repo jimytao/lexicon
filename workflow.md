@@ -145,6 +145,10 @@ Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前
 - **`package.json`**: `"version": "X.X.X"`
 - **`src/stores/updateStore.ts`**: `currentVersion: 'X.X.X'` (**非常关键**，决定了 App 内部显示的构建版本)
 
+### 浏览器扩展 (Chromium MV3)
+- 扩展 `manifest.json` 由 `vite.config.extension.ts` 在构建时生成，版本号直接取自 **`package.json`**，不需要另外手改 manifest。
+- `scripts/pack-extension.mjs` 同样从 `package.json` 生成 `lexicon-extension-X.X.X.zip`；因此必须先滚动版本，再执行 `npm run pack:ext`。
+
 ### 桌面端 (Tauri)
 - **`src-tauri/tauri.conf.json`**: `"version": "X.X.X"`
 - **`src-tauri/Cargo.toml`**: `version = "X.X.X"`
@@ -268,13 +272,45 @@ Gradle 在 `signingConfigs.release` 中签名；输出在 `android/app/build/out
 - `.github/workflows/ios-build.yml`：自动编译并把 `Lexicon.ipa` 挂载到 GitHub Release。
 - `.github/workflows/macos-build.yml`：自动编译 Tauri macOS 通用安装包（`Lexicon_${V}_universal.dmg` / `.app.zip`）并挂载到 GitHub Release。
 
-### 3.5 构建后硬门禁（正式发版必跑）
-
-在写完 `version.json`、准备好 5 个 APK 根目录拷贝之后、**任何 push / tag / gh release 之前**：
+### 3.4 Chromium 浏览器扩展
 
 ```powershell
+$V = "X.X.X"
+npm test
+npm run pack:ext
+
+# 当前 manifest 同时定义 Windows/Linux 的 Alt+L 与 macOS 的 Command+Shift+L，
+# 两个平台包内容相同，macOS 另存一份只是为了 Release 下载指引更清楚。
+Copy-Item "lexicon-extension-$V.zip" "lexicon-extension-$V-macos.zip" -Force
+```
+
+构建后必须确认：
+
+1. `dist-ext/manifest.json` 中的 `version` 等于 `$V`。
+2. `dist-ext/` 包含 `manifest.json`、`sidepanel.html`、`background.js`、`content.js`、`icons/` 与 `sql-wasm/`。
+3. ZIP 根目录直接包含 `manifest.json`，不能多套一层 `dist-ext/`。
+4. ZIP 内部路径必须使用 `/`，不能把 Windows 反斜杠写进文件名。
+5. `dictionaries` Release 已包含 `manifest.json`、`lexicon.db`、`lexicon_en.db`，且 SHA-256 与 manifest 一致。
+
+人工验收：在 `chrome://extensions` 或 `edge://extensions` 开启开发者模式，加载已解压的 `dist-ext/`，验证首次词库下载、查词、网页划词、右键菜单、`Alt+L`、AI、Tavily/Brave，以及删除后重下词库。macOS 发布前还需真机验证 `Command+Shift+L`。
+
+### 3.5 构建后硬门禁（正式发版必跑）
+
+在写完 `version.json`、准备好 5 个 APK 与 2 个 Extension ZIP 之后、**任何 push / tag / gh release 之前**：
+
+```powershell
+$V = "X.X.X"
 .\scripts\release\Assert-ReleaseGates.ps1 -Version $V
 # exit 1 → 立刻停，禁止上传
+
+# Extension 产物门禁（Assert-ReleaseGates 目前只检查原生 App 产物）
+$ext = "lexicon-extension-$V.zip"
+$extMac = "lexicon-extension-$V-macos.zip"
+if (-not (Test-Path $ext) -or -not (Test-Path $extMac)) { throw "Extension ZIP missing — STOP." }
+$entries = tar -tf $ext
+if ($entries -notcontains 'manifest.json') { throw "Extension ZIP root has no manifest.json — STOP." }
+$manifest = Get-Content dist-ext\manifest.json -Raw | ConvertFrom-Json
+if ($manifest.version -ne $V) { throw "Extension manifest version mismatch — STOP." }
 ```
 
 ---
@@ -348,7 +384,7 @@ git push origin "v$V"
 
 ## 6. 创建 GitHub Release 并上传全架构产物
 
-**前置**：§5 已 push；`Assert-ReleaseGates.ps1` 仍为通过状态；APK 已在仓库根目录。
+**前置**：§5 已 push；`Assert-ReleaseGates.ps1` 仍为通过状态；APK 与两个 Extension ZIP 已在仓库根目录。
 
 **更新日志整合**（临时，勿 commit）：
 
@@ -371,10 +407,22 @@ gh release create "v$V" -t "Lexicon v$V" -F release_notes.txt `
   "Lexicon_${V}_arm64-v8a_signed.apk" `
   "Lexicon_${V}_armeabi-v7a_signed.apk" `
   "Lexicon_${V}_x86_signed.apk" `
-  "Lexicon_${V}_x86_64_signed.apk"
+  "Lexicon_${V}_x86_64_signed.apk" `
+  "lexicon-extension-${V}.zip" `
+  "lexicon-extension-${V}-macos.zip"
 ```
 
 若 Release 已用空资产创建，可改为 `gh release upload "v$V" ...`。
+
+README 的扩展下载链接指向长期 `extension-preview` Release，所以正式版 Release 上传后，还必须同步这个分发入口：
+
+```powershell
+gh release upload "extension-preview" `
+  "lexicon-extension-${V}.zip" `
+  "lexicon-extension-${V}-macos.zip"
+```
+
+> 资产名带版本号，通常不需要 `--clobber`。如果重发同一版扩展，必须先确认覆盖的正是目标版本，再使用 `--clobber`。
 
 ## 7. 最终核验 (Final Verification)
 
@@ -387,7 +435,9 @@ $V = "X.X.X"
 
 # 远程资产
 gh release view "v$V" --json assets --jq '.assets[].name'
-# 期望至少含：x64-setup.exe、x64_en-US.msi、5 个 apk；稍后出现 Lexicon.ipa
+# 期望至少含：x64-setup.exe、x64_en-US.msi、5 个 apk、2 个 extension zip；稍后出现 Lexicon.ipa
+gh release view "extension-preview" --json assets --jq '.assets[].name'
+# 期望包含本版的 2 个 extension zip
 
 # iOS & macOS Actions
 gh run list --workflow=ios-build.yml --limit 1
@@ -397,6 +447,9 @@ gh run list --workflow=macos-build.yml --limit 1
 核对清单：
 - [ ] `version.json` 的 `version` / `url` / `signature` 与本版 `.sig` 一致，无 BOM，`is_major` 符合用户意图（默认 false）  
 - [ ] GitHub Release 含 Windows + Android 产物  
+- [ ] GitHub Release 含 `lexicon-extension-$V.zip` + `lexicon-extension-$V-macos.zip`，两者 ZIP 根目录均直接含 `manifest.json`
+- [ ] `extension-preview` Release 也已同步本版两个 ZIP，README 的长期下载入口可用
+- [ ] Chrome / Edge 加载 `dist-ext/` 验收通过；macOS 快捷键如未真机验证，必须明确向用户说明
 - [ ] iOS 与 macOS workflows 触发成功且产物挂上（或已向用户说明仍在构建）  
 - [ ] 向用户回报 Release URL  
 
@@ -408,6 +461,7 @@ gh run list --workflow=macos-build.yml --limit 1
 ```powershell
 $V = "X.X.X"
 Remove-Item "Lexicon_${V}_*.apk" -Force -ErrorAction SilentlyContinue
+Remove-Item "lexicon-extension-${V}.zip", "lexicon-extension-${V}-macos.zip" -Force -ErrorAction SilentlyContinue
 Remove-Item release_notes.txt, release_notes_zh.md, release_notes_en.md -Force -ErrorAction SilentlyContinue
 cd android; .\gradlew.bat clean; cd ..
 # 建议彻底释放空间（下次 tauri:build 会较慢）：
@@ -416,13 +470,3 @@ Remove-Item -Recurse -Force src-tauri\target -ErrorAction SilentlyContinue
 
 - **保持环境整洁**：工作区不残留已发布二进制；临时 release notes **不要** commit。  
 - **密钥**：`.env.release` / `*.key` / `*.keystore` 永不入库。
-
----
-
-## 5. 浏览器扩展（Chromium MV3）发版 SOP
-
-1. 确认 dictionaries Release 已包含 manifest.json、lexicon.db、lexicon_en.db，且 SHA-256 一致。
-2. 执行 npm test、npm run build:ext；确认 dist-ext 内 manifest、icons、content.js、background.js、sidepanel.html 和 WASM 均存在。
-3. 执行 npm run pack:ext，生成 lexicon-extension-X.Y.Z.zip；ZIP 根目录必须直接包含 manifest.json。
-4. 在 chrome://extensions 或 edge://extensions 开启开发者模式，加载已解压的 dist-ext。验证词库下载、查词、网页选词、右键菜单、Alt+L、AI、Tavily/Brave、删除并重下词库。
-5. 商店提交使用 docs/browser-extension-privacy.md 的权限与隐私说明；上传前仍须通过 §0 文档门禁。

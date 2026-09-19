@@ -53,6 +53,7 @@ function freshStore() {
     aiStatus: 'idle',
     aiError: null,
     aiPendingHalves: { lookup: false, core: false },
+    aiFailedHalves: { lookup: false, core: false },
     aiIsPartial: false,
     aiSkeleton: null,
     aiCache: {},
@@ -175,6 +176,46 @@ describe('pending flags drive the per-half shimmer', () => {
 
     s.commitCombinedHalf('run', 'core', fullResult(), 'normal')
     expect(useResultStore.getState().aiPendingHalves).toEqual({ lookup: true, core: false })
+  })
+
+  it('does not replace the lookup display with an empty shell when core lands first', () => {
+    const s = useResultStore.getState()
+    s.beginCombined('run', 'normal', 'word')
+    s.applyQuerySkeleton('run', skeleton, 'word')
+
+    s.commitCombinedHalf('run', 'core', fullResult({
+      meanings: [],
+      coreConcept: { image: 'forward motion' },
+    }), 'normal')
+
+    const partial = useResultStore.getState()
+    expect(partial.aiPendingHalves).toEqual({ lookup: true, core: false })
+    expect(partial.aiFullResult?.meanings[0]?.zh).toBe('跑')
+
+    s.commitCombinedHalf('run', 'lookup', fullResult({
+      meanings: [{
+        senseIndex: 1,
+        zh: '跑',
+        en: 'to move fast on foot',
+        scene: { label: '跑步', description: '向前快速移动' },
+        imageQuery: 'person running outdoors',
+      }],
+    }), 'normal')
+
+    const complete = useResultStore.getState()
+    expect(complete.aiPendingHalves).toEqual({ lookup: false, core: false })
+    expect(complete.aiAnalysis?.meanings[0]?.scene?.label).toBe('跑步')
+    expect(complete.aiAnalysis?.meanings[0]?.imageQuery).toBe('person running outdoors')
+  })
+
+  it('tracks a failed half independently from a successful half', () => {
+    const s = useResultStore.getState()
+    s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf('run', 'core', fullResult(), 'normal')
+    s.settleCombinedHalf('lookup')
+
+    expect(useResultStore.getState().aiFailedHalves).toEqual({ lookup: true, core: false })
+    expect(useResultStore.getState().aiPendingHalves).toEqual({ lookup: false, core: false })
   })
 
   it('an error clears both so nothing shimmers forever', () => {

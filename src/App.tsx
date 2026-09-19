@@ -59,6 +59,18 @@ function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
 type AppView = 'dictionary' | 'translate' | 'settings'
 type SearchSource = 'local' | 'ai-full' | 'phrase' | 'none'
 
+/**
+ * Old Android WebViews can take noticeably longer to restore persisted stores.
+ * A search started before that point would read default modules/API settings and
+ * could paint a partial result that only became complete after a history revisit.
+ */
+async function ensureSearchStateHydrated(): Promise<void> {
+  const pending: Promise<unknown>[] = []
+  if (!useSettingsStore.persist.hasHydrated()) pending.push(Promise.resolve(useSettingsStore.persist.rehydrate()))
+  if (!useResultStore.persist.hasHydrated()) pending.push(Promise.resolve(useResultStore.persist.rehydrate()))
+  if (pending.length > 0) await Promise.all(pending)
+}
+
 export function App() {
   const t = useT()
   const [view, setView] = useState<AppView>('dictionary')
@@ -154,7 +166,11 @@ export function App() {
     lastScrollTopRef.current = 0
   }, [view])
 
-  const { wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult, combinedResult, combinedPhraseResult, aiStatus, aiError } = useResultStore()
+  const {
+    wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult,
+    combinedResult, combinedPhraseResult, aiStatus, aiError,
+    aiPendingHalves, aiFailedHalves,
+  } = useResultStore()
   const { selectWord } = useSearch()
   const { triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
@@ -327,6 +343,7 @@ export function App() {
   }
 
   async function handleWordSelect(word: string, fromHistory = false) {
+    await ensureSearchStateHydrated()
     scrollToTop()
     localWordSnapshotRef.current = null
     const nw = normalizeQuery(word)
@@ -657,6 +674,17 @@ export function App() {
 
   const showPhraseView = searchSource === 'phrase'
   const showAiFullView = searchSource === 'ai-full'
+  const lookupStatus = aiPendingHalves.lookup
+    ? 'loading'
+    : aiFailedHalves.lookup
+      ? 'error'
+      : aiStatus
+  const coreStatus = aiPendingHalves.core
+    ? 'loading'
+    : aiFailedHalves.core
+      ? 'error'
+      : aiStatus
+  const splitError = aiError ?? t('aifull.halfFailed')
   // 任意默认模式：无查询、无结果时一律显示小书空态（不被 Core 空壳抢走）
   // 词库下载/校验中：空态文案让位给进度（非扩展平台此值恒为 false）
   const dictionaryPhase = useDictionaryStore((s) => s.phase)
@@ -758,8 +786,8 @@ export function App() {
                   <PhraseView
                     phrase={query}
                     phraseResult={mode === 'core' ? (combinedPhraseResult?.core ?? phraseResult) : phraseResult}
-                    aiStatus={aiStatus}
-                    aiError={aiError}
+                    aiStatus={mode === 'core' ? coreStatus : lookupStatus}
+                    aiError={(mode === 'core' ? aiFailedHalves.core : aiFailedHalves.lookup) ? splitError : aiError}
                     onRetry={handleRetry}
                     onGoToSettings={() => setView('settings')}
                   />
@@ -768,8 +796,8 @@ export function App() {
                     word={query}
                     aiFullResult={combinedResult?.core ?? aiFullResult}
                     dictWordResult={searchSource === 'local' ? wordResult : null}
-                    aiStatus={aiStatus}
-                    aiError={aiError}
+                    aiStatus={coreStatus}
+                    aiError={aiFailedHalves.core ? splitError : aiError}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
@@ -778,8 +806,8 @@ export function App() {
                   <AiFullView
                     word={query}
                     aiFullResult={combinedResult?.lookup ?? aiFullResult}
-                    aiStatus={aiStatus}
-                    aiError={aiError}
+                    aiStatus={lookupStatus}
+                    aiError={aiFailedHalves.lookup ? splitError : aiError}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
@@ -789,8 +817,8 @@ export function App() {
                     wordResult={wordResult}
                     relatedPhrases={relatedPhrases}
                     aiAnalysis={aiAnalysis}
-                    aiStatus={aiStatus}
-                    aiError={aiError}
+                    aiStatus={mode === 'ai' ? lookupStatus : aiStatus}
+                    aiError={mode === 'ai' && aiFailedHalves.lookup ? splitError : aiError}
                     mode={mode}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}

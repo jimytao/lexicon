@@ -23,6 +23,7 @@ export type CombinedHalf = 'lookup' | 'core'
 
 /** Which halves of a split combined request are still in flight. */
 export interface PendingHalves { lookup: boolean; core: boolean }
+export interface FailedHalves { lookup: boolean; core: boolean }
 
 interface CombinedDraft<T> {
   key: string
@@ -72,6 +73,8 @@ interface ResultStore {
   aiError: string | null
   /** Split-call progress: which halves are still in flight (v0.9.15). */
   aiPendingHalves: PendingHalves
+  /** Split-call failures are tracked per half so one successful tab cannot mask the other. */
+  aiFailedHalves: FailedHalves
   /** True while the displayed result is only the stage-1 skeleton preview. */
   aiIsPartial: boolean
   /** Stage-1 skeleton for the active query (display only, never cached). */
@@ -143,6 +146,7 @@ export const useResultStore = create<ResultStore>()(
       aiStatus: 'idle',
       aiError: null,
       aiPendingHalves: NO_PENDING,
+      aiFailedHalves: NO_PENDING,
       aiIsPartial: false,
       aiSkeleton: null,
       aiCache: {},
@@ -164,6 +168,7 @@ export const useResultStore = create<ResultStore>()(
             aiStatus: 'idle', 
             aiError: null,
             aiPendingHalves: NO_PENDING,
+            aiFailedHalves: NO_PENDING,
             aiIsPartial: false,
             aiSkeleton: null,
           })
@@ -200,6 +205,7 @@ export const useResultStore = create<ResultStore>()(
           aiSkeleton: null,
           aiIsPartial: false,
           aiPendingHalves: { lookup: true, core: true },
+          aiFailedHalves: NO_PENDING,
         })
       },
 
@@ -259,16 +265,23 @@ export const useResultStore = create<ResultStore>()(
           if (keys.length > CACHE_LIMIT) delete combinedCache[keys[0]]
         }
 
+        const displayPatch = wordDraft.lookup
+          ? {
+              aiFullResult: lookup,
+              aiAnalysis: aiFullToAnalysis(lookup),
+            }
+          : {}
+
         set({
           aiFullCache: fullCache,
           combinedCache,
           combinedResult: { lookup, core },
-          aiFullResult: lookup,
-          aiAnalysis: aiFullToAnalysis(lookup),
+          ...displayPatch,
           aiStatus: 'success',
           aiError: null,
           aiIsPartial: !complete,
           aiPendingHalves: { ...get().aiPendingHalves, [half]: false },
+          aiFailedHalves: { ...get().aiFailedHalves, [half]: false },
         })
       },
 
@@ -297,23 +310,28 @@ export const useResultStore = create<ResultStore>()(
           if (keys.length > CACHE_LIMIT) delete combinedPhraseCache[keys[0]]
         }
 
+        const displayPatch = phraseDraft.lookup ? { phraseResult: lookup } : {}
+
         set({
           phraseCache: pCache,
           combinedPhraseCache,
           combinedPhraseResult: { lookup, core },
-          phraseResult: lookup,
+          ...displayPatch,
           aiStatus: 'success',
           aiError: null,
           aiIsPartial: !complete,
           aiPendingHalves: { ...get().aiPendingHalves, [half]: false },
+          aiFailedHalves: { ...get().aiFailedHalves, [half]: false },
         })
       },
 
       settleCombinedHalf: (half) => {
         const pending = { ...get().aiPendingHalves, [half]: false }
+        const failed = { ...get().aiFailedHalves, [half]: true }
         const anyLanded = Boolean(wordDraft?.lookup || wordDraft?.core || phraseDraft?.lookup || phraseDraft?.core)
         set({
           aiPendingHalves: pending,
+          aiFailedHalves: failed,
           // Both halves failed and nothing ever rendered — leave partial off so the
           // caller's setAiError produces a clean error state instead of a stuck shimmer.
           aiIsPartial: anyLanded ? get().aiIsPartial : false,
@@ -486,6 +504,7 @@ export const useResultStore = create<ResultStore>()(
         aiError,
         aiStatus: 'error',
         aiPendingHalves: NO_PENDING,
+        aiFailedHalves: { lookup: true, core: true },
         aiIsPartial: false,
       }),
 
@@ -505,6 +524,7 @@ export const useResultStore = create<ResultStore>()(
           aiAnalysis: aiFullToAnalysis(combinedResult.lookup),
           aiStatus: 'success',
           aiPendingHalves: NO_PENDING,
+          aiFailedHalves: NO_PENDING,
           aiIsPartial: false,
           aiSkeleton: null,
         })
@@ -523,6 +543,7 @@ export const useResultStore = create<ResultStore>()(
           phraseResult: combinedPhraseResult.lookup,
           aiStatus: 'success',
           aiPendingHalves: NO_PENDING,
+          aiFailedHalves: NO_PENDING,
           aiIsPartial: false,
           aiSkeleton: null,
         })
@@ -624,7 +645,7 @@ export const useResultStore = create<ResultStore>()(
         }
         return null
       },
-      clearCache: () => { wordDraft = null; phraseDraft = null; return set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
+      clearCache: () => { wordDraft = null; phraseDraft = null; return set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiFailedHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
       clearCacheOnly: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {} }),
       evictCacheEntry: (key) => {
         const normalized = normalizeQuery(key)
@@ -644,7 +665,7 @@ export const useResultStore = create<ResultStore>()(
           return { aiCache, aiFullCache, phraseCache, combinedCache, combinedPhraseCache }
         })
       },
-      reset: () => { wordDraft = null; phraseDraft = null; return set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
+      reset: () => { wordDraft = null; phraseDraft = null; return set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiFailedHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
     }),
     { 
       name: 'lexicon-results',

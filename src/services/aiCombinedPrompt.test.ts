@@ -100,6 +100,28 @@ describe('buildCombinedWordPrompt — schema structure', () => {
     expect(prompt).toContain('"meanings"')
     expect(prompt).toContain('"examples"')
   })
+
+  it('requires native valence, inference, and honest near-synonym boundaries in meaning scenes', () => {
+    const bilingualPrompt = buildCombinedWordPrompt({
+      lookupModules: LOOKUP_MODULES,
+      coreModules: CORE_MODULES,
+      lang: 'en',
+    })
+    expect(bilingualPrompt).toContain('母语语感契约')
+    expect(bilingualPrompt).toMatch(/褒义、贬义、中性/)
+    expect(bilingualPrompt).toMatch(/动机\/状态/)
+    expect(bilingualPrompt).toMatch(/不要硬造对比/)
+
+    const monolingualPrompt = buildCombinedWordPrompt({
+      lookupModules: LOOKUP_MODULES,
+      coreModules: CORE_MODULES,
+      lang: 'en',
+      monolingualWord: true,
+    })
+    expect(monolingualPrompt).toContain('NATIVE NUANCE CONTRACT')
+    expect(monolingualPrompt).toMatch(/usual valence and speaker stance/i)
+    expect(monolingualPrompt).toMatch(/Do not manufacture a contrast/i)
+  })
 })
 
 // ── Chinese input handling ────────────────────────────────────────────────────
@@ -199,4 +221,3 @@ describe('buildCombinedPhrasePrompt — schema structure', () => {
     expect(prompt).toMatch(/ALL output text must be in English only/i)
   })
 })
-

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { isCapacitor, isTauri } from '../services/platform'
+import { isCapacitor, isExtension, isTauri } from '../services/platform'
 import { tStatic } from '../i18n'
 
 function compareVersions(v1: string, v2: string): number {
@@ -68,6 +68,15 @@ const UPDATE_URLS = [
   'https://gcore.jsdelivr.net/gh/jimytao/lexicon@master/version.json'
 ]
 
+const EXTENSION_RELEASE_URL = 'https://github.com/jimytao/lexicon/releases/tag/extension-preview'
+
+function getCurrentVersion(): string {
+  if (isExtension()) {
+    return chrome.runtime.getManifest().version
+  }
+  return '0.9.22' // Should match package.json for native/web builds
+}
+
 async function fetchManifestWithFallback(): Promise<UpdateManifest> {
   const results = await Promise.allSettled(
     UPDATE_URLS.map(async (url) => {
@@ -117,7 +126,7 @@ export const useUpdateStore = create<UpdateState>()(
       status: 'idle',
       progress: 0,
       manifest: null,
-      currentVersion: '0.9.21', // Should match package.json
+      currentVersion: getCurrentVersion(),
       error: null,
       hasSeenBadge: false,
       lastChecked: 0,
@@ -234,6 +243,16 @@ export const useUpdateStore = create<UpdateState>()(
       startDownload: async () => {
         const { status, manifest } = get()
         if (status !== 'available' || !manifest) return
+
+        // Preview extensions are installed as unpacked ZIPs, so the browser cannot
+        // replace them automatically. Send users to the stable extension release
+        // page, where README-style install/update instructions and the latest ZIPs
+        // live, instead of entering the native APK/Tauri download flow.
+        if (isExtension()) {
+          window.open(EXTENSION_RELEASE_URL, '_blank', 'noopener,noreferrer')
+          set({ isModalOpen: false })
+          return
+        }
 
         set({ status: 'downloading', progress: 0 })
 
