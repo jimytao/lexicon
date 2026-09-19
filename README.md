@@ -66,18 +66,18 @@
 ### 6. 全平台多端覆盖
 - **桌面端**：Windows (Tauri v2) / macOS (dmg)
 - **移动端**：Android (APK) / iOS (Capacitor 8)
-- **浏览器扩展端**：Chrome / Edge / Chromium（MV3 侧边栏常驻、网页划词、右键/Alt+L 查词；源码构建：npm run pack:ext）
+- **浏览器扩展端**：Windows / macOS 上的 Chrome、Edge 与其他 Chromium 浏览器（MV3 侧边栏常驻、网页划词、右键/快捷键查词；源码构建：npm run pack:ext）
 - **Web 端**：WASM SQLite 离线运行
 
 ---
 
 ## 🌐 浏览器扩展（Preview）
 
-Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 Instant、AI Lookup、Pure Core 三种模式。在 Chrome、Edge 等 Chromium 浏览器中，它以 Side Panel 常驻侧栏运行，设置、历史和 AI 缓存均保存在浏览器本地。
+Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 Instant、AI Lookup、Pure Core 三种模式。在 Windows 和 macOS 的 Chrome、Edge 等 Chromium 浏览器中，它以 Side Panel 常驻侧栏运行，设置、历史和 AI 缓存均保存在浏览器本地。
 
 ### 安装
 
-1. 从 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview) 下载 **lexicon-extension-0.9.21.zip**。这是普通用户唯一需要下载的扩展文件。
+1. 从 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview) 下载与你的系统对应的文件：Windows / Linux 下载 **lexicon-extension-0.9.21.zip**；macOS 下载 **lexicon-extension-0.9.21-macos.zip**。两者功能相同，不需要下载任何 DB 文件。
 2. 解压 ZIP；打开 chrome://extensions 或 edge://extensions。
 3. 开启「开发者模式」，点击「加载已解压的扩展」，选择解压后的文件夹。
 4. 点击工具栏 Lexicon 图标打开侧栏。首次使用会自动下载默认的中英双解词库，完成后即可离线查词。
@@ -87,7 +87,7 @@ Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 In
 ### 网页划词
 
 - 在网页中选中文字，点击选区旁的 Lexicon 按钮：扩展会打开侧栏并立即查询。
-- 也可以右键选择 Lexicon，或按 Alt+L 查询当前选区。
+- 也可以右键选择 Lexicon；Windows / Linux 按 `Alt+L`，macOS 按 `Command+Shift+L` 查询当前选区。
 - 如果 Chromium 因页面或手势限制未能自动打开侧栏，查询不会丢失；手动点击一次 Lexicon 图标后会继续显示该查询。
 - 可在 Settings 关闭网页选词按钮。扩展只读取用户主动选中的文本，不读取整页正文。
 

@@ -72,7 +72,10 @@ function manifestPlugin(): Plugin {
         // 快捷键路径最可靠（走 action 点击路径开侧栏），见 pendingQuery.ts 头注释
         commands: {
           'lookup-selection': {
-            suggested_key: { default: 'Alt+L' },
+            suggested_key: {
+              default: 'Alt+L',
+              mac: 'Command+Shift+L',
+            },
             description: 'Look up the selected text in Lexicon',
           },
         },

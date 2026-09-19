@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-09-19 — macOS Chromium 扩展兼容与独立下载包
+
+- 扩展 manifest 增加 macOS 专用 `Command+Shift+L` 划词快捷键，Windows / Linux 继续使用 `Alt+L`。
+- Extension Preview Release 新增明确命名的 macOS ZIP；中英文 README 与 Release 说明补充 Chrome / Edge 的 macOS 安装步骤和平台下载指引。
+
 ## 2026-09-19 — 划词按钮主动打开侧栏 + Extension Preview 文档与分发
 
 - 修复网页划词按钮先等待 storage 写入、导致 Chrome 用户手势过期而无法主动打开 Side Panel 的问题；现在收到点击消息后立即调用 sidePanel.open，并行保存待查词作为失败兜底。

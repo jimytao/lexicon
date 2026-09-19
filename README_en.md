@@ -66,18 +66,18 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 ### 6. Cross-Platform Coverage
 - **Desktop**: Windows (Tauri v2) / macOS (dmg)
 - **Mobile**: Android (APK) / iOS (Capacitor 8)
-- **Browser Extension**: Chrome / Edge / Chromium (MV3 Side Panel, in-page selection, context menu and Alt+L lookup; source build: npm run pack:ext)
+- **Browser Extension**: Chrome, Edge, and other Chromium browsers on Windows / macOS (MV3 Side Panel, in-page selection, context-menu and keyboard lookup; source build: npm run pack:ext)
 - **Web**: WASM SQLite offline web app
 
 ---
 
 ## 🌐 Browser Extension (Preview)
 
-The Lexicon extension reuses the complete App experience: Dict / Image / Settings and all three modes—Instant, AI Lookup, and Pure Core. It runs in the Chrome/Edge Side Panel, while settings, history, and AI caches stay in browser-local storage.
+The Lexicon extension reuses the complete App experience: Dict / Image / Settings and all three modes—Instant, AI Lookup, and Pure Core. It runs in the Chrome/Edge Side Panel on Windows and macOS, while settings, history, and AI caches stay in browser-local storage.
 
 ### Install
 
-1. Download **lexicon-extension-0.9.21.zip** from the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview). This is the only extension file end users need.
+1. Download the file for your system from the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview): **lexicon-extension-0.9.21.zip** for Windows / Linux, or **lexicon-extension-0.9.21-macos.zip** for macOS. They provide the same features; do not download any DB files.
 2. Extract the ZIP, then open chrome://extensions or edge://extensions.
 3. Enable Developer mode, choose Load unpacked, and select the extracted folder.
 4. Click the Lexicon toolbar icon to open the Side Panel. On first use, the default bilingual dictionary downloads automatically and then works offline.
@@ -87,7 +87,7 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 ### Select text on a page
 
 - Select text and click the nearby Lexicon button: the extension opens the Side Panel and starts the lookup.
-- You can also use the Lexicon context-menu item or press Alt+L for the current selection.
+- You can also use the Lexicon context-menu item; press `Alt+L` on Windows / Linux or `Command+Shift+L` on macOS for the current selection.
 - If Chromium refuses to open the panel because of a page/user-gesture restriction, the query is preserved; clicking the Lexicon toolbar icon resumes it.
 - The selection button can be disabled in Settings. Lexicon reads only text you actively select, never the full page.
 
