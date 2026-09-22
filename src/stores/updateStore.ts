@@ -74,7 +74,7 @@ function getCurrentVersion(): string {
   if (isExtension()) {
     return chrome.runtime.getManifest().version
   }
-  return '0.9.23' // Should match package.json for native/web builds
+  return '0.9.24' // Should match package.json for native/web builds
 }
 
 async function fetchManifestWithFallback(): Promise<UpdateManifest> {

@@ -43,10 +43,10 @@
 - **双轨缓存与对比**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套分析，双轨缓存支持 0 秒无缝对比切换。
 - **个人画像与弱点热度引擎**：内置学习画像引擎，自动根据练习记录识别薄弱语法点与混淆项，按置信度与时间衰减排序并分层；在单词查询、Pure Core 与追问中智能注入画像上下文，遇到薄弱点即时弹出轻量 Chip 提示。
 
-### 2. 离线双本地词库与智能路由
-- **权威双词库**：牛津高阶第 9 版中英双解（约 5.2 万条）+ 第 10 版纯英英（约 8.4 万条）。
-- **单语/双语热切换**：随时独立切换英英与中英双解模式，自动调整排版。
-- **中文反向路由**：输入中文时自动匹配最佳地道英文对应词，并以母语者心智解析用法。
+### 2. 离线多地道词库与智能路由
+- **权威本地词库**：牛津高阶第 9 版中英双解（约 5.2 万条）+ 第 10 版纯英英（约 8.4 万条）+ SPDict 英语—越南语词典（约 8.3 万词条与 20 万条反向索引）。
+- **主词典与单语热切换**：随时在英汉与英越主词典之间切换，或一键覆盖开启纯英英单语模式，自适应排版。
+- **中文与越南语反向路由**：输入中文或越南语时自动反查匹配最佳地道英文对应词，并以母语者心智解析用法。
 
 ### 3. 认知语言学介词空间意象
 - 覆盖核心隐喻性介词（如 `up` / `out` / `off` / `through` 等）的认知拆解。
@@ -123,11 +123,11 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 > **Windows** 桌面端与 **Android** 移动端原生支持**软件内自动检测与一键升级**。当发布新版本时，软件会自动弹出更新提醒，您也可在 Settings 设置页面直接检查更新并在线升级，无需每次重新手动下载安装包。
 
 ### Windows
-- **[Lexicon_0.9.23_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_x64-setup.exe)**（推荐，支持软件内自动更新）
-- **[Lexicon_0.9.23_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_x64_en-US.msi)**（MSI 安装包）
+- **[Lexicon_0.9.24_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_x64-setup.exe)**（推荐，支持软件内自动更新）
+- **[Lexicon_0.9.24_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_x64_en-US.msi)**（MSI 安装包）
 
-### macOS 桌面端 (v0.9.23)
-- **[Lexicon_0.9.23_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
+### macOS 桌面端 (v0.9.24)
+- **[Lexicon_0.9.24_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
 
 > **⚠️ macOS 首次打开提示“无法验证开发者”或“已损坏”解决方案（三种方式）：**  
 > 由于独立开源版本未购买 Apple 付费开发者 ID 证书，macOS Gatekeeper 默认会阻挡未签名应用。请按以下任意一种方法解除限制：
@@ -138,9 +138,9 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android 手机 / 平板 (v0.9.23)
-- **[Lexicon_0.9.23_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
-- 更多架构分包请见 [Releases v0.9.23](https://github.com/jimytao/lexicon/releases/tag/v0.9.23)。
+### Android 手机 / 平板 (v0.9.24)
+- **[Lexicon_0.9.24_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
+- 更多架构分包请见 [Releases v0.9.24](https://github.com/jimytao/lexicon/releases/tag/v0.9.24)。
 
 ### iOS（自签侧载）
 1. 安装 **[Sideloadly](https://sideloadly.io/)**（需官网版 iTunes + iCloud）。
