@@ -21,6 +21,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DICTS = [
   { id: 'enzh', file: 'lexicon.db', version: 'oald9-1' },
   { id: 'enen', file: 'lexicon_en.db', version: 'oald10-1' },
+  { id: 'envi', file: 'lexicon_vi.db', version: 'spdict-1' },
 ]
 
 // 资产所在的 Release tag。清单本身固定挂在 `dictionaries` tag 上

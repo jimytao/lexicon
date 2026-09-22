@@ -1,6 +1,6 @@
 export type Mode = 'instant' | 'ai' | 'core'
 export type QueryType = 'word' | 'phrase' | 'sentence'
-export type Language = 'en' | 'zh' | 'ja' | 'ko' | 'other'
+export type Language = 'en' | 'zh' | 'vi' | 'ja' | 'ko' | 'other'
 
 export interface SuggestItem {
   word: string

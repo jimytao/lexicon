@@ -206,6 +206,8 @@ interface SettingsStore {
   monolingualPhrase: boolean
   monolingualSentence: boolean
   activeDictionary: 'lexicon.db' | 'lexicon_en.db'
+  /** Preferred bilingual dictionary. Monolingual switches may temporarily override it. */
+  mainDictionary: 'en-zh' | 'en-vi'
   autoSwitchDictionary: boolean
   chatRichContextDefault: boolean
   pronunciationAccent: 'uk' | 'us'
@@ -237,6 +239,7 @@ interface SettingsStore {
   setMonolingualPhrase: (v: boolean) => void
   setMonolingualSentence: (v: boolean) => void
   setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
+  setMainDictionary: (v: 'en-zh' | 'en-vi') => void
   setAutoSwitchDictionary: (v: boolean) => void
   setChatRichContextDefault: (v: boolean) => void
   setPronunciationAccent: (v: 'uk' | 'us') => void
@@ -273,6 +276,7 @@ export const useSettingsStore = create<SettingsStore>()(
       monolingualPhrase: false,
       monolingualSentence: false,
       activeDictionary: 'lexicon.db',
+      mainDictionary: 'en-zh',
       autoSwitchDictionary: true,
       chatRichContextDefault: false,
       pronunciationAccent: 'us',
@@ -335,6 +339,11 @@ export const useSettingsStore = create<SettingsStore>()(
       setActiveDictionary: (activeDictionary) => {
         set({ activeDictionary })
         useResultStore.getState().clearCacheOnly()
+      },
+      setMainDictionary: (mainDictionary) => {
+        set({ mainDictionary })
+        // Never leave results from the previous explanation language on screen.
+        useResultStore.getState().reset()
       },
       setAutoSwitchDictionary: (autoSwitchDictionary) => {
         set({ autoSwitchDictionary })

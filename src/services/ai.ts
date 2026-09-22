@@ -40,6 +40,7 @@ interface AiConfig {
   monolingualWord: boolean
   monolingualPhrase: boolean
   monolingualSentence: boolean
+  mainDictionary: 'en-zh' | 'en-vi'
 }
 
 const DEFAULT_LOOKUP_MODULES: ModuleFlag[] = [
@@ -93,6 +94,7 @@ function getConfig(): AiConfig {
         monolingualWord?: boolean
         monolingualPhrase?: boolean
         monolingualSentence?: boolean
+        mainDictionary?: 'en-zh' | 'en-vi'
       }
     }
     const s = stored.state ?? {}
@@ -127,6 +129,7 @@ function getConfig(): AiConfig {
       monolingualWord: s.monolingualWord ?? false,
       monolingualPhrase: s.monolingualPhrase ?? false,
       monolingualSentence: s.monolingualSentence ?? false,
+      mainDictionary: s.mainDictionary === 'en-vi' ? 'en-vi' : 'en-zh',
     }
   } catch {
     return {
@@ -143,6 +146,7 @@ function getConfig(): AiConfig {
       monolingualWord: false,
       monolingualPhrase: false,
       monolingualSentence: false,
+      mainDictionary: 'en-zh',
     }
   }
 }
@@ -887,6 +891,7 @@ function getFullLookupPrompt(
   triLingual: boolean = false,
   monolingualWord: boolean = false,
   cognitive: 'lookup' | 'core' = 'lookup',
+  explanationLanguage: 'zh' | 'vi' = 'zh',
   meaningsAnchor?: MeaningsAnchor
 ): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
@@ -1073,6 +1078,10 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
 
   if (isMono) {
     prompt += `\n- ALL output text must be in English only. No Chinese characters anywhere.`
+  } else if (explanationLanguage === 'vi') {
+    prompt += `
+- VIETNAMESE LEARNER MODE: ALL explanatory text, glosses, translations, scenes, notes and stories MUST be written in Vietnamese. The legacy "zh" JSON fields must contain Vietnamese, not Chinese.
+${lang === 'vi' ? '- Vietnamese input: correctForm must be the natural English equivalent; explain that English choice in Vietnamese.' : lang === 'en' ? '- English input: explain and translate the English word in Vietnamese.' : '- Translate and explain this input in Vietnamese.'}`
   } else if (lang !== 'en' && lang !== 'zh') {
     // Non-mono + foreign input: this app targets Chinese speakers, so explanations must
     // be Chinese. Previously only implied by roleIntro, and the model drifted to English.
@@ -1115,7 +1124,7 @@ export async function aiFullLookup(
 
   const activeModules = modulesForCognitive(config, cognitive)
   const cleaned = await callApi(
-    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, getIsMono(word, config), cognitive, opts.anchor),
+    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, getIsMono(word, config), cognitive, config.mainDictionary === 'en-vi' ? 'vi' : 'zh', opts.anchor),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -1239,6 +1248,7 @@ export async function aiPhraseQuery(
       cognitive,
       queryType: phraseQueryType,
       meaningsAnchor: opts.anchor,
+      explanationLanguage: config.mainDictionary === 'en-vi' ? 'vi' : 'zh',
     }),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
@@ -2193,6 +2203,7 @@ export async function aiCombinedLookup(
     isFull,
     triLingual: config.triLingualExamples,
     monolingualWord: config.monolingualWord,
+    explanationLanguage: config.mainDictionary === 'en-vi' ? 'vi' : 'zh',
     meaningsAnchor,
   })
 
@@ -2249,6 +2260,7 @@ export async function aiCombinedPhraseQuery(
     isMono,
     queryType: phraseQueryType,
     meaningsAnchor,
+    explanationLanguage: config.mainDictionary === 'en-vi' ? 'vi' : 'zh',
   })
 
   const userMessage = lang === 'zh'

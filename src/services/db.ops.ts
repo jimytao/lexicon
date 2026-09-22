@@ -8,7 +8,7 @@ import {
 import { useSettingsStore } from '../stores/settingsStore'
 
 export type SqlValue = string | number | null | Uint8Array
-export type DictionaryTarget = 'enzh' | 'enen'
+export type DictionaryTarget = 'enzh' | 'envi' | 'enen'
 
 export interface SqlRunner {
   /** Execute query and return rows as objects. No rows → empty array []. */
@@ -285,18 +285,22 @@ export async function getAllWordMemoriesWithRunner(
 
 /** Route query text to bilingual vs monolingual dictionary (shared by web + native). */
 export function resolveDictionaryTarget(queryText: string): DictionaryTarget {
-  const isChinese = /[\u4e00-\u9fa5]/.test(queryText)
-  if (isChinese) return 'enzh'
-
   const settings = useSettingsStore.getState()
 
-  if (!settings.autoSwitchDictionary) {
-    return settings.activeDictionary === 'lexicon_en.db' ? 'enen' : 'enzh'
-  }
+  const trimmed = queryText.trim()
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length
+  const isSentence = /[.?!,]/.test(trimmed) || wordCount >= 5
+  const isPhrase = !isSentence && wordCount > 1
+  const isMono = isSentence
+    ? settings.monolingualSentence
+    : isPhrase
+      ? settings.monolingualPhrase
+      : settings.monolingualWord
 
-  const isPhrase = queryText.trim().includes(' ')
-  const isMono = isPhrase ? settings.monolingualPhrase : settings.monolingualWord
-  return isMono ? 'enen' : 'enzh'
+  if (isMono) return 'enen'
+  if (settings.mainDictionary === 'en-vi') return 'envi'
+  if (!settings.autoSwitchDictionary && settings.activeDictionary === 'lexicon_en.db') return 'enen'
+  return 'enzh'
 }
 
 export async function suggestWithRunner(
@@ -457,6 +461,20 @@ export async function lookupWithRunner(
         if (result) return result
       }
     }
+
+    // Optional bilingual dictionaries may expose an exact reverse index.
+    // Older databases do not have this table, so keep the probe best-effort.
+    try {
+      const reverseRes = await runner.exec(
+        `SELECT word FROM reverse_lookup WHERE term = ? ORDER BY rank, length(word), word LIMIT 1`,
+        [lw.toLocaleLowerCase('vi')]
+      )
+      const mapped = reverseRes[0]?.word
+      if (typeof mapped === 'string') {
+        result = await performLookup(mapped)
+        if (result) return result
+      }
+    } catch { /* reverse index is optional */ }
 
     return null
   } catch {

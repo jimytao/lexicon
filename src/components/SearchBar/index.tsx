@@ -108,7 +108,11 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
     if (activeIndex >= 0) {
       const item = enrichedSuggestions[activeIndex]
       if (item) {
-        item.historyOnly ? handleHistoryItemSelect(item.word) : handleSelect(item.word)
+        if (item.historyOnly) {
+          handleHistoryItemSelect(item.word)
+        } else {
+          handleSelect(item.word)
+        }
         return
       }
     }

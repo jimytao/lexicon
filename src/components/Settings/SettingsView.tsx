@@ -263,7 +263,7 @@ export function SettingsView() {
     monolingualWord, setMonolingualWord,
     monolingualPhrase, setMonolingualPhrase,
     monolingualSentence, setMonolingualSentence,
-    activeDictionary, setActiveDictionary,
+    mainDictionary, setMainDictionary,
     autoSwitchDictionary, setAutoSwitchDictionary,
     chatRichContextDefault, setChatRichContextDefault,
     pronunciationAccent, setPronunciationAccent,
@@ -770,14 +770,14 @@ export function SettingsView() {
                 <p className="text-[11px] text-foreground-muted mt-0.5 leading-snug">{t('settings.dictionaryDesc')}</p>
               </div>
               <div className="flex items-center justify-between gap-3 pl-4 min-w-0">
-                <span className="text-xs font-medium text-foreground shrink-0">{t('settings.activeDictionary')}</span>
+                <span className="text-xs font-medium text-foreground shrink-0">{t('settings.mainDictionary')}</span>
                 <select
-                  value={activeDictionary} disabled={autoSwitchDictionary}
-                  onChange={(e) => setActiveDictionary(e.target.value as 'lexicon.db' | 'lexicon_en.db')}
-                  className={`min-w-0 max-w-[11.5rem] shrink text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background text-foreground overflow-hidden whitespace-nowrap text-ellipsis ${autoSwitchDictionary ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  value={mainDictionary}
+                  onChange={(e) => setMainDictionary(e.target.value as 'en-zh' | 'en-vi')}
+                  className="min-w-0 max-w-[11.5rem] shrink text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background text-foreground overflow-hidden whitespace-nowrap text-ellipsis"
                 >
-                  <option value="lexicon.db">{t('settings.dictEnZh')}</option>
-                  <option value="lexicon_en.db">{t('settings.dictEnEn')}</option>
+                  <option value="en-zh">{t('settings.dictEnZh')}</option>
+                  <option value="en-vi">{t('settings.dictEnVi')}</option>
                 </select>
               </div>
               <div className="flex items-center justify-between pl-4">

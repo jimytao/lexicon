@@ -21,6 +21,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 
 const DB_ENZH_URL = '/assets/databases/lexicon.db'
 const DB_ENEN_URL = '/assets/databases/lexicon_en.db'
+const DB_ENVI_URL = '/assets/databases/lexicon_vi.db'
 
 /**
  * 词库字节的来源。抽成可注入是为了让浏览器扩展复用本文件里
@@ -29,11 +30,11 @@ const DB_ENEN_URL = '/assets/databases/lexicon_en.db'
  * 返回 `null` 表示该词库不可用 —— 英英库走既有的降级到双语库路径。
  * 见 lexicon-docs/10-browser-extension.md §3。
  */
-export type DictionaryId = 'enzh' | 'enen'
+export type DictionaryId = 'enzh' | 'envi' | 'enen'
 export type DbBytesSource = (dict: DictionaryId) => Promise<ArrayBuffer | null>
 
 const httpBytesSource: DbBytesSource = async (dict) => {
-  const response = await fetch(dict === 'enen' ? DB_ENEN_URL : DB_ENZH_URL)
+  const response = await fetch(dict === 'enen' ? DB_ENEN_URL : dict === 'envi' ? DB_ENVI_URL : DB_ENZH_URL)
   if (!response.ok) return null
   return response.arrayBuffer()
 }
@@ -50,12 +51,16 @@ let _SQLLoading: Promise<SqlJsStatic> | null = null
 
 let _dbEnZh: Database | null = null
 let _dbEnEn: Database | null = null
+let _dbEnVi: Database | null = null
 let _loadingEnZh: Promise<Database> | null = null
 let _loadingEnEn: Promise<Database> | null = null
+let _loadingEnVi: Promise<Database> | null = null
 let _enzhEpoch = 0
 let _enenEpoch = 0
+let _enviEpoch = 0
 let _enzhGate: Promise<void> = Promise.resolve()
 let _enenGate: Promise<void> = Promise.resolve()
+let _enviGate: Promise<void> = Promise.resolve()
 let _enenUnavailable = false
 
 async function getSQL(): Promise<SqlJsStatic> {
@@ -102,10 +107,20 @@ function invalidateEnEn() {
   }
 }
 
+function invalidateEnVi() {
+  closeDb(_dbEnVi)
+  _dbEnVi = null
+  _enviEpoch++
+  const inFlight = _loadingEnVi
+  _loadingEnVi = null
+  if (inFlight) _enviGate = inFlight.then(() => undefined, () => undefined)
+}
+
 useSettingsStore.subscribe((state, prev) => {
-  if (state.activeDictionary === prev.activeDictionary) return
+  if (state.activeDictionary === prev.activeDictionary && state.mainDictionary === prev.mainDictionary) return
   invalidateEnZh()
   invalidateEnEn()
+  invalidateEnVi()
 })
 
 /**
@@ -117,6 +132,7 @@ useSettingsStore.subscribe((state, prev) => {
 export function invalidateDictionaries(): void {
   invalidateEnZh()
   invalidateEnEn()
+  invalidateEnVi()
 }
 
 function isDbInvalidatedError(e: unknown): boolean {
@@ -253,8 +269,32 @@ async function getDbEnEn(): Promise<Database> {
   }
 }
 
+async function getDbEnVi(): Promise<Database> {
+  for (;;) {
+    if (_dbEnVi) return _dbEnVi
+    await _enviGate
+    if (_dbEnVi) return _dbEnVi
+    if (_loadingEnVi) return _loadingEnVi
+    const epoch = _enviEpoch
+    const loading = (async () => {
+      const SQL = await getSQL()
+      const buffer = await _bytesSource('envi')
+      if (!buffer) throw new Error('lexicon_vi.db not found — place it under public/assets/databases/')
+      const db = new SQL.Database(new Uint8Array(buffer))
+      if (epoch !== _enviEpoch) { closeDb(db); throwDbInvalidated() }
+      _dbEnVi = db
+      void initUserWordMemoryTable(toRunner(db))
+      return db
+    })()
+    _loadingEnVi = loading
+    void loading.finally(() => { if (_loadingEnVi === loading) _loadingEnVi = null })
+    try { return await loading } catch (e) { if (isDbInvalidatedError(e)) continue; throw e }
+  }
+}
+
 async function getTargetDb(queryText: string): Promise<Database> {
-  return resolveDictionaryTarget(queryText) === 'enen' ? getDbEnEn() : getDbEnZh()
+  const target = resolveDictionaryTarget(queryText)
+  return target === 'enen' ? getDbEnEn() : target === 'envi' ? getDbEnVi() : getDbEnZh()
 }
 
 async function runnerForQuery(queryText: string): Promise<SqlRunner> {
@@ -264,8 +304,10 @@ async function runnerForQuery(queryText: string): Promise<SqlRunner> {
 export async function warmupDictionary(): Promise<void> {
   await whenSettingsHydrated()
   const settings = useSettingsStore.getState()
-  if (settings.activeDictionary === 'lexicon_en.db') {
+  if (settings.monolingualWord) {
     await getDbEnEn()
+  } else if (settings.mainDictionary === 'en-vi') {
+    await getDbEnVi()
   } else {
     await getDbEnZh()
   }

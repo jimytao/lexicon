@@ -83,7 +83,7 @@ export async function playPronunciation(word: string, accent?: AccentType): Prom
     try {
       currentPlayingAudio.pause()
       currentPlayingAudio.currentTime = 0
-    } catch (e) {}
+    } catch (_e) { /* pause may throw if audio is already detached */ }
     currentPlayingAudio = null
   }
 
@@ -91,7 +91,7 @@ export async function playPronunciation(word: string, accent?: AccentType): Prom
   if ('speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel()
-    } catch (e) {}
+    } catch (_e) { /* cancel may throw in some environments */ }
   }
 
   const lang = detectLanguage(word)

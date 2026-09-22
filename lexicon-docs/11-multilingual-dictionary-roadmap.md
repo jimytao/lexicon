@@ -5,6 +5,8 @@
 > 原则：只做跑通第一个英越版本必需的改动，优先 Happy Path。暂不建设完整的多语言词典平台。
 >
 > 第一目标：**越南语母语者学习英语**。用户选择越南语后，Lexicon 使用英越词典，AI 用越南语解释。
+>
+> 本文是本次实现使用的临时执行计划。功能完成、正式架构文档同步后可以删除，不作为长期重复维护的规范。
 
 ---
 
@@ -210,19 +212,26 @@ getExplanationLanguageInstruction(context)
 - 输入其他外语：保留原词/原句，翻译到当前 `explanationLanguage` 并用它解释文化和用法。
 - 单语言模式：覆盖以上规则，全部用英语解释。
 
-现有 `detectLanguage()` 暂不需要为越南语新增可靠检测器；越南语当前会进入 `other`，Prompt 已知道目标解释语言为 `vi`，足以完成 Happy Path。只有当“越南语输入必须定向翻成英语”出现识别不稳定时，再增加轻量越南语检测，不提前引入语言识别库。
+现有 `detectLanguage()` 会把所有含拉丁字母的输入判为英语，因此越南语会被误判。MVP 必须做一个很小的修正：在英语判断之前检测越南语特有字母/变音符号并返回 `vi`，同时扩展 `Language` 类型。无变音符号的越南语与英语天然可能歧义，Prompt 仍需要求模型自行判断真实输入语言；本期不引入语言识别库。
 
-本期必须覆盖：
+本期必须覆盖 Dictionary Tab 中所有会生成用户可见文字的路径，而不只是两个主按钮：
 
 - 普通单词 AI Lookup。
 - Pure Core 单词。
 - 短语/句子分析。
 - AI Chat。
 - 练习反馈。
+- 查询 skeleton / 拼写纠正。
+- 释义补全、搭配补全和概念树补全。
+- 助记重新生成。
+
+图片翻译明确排除，继续使用 `imageStore.sourceLang/targetLang`，不得跟随 Main Dictionary。
 
 不全面重构 AI JSON schema；带 `zh` 的字段首版可暂存越南语文本。`chineseThought` 也先只调整 Prompt 语义，不立即迁移持久化字段。
 
-切换主词典时直接清空当前 AI 结果缓存，避免跨语言回放。不建设多语言缓存并存系统。
+切换主词典时必须：取消或作废在途 AI 请求、使当前词典内存实例失效、清空当前结果与 AI 缓存，并对非空查询重新执行一次搜索（或回到明确空态）。只调用 `clearCacheOnly()` 不够，因为它不会清掉屏幕上正在显示的旧语言结果。不建设完整的多语言结果缓存并存系统。
+
+Chat 需要最小语言分轨。当前只按 `query + Lookup/Core` 保存，直接切到英越会重新展示中文旧对话。Chat key / conversation bucket 至少加入 `explanationLanguage`；旧记录按 `zh` 读取。用户笔记、历史词条和 Memory 统计本身不按语言拆分。
 
 Profile 首版不做越南语深度特化；只要不阻塞核心查词路径即可。
 
@@ -269,7 +278,40 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 
 ---
 
-## 6. 实施顺序
+## 6. 执行前冲突审计
+
+以下是根据当前代码路径确认的冲突点和必须采用的最小防护。
+
+| 现有功能 | 潜在冲突 | MVP 处理 | 不做的扩展 |
+|---|---|---|---|
+| 单词/短语/句子单语言开关 | DB 当前只用“是否含空格”区分，句子与短语可能读错开关 | DB 与 AI 共用 `detectQueryType()` 和 `resolveLanguageContext()` | 不合并三个开关 |
+| Auto Switch | 当前会禁用 Active Dictionary，用户无法预选双语库 | Main Dictionary 始终可选；Auto Switch 只决定单语言时是否临时切英英 | 本期不删除旧开关 |
+| 本地正向查词 | 中文检测会强制路由英汉库，破坏英越主词典 | 本期只对英文执行本地词典查询；非英文直接走 AI | 不做中/越本地反查 |
+| 越南语输入识别 | 当前所有拉丁文字都被判为英语 | 先检测越南语特有字符；Prompt 再自行判断无音调越南语/其他拉丁语言 | 不引入语言识别依赖 |
+| AI Lookup / Pure Core 双并发 | 切词典时旧请求可能晚到并覆盖新语言结果 | 请求开始记录 language-context key，提交前校验；设置切换时取消/作废旧 generation | 不重写并发架构 |
+| AI 缓存与历史回放 | cache key 没有语言，可能回放中文结果 | 切换主词典时清空所有 AI 结果缓存；历史词条保留，回放时重新生成 | 不做多语言结果缓存并存 |
+| 当前显示结果 | `clearCacheOnly()` 不清屏幕结果 | 使用完整结果 reset/clear，并按当前 query 重查或显示空态 | 不改变搜索模式状态机 |
+| AI Chat | 对话只按 query + Lookup/Core 分轨，会混入中文旧对话 | Chat/conversation bucket 最小增加解释语言维度；旧数据视为 `zh` | 不拆用户数据库 |
+| Profile / Memory | `chineseThought` 和 Profile 文案可能进入 Prompt | 主查询 Prompt 不再假定中文；Profile 深度诊断首版不做越南语特化，必要时不注入中文 profile 文本 | 不迁移全部 Profile schema |
+| UI 结果组件 | 组件读取 `zh/zhBrief`，大改类型会牵连很多视图 | 英越库暂借这些字段存越南语，沿用现有显示组件 | 不做字段全面重命名 |
+| 发音 | 当前单词发音按英语处理 | 英文正查保持现状；非英文 AI 翻译路径不调用本地英文词条发音 | 不新增越南语 TTS 策略 |
+| 强制 AI / OOD | 会绕过本地词典，容易遗漏主词典语言 | 与普通 Lookup 使用同一 language context，不根据是否命中词典决定语言 | 不改变 bypass 语义 |
+| 浏览器扩展 | manifest、OPFS 正则和 fallback 写死两本库 | 只增加 `envi` 分支、下载状态和删除/失效覆盖 | 不建设 catalog/市场 |
+| Capacitor 原生 DB | connection、asset version、fallback 写死两本库 | 增加第三个 connection/asset 检查；失败安全回落，不把英越错误回落成中文结果 | 不做原生远程下载 |
+| 图片翻译 | 它有独立 source/target language | 完全隔离，不读取 Main Dictionary | 不改图片翻译行为 |
+
+### 必须保持不变的行为
+
+- Instant、AI Lookup、Pure Core 的触发和双半并发模型不变。
+- 强制 AI、OOD、历史双轨和 Lookup/Core 缓存分轨语义不变。
+- 切回 Instant 的取消逻辑、空态和结果渲染路径不变。
+- `appLanguage` 仍只控制 UI，不决定词典或 AI 内容语言。
+- 图片翻译语言选择保持独立。
+- 现有英汉用户默认行为保持不变。
+
+---
+
+## 7. 实施顺序
 
 ### Phase 1 — 数据源确认
 
@@ -284,6 +326,7 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 
 - 把 `activeDictionary` 迁移为始终可选的 `mainDictionary`。
 - 增加共享的 `resolveLanguageContext()`。
+- 为 `detectLanguage()` 增加最小越南语识别，并让 DB 路由使用完整 query type。
 - 增加 `en-vi` 与第三本 DB 加载分支。
 - 保持 word/phrase/sentence 三个单语言开关分别覆盖为 `en-en`。
 - 修改设置联动且不再禁用主词典选择器。
@@ -301,9 +344,10 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 ### Phase 4 — AI 越南语输出
 
 - 增加读取共享 language context 的统一语言指令。
-- 修改五条核心 AI 路径。
+- 修改 Dictionary Tab 全部用户可见 AI 路径，不触碰图片翻译。
 - 覆盖英语、主词典另一侧语言、其他外语和单语言四种方向。
-- 切换主词典时清缓存。
+- 为 Chat 增加最小语言分轨。
+- 切换主词典时取消旧请求、清当前结果和缓存，并安全重查。
 
 完成标准：核心 AI 路径输出可读越南语，不泄漏中文指令。
 
@@ -317,7 +361,7 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 
 ---
 
-## 7. 必要测试
+## 8. 必要测试
 
 只覆盖高风险联动：
 
@@ -332,6 +376,10 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 - 英越主词典下：英语输入→越南语；越南语输入→英语表达；其他外语→越南语。
 - 单语言模式下所有输入→英语解释。
 - 越南语 Prompt 不包含中文输出要求。
+- 切换主词典时旧在途请求不能提交，当前画面不会残留旧语言结果。
+- Chat 的中文、越南语、英语对话不会串轨，旧对话仍可按中文轨读取。
+- 强制 AI、OOD 和历史回放与普通查询遵循同一语言上下文。
+- 图片翻译 target language 不因 Main Dictionary 改变。
 - 现有英汉、英英测试继续通过。
 
 手工验证约 100 个英文词和短语，并分别走一次 Instant、AI Lookup、Pure Core、Chat 和练习。检查越南语变音符号和已加载词典的离线查询。
@@ -340,7 +388,7 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 
 ---
 
-## 8. MVP Definition of Done
+## 9. MVP Definition of Done
 
 - [ ] Main Dictionary 始终可选英汉、英越或英英，不被 Auto Switch 禁用。
 - [ ] 非单语言时英越主词典会使用 `lexicon_vi.db`。

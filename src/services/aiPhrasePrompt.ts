@@ -21,6 +21,7 @@ export interface BuildPhrasePromptOptions {
   queryType?: PhrasePromptQueryType
   /** Stage-1 resolution shared by both halves of a split request. */
   meaningsAnchor?: MeaningsAnchor
+  explanationLanguage?: 'zh' | 'vi' | 'en'
 }
 
 function moduleEnabled(modules: Array<{ id: string; enabled: boolean }>, id: string): boolean {
@@ -37,6 +38,7 @@ export function buildPhrasePrompt({
   cognitive = 'lookup',
   queryType = 'phrase',
   meaningsAnchor,
+  explanationLanguage = 'zh',
 }: BuildPhrasePromptOptions): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   const isCore = cognitive === 'core'
@@ -216,6 +218,11 @@ ${wantUsage ? `- Provide usageIntro (1 blurb) + 2-4 usage scenes${isCore ? '' : 
 - ALL output text must be in English only. No Chinese characters anywhere.
 - Use simple, learner-friendly English vocabulary (CEFR B1–B2 level max). Avoid idioms or advanced expressions in explanations. Your readers are learners, not native speakers.`
   }
+  if (!isMono && explanationLanguage === 'vi') {
+    prompt += `
+- VIETNAMESE LEARNER MODE: ALL explanatory text, translations, glosses, usage scenes and notes MUST be written in Vietnamese. Put Vietnamese in legacy "zh" JSON fields.
+${lang === 'vi' ? '- Vietnamese input: return a natural English equivalent/expression and explain it in Vietnamese.' : lang === 'en' ? '- English input: explain and translate it in Vietnamese.' : '- Translate the complete input into Vietnamese and explain it in Vietnamese.'}`
+  }
   if (isFull && isEnabled('culture')) {
     const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign) {
@@ -225,7 +232,7 @@ ${wantUsage ? `- Provide usageIntro (1 blurb) + 2-4 usage scenes${isCore ? '' : 
     }
   }
 
-  if (!isMono && lang !== 'en' && lang !== 'zh') {
+  if (!isMono && explanationLanguage !== 'vi' && lang !== 'en' && lang !== 'zh') {
     // Non-mono + foreign input: explanations must be Chinese for this audience.
     prompt += `
 - The input is in ${lang}, but ALL explanatory text (meaning, usageIntro, scenes, notes) MUST be written in Chinese. Keep the original ${lang} text only where it identifies the expression itself.`

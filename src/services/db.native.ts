@@ -21,11 +21,12 @@ import {
 import { useSettingsStore } from '../stores/settingsStore'
 
 /** Bump when bundled lexicon*.db content changes so devices re-copy from assets. */
-export const LEXICON_ASSET_VERSION = '0.7.36'
+export const LEXICON_ASSET_VERSION = '0.7.37-envi1'
 const ASSET_VERSION_KEY = 'lexicon.db.asset.version'
 
 const CONN_ENZH = 'lexicon'
 const CONN_ENEN = 'lexicon_en'
+const CONN_ENVI = 'lexicon_vi'
 
 const sqlite = new SQLiteConnection(CapacitorSQLite)
 
@@ -33,12 +34,16 @@ let _ensurePromise: Promise<void> | null = null
 
 let _dbEnZh: SQLiteDBConnection | null = null
 let _dbEnEn: SQLiteDBConnection | null = null
+let _dbEnVi: SQLiteDBConnection | null = null
 let _loadingEnZh: Promise<SQLiteDBConnection> | null = null
 let _loadingEnEn: Promise<SQLiteDBConnection> | null = null
+let _loadingEnVi: Promise<SQLiteDBConnection> | null = null
 let _enzhEpoch = 0
 let _enenEpoch = 0
+let _enviEpoch = 0
 let _enzhGate: Promise<void> = Promise.resolve()
 let _enenGate: Promise<void> = Promise.resolve()
+let _enviGate: Promise<void> = Promise.resolve()
 /** enen file missing/unopenable — route to enzh without caching enzh under the enen slot. */
 let _enenUnavailable = false
 
@@ -88,10 +93,23 @@ function invalidateEnEn() {
   ]).then(() => undefined)
 }
 
+function invalidateEnVi() {
+  const cur = _dbEnVi
+  _dbEnVi = null
+  _enviEpoch++
+  const inFlight = _loadingEnVi
+  _loadingEnVi = null
+  _enviGate = Promise.all([
+    closeConn(cur, CONN_ENVI, true),
+    inFlight ? inFlight.then(() => undefined, () => undefined) : Promise.resolve(),
+  ]).then(() => undefined)
+}
+
 useSettingsStore.subscribe((state, prev) => {
-  if (state.activeDictionary === prev.activeDictionary) return
+  if (state.activeDictionary === prev.activeDictionary && state.mainDictionary === prev.mainDictionary) return
   invalidateEnZh()
   invalidateEnEn()
+  invalidateEnVi()
 })
 
 /**
@@ -309,9 +327,29 @@ async function getDbEnEn(): Promise<SQLiteDBConnection> {
   }
 }
 
+async function getDbEnVi(): Promise<SQLiteDBConnection> {
+  for (;;) {
+    if (_dbEnVi) return _dbEnVi
+    await _enviGate
+    if (_dbEnVi) return _dbEnVi
+    if (_loadingEnVi) return _loadingEnVi
+    const epoch = _enviEpoch
+    const loading = (async () => {
+      const db = await openConnection(CONN_ENVI)
+      if (epoch !== _enviEpoch) { await closeConn(db, CONN_ENVI, true); throwDbInvalidated() }
+      _dbEnVi = db
+      void initUserWordMemoryTable(toRunner(db))
+      return db
+    })()
+    _loadingEnVi = loading
+    void loading.finally(() => { if (_loadingEnVi === loading) _loadingEnVi = null })
+    try { return await loading } catch (e) { if (isDbInvalidatedError(e)) continue; throw e }
+  }
+}
+
 async function getTargetDb(queryText: string): Promise<SQLiteDBConnection> {
   const target: DictionaryTarget = resolveDictionaryTarget(queryText)
-  return target === 'enen' ? getDbEnEn() : getDbEnZh()
+  return target === 'enen' ? getDbEnEn() : target === 'envi' ? getDbEnVi() : getDbEnZh()
 }
 
 async function runnerForQuery(queryText: string): Promise<SqlRunner> {
@@ -321,8 +359,10 @@ async function runnerForQuery(queryText: string): Promise<SqlRunner> {
 export async function warmupDictionary(): Promise<void> {
   await whenSettingsHydrated()
   const settings = useSettingsStore.getState()
-  if (settings.activeDictionary === 'lexicon_en.db') {
+  if (settings.monolingualWord) {
     await getDbEnEn()
+  } else if (settings.mainDictionary === 'en-vi') {
+    await getDbEnVi()
   } else {
     await getDbEnZh()
   }

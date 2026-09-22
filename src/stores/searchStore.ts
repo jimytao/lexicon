@@ -4,6 +4,9 @@ import type { Mode, QueryType, SuggestItem, Language } from '../types'
 export function detectLanguage(input: string): Language {
   const trimmed = input.trim()
   if (!trimmed) return 'en'
+
+  // Vietnamese must be checked before the generic Latin/English branch.
+  if (/[ăâđêôơưĂÂĐÊÔƠƯàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]/.test(trimmed)) return 'vi'
   
   // Korean: Hangul
   if (/[\uAC00-\uD7AF]/.test(trimmed)) return 'ko'

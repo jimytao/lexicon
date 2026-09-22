@@ -41,6 +41,7 @@ interface DictionaryEntry {
 
 interface DictionaryManifest {
   enzh: DictionaryEntry
+  envi?: DictionaryEntry
   enen?: DictionaryEntry
 }
 
@@ -210,9 +211,9 @@ const opfsBytesSource = async (dict: DictionaryId): Promise<ArrayBuffer | null> 
   try {
     store.beginCheck(dict)
     const manifest = await getManifest()
-    const entry = dict === 'enen' ? manifest.enen : manifest.enzh
+    const entry = dict === 'enen' ? manifest.enen : dict === 'envi' ? manifest.envi : manifest.enzh
 
-    // 英英库允许清单里不提供 → 返回 null，走 db.web.ts 既有的降级到双语库
+    // Optional dictionaries may be omitted from older manifests.
     if (!entry) {
       store.reset()
       return null
@@ -263,7 +264,7 @@ export async function listInstalledDictionaries(): Promise<InstalledDictionary[]
     }).entries()
     for await (const [name, handle] of entries) {
       // 文件名形如 enzh-oald9-1.db —— 第一段是词库 id，其余是版本号
-      const match = /^(enzh|enen)-(.+)\.db$/.exec(name)
+      const match = /^(enzh|envi|enen)-(.+)\.db$/.exec(name)
       if (!match) continue
       const file = await handle.getFile()
       out.push({

@@ -69,7 +69,7 @@ export function trimMessagesToCharBudget(
   messages: ChatMessage[],
   maxChars: number,
 ): ChatMessage[] {
-  let trimmed = [...messages]
+  const trimmed = [...messages]
   while (JSON.stringify(trimmed).length > maxChars && trimmed.length > 1) {
     trimmed.shift()
   }

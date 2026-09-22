@@ -19,6 +19,7 @@ export interface CombinedPromptOptions {
   isFull?: boolean
   triLingual?: boolean
   monolingualWord?: boolean
+  explanationLanguage?: 'zh' | 'vi' | 'en'
   meaningsAnchor?: Array<{ pos?: string; zh: string; en?: string; senseIndex?: number }>
 }
 
@@ -30,6 +31,7 @@ export interface CombinedPhrasePromptOptions {
   isFull?: boolean
   triLingual?: boolean
   isMono?: boolean
+  explanationLanguage?: 'zh' | 'vi' | 'en'
   queryType?: 'phrase' | 'sentence'
   meaningsAnchor?: Array<{ pos?: string; zh: string; en?: string; senseIndex?: number }>
 }
@@ -48,11 +50,13 @@ export function buildCombinedWordPrompt({
   isFull = true,
   triLingual = false,
   monolingualWord = false,
+  explanationLanguage = 'zh',
   meaningsAnchor,
 }: CombinedPromptOptions): string {
   const isMono = monolingualWord
   const isZh = lang === 'zh'
   const isForeign = lang !== 'en' && lang !== 'zh'
+  const useVietnamese = !isMono && explanationLanguage === 'vi'
 
   // ── LOOKUP schema ─────────────────────────────────────────────────────────
   const lookupMeaningsDesc = isMono
@@ -249,6 +253,17 @@ The meanings for this query have been fixed in Stage 1. You MUST use these exact
 ${meaningsAnchor.map((m, i) => `[Sense ${m.senseIndex || i + 1}]: ${m.pos ? `(${m.pos}) ` : ''}${m.zh}${m.en ? ` | ${m.en}` : ''}`).join('\n')}
 - Ensure all scenes, collocations, etymology, and pure core cognitive stories match these exact senses in order.` : ''
 
+  const vietnameseRule = useVietnamese ? `
+CRITICAL — VIETNAMESE LEARNER LANGUAGE RULE:
+- ALL explanatory text, translations, glosses, scene labels, notes and learning guidance must be written in Vietnamese, even when a schema description below mentions Chinese or the field name is "zh".
+- The "zh" field is a legacy compatibility field; put Vietnamese text in it.
+${lang === 'vi'
+    ? '- Vietnamese input: produce the most natural English equivalent or expression in correctForm/en, then explain it in Vietnamese.'
+    : lang === 'en'
+      ? '- English input: keep the English headword and explain/translate it in Vietnamese.'
+      : '- Translate the input into Vietnamese and write all explanatory text in Vietnamese.'}
+` : ''
+
   const prompt = `${roleIntro}${anchorText}
 
 Given a ${langLabel} input, return ONE JSON object with EXACTLY two top-level keys: "lookup" and "core".
@@ -266,6 +281,7 @@ The JSON must follow this exact schema:
 }
 
 Rules:
+${vietnameseRule}
 - lookup.scene is REQUIRED for every lookup meaning when the input is not Chinese.
 ${!isZh ? buildNativeSceneRules(isMono) : ''}
 ${chineseInputRule}
@@ -303,11 +319,13 @@ export function buildCombinedPhrasePrompt({
   webSearchResults,
   triLingual = false,
   isMono = false,
+  explanationLanguage = 'zh',
   queryType = 'phrase',
   meaningsAnchor,
 }: CombinedPhrasePromptOptions): string {
   const isZh = lang === 'zh'
   const isForeign = lang !== 'en' && lang !== 'zh'
+  const useVietnamese = !isMono && explanationLanguage === 'vi'
   const isShortPhrase = queryType === 'phrase'
   const wantUsage = mod(coreModules, 'usageScenes') || !isShortPhrase
 
@@ -418,6 +436,17 @@ The meanings for this query have been fixed in Stage 1. You MUST use these exact
 ${meaningsAnchor.map((m, i) => `[Sense ${m.senseIndex || i + 1}]: ${m.pos ? `(${m.pos}) ` : ''}${m.zh}${m.en ? ` | ${m.en}` : ''}`).join('\n')}
 - Ensure all scenes, collocations, and pure core cognitive stories match these exact senses in order.` : ''
 
+  const vietnameseRule = useVietnamese ? `
+CRITICAL — VIETNAMESE LEARNER LANGUAGE RULE:
+- ALL explanatory text, translations, glosses, usage scenes, notes and learning guidance must be written in Vietnamese, even when a schema description below mentions Chinese or the field name is "zh".
+- The "zh" field is a legacy compatibility field; put Vietnamese text in it.
+${lang === 'vi'
+    ? '- Vietnamese input: produce a natural English equivalent/expression, then explain it in Vietnamese.'
+    : lang === 'en'
+      ? '- English input: explain and translate it in Vietnamese.'
+      : '- Translate the complete input into Vietnamese and explain it in Vietnamese.'}
+` : ''
+
   const prompt = `${roleIntro}${anchorText}
 
 Given a ${langLabel} phrase or sentence, return ONE JSON object with EXACTLY two top-level keys: "lookup" and "core".
@@ -435,6 +464,7 @@ The JSON must follow this exact schema:
 }
 
 Rules:
+${vietnameseRule}
 ${chineseInputRule}
 - Both sections analyze the SAME input from different angles.
 - lookup = understanding + practical usage context.
