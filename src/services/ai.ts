@@ -1278,9 +1278,10 @@ export async function askQuestion(
   // Direction A — the learner's hot weak spots, so a follow-up answer can connect
   // the dots when relevant (opt-in; empty when nothing is hot).
   const profileSection = buildProfilePromptContext('compact')
+  const tableRule = `Table orientation rule (mobile screen — NEVER exceed 3 columns): (A) If comparing N words across M attributes and N ≤ M: put the words as COLUMN headers (row 1 = word names, then one row per attribute) so columns = N ≤ 3. (B) If N > M: put attributes as COLUMN headers (row 1 = attribute names, one row per word) so columns = M ≤ 3. When either N or M > 3, pick whichever orientation keeps columns ≤ 3 and let rows grow. Never create a table wider than 3 columns.`
   const systemPrompt = isMono
-    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.`
-    : `You are a helpful English learning assistant for Chinese native speakers.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in Chinese, with English examples where appropriate.\nKeep answers concise and practical.`
+    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`
+    : `You are a helpful English learning assistant for Chinese native speakers.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in Chinese, with English examples where appropriate.\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. 当需要对比多个词或概念时优先使用表格。${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },

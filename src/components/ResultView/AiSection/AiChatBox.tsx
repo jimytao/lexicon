@@ -10,6 +10,7 @@ import { useT } from '../../../i18n'
 import { AI_CHAT_COMPOSER_LAYOUT } from '../../../utils/aiChatComposerLayout'
 import { useComposerAutoGrow } from '../../../hooks/useComposerAutoGrow'
 import { SectionHeading } from '../SectionHeading'
+import { ChatMarkdown } from './ChatMarkdown'
 
 
 interface AiChatBoxProps {
@@ -120,7 +121,11 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
                   : 'bg-background-soft text-foreground mr-8'
               }`}
             >
-              <p className="whitespace-pre-wrap text-xs leading-relaxed">{msg.content}</p>
+              {msg.role === 'user' ? (
+                <p className="whitespace-pre-wrap text-xs leading-relaxed">{msg.content}</p>
+              ) : (
+                <ChatMarkdown content={msg.content} />
+              )}
             </div>
           ))}
           {loading && (

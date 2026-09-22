@@ -37,7 +37,7 @@
 
 ### 1. 三种深度查词模式
 - **Instant (极速模式)**：纯本地词库，0 延迟，离线可用。输入框外词汇自动触发 AI 合并搜索。
-- **AI Lookup (记忆与理解)**：呈现本地 L1 释义同时，AI 淡入词根、助记、例句核对练习与随身 Q&A 追问。
+- **AI Lookup (记忆与理解)**：呈现本地 L1 释义同时，AI 淡入生动场景意象、词根助记、例句核对练习与随身 Q&A 追问（支持 Markdown 排版与自适应对比表格）。
 - **Pure Core (母语者用法与感觉锚)**：摒弃传统“中文释义墙”，直接展示**用法意象（短对译 gloss / 感觉锚 / 情绪底色）**、概念树、语境搭配、语域与造句练习。支持模组拖拽排序。
 - **多行自适应输入**：主搜索框与 AI 提问框支持 1 至 4 行自适应扩展（严格换行，不溢出），移动端光标调准更流畅。
 - **双轨缓存与对比**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套分析，双轨缓存支持 0 秒无缝对比切换。
@@ -110,8 +110,8 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 > dictionaries Preview Release 中的 lexicon.db 和 lexicon_en.db 是扩展自动管理的远程词库资产，用户无需手动下载。lexicon.db 是默认中英双解词库；只有在 Settings 切换为英英模式时，扩展才会按需下载 lexicon_en.db。
 
 ### 网页划词
-
-- 在网页中选中文字，点击选区旁的 Lexicon 按钮：扩展会打开侧栏并立即查询。
+ 
+- 在网页中选中文字，浮动查词按钮智能贴合选区末端：点击按钮即可打开侧栏并立即查询。
 - 也可以右键选择 Lexicon；Windows / Linux 按 `Alt+L`，macOS 按 `Command+Shift+L` 查询当前选区。
 - 如果 Chromium 因页面或手势限制未能自动打开侧栏，查询不会丢失；手动点击一次 Lexicon 图标后会继续显示该查询。
 - 可在 Settings 关闭网页选词按钮。扩展只读取用户主动选中的文本，不读取整页正文。
@@ -123,11 +123,11 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 > **Windows** 桌面端与 **Android** 移动端原生支持**软件内自动检测与一键升级**。当发布新版本时，软件会自动弹出更新提醒，您也可在 Settings 设置页面直接检查更新并在线升级，无需每次重新手动下载安装包。
 
 ### Windows
-- **[Lexicon_0.9.22_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64-setup.exe)**（推荐，支持软件内自动更新）
-- **[Lexicon_0.9.22_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64_en-US.msi)**（MSI 安装包）
+- **[Lexicon_0.9.23_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_x64-setup.exe)**（推荐，支持软件内自动更新）
+- **[Lexicon_0.9.23_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_x64_en-US.msi)**（MSI 安装包）
 
-### macOS 桌面端 (v0.9.22)
-- **[Lexicon_0.9.22_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
+### macOS 桌面端 (v0.9.23)
+- **[Lexicon_0.9.23_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
 
 > **⚠️ macOS 首次打开提示“无法验证开发者”或“已损坏”解决方案（三种方式）：**  
 > 由于独立开源版本未购买 Apple 付费开发者 ID 证书，macOS Gatekeeper 默认会阻挡未签名应用。请按以下任意一种方法解除限制：
@@ -138,9 +138,9 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android 手机 / 平板 (v0.9.22)
-- **[Lexicon_0.9.22_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
-- 更多架构分包请见 [Releases v0.9.22](https://github.com/jimytao/lexicon/releases/tag/v0.9.22)。
+### Android 手机 / 平板 (v0.9.23)
+- **[Lexicon_0.9.23_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
+- 更多架构分包请见 [Releases v0.9.23](https://github.com/jimytao/lexicon/releases/tag/v0.9.23)。
 
 ### iOS（自签侧载）
 1. 安装 **[Sideloadly](https://sideloadly.io/)**（需官网版 iTunes + iCloud）。

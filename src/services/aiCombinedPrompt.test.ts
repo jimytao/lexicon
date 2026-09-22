@@ -107,10 +107,10 @@ describe('buildCombinedWordPrompt — schema structure', () => {
       coreModules: CORE_MODULES,
       lang: 'en',
     })
-    expect(bilingualPrompt).toContain('母语语感契约')
+    expect(bilingualPrompt).toContain('场景为主·语感收尾')
     expect(bilingualPrompt).toMatch(/褒义、贬义、中性/)
-    expect(bilingualPrompt).toMatch(/动机\/状态/)
-    expect(bilingualPrompt).toMatch(/不要硬造对比/)
+    expect(bilingualPrompt).toMatch(/动机或代价/)
+    expect(bilingualPrompt).toMatch(/不要硬造/)
 
     const monolingualPrompt = buildCombinedWordPrompt({
       lookupModules: LOOKUP_MODULES,
@@ -118,8 +118,8 @@ describe('buildCombinedWordPrompt — schema structure', () => {
       lang: 'en',
       monolingualWord: true,
     })
-    expect(monolingualPrompt).toContain('NATIVE NUANCE CONTRACT')
-    expect(monolingualPrompt).toMatch(/usual valence and speaker stance/i)
+    expect(monolingualPrompt).toContain('NATIVE SCENE CONTRACT')
+    expect(monolingualPrompt).toMatch(/usual valence.*speaker stance/i)
     expect(monolingualPrompt).toMatch(/Do not manufacture a contrast/i)
   })
 })

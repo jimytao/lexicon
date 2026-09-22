@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-09-22 — Extension 升级数据保留与划词智能定位 + AI Chat Markdown 渲染与表格对比 (v0.9.23)
+
+### 用户可见
+1. **升级扩展不再丢失数据（固定 Extension ID）**：以前用户下载新版 ZIP 解压到新文件夹后，Chrome 会把它当作全新扩展（因目录路径变更），导致 API Key、Settings、词库（OPFS）与历史记录（IndexedDB）全部丢失。现在 `manifest.json` 加入固定的 RSA 公钥 `key` 字段，Chrome 从公钥推导出的 Extension ID 与目录无关、版本无关，任何文件夹的任何版本都拥有相同 ID，升级只需“重新加载已解压的扩展程序”，所有本地数据自动保留。
+2. **划词查词按钮智能贴合选区末端**：选中多行文字时，浮动查词按钮不再飘移到整个外接矩形角落，而是精准跟随最后一个选中词的边缘。自动识别选词方向（从上到下选贴最后一行右下，从下到上选贴最顶行右上），永远靠近手指或鼠标松开的位置，并在视口边界智能回弹。
+3. **AI Chat 支持 Markdown 富文本渲染**：AI 对话回复现在完整支持 Markdown 格式，包括粗体、斜体、内联代码、代码块、列表、引用块、分隔线等，并限制标题级别从 `####` 起始防止撑破气泡布局；用户发送的消息保持轻量纯文本。
+4. **Chat 支持防溢出表格对比**：AI 在对比多个相近单词或概念时（如 thrift vs frugal）可使用表格对比；采用等宽分列与自动换行（`break-words`），并根据词数与属性数自适应选择列方向（列数 ≤ 3），彻底杜绝移动端横向溢出。
+5. **义项场景解释优化（场景为主·语感收尾）**：重构 Prompt 契约为「半句点明褒贬 → 画面感具体生活场景为主体（人在做什么、在哪、为什么）→ 最后一句母语者感受」，恢复以生动具体情境帮助记忆词义的核心体验，同时保留母语者语感与近义词真实辨析边界。
+
+### 工程
+- `vite.config.extension.ts`：manifest 注入固定 2048-bit RSA SPKI 公钥，锁定扩展 Extension ID，保障升级时本地存储数据不丢失。
+- `src/extension/content.ts`：重构选区坐标计算，改用 `Range.getClientRects()` 区分逐行 rect 并结合 anchor/focus Y 坐标判断选区方向，支持边界保护。
+- 新增 `src/components/ResultView/AiSection/ChatMarkdown.tsx`：轻量自研 Markdown 解析渲染器，支持 block/inline tokenizer 与移动端自适应表格。
+- `AiChatBox.tsx`：assistant 气泡接入 `<ChatMarkdown>` 渲染。
+- `src/services/aiPromptGuidance.ts`：统一调整双语与单语母语场景 Prompt 契约，更名为「场景为主·语感收尾」，新增防反客为主规则；同步更新 `aiPromptGuidance.test.ts` 与 `aiCombinedPrompt.test.ts`。
+- `lexicon-docs/`：新增多语言词典平台化与英越 MVP 技术路线规划（`11-multilingual-dictionary-roadmap.md`）。
+
 ## 2026-09-19 — 义项母语语感增强 + Android 10 慢设备 AI 结果补全修复 (v0.9.22)
 
 ### 用户可见

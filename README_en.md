@@ -37,7 +37,7 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 
 ### 1. Three Dedicated Lookup Modes
 - **Instant**: Offline local dictionary lookup with 0ms latency. Queries out of dictionary auto-trigger combined AI search.
-- **AI Lookup**: Presents local L1 definitions alongside AI-generated root breakdowns, mnemonics, example verification, and follow-up Q&A chat.
+- **AI Lookup**: Presents local L1 definitions alongside AI-generated vivid scene imagery, root breakdowns, mnemonics, example verification, and follow-up Q&A chat (supporting rich Markdown formatting and responsive comparison tables).
 - **Pure Core**: Replaces definition walls with **usage imagery (short gloss, feel anchors, emotional tone)**, concept trees, collocations, register notes, and output practice cards. Modules are reorderable via drag-and-drop.
 - **Auto-Expanding Input**: Search bar dynamically expands from 1 to 4 lines with strict text wrapping for smooth mobile typing.
 - **Dual-Track Cache & Comparison**: Single AI request generates both Lookup and Pure Core analyses, allowing instant 0ms track switching.
@@ -109,9 +109,9 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 
 > The lexicon.db and lexicon_en.db files in the dictionaries Preview Release are remotely managed dictionary assets; users should not download them manually. lexicon.db is the default English–Chinese dictionary. lexicon_en.db downloads on demand only after switching to monolingual English in Settings.
 
-### Select text on a page
+### Web Selection Lookup
 
-- Select text and click the nearby Lexicon button: the extension opens the Side Panel and starts the lookup.
+- Select text on any web page; the floating lookup button smartly docks at the end of your selection: click it to open the Side Panel and search immediately.
 - You can also use the Lexicon context-menu item; press `Alt+L` on Windows / Linux or `Command+Shift+L` on macOS for the current selection.
 - If Chromium refuses to open the panel because of a page/user-gesture restriction, the query is preserved; clicking the Lexicon toolbar icon resumes it.
 - The selection button can be disabled in Settings. Lexicon reads only text you actively select, never the full page.
@@ -123,11 +123,11 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.22_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.22_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.23_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.23_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.22)
-- **[Lexicon_0.9.22_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.23)
+- **[Lexicon_0.9.23_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -138,9 +138,9 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.22)
-- **[Lexicon_0.9.22_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.22/Lexicon_0.9.22_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.22](https://github.com/jimytao/lexicon/releases/tag/v0.9.22).
+### Android (v0.9.23)
+- **[Lexicon_0.9.23_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.23/Lexicon_0.9.23_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.23](https://github.com/jimytao/lexicon/releases/tag/v0.9.23).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).

@@ -106,23 +106,32 @@ function hide(): void {
   if (button) button.style.display = 'none'
 }
 
-function showAt(rect: DOMRect): void {
+function showAt(rect: DOMRect, bottomToTop = false): void {
   const btn = ensureMounted()
   applyTheme()
 
   const GAP = 6
   const SIZE = 28
-  // 优先贴选区右下；越界则翻到上方 / 收进视口
+  // Horizontal: hug the right edge of the target line rect.
+  // Vertical: below the line for top-to-bottom selections,
+  //           above the line for bottom-to-top selections (button near selection start).
   let left = rect.right + GAP
-  let top = rect.bottom + GAP
+  let top = bottomToTop
+    ? rect.top - SIZE - GAP       // above the first (topmost) selected line
+    : rect.bottom + GAP           // below the last (bottommost) selected line
 
   // 视口尺寸可能报 0（隐藏标签页 / 未渲染的框架）。此时做边界收敛会算出负值
   // 并被夹到左上角，看起来像「按钮跑到角落」。宁可不收敛，直接贴选区。
   const vw = window.innerWidth
   const vh = window.innerHeight
   if (vw > 0 && vh > 0) {
+    // Right overflow → move left of the right edge
+    if (left + SIZE > vw - 4) left = rect.right - SIZE - GAP
+    // Still overflows → clamp to viewport
     if (left + SIZE > vw - 4) left = vw - SIZE - 4
+    // Vertical overflow (button off-screen)
     if (top + SIZE > vh - 4) top = Math.max(4, rect.top - SIZE - GAP)
+    if (top < 4) top = rect.bottom + GAP
     left = Math.max(4, left)
   }
 
@@ -148,11 +157,45 @@ function onSelectionSettled(): void {
   const text = readSelection()
   if (!text || !selection || selection.rangeCount === 0) return hide()
 
-  const rect = selection.getRangeAt(0).getBoundingClientRect()
-  // 折叠选区 / 不可见元素会给出零尺寸矩形
-  if (rect.width === 0 && rect.height === 0) return hide()
+  const range = selection.getRangeAt(0)
 
-  showAt(rect)
+  // getClientRects() returns one DOMRect per visual line of the selection.
+  // This is far more accurate than getBoundingClientRect() which gives the
+  // outer bounding box of all lines and places the button at the page corner
+  // when multiple lines are selected.
+  const rects = Array.from(range.getClientRects()).filter(
+    r => r.width > 0 && r.height > 0
+  )
+  if (rects.length === 0) return hide()
+
+  // Determine selection direction by comparing anchor vs focus vertical position.
+  // anchorNode = where the user started; focusNode = where the user ended.
+  // If anchor is above focus → top-to-bottom → button near bottom-right of last line.
+  // If anchor is below focus → bottom-to-top → button near top-right of first line.
+  let anchorY = 0
+  let focusY = 0
+  if (selection.anchorNode) {
+    try {
+      const r = document.createRange()
+      r.setStart(selection.anchorNode, selection.anchorOffset)
+      r.collapse(true)
+      anchorY = r.getBoundingClientRect().top
+    } catch { /* cross-frame edge case — fall through to default */ }
+  }
+  if (selection.focusNode) {
+    try {
+      const r = document.createRange()
+      r.setStart(selection.focusNode, selection.focusOffset)
+      r.collapse(true)
+      focusY = r.getBoundingClientRect().top
+    } catch { /* cross-frame edge case — fall through to default */ }
+  }
+
+  // bottomToTop = user dragged upward; button goes near the first (topmost) rect.
+  const bottomToTop = focusY < anchorY - 2  // 2px tolerance for same-line jitter
+  const targetRect = bottomToTop ? rects[0] : rects[rects.length - 1]
+
+  showAt(targetRect, bottomToTop)
 }
 
 /* ---------------- 事件绑定 ---------------- */

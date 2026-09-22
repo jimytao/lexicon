@@ -40,6 +40,13 @@ function manifestPlugin(): Plugin {
         version: pkg.version,
         description: '面向中文母语者的英语单词学习工具 —— 词源、语义情景、母语者用法。',
 
+        // Fixed RSA public key → Chrome derives a stable extension ID from it.
+        // This means the ID stays the same no matter which folder the user loads the
+        // extension from, so localStorage / OPFS / IndexedDB data persists across
+        // upgrades. NEVER change this key — doing so gives every user a new ID and
+        // wipes all their stored data (API keys, settings, history, dictionaries).
+        key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjyromKII1wz4+nuxLuujwtg1SOIueUSirJnP/1lmHdBjlf4wmXp6Um5LdRDUA28N1E3yQ1OM/LAd0TrwyJVLbaYn7x5i+w8YPlnNsOATjxugfuRYe5nKPNWfG5cOw1Qmz/JdxQwDdqfKnscx5BeSRJ1/fHbLMmQxcGt6S+w8nqJWKCs6iJeTQhM1LnwkZxMKphwW4BISalKPJhrb6S5jcsE+bAnUJ/17fAaaGwnHHDraXe0PkLGXduy6eDdehA1AZdXKP8Lat7axXZQyGSx+/YpayDH4U8z07N80q+5sFJ9NO+Va0f0kaQFxIUFDLZJ38Mtu0OdTo/xZyFyhzqDvlQIDAQAB',
+
         // 点扩展图标即打开侧栏（行为在 background.ts 里用 setPanelBehavior 设定）
         action: { default_title: 'Lexicon' },
         icons: {

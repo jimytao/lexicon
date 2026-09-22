@@ -7,15 +7,17 @@ describe('native scene prompt guidance', () => {
     const rules = buildNativeSceneRules(false)
 
     expect(description).toMatch(/褒义、贬义、中性/)
-    expect(description).toMatch(/限制、代价或社会暗示/)
-    expect(rules).toMatch(/不得把克制、匮乏、算计或自我牺牲统一包装成积极品质/)
+    expect(description).toMatch(/画面感/)
+    expect(rules).toMatch(/不得把克制、匮乏或算计包装成积极品质/)
+    expect(rules).toMatch(/场景是骨架/)
   })
 
   it('keeps monolingual guidance entirely in English', () => {
     const guidance = `${buildNativeSceneDescription(true)}\n${buildNativeSceneRules(true)}`
 
-    expect(guidance).toContain('NATIVE NUANCE CONTRACT')
-    expect(guidance).toMatch(/lexical tendency from a context-only reading/i)
+    expect(guidance).toContain('NATIVE SCENE CONTRACT')
+    expect(guidance).toMatch(/lexical tendency from context-only reading/i)
+    expect(guidance).toMatch(/SCENE FIRST/i)
     expect(guidance).not.toMatch(/[\u3400-\u9fff]/)
   })
 })

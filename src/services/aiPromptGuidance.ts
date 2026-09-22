@@ -1,20 +1,24 @@
 /** Shared contract for the native-speaker nuance carried by meaning scene cards. */
 export function buildNativeSceneDescription(isMono: boolean): string {
   return isMono
-    ? "2-4 sentences from a native speaker's perspective. State the sense's usual evaluative coloring (positive, negative, neutral, mixed, or context-dependent) and the speaker's stance; then show a concrete real-life scene plus the typical motive, constraint, trade-off, or social inference behind it. If a genuinely confusable near-synonym exists, give one observable choice boundary. Distinguish a lexical tendency from a context-only reading; do not force praise or soften an unfavorable implication. NOT a grammar note or merely 'used when X'."
-    : '2-4句中文，以母语者视角先说清这个义项通常是褒义、贬义、中性、褒贬混合还是取决于语境，以及说话者带什么态度；再用具体生活场景说明其典型动机、限制、代价或社会暗示。若确有容易混淆的近义词，用一句给出可观察的选词边界。必须区分词本身的通常倾向与特定语境带来的解读，不得为了显得积极而强行美化负面或克制意味；禁止只写“用于……时”的功能说明。'
+    ? "2-4 sentences from a native speaker's perspective. Open with one clause naming the usual evaluative coloring (positive, negative, neutral, or mixed) and the speaker's stance — then immediately flow into a concrete real-life scene: paint what the person is actually doing, where they are, and what's at stake (motive, constraint, trade-off). Close with one sentence on what a native listener typically feels or infers. If a genuinely confusable near-synonym exists, contrast the observable choice boundary. Distinguish lexical tendency from context-only reading; do not soften an unfavorable implication. The scene is the backbone — NOT a grammar note, NOT just 'used when X', NOT a paragraph about connotation with no picture."
+    : '2-4句中文，以母语者视角写。先用半句点明这个义项通常是褒义、贬义、中性还是褒贬混合，然后立刻转入具体生活场景：这个人在做什么、在哪里、为什么——画面感是主体，让读者"看到"这个词的典型时刻。最后一句说母语者听到这个词时通常会推断出什么感受或暗示。若有容易混淆的近义词，用一句给出可观察的选词边界。场景是核心骨架，不得写成以褒贬分析为主、场景只是点缀；禁止只写"用于……时"的功能说明。'
 }
 
 export function buildNativeSceneRules(isMono: boolean): string {
   return isMono
-    ? `- NATIVE NUANCE CONTRACT for every scene.description:
-  1. Name the usual valence and speaker stance explicitly: positive, negative, neutral, mixed, or context-dependent.
-  2. Explain what a native listener would typically infer about the person's motive/state, including any constraint, trade-off, or social implication.
-  3. When a genuinely confusable near-synonym exists, contrast the observable reason a native would choose this headword instead. Do not manufacture a contrast.
-  4. Separate lexical tendency from contextual possibility (use "often/can" where appropriate). Never turn restraint, deprivation, calculation, or self-denial into generic praise unless the word itself warrants it.`
-    : `- 每个 scene.description 必须满足“母语语感契约”：
-  1. 明说通常褒贬与说话者态度：褒义、贬义、中性、褒贬混合或取决于语境，不准只写“正面氛围”等空话。
-  2. 说明母语者通常会从这个词推断出当事人的动机/状态，以及可能的限制、代价或社会暗示。
-  3. 若确有容易混淆的近义词，指出母语者为何在这个可观察情境下选主词；没有可靠边界就不要硬造对比。
-  4. 区分“词本身通常暗示”与“特定语境可能解读”，必要时使用“通常/有时/可能”；除非词义确实如此，不得把克制、匮乏、算计或自我牺牲统一包装成积极品质。`
+    ? `- NATIVE SCENE CONTRACT for every scene.description:
+  1. Open with one clause on usual valence (positive / negative / neutral / mixed) and speaker stance — keep it brief, then pivot immediately to a scene.
+  2. The scene IS the main body: depict what the person is concretely doing, where, and what's at stake (motive, cost, trade-off, or social tension). Make the reader picture a real moment.
+  3. Close with one sentence on the native listener's gut feeling or typical inference.
+  4. If a genuinely confusable near-synonym exists, give one observable reason to choose this headword. Do not manufacture a contrast.
+  5. Distinguish lexical tendency from context-only reading ("often/can"). Never turn restraint, deprivation, or self-denial into praise unless the word warrants it.
+  6. SCENE FIRST — do not write a paragraph about connotation with the scene buried at the end.`
+    : `- 每个 scene.description 必须满足"场景为主·语感收尾"契约：
+  1. 半句点明褒贬（褒义/贬义/中性/褒贬混合），随即转入场景，不得把褒贬分析写成主体。
+  2. 场景是骨架：写出当事人在做什么、在哪里、动机或代价是什么——让读者"看到"这个词的典型时刻。
+  3. 最后一句写母语者听到这个词时通常会产生什么感受或推断。
+  4. 若有容易混淆的近义词，一句给出可观察的选词边界；没有则不要硬造。
+  5. 区分"词本身通常暗示"与"特定语境可能解读"；不得把克制、匮乏或算计包装成积极品质。
+  6. 禁止写成先大篇讲褒贬、场景只有一句话点缀的结构。`
 }
