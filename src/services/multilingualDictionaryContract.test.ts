@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildCombinedPhrasePrompt, buildCombinedWordPrompt } from './aiCombinedPrompt'
+import { resolveDictionaryContext } from './dictionaryContext'
 import { resolveDictionaryTarget } from './db.ops'
+import { useResultStore } from '../stores/resultStore'
 import { detectLanguage } from '../stores/searchStore'
 import { useSettingsStore } from '../stores/settingsStore'
 
@@ -23,6 +25,7 @@ const CORE_MODULES = [
 ]
 
 const initialSettings = useSettingsStore.getState()
+const initialResults = useResultStore.getState()
 
 /**
  * TDD contract for the English–Vietnamese MVP.
@@ -48,18 +51,16 @@ describe('Vietnamese input detection', () => {
 describe('main dictionary and monolingual precedence', () => {
   beforeEach(() => {
     useSettingsStore.setState({
-      activeDictionary: 'lexicon.db',
-      autoSwitchDictionary: true,
       monolingualWord: false,
       monolingualPhrase: false,
       monolingualSentence: false,
-      // Desired persisted field; ignored by the current implementation.
       mainDictionary: 'en-vi',
-    } as never)
+    })
   })
 
   afterEach(() => {
     useSettingsStore.setState(initialSettings, true)
+    useResultStore.setState(initialResults, true)
   })
 
   it('uses the selected English–Vietnamese main dictionary for a normal word', () => {
@@ -88,6 +89,40 @@ describe('main dictionary and monolingual precedence', () => {
 
     useSettingsStore.setState({ monolingualWord: false })
     expect(resolveDictionaryTarget('satisfaction')).toBe('envi')
+  })
+
+  it('keeps English-English available as an explicit main dictionary', () => {
+    useSettingsStore.setState({ mainDictionary: 'en-en' })
+    expect(resolveDictionaryTarget('satisfaction')).toBe('enen')
+  })
+
+  it('uses one shared effective context for dictionary and AI output language', () => {
+    expect(resolveDictionaryContext('satisfaction', useSettingsStore.getState())).toEqual({
+      queryType: 'word',
+      dictionaryTarget: 'envi',
+      explanationLanguage: 'vi',
+      isMonolingual: false,
+    })
+
+    useSettingsStore.setState({ monolingualWord: true })
+    expect(resolveDictionaryContext('satisfaction', useSettingsStore.getState())).toEqual({
+      queryType: 'word',
+      dictionaryTarget: 'enen',
+      explanationLanguage: 'en',
+      isMonolingual: true,
+    })
+  })
+
+  it('clears language-dependent AI caches when the main dictionary changes', () => {
+    useResultStore.setState({
+      combinedCache: { satisfaction: {} as never },
+      combinedResult: {} as never,
+    })
+
+    useSettingsStore.getState().setMainDictionary('en-zh')
+
+    expect(useResultStore.getState().combinedCache).toEqual({})
+    expect(useResultStore.getState().combinedResult).toBeNull()
   })
 })
 
@@ -150,9 +185,11 @@ describe('settings and feature-isolation source contracts', () => {
   const settingsView = readFileSync(join(root, 'components/Settings/SettingsView.tsx'), 'utf8')
   const imageStore = readFileSync(join(root, 'stores/imageStore.ts'), 'utf8')
 
-  it('keeps the main dictionary selector enabled while auto-switch is on', () => {
+  it('keeps the main dictionary selector and removes the redundant auto-switch control', () => {
     expect(settingsView).toMatch(/mainDictionary|settings\.mainDictionary/)
-    expect(settingsView).not.toMatch(/disabled=\{autoSwitchDictionary\}/)
+    expect(settingsView).toContain('<option value="en-en">')
+    expect(settingsView).not.toContain('autoSwitchDictionary')
+    expect(settingsView).not.toContain('setAutoSwitchDictionary')
   })
 
   it('does not replace Image Translate independent source/target preferences', () => {

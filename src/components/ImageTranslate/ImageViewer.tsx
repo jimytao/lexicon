@@ -249,7 +249,11 @@ export const ImageViewer = forwardRef<ImageViewerHandle, Props>(({ children, onS
     <div
       ref={containerRef}
       className={`relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800${className ? ` ${className}` : ''}`}
-      style={{ minHeight: 200, touchAction: 'none', userSelect: 'none' }}
+      style={{
+        minHeight: 200,
+        touchAction: compact && currentScale <= 1 ? 'pan-y' : 'none',
+        userSelect: 'none',
+      }}
     >
       <div
         ref={innerRef}

@@ -162,6 +162,8 @@ Analyze this word and return the JSON.`
 ### `aiFullLookup(word, isFull?, signal?, cognitive?)`
 词库缺失（或 Mode 3 全量）单词的 AI 生成。返回 `AiFullResult`。`cognitive: 'lookup' | 'core'` 决定 prompt 与缓存分轨。
 
+- AI 与本地 DB 共用 `resolveDictionaryContext(query, settings)`：当前查询类型的 Monolingual 开关优先，输出与词典均为英语；否则英汉→中文、英越→越南语、英英→英语。AI 直接读取已 hydration 的实时 settings store，避免刚切换后继续使用旧持久化配置。
+
 - 共用：`correctForm`、`phonetic`、`pos`、`coreConcept`、`meanings`（含 scene）、`etymology`、`synonyms`、`examples` 等
 - **Lookup**：理解与记忆向；**不要** `nativeMindModel` / `conceptGraph` / `wordChoiceContrast`
 - **Pure Core**：必填加厚 `coreConcept`（含 `feelAnchor` / `emotionalTone`）+ `conceptGraph`；`wordChoice` 开时必填 `wordChoiceContrast`；优先级 coreConcept > 图谱 > 搭配 > 近义 > 选用对照

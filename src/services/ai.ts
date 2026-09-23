@@ -1,13 +1,15 @@
-import { detectLanguage, detectQueryType } from '../stores/searchStore'
+import { detectLanguage } from '../stores/searchStore'
 import {
   normalizeCoreModules,
   normalizeCorePhraseModules,
   normalizeModules,
   resolveSearchApiKey,
   seedCorePhraseModulesFromCore,
+  useSettingsStore,
   type AppModule,
   type SearchProviderId,
 } from '../stores/settingsStore'
+import { resolveDictionaryContext, type MainDictionary } from './dictionaryContext'
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
@@ -40,7 +42,7 @@ interface AiConfig {
   monolingualWord: boolean
   monolingualPhrase: boolean
   monolingualSentence: boolean
-  mainDictionary: 'en-zh' | 'en-vi'
+  mainDictionary: MainDictionary
 }
 
 const DEFAULT_LOOKUP_MODULES: ModuleFlag[] = [
@@ -76,28 +78,9 @@ const DEFAULT_CORE_PHRASE_MODULE_FLAGS: ModuleFlag[] = [
 
 function getConfig(): AiConfig {
   try {
-    const stored = JSON.parse(localStorage.getItem('lexicon-settings') ?? '{}') as {
-      state?: {
-        aiProvider?: string
-        aiEndpoint?: string
-        aiModel?: string
-        aiApiKeys?: Record<string, string>
-        aiModels?: Record<string, string>
-        modules?: ModuleFlag[]
-        coreModules?: ModuleFlag[]
-        corePhraseModules?: ModuleFlag[]
-        webSearchEnabled?: boolean
-        tavilyApiKey?: string
-        searchProvider?: string
-        searchApiKeys?: Record<string, string>
-        triLingualExamples?: boolean
-        monolingualWord?: boolean
-        monolingualPhrase?: boolean
-        monolingualSentence?: boolean
-        mainDictionary?: 'en-zh' | 'en-vi'
-      }
-    }
-    const s = stored.state ?? {}
+    // Searches wait for settings hydration in App; reading the live store here
+    // keeps a just-changed dictionary/language in sync with the DB router.
+    const s = useSettingsStore.getState()
     const providerId = s.aiProvider ?? ''
     // 与 settingsStore persist merge 对齐：旧 persist 要拆 chunks、剔 Core dictionary
     const modules = normalizeModules(
@@ -129,7 +112,9 @@ function getConfig(): AiConfig {
       monolingualWord: s.monolingualWord ?? false,
       monolingualPhrase: s.monolingualPhrase ?? false,
       monolingualSentence: s.monolingualSentence ?? false,
-      mainDictionary: s.mainDictionary === 'en-vi' ? 'en-vi' : 'en-zh',
+      mainDictionary: s.mainDictionary === 'en-vi' || s.mainDictionary === 'en-en'
+        ? s.mainDictionary
+        : 'en-zh',
     }
   } catch {
     return {
@@ -166,10 +151,7 @@ function modulesForPhraseCognitive(config: AiConfig, cognitive: 'lookup' | 'core
  * on the input language. Only the query TYPE picks which of the three toggles applies.
  */
 function getIsMono(query: string, config: AiConfig): boolean {
-  const qType = detectQueryType(query)
-  if (qType === 'sentence') return config.monolingualSentence
-  if (qType === 'phrase') return config.monolingualPhrase
-  return config.monolingualWord
+  return resolveDictionaryContext(query, config).isMonolingual
 }
 
 /**
@@ -380,7 +362,8 @@ export async function analyzeWord(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const userPrompt = buildUserPrompt(word, meanings, includeExamples, config.monolingualWord)
+  const isMono = getIsMono(word, config)
+  const userPrompt = buildUserPrompt(word, meanings, includeExamples, isMono)
   const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
@@ -395,7 +378,7 @@ export async function analyzeWord(
         model: config.model,
         temperature: 0.3,
         messages: [
-          { role: 'system', content: getSystemPrompt(config.modules, includeExamples, config.monolingualWord) },
+          { role: 'system', content: getSystemPrompt(config.modules, includeExamples, isMono) },
           { role: 'user', content: userPrompt },
         ],
       }),
@@ -891,7 +874,7 @@ function getFullLookupPrompt(
   triLingual: boolean = false,
   monolingualWord: boolean = false,
   cognitive: 'lookup' | 'core' = 'lookup',
-  explanationLanguage: 'zh' | 'vi' = 'zh',
+  explanationLanguage: 'zh' | 'vi' | 'en' = 'zh',
   meaningsAnchor?: MeaningsAnchor
 ): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
@@ -1123,8 +1106,10 @@ export async function aiFullLookup(
   const langName = langNames[lang] || 'Foreign Language'
 
   const activeModules = modulesForCognitive(config, cognitive)
+  const dictionaryContext = resolveDictionaryContext(word, config)
   const cleaned = await callApi(
-    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples, getIsMono(word, config), cognitive, config.mainDictionary === 'en-vi' ? 'vi' : 'zh', opts.anchor),
+    getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples,
+      dictionaryContext.isMonolingual, cognitive, dictionaryContext.explanationLanguage, opts.anchor),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -1156,7 +1141,7 @@ export async function fillMissingCollocationNotes(
   const missing = items.filter((i) => !i.note?.trim() || i.note === 'N/A' || i.note === '常用')
   if (missing.length === 0) return []
 
-  const isMono = config.monolingualWord
+  const isMono = getIsMono(word, config)
   const system = isMono
     ? `You fill missing meanings for English chunks/collocations. Return ONLY a JSON array. Each item: {"chunk":"...","note":"clear English meaning (REQUIRED)"}. NEVER use N/A. Do not invent new chunks — only explain the given list.`
     : `你为英语语块/搭配补全缺失释义。只返回 JSON 数组。每项：{"chunk":"...","note":"必填中文释义"}。禁止 N/A、「常用」。不要新增语块，只解释给定列表。`
@@ -1191,7 +1176,7 @@ export async function fillMissingConceptExamples(
   )
   if (missing.length === 0) return []
 
-  const isMono = config.monolingualWord
+  const isMono = getIsMono(word, config)
   const system = isMono
     ? `You complete native-mind explanations for concept-tree phrases. Return ONLY JSON array of {"phrase","meaning","mindHint"}. meaning=what it means; mindHint=how a native links it to root core "${rootCore}". REQUIRED fields. No N/A.`
     : `你为概念树短语补全释义与母语心智。只返回 JSON 数组：{"phrase","meaning","mindHint"}。meaning=中文释义；mindHint=母语者如何从根意象「${rootCore}」延伸到此用法。字段必填。禁止 N/A。`
@@ -1230,10 +1215,8 @@ export async function aiPhraseQuery(
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
 
-  const qType = detectQueryType(phrase)
-  const isMono = qType === 'sentence'
-    ? config.monolingualSentence
-    : config.monolingualPhrase  // phraseQuery only handles phrase/sentence; fallback is phrase, not word
+  const dictionaryContext = resolveDictionaryContext(phrase, config)
+  const qType = dictionaryContext.queryType
 
   const phraseQueryType: PhrasePromptQueryType = qType === 'sentence' ? 'sentence' : 'phrase'
   const activeModules = modulesForPhraseCognitive(config, cognitive)
@@ -1244,11 +1227,11 @@ export async function aiPhraseQuery(
       webSearchResults: webResults,
       isFull,
       triLingual: config.triLingualExamples,
-      isMono,
+      isMono: dictionaryContext.isMonolingual,
       cognitive,
       queryType: phraseQueryType,
       meaningsAnchor: opts.anchor,
-      explanationLanguage: config.mainDictionary === 'en-vi' ? 'vi' : 'zh',
+      explanationLanguage: dictionaryContext.explanationLanguage,
     }),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
@@ -2195,6 +2178,7 @@ export async function aiCombinedLookup(
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
 
+  const dictionaryContext = resolveDictionaryContext(word, config)
   const prompt = buildCombinedWordPrompt({
     lookupModules: config.modules,
     coreModules: config.coreModules,
@@ -2202,8 +2186,8 @@ export async function aiCombinedLookup(
     webSearchResults: webResults,
     isFull,
     triLingual: config.triLingualExamples,
-    monolingualWord: config.monolingualWord,
-    explanationLanguage: config.mainDictionary === 'en-vi' ? 'vi' : 'zh',
+    monolingualWord: dictionaryContext.isMonolingual,
+    explanationLanguage: dictionaryContext.explanationLanguage,
     meaningsAnchor,
   })
 
@@ -2243,10 +2227,8 @@ export async function aiCombinedPhraseQuery(
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'Foreign Language'
 
-  const qType = detectQueryType(phrase)
-  const isMono = qType === 'sentence'
-    ? config.monolingualSentence
-    : config.monolingualPhrase
+  const dictionaryContext = resolveDictionaryContext(phrase, config)
+  const qType = dictionaryContext.queryType
 
   const phraseQueryType = qType === 'sentence' ? 'sentence' : 'phrase'
 
@@ -2257,10 +2239,10 @@ export async function aiCombinedPhraseQuery(
     webSearchResults: webResults,
     isFull,
     triLingual: config.triLingualExamples,
-    isMono,
+    isMono: dictionaryContext.isMonolingual,
     queryType: phraseQueryType,
     meaningsAnchor,
-    explanationLanguage: config.mainDictionary === 'en-vi' ? 'vi' : 'zh',
+    explanationLanguage: dictionaryContext.explanationLanguage,
   })
 
   const userMessage = lang === 'zh'
@@ -2293,7 +2275,7 @@ export async function enrichSingleMeaning(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const isMono = config.monolingualWord
+  const isMono = getIsMono(word, config)
 
   const sceneLabel = isMono ? '2-4 word English context tag' : '2-4字的情景标签'
   const sceneDesc = buildNativeSceneDescription(isMono)

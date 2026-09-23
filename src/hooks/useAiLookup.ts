@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { useResultStore } from '../stores/resultStore'
-import { useSearchStore, detectQueryType, detectLanguage } from '../stores/searchStore'
+import { useSearchStore, detectLanguage } from '../stores/searchStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import {
   analyzeWord,
@@ -13,6 +13,7 @@ import {
   type MeaningsAnchor,
 } from '../services/ai'
 import { recordSentenceCorrectionEvent } from '../services/profile'
+import { resolveDictionaryContext } from '../services/dictionaryContext'
 import { combineSignals } from '../utils/abortSignal'
 import { classifyAiRequestError } from '../utils/aiRequestErrors'
 import { createAiRequestGate, shouldCommitAiDisplay } from '../utils/aiRequestGate'
@@ -117,7 +118,7 @@ async function resolveWordAnchor(
     }
   }
 
-  const isMono = useSettingsStore.getState().monolingualWord
+  const isMono = resolveDictionaryContext(word, useSettingsStore.getState()).isMonolingual
 
   if (detectLanguage(word) === 'zh') {
     try {
@@ -141,9 +142,9 @@ async function resolvePhraseAnchor(
   signal: AbortSignal,
   commitOk: () => boolean,
 ): Promise<MeaningsAnchor | undefined> {
-  const isSentence = detectQueryType(phrase) === 'sentence'
-  const settings = useSettingsStore.getState()
-  const isMono = isSentence ? settings.monolingualSentence : settings.monolingualPhrase
+  const dictionaryContext = resolveDictionaryContext(phrase, useSettingsStore.getState())
+  const isSentence = dictionaryContext.queryType === 'sentence'
+  const isMono = dictionaryContext.isMonolingual
 
   // A sentence has exactly one faithful reading and the halves cannot diverge on
   // it, so there is nothing to arbitrate — resolve only to paint the gist early.

@@ -186,7 +186,8 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 - 双语：`public/assets/databases/lexicon.db`（OALD9，约 52k）
 - 英英：`public/assets/databases/lexicon_en.db`（OALD10，约 84k）
-- 单语言模式自动切换词典；中文反向查词可强制路由双语库，并与 AI 分析 / 缓存实体对齐
+- 英越：`public/assets/databases/lexicon_vi.db`（SPDict，约 83k，含越南语反向索引）
+- Main Dictionary 可选英汉 / 英越 / 英英；单词、短语、句子的 Monolingual 开关按查询类型直接覆盖为英英，不再有 Auto Switch 开关。DB 与 AI 共用 `resolveDictionaryContext`。
 
 ### 发音
 
@@ -253,7 +254,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ### 已完成（里程碑摘要）
 
 - [x] 项目脚手架、类型、Zustand stores、DB/AI 服务层、Hooks、基础组件
-- [x] 词库：OALD9 双语 + OALD10 英英；单语言自动切换；中文反向查词路由
+- [x] 词库：OALD9 英汉 + OALD10 英英 + SPDict 英越；按查询类型的单语言覆盖；中/越反向查词路由
 - [x] AI 功能在单英文 / 双语模式下的 prompt 适配
 - [x] UK/US 发音、自动发音、离线 TTS、播放动效
 - [x] Pure Core（Mode 3）、设置模块化、认知模块开关
@@ -284,7 +285,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 ### 关键实现备忘
 
 - 存储层：仅经 `DBService`；禁止直调 sql.js / Capacitor SQLite
-- 词库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`
+- 词库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`、`lexicon_vi.db`
 - Tailwind **v4**（非 v3），配置在 `src/index.css`
 - sql.js **不能**加入 `optimizeDeps.exclude`，否则浏览器无法 import CJS，词库加载失败
   （注意：部分旧文档示例仍写 `exclude: ['sql.js']`，以本备忘与实际 `vite.config` 为准）

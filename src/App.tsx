@@ -91,7 +91,14 @@ export function App() {
   const lastProfileQueryRef = useRef<string>('')
   const lastScrollTopRef = useRef(0)
   const { mode, query, setMode } = useSearchStore()
-  const { appearance, performanceMode } = useSettingsStore()
+  const {
+    appearance,
+    performanceMode,
+    mainDictionary,
+    monolingualWord,
+    monolingualPhrase,
+    monolingualSentence,
+  } = useSettingsStore()
   const { add: addHistory, upgrade: upgradeHistoryRaw } = useHistoryStore()
   // Persist rehydrates async; applying theme before that would overwrite index.html with default `system`.
   const [settingsHydrated, setSettingsHydrated] = useState(() =>
@@ -174,6 +181,15 @@ export function App() {
   const { selectWord } = useSearch()
   const { triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
   const { status, hasSeenBadge, checkUpdate, cleanupOldApks, setHasSeenBadge, isModalOpen, toastMessage, clearToast, openModal } = useUpdateStore()
+  const routingKey = `${mainDictionary}:${monolingualWord}:${monolingualPhrase}:${monolingualSentence}`
+  const previousRoutingKeyRef = useRef(routingKey)
+
+  // A request started under the old language must never repaint after settings change.
+  useEffect(() => {
+    if (previousRoutingKeyRef.current === routingKey) return
+    previousRoutingKeyRef.current = routingKey
+    cancelAi()
+  }, [routingKey, cancelAi])
 
   useEffect(() => {
     // Initial check and cleanup

@@ -1,14 +1,32 @@
 # CHANGELOG
 
+## 2026-09-23 — 图片翻译多图阅读起点修复与词典路由重构 (v0.9.25)
+
+### 用户可见
+1. **切换图片从第一条译文开始阅读**：在图一读到底部后切到图二/图三，不再继承旧页面的底部滚动位置，也不会回到语言与删除按钮所在的整个页面顶部；页面会定位到图片刚好固定在安全区的位置，第一条译文完整显示在图片下方。
+2. **图片区域恢复手机纵向滑页**：列表模式下图片未放大时允许单指从图片表面继续上下滚动页面；图片放大后仍保留拖动查看能力。
+3. **主词典支持直接选择英英**：设置中主要词典（Main Dictionary）新增「牛津英英」选项，并彻底移除容易混淆的冗余 Auto Switch 开关；单词、短语、句子的单语开关作为独立的临时覆盖层，关闭后即刻回到选定的主要双语词典。
+4. **【重要机制提醒】切换主要词典重置与清理**：为避免不同语种的释义和讲解跨语言混杂，并确保新语言设置即时生效，在设置中切换主要词典（英汉 / 英越 / 英英）或调整单语言沉浸模式时，系统会自动**重置当前屏幕上的查询结果**、**清空与语言绑定的全部本地 AI 缓存**，并**立即取消正在请求中的在途旧语种 AI 任务**。
+
+### 工程
+- `ImageTranslateView` 新增非 sticky 阅读区锚点；切图后按锚点自然文档位置减去 `top-safe` 计算外层真实滚动容器的阅读起点，不再对译文条目调用顶部对齐。
+- `ImageViewer` 的 `touch-action` 按列表模式与缩放状态切换：原始比例使用 `pan-y`，放大后使用 `none`。
+- 新增 `imageReadingScroll.ts` 与单元测试，覆盖安全区偏移和负值钳制。
+- 新增 `dictionaryContext.ts` 共享词典上下文路由，统一本地 DB 与 AI Prompt 的语言与单语判定，消除分支漂移。
+- `App.tsx` 监听词典/单语言组合 routingKey，在配置变更时自动取消在途 AI 请求（`cancelAi`），防止旧语种结果迟到后反向覆盖。
+- 验证：33 个测试文件、293 项测试全部通过；主应用与浏览器扩展生产构建通过；ESLint 0 error（保留既有 warning）。
+
+
 ## 2026-09-22 — 英越主词典 MVP 与词库分发 + 越南语 AI 联动及 ESLint 初始化 (v0.9.24)
 
 ### 用户可见
-1. **新增 SPDict 英语—越南语主词典**：设置中的词典选择调整为 `Main Dictionary`，现在可以在英汉词典与 SPDict 英越词典之间切换；即使开启单语言自动切换，主要双语词典仍可选择。
+1. **新增 SPDict 英语—越南语主词典**：设置中的词典选择调整为 `Main Dictionary`，现在可以在英汉、英越与原有英英词典之间切换；对应查询类型开启 Monolingual 时会直接临时覆盖为英英词典。
 2. **英文查询支持越南语释义**：选择英越主词典后，英文词条命中本地数据库时直接显示越南语释义、音标和可提取的双语例句，无需等待 AI 才能看到基础结果。
 3. **越南语支持反查英文**：从 SPDict 越南语释义生成反向索引；输入可精确匹配的越南语释义时，会返回对应英文词条。例如 `vụng về` 可匹配 `clumsy` / `awkward` 等候选。
 4. **本地未命中自动使用 AI**：无论输入英文还是越南语，只要本地英越词典没有结果，就继续使用现有 AI Lookup / Pure Core 全量生成流程，不展示空白结果，也不要求词典覆盖全部词汇。
 5. **AI 输出语言跟随主要词典**：英越词典启用时，英文输入使用越南语解释；越南语输入生成自然英文表达并用越南语讲解；日语等其他外语输入也改用越南语翻译和解释。单语言模式保持最高优先级，开启后仍全部使用英语。
 6. **切换词典不残留旧语言结果**：更换主要词典时立即清除当前结果和 AI 缓存，避免中文与越南语内容混在同一查询页面。图片翻译继续使用自己独立的源语言/目标语言设置，不受主要词典影响。
+7. **移除冗余 Auto Switch 开关**：单词、短语、句子的 Monolingual 开关本身已经表达是否使用英英模式，不再需要第二个自动切换开关。
 
 ### 工程
 - **英越词库上传 `dictionaries` Release**：将 `lexicon_vi.db`（46,485,504 bytes，SHA-256 `11ac312e…`，版本 `spdict-1`）上传至 GitHub Release；`dist-dictionaries/manifest.json` 同步更新加入 `envi` 条目（url / bytes / sha256）；`scripts/gen-dictionary-manifest.mjs` 增加 `envi` 词典入口，后续重新生成清单时自动包含三本词典。
@@ -20,14 +38,15 @@
 - **`npm run lint` 现通过**：`0 errors / 68 warnings`，exit 0。
 - 新增 `scripts/mdx-en-vi-to-sqlite.mjs`：使用 `js-mdict + sql.js` 将 SPDict MDX 转为 Lexicon SQLite，无需本机 `better-sqlite3` 原生编译环境；仅保留能稳定提取词性和释义的学习型词条，过滤大量无结构专业噪音。
 - 新增 `public/assets/databases/lexicon_vi.db`（本地构建产物，约 46.5 MB）：包含 83,067 个结构化英文词条、135,194 条越南语释义、20,927 组例句及 202,403 条越南语→英语反向索引。
-- `settingsStore` 新增持久化 `mainDictionary: 'en-zh' | 'en-vi'`；单词、短语和句子三个 Monolingual 开关按查询类型临时覆盖为英英词典，不再禁用主要词典选择器。
+- `settingsStore` 使用持久化 `mainDictionary: 'en-zh' | 'en-vi' | 'en-en'`；移除运行时 `activeDictionary` / `autoSwitchDictionary`，持久化合并时仍兼容迁移旧 `activeDictionary`。
+- 新增共享 `resolveDictionaryContext()`：本地 DB 与 AI Prompt 从同一个结果读取有效词典、解释语言和 Monolingual 优先级。切换主词典或 Monolingual 时清除语言相关 AI 缓存与当前结果，并取消旧在途 AI 请求，修复旧缓存让新选择看似不生效的问题。
 - `db.ops.ts` 新增 `envi` 路由及可选 `reverse_lookup` 查询；旧英汉/英英数据库没有该表时保持兼容。`db.web.ts`、`db.native.ts` 与 `db.extension.ts` 增加第三本词典的加载、缓存失效、原生连接和 Extension manifest `envi` 支持。
 - 越南语特有字符检测放在通用拉丁字母判断之前；`Language` 类型新增 `vi`。
 - `ai.ts`、`aiPhrasePrompt.ts` 与 `aiCombinedPrompt.ts` 增加越南语学习者语言规则，同时保留 Monolingual 英语覆盖；图片翻译 Prompt 与 `imageStore` 未改动。
 - 新增 `multilingualDictionaryContract.test.ts` 与 `spdictParser.test.ts`，覆盖越南语识别、主词典/单语言优先级、AI 输出方向、设置隔离和 MDX 字段解析。
 
 ### 验证与发布状态
-- 全量自动化测试：32 个测试文件、288 项测试全部通过。
+- 全量自动化测试：32 个测试文件、291 项测试全部通过。
 - TypeScript 与 Vite 生产构建通过；SQLite 实查已覆盖英文正查、越南语反查及未命中返回空结果三条路径。
 - ✅ **`npm run lint` 已修复并通过**：安装 `eslint@^9`、`@eslint/js`、`typescript-eslint`、`eslint-plugin-react-hooks`，新增 [`eslint.config.mjs`](file:///d:/vibe%20coding/lexicon/eslint.config.mjs)（ESLint 9 flat config）；现为 0 errors / 68 warnings，exit 0。
 - ✅ **英越数据库已上传 GitHub Release**（`dictionaries` tag）：`lexicon_vi.db`（46,485,504 bytes，SHA-256: `11ac312e830beccd204dd43e099710236153e5049a0546123b758766f40c1906`，版本标识 `spdict-1`）；`manifest.json` 已同步更新，加入 `envi` 下载地址、字节数与 SHA-256。`scripts/gen-dictionary-manifest.mjs` 同步更新，后续重新生成清单时自动包含三本词典。

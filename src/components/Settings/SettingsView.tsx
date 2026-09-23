@@ -264,7 +264,6 @@ export function SettingsView() {
     monolingualPhrase, setMonolingualPhrase,
     monolingualSentence, setMonolingualSentence,
     mainDictionary, setMainDictionary,
-    autoSwitchDictionary, setAutoSwitchDictionary,
     chatRichContextDefault, setChatRichContextDefault,
     pronunciationAccent, setPronunciationAccent,
     autoPlayPronunciation, setAutoPlayPronunciation,
@@ -773,20 +772,13 @@ export function SettingsView() {
                 <span className="text-xs font-medium text-foreground shrink-0">{t('settings.mainDictionary')}</span>
                 <select
                   value={mainDictionary}
-                  onChange={(e) => setMainDictionary(e.target.value as 'en-zh' | 'en-vi')}
+                  onChange={(e) => setMainDictionary(e.target.value as 'en-zh' | 'en-vi' | 'en-en')}
                   className="min-w-0 max-w-[11.5rem] shrink text-xs border border-border rounded-xl px-2.5 py-1 outline-none focus:border-accent bg-background text-foreground overflow-hidden whitespace-nowrap text-ellipsis"
                 >
                   <option value="en-zh">{t('settings.dictEnZh')}</option>
                   <option value="en-vi">{t('settings.dictEnVi')}</option>
+                  <option value="en-en">{t('settings.dictEnEn')}</option>
                 </select>
-              </div>
-              <div className="flex items-center justify-between pl-4">
-                <span className="text-xs font-medium text-foreground">{t('settings.autoSwitchDictionary')}</span>
-                <button onClick={() => setAutoSwitchDictionary(!autoSwitchDictionary)} className="flex items-center h-7 px-1 cursor-pointer">
-                  <div className={`w-8 h-[18px] rounded-full transition-all duration-300 relative ${autoSwitchDictionary ? 'bg-accent' : 'bg-foreground/10'}`}>
-                    <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-all duration-300 transform ${autoSwitchDictionary ? 'translate-x-3.5' : 'translate-x-0'}`} />
-                  </div>
-                </button>
               </div>
             </div>
 

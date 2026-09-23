@@ -45,7 +45,7 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 
 ### 2. Multi-Dictionary Local Engines & Smart Routing
 - **Authoritative Offline Engines**: Oxford 9th Edition Bilingual (~52k entries) + 10th Edition Monolingual (~84k entries) + SPDict English-Vietnamese dictionary (~83k entries with 200k reverse index entries).
-- **Main Dictionary & Monolingual Hot-Toggle**: Switch flexibly between English-Chinese and English-Vietnamese main dictionaries, or override with one-click Monolingual English mode with responsive layout.
+- **Main Dictionary & Monolingual Hot-Toggle**: Choose English-Chinese, English-Vietnamese, or English-English as the main dictionary; per-type monolingual switches temporarily override it with English-English.
 - **Reverse Routing for Chinese & Vietnamese**: Type Chinese or Vietnamese to instantly reverse-match authentic English counterparts with native speaker mindset analysis.
 
 ### 3. Cognitive Preposition Imagery
@@ -55,6 +55,7 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 ### 4. Image & Comic Translation
 - **Camera Capture & Batch Import**: Take instant photo on iOS / Android / Web / PC, or batch import local images for parallel OCR and AI translation.
 - **Smooth Zoom & Pan Viewer**: Dual-touch / scroll-wheel canvas viewer with instant overlay comparison between original and translated text.
+- **Continuous Multi-Image Reading**: Switching images starts at that image's first translation while keeping the original pinned below the safe area, without reopening the top controls or hiding early lines.
 - **Compare & Transient Reading**: Side-by-side comparison and instant translation overlay reading.
 
 ### 5. Flexible AI Engines & Real-Time Web Search (Tavily / Brave)
@@ -107,7 +108,7 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 - Extension corrupted or folder missing: Move the folder back to its original path, or remove the broken entry and click **Load unpacked** again.
 - Managed enterprise/school browsers may disable Developer mode by policy, which cannot be bypassed by Lexicon.
 
-> The lexicon.db and lexicon_en.db files in the dictionaries Preview Release are remotely managed dictionary assets; users should not download them manually. lexicon.db is the default English–Chinese dictionary. lexicon_en.db downloads on demand only after switching to monolingual English in Settings.
+> The lexicon.db, lexicon_en.db, and lexicon_vi.db files in the dictionaries Preview Release are remotely managed assets; users should not download them manually. The extension downloads the required dictionary on demand from Main Dictionary and per-query monolingual settings.
 
 ### Web Selection Lookup
 
@@ -123,11 +124,11 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.24_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.24_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.25_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.25_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.24)
-- **[Lexicon_0.9.24_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.25)
+- **[Lexicon_0.9.25_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -138,9 +139,9 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.24)
-- **[Lexicon_0.9.24_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.24/Lexicon_0.9.24_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.24](https://github.com/jimytao/lexicon/releases/tag/v0.9.24).
+### Android (v0.9.25)
+- **[Lexicon_0.9.25_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.25](https://github.com/jimytao/lexicon/releases/tag/v0.9.25).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).

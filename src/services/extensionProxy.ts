@@ -6,8 +6,8 @@
  * 见 10-browser-extension.md §5.0）。MV3 Service Worker 的 `fetch` 在声明
  * `host_permissions` 后不受 CORS 约束，所以把请求转交给它执行。
  *
- * 硬约束：SW 是**哑代理**，不读配置、不含业务逻辑（它没有 localStorage，
- * 而 `ai.ts` 的 `getConfig()` 是同步读 localStorage 的）。因此请求描述符
+ * 硬约束：SW 是**哑代理**，不读配置、不含业务逻辑（配置由页面端 Zustand
+ * store 持有）。因此请求描述符
  * 必须在这一侧组装好，含 API key。见 §2 / §4。
  */
 

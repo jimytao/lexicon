@@ -58,7 +58,7 @@ English–Chinese / English–Vietnamese / English–English
   → explanationLanguage = 主词典的非英语侧（zh 或 vi）
 ```
 
-主词典选择器始终可用，不能再因为 Auto Switch 开启而 disabled。它表示“退出单语言模式后回到哪本双语词典”，而不是当前瞬间实际加载的词典。
+主词典选择器始终可用。它表示“未被当前查询类型的 Monolingual 覆盖时使用哪本词典”，而不是当前瞬间实际加载的词典。
 
 非单语言模式下的 AI 翻译方向：
 
@@ -113,7 +113,7 @@ monolingual = true  → en-en
 monolingual = false → mainDictionary
 ```
 
-现有 `autoSwitchDictionary` 可以在 MVP 中保留兼容，但默认开启时执行上述逻辑；无论它是否开启，Main Dictionary 选择器都保持可选。后续确认它不再提供独立价值时再删除，本期不做额外设置清理。
+`autoSwitchDictionary` 不再提供独立语义，MVP 已移除其 UI 与运行时状态。三个 Monolingual 开关本身就是覆盖条件；旧持久化字段在 merge 时被忽略。
 
 英越 MVP 不做本地越南语反查。越南语或其他非英文输入允许本地未命中并落入现有 AI 路径，由 AI 按上表完成翻译。
 
@@ -253,7 +253,7 @@ Main dictionary
 3. 清理当前结果和 AI 缓存。
 4. 预热当前 `effectiveDictionary`。
 
-Auto Switch 开启时不再禁用这个选择器。单语言模式只是临时让 `effectiveDictionary = en-en`；关闭单语言模式后自动回到选定的 Main Dictionary。
+单语言模式只是临时让 `effectiveDictionary = en-en`；关闭单语言模式后自动回到选定的 Main Dictionary。
 
 不新增词典商店页面、复杂推荐卡或多本同语言词典选择。
 
@@ -285,7 +285,7 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 | 现有功能 | 潜在冲突 | MVP 处理 | 不做的扩展 |
 |---|---|---|---|
 | 单词/短语/句子单语言开关 | DB 当前只用“是否含空格”区分，句子与短语可能读错开关 | DB 与 AI 共用 `detectQueryType()` 和 `resolveLanguageContext()` | 不合并三个开关 |
-| Auto Switch | 当前会禁用 Active Dictionary，用户无法预选双语库 | Main Dictionary 始终可选；Auto Switch 只决定单语言时是否临时切英英 | 本期不删除旧开关 |
+| 单语言覆盖 | 旧 Auto Switch 与 Active Dictionary 产生双重状态 | 当前查询类型的 Monolingual 直接覆盖 Main Dictionary 为英英 | 删除冗余开关，旧持久化字段仅迁移 |
 | 本地正向查词 | 中文检测会强制路由英汉库，破坏英越主词典 | 本期只对英文执行本地词典查询；非英文直接走 AI | 不做中/越本地反查 |
 | 越南语输入识别 | 当前所有拉丁文字都被判为英语 | 先检测越南语特有字符；Prompt 再自行判断无音调越南语/其他拉丁语言 | 不引入语言识别依赖 |
 | AI Lookup / Pure Core 双并发 | 切词典时旧请求可能晚到并覆盖新语言结果 | 请求开始记录 language-context key，提交前校验；设置切换时取消/作废旧 generation | 不重写并发架构 |
@@ -367,7 +367,7 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 
 - `en-zh / en-vi / en-en` 主词典在非单语言下选择正确词典。
 - word/phrase/sentence 任一单语言开关只覆盖对应查询类型为 `en-en`。
-- Auto Switch 开启时 Main Dictionary 仍可选择。
+- Main Dictionary 始终可选择，不再显示 Auto Switch。
 - 关闭单语言模式后恢复用户选定的 Main Dictionary。
 - 旧 `activeDictionary` 设置能无损迁移，默认主词典为英汉。
 - 切换主词典会清理当前结果缓存。
@@ -390,7 +390,7 @@ GitHub Release 提供数据库、来源说明、许可证/attribution、转换�
 
 ## 9. MVP Definition of Done
 
-- [ ] Main Dictionary 始终可选英汉、英越或英英，不被 Auto Switch 禁用。
+- [x] Main Dictionary 始终可选英汉、英越或英英，不再存在 Auto Switch。
 - [ ] 非单语言时英越主词典会使用 `lexicon_vi.db`。
 - [ ] 单语言模式按单词/短语/句子分别优先使用英英词典，关闭后恢复主词典。
 - [ ] 英文查词能显示越南语释义和已有例句。

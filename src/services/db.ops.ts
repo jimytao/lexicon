@@ -6,9 +6,10 @@ import {
   stringifyAiConversationsBuckets,
 } from '../utils/aiConversations'
 import { useSettingsStore } from '../stores/settingsStore'
+import { resolveDictionaryContext, type DictionaryTarget } from './dictionaryContext'
 
 export type SqlValue = string | number | null | Uint8Array
-export type DictionaryTarget = 'enzh' | 'envi' | 'enen'
+export type { DictionaryTarget } from './dictionaryContext'
 
 export interface SqlRunner {
   /** Execute query and return rows as objects. No rows → empty array []. */
@@ -285,22 +286,7 @@ export async function getAllWordMemoriesWithRunner(
 
 /** Route query text to bilingual vs monolingual dictionary (shared by web + native). */
 export function resolveDictionaryTarget(queryText: string): DictionaryTarget {
-  const settings = useSettingsStore.getState()
-
-  const trimmed = queryText.trim()
-  const wordCount = trimmed.split(/\s+/).filter(Boolean).length
-  const isSentence = /[.?!,]/.test(trimmed) || wordCount >= 5
-  const isPhrase = !isSentence && wordCount > 1
-  const isMono = isSentence
-    ? settings.monolingualSentence
-    : isPhrase
-      ? settings.monolingualPhrase
-      : settings.monolingualWord
-
-  if (isMono) return 'enen'
-  if (settings.mainDictionary === 'en-vi') return 'envi'
-  if (!settings.autoSwitchDictionary && settings.activeDictionary === 'lexicon_en.db') return 'enen'
-  return 'enzh'
+  return resolveDictionaryContext(queryText, useSettingsStore.getState()).dictionaryTarget
 }
 
 export async function suggestWithRunner(

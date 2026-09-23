@@ -18,6 +18,8 @@
     │
     ├── (view === 'translate')
     │   └── <ImageTranslateView />
+    │       ├── <ImageViewer />            # 列表模式：原始比例允许 pan-y；放大后接管平移
+    │       ├── <TranslationList />        # 当前图片的逐条译文
     │       └── <CameraModal />            # Web / Desktop 摄像头实时拍照模态框
     │
     └── (view === 'settings')
@@ -37,6 +39,13 @@
 # ├── <AILearningDigestCard />
 # └── <UserNoteEditor />              # DB API 保留；结果页不挂载
 ```
+
+### 图片翻译多图阅读定位
+
+- `ImageTranslateView` 的图片仍使用 `sticky top-safe`；图片与当前译文列表位于同一个非 sticky `readingSection` 中，保证 sticky 的有效范围覆盖整份当前译文。
+- 用户通过缩略图或左右按钮切图时，滚动目标是 `readingSection` 的自然文档位置减去 sticky safe-area top，而不是第一条译文本身。此时顶部语言/操作区已滑出，第一条译文仍完整排在图片下面。
+- 外层实际滚动容器是 `App.tsx` 的 `h-screen overflow-y-auto` 容器，禁止改用 `window.scrollTo()`。
+- `ImageViewer` 在 compact 列表模式且未放大时使用 `touch-action: pan-y`；放大后改为 `none`，避免图片查看手势与页面滚动互相抢占。
 
 ## Zustand Store 设计
 
@@ -116,8 +125,7 @@ interface SettingsStore {
   searchApiKeys: Record<string, string> // 按 searchProvider 存储，如 { tavily: 'tvly-...', brave: 'BSA...' }
   tavilyApiKey: string               // @deprecated 旧字段；与 searchApiKeys.tavily 双写，merge 时迁移
   maxExercises: number            // 练习题数，1–10，默认 5
-  activeDictionary: 'lexicon.db' | 'lexicon_en.db' // 当前本地词库文件
-  autoSwitchDictionary: boolean    // 是否开启单语言模式自动切换词典
+  mainDictionary: 'en-zh' | 'en-vi' | 'en-en' // 默认词典；Monolingual 按查询类型临时覆盖为英英
   chatRichContextDefault: boolean  // Chat 默认开启完整语境
   pronunciationAccent: 'uk' | 'us' // 默认发音口音偏好
   autoPlayPronunciation: boolean  // 查词时自动播放发音
@@ -131,8 +139,7 @@ interface SettingsStore {
   setSearchApiKeyForProvider: (providerId: 'tavily' | 'brave', key: string) => void
   setAppearance: (v: 'light' | 'dark' | 'system') => void
   setMaxExercises: (v: number) => void
-  setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
-  setAutoSwitchDictionary: (v: boolean) => void
+  setMainDictionary: (v: 'en-zh' | 'en-vi' | 'en-en') => void
   setChatRichContextDefault: (v: boolean) => void
   setPronunciationAccent: (v: 'uk' | 'us') => void
   setAutoPlayPronunciation: (v: boolean) => void

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useImageStore } from '../../stores/imageStore'
 import { aiImageTranslateFast } from '../../services/ai'
 import { TranslationList } from './TranslationList'
@@ -8,6 +8,7 @@ import { captureNativePhoto } from '../../services/camera'
 import { isCapacitor } from '../../services/platform'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useT } from '../../i18n'
+import { scrollToImageReadingStart } from '../../utils/imageReadingScroll'
 import { LangSelectWithAdd, type LangOption } from './LangSelectWithAdd'
 
 
@@ -54,6 +55,9 @@ export function ImageTranslateView() {
   const addFileInputRef = useRef<HTMLInputElement>(null)
   const viewerRef = useRef<ImageViewerHandle | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const readingSectionRef = useRef<HTMLDivElement>(null)
+  const stickyImageRef = useRef<HTMLDivElement>(null)
+  const pendingReadingStartRef = useRef(false)
 
   const hasImages = images.length > 0
   const multiImage = images.length > 1
@@ -68,9 +72,20 @@ export function ImageTranslateView() {
   }, [handleFiles])
 
   const handleSwitchImage = useCallback((index: number) => {
-    if (index < 0 || index >= images.length) return
+    if (index < 0 || index >= images.length || index === currentIndex) return
+    pendingReadingStartRef.current = true
     setCurrentIndex(index)
-  }, [images.length, setCurrentIndex])
+  }, [currentIndex, images.length, setCurrentIndex])
+
+  useLayoutEffect(() => {
+    if (!pendingReadingStartRef.current) return
+    pendingReadingStartRef.current = false
+
+    viewerRef.current?.resetTransform()
+    if (readingSectionRef.current && stickyImageRef.current) {
+      scrollToImageReadingStart(readingSectionRef.current, stickyImageRef.current)
+    }
+  }, [currentIndex, imageUrl])
 
   const handleTakePhoto = useCallback(async () => {
     if (isCapacitor()) {
@@ -317,78 +332,80 @@ export function ImageTranslateView() {
             </div>
           )}
 
-          {/* Sticky image viewer */}
-          {imageUrl && (
-            <div className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
-              <div className="relative">
-                <ImageViewer ref={viewerRef} onScaleChange={() => {}} compact>
-                  <img src={imageUrl} alt="Original" className="w-full object-contain max-h-[50vh]" />
-                </ImageViewer>
-                {multiImage && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleSwitchImage(currentIndex - 1)}
-                      disabled={currentIndex === 0}
-                      className="absolute left-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSwitchImage(currentIndex + 1)}
-                      disabled={currentIndex === images.length - 1}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                    <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[11px] text-white bg-black/50 px-1.5 py-0.5 rounded-full pointer-events-none">
-                      {currentIndex + 1} / {images.length}
-                    </span>
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => viewerRef.current?.resetTransform()}
-                  className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
-                  title={t('image.resetView')}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Loading skeleton */}
-          {status === 'loading' && (
-            <div className="space-y-3 animate-pulse pt-3">
-              {[1, 2, 3].map((n) => (
-                <div key={n} className="h-20 rounded-lg bg-gray-100 dark:bg-gray-800" />
-              ))}
-            </div>
-          )}
-
-          {/* Translation results */}
-          {(status === 'done' || status === 'idle') && (
-            <div className="pt-3">
-              {blocks.length > 0 ? (
-                <div ref={listRef}>
-                  <TranslationList
-                    blocks={blocks}
-                    onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
-                  />
+          <div ref={readingSectionRef} className="space-y-3">
+            {/* Sticky image viewer */}
+            {imageUrl && (
+              <div ref={stickyImageRef} className="sticky top-safe z-10 -mx-4 bg-white dark:bg-gray-900 shadow-sm">
+                <div className="relative">
+                  <ImageViewer ref={viewerRef} onScaleChange={() => {}} compact>
+                    <img src={imageUrl} alt="Original" className="w-full object-contain max-h-[50vh]" />
+                  </ImageViewer>
+                  {multiImage && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchImage(currentIndex - 1)}
+                        disabled={currentIndex === 0}
+                        className="absolute left-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchImage(currentIndex + 1)}
+                        disabled={currentIndex === images.length - 1}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                      <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[11px] text-white bg-black/50 px-1.5 py-0.5 rounded-full pointer-events-none">
+                        {currentIndex + 1} / {images.length}
+                      </span>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => viewerRef.current?.resetTransform()}
+                    className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
+                    title={t('image.resetView')}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                    </svg>
+                  </button>
                 </div>
-              ) : status === 'done' ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">{t('image.noText')}</p>
-              ) : null}
-            </div>
-          )}
+              </div>
+            )}
+
+            {/* Loading skeleton */}
+            {status === 'loading' && (
+              <div className="space-y-3 animate-pulse pt-3">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="h-20 rounded-lg bg-gray-100 dark:bg-gray-800" />
+                ))}
+              </div>
+            )}
+
+            {/* Translation results */}
+            {(status === 'done' || status === 'idle') && (
+              <div className="pt-3">
+                {blocks.length > 0 ? (
+                  <div ref={listRef}>
+                    <TranslationList
+                      blocks={blocks}
+                      onUpdateTranslation={(i, t) => updateBlock(i, { translation: t })}
+                    />
+                  </div>
+                ) : status === 'done' ? (
+                  <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">{t('image.noText')}</p>
+                ) : null}
+              </div>
+            )}
+          </div>
 
         </div>
       )}

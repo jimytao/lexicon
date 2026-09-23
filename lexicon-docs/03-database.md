@@ -107,14 +107,14 @@ export interface DBService {
 
 两端适配器共同点：
 
-- 英汉 / 英英两本库可各自缓存，按 `resolveDictionaryTarget` 路由。
-- **仅当 `activeDictionary` 真正变化时**才 invalidate；其它设置变更不卸库。
+- 英汉 / 英越 / 英英三本库可各自缓存，按共享 `resolveDictionaryContext` 的结果路由。
+- `mainDictionary` 变化时 invalidate；单词/短语/句子的 Monolingual 开关只改变当前查询的有效目标，不需要卸载词库实例。
 - in-flight / epoch / gate 防止换库竞态与双份大文件并行加载。
 - `warmupDictionary()` 在 settings hydration 后只预热当前一本。
 
 Capacitor 额外：
 
-- 预置库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`
+- 预置库路径：`public/assets/databases/lexicon.db`、`lexicon_en.db`、`lexicon_vi.db`
 - Preferences key `lexicon.db.asset.version`（与 `LEXICON_ASSET_VERSION`）控制是否 `copyFromAssets(true)`
 - 原生初始化失败时，`db.ts` **fallback 到 sql.js**
 

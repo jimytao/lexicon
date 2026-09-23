@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { migrateAppearance, type AppearanceMode } from '../services/appearance'
+import type { MainDictionary } from '../services/dictionaryContext'
 import { useResultStore } from './resultStore'
 
 export type { AppearanceMode }
@@ -205,10 +206,8 @@ interface SettingsStore {
   monolingualWord: boolean
   monolingualPhrase: boolean
   monolingualSentence: boolean
-  activeDictionary: 'lexicon.db' | 'lexicon_en.db'
   /** Preferred bilingual dictionary. Monolingual switches may temporarily override it. */
-  mainDictionary: 'en-zh' | 'en-vi'
-  autoSwitchDictionary: boolean
+  mainDictionary: MainDictionary
   chatRichContextDefault: boolean
   pronunciationAccent: 'uk' | 'us'
   autoPlayPronunciation: boolean
@@ -238,9 +237,7 @@ interface SettingsStore {
   setMonolingualWord: (v: boolean) => void
   setMonolingualPhrase: (v: boolean) => void
   setMonolingualSentence: (v: boolean) => void
-  setActiveDictionary: (v: 'lexicon.db' | 'lexicon_en.db') => void
-  setMainDictionary: (v: 'en-zh' | 'en-vi') => void
-  setAutoSwitchDictionary: (v: boolean) => void
+  setMainDictionary: (v: MainDictionary) => void
   setChatRichContextDefault: (v: boolean) => void
   setPronunciationAccent: (v: 'uk' | 'us') => void
   setAutoPlayPronunciation: (v: boolean) => void
@@ -275,9 +272,7 @@ export const useSettingsStore = create<SettingsStore>()(
       monolingualWord: false,
       monolingualPhrase: false,
       monolingualSentence: false,
-      activeDictionary: 'lexicon.db',
       mainDictionary: 'en-zh',
-      autoSwitchDictionary: true,
       chatRichContextDefault: false,
       pronunciationAccent: 'us',
       autoPlayPronunciation: false,
@@ -327,27 +322,23 @@ export const useSettingsStore = create<SettingsStore>()(
       setMonolingualWord: (monolingualWord) => {
         set({ monolingualWord })
         useResultStore.getState().clearCacheOnly()
+        useResultStore.getState().reset()
       },
       setMonolingualPhrase: (monolingualPhrase) => {
         set({ monolingualPhrase })
         useResultStore.getState().clearCacheOnly()
+        useResultStore.getState().reset()
       },
       setMonolingualSentence: (monolingualSentence) => {
         set({ monolingualSentence })
         useResultStore.getState().clearCacheOnly()
-      },
-      setActiveDictionary: (activeDictionary) => {
-        set({ activeDictionary })
-        useResultStore.getState().clearCacheOnly()
+        useResultStore.getState().reset()
       },
       setMainDictionary: (mainDictionary) => {
         set({ mainDictionary })
-        // Never leave results from the previous explanation language on screen.
-        useResultStore.getState().reset()
-      },
-      setAutoSwitchDictionary: (autoSwitchDictionary) => {
-        set({ autoSwitchDictionary })
+        // AI caches are keyed by query, so a language change must invalidate them.
         useResultStore.getState().clearCacheOnly()
+        useResultStore.getState().reset()
       },
       setChatRichContextDefault: (chatRichContextDefault) => set({ chatRichContextDefault }),
       setPronunciationAccent: (pronunciationAccent) => set({ pronunciationAccent }),
@@ -360,11 +351,28 @@ export const useSettingsStore = create<SettingsStore>()(
       merge: (persisted, current) => {
         // Zustand calls merge(undefined, current) when storage is empty — must not destructure.
         if (persisted == null || typeof persisted !== 'object') return current
-        const persistedState = persisted as Partial<SettingsStore> & { darkMode?: boolean }
-        const { darkMode: legacyDarkMode, ...rest } = persistedState
+        const persistedState = persisted as Partial<SettingsStore> & {
+          darkMode?: boolean
+          activeDictionary?: 'lexicon.db' | 'lexicon_en.db'
+          autoSwitchDictionary?: boolean
+        }
+        const {
+          darkMode: legacyDarkMode,
+          activeDictionary: legacyActiveDictionary,
+          autoSwitchDictionary: _legacyAutoSwitchDictionary,
+          ...rest
+        } = persistedState
+        const mainDictionary: MainDictionary = persistedState.mainDictionary === 'en-vi'
+          || persistedState.mainDictionary === 'en-en'
+          || persistedState.mainDictionary === 'en-zh'
+          ? persistedState.mainDictionary
+          : legacyActiveDictionary === 'lexicon_en.db'
+            ? 'en-en'
+            : 'en-zh'
         return {
           ...current,
           ...rest,
+          mainDictionary,
           appearance: migrateAppearance(persistedState.appearance, legacyDarkMode),
           modules: normalizeModules(persistedState.modules),
           coreModules: normalizeCoreModules(persistedState.coreModules ?? DEFAULT_CORE_MODULES),

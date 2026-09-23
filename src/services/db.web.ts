@@ -117,7 +117,7 @@ function invalidateEnVi() {
 }
 
 useSettingsStore.subscribe((state, prev) => {
-  if (state.activeDictionary === prev.activeDictionary && state.mainDictionary === prev.mainDictionary) return
+  if (state.mainDictionary === prev.mainDictionary) return
   invalidateEnZh()
   invalidateEnEn()
   invalidateEnVi()
@@ -304,7 +304,7 @@ async function runnerForQuery(queryText: string): Promise<SqlRunner> {
 export async function warmupDictionary(): Promise<void> {
   await whenSettingsHydrated()
   const settings = useSettingsStore.getState()
-  if (settings.monolingualWord) {
+  if (settings.monolingualWord || settings.mainDictionary === 'en-en') {
     await getDbEnEn()
   } else if (settings.mainDictionary === 'en-vi') {
     await getDbEnVi()
