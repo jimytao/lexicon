@@ -1,4 +1,4 @@
-import type { WordResult, AiAnalysis, SuggestItem, Mode } from '../../types'
+import type { WordResult, AiAnalysis, SuggestItem, Mode, LearningDirection } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -41,6 +41,7 @@ interface ResultViewProps {
   onGoToSettings?: () => void
   /** Direction A — carried from combinedResult.lookup (this view renders the L1 + increment). */
   profileInsight?: string
+  profileInsightDirection?: LearningDirection
 }
 
 export function ResultView({
@@ -54,6 +55,7 @@ export function ResultView({
   onWordClick,
   onGoToSettings,
   profileInsight,
+  profileInsightDirection,
 }: ResultViewProps) {
   const t = useT()
   const { modules } = useSettingsStore()
@@ -72,11 +74,12 @@ export function ResultView({
         <LexiconMemoryBadge word={wordResult.word} />
       </div>
 
-      {profileInsight && (
+      {profileInsight && profileInsightDirection && (
         <div className="mb-3">
           <ProfileInsightChip
             insight={profileInsight}
             dismissKey={wordResult.word}
+            direction={profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
         </div>

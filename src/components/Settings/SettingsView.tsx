@@ -19,6 +19,7 @@ import { useSettingsStore, DEFAULT_CORE_PHRASE_MODULES, resolveSearchApiKey } fr
 import type { AppModule, SearchProviderId } from '../../stores/settingsStore'
 import { isWeb } from '../../services/platform'
 import { useHistoryStore } from '../../stores/historyStore'
+import { useSearchStore } from '../../stores/searchStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
 import { useUpdateStore } from '../../stores/updateStore'
@@ -254,6 +255,7 @@ export function SettingsView() {
     setHistoryEnabled, setAppearance, setWebSearchEnabled, setMaxExercises,
     performanceMode, setPerformanceMode,
     defaultSearchMode, setDefaultSearchMode,
+    defaultLearningDirection, setDefaultLearningDirection,
     historyPreferCognitive, setHistoryPreferCognitive,
     triLingualExamples, setTriLingualExamples,
     modules, setModules,
@@ -272,6 +274,7 @@ export function SettingsView() {
   } = useSettingsStore()
 
   const { status, checkUpdate, currentVersion } = useUpdateStore()
+  const setLearningDirection = useSearchStore(s => s.setLearningDirection)
   const currentApiKey = aiApiKeys[aiProvider] ?? ''
   const activeSearchKey = resolveSearchApiKey({ searchProvider, searchApiKeys, tavilyApiKey })
   const activeSearchProvider = SEARCH_PROVIDERS.find((sp) => sp.id === searchProvider) ?? SEARCH_PROVIDERS[0]
@@ -922,6 +925,32 @@ export function SettingsView() {
             <RowDivider />
 
             {/* AI Learning System & User Profile Management (Phase 5) */}
+            <ChoiceRow
+              label={t('settings.defaultLearningDirection')}
+              desc={t('settings.defaultLearningDirectionDesc')}
+            >
+              <div className={SETTINGS_CHOICE_ROW_LAYOUT.controls}>
+                {([
+                  { id: 'in' as const, label: 'IN' },
+                  { id: 'out' as const, label: 'OUT' },
+                ]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setDefaultLearningDirection(opt.id)
+                      setLearningDirection(opt.id)
+                    }}
+                    className={SETTINGS_CHOICE_ROW_LAYOUT.optionButton(defaultLearningDirection === opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </ChoiceRow>
+
+            <RowDivider />
+
             <ToggleRow
               label={t('settings.profileToggle')}
               desc={t('settings.profileToggleDesc')}

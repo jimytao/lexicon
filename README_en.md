@@ -41,7 +41,8 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 - **Pure Core**: Replaces definition walls with **usage imagery (short gloss, feel anchors, emotional tone)**, concept trees, collocations, register notes, and output practice cards. Modules are reorderable via drag-and-drop.
 - **Auto-Expanding Input**: Search bar dynamically expands from 1 to 4 lines with strict text wrapping for smooth mobile typing.
 - **Dual-Track Cache & Comparison**: Single AI request generates both Lookup and Pure Core analyses, allowing instant 0ms track switching.
-- **Learner Profile & Weakness Heat Engine**: Lightweight learner profile engine tracks weak patterns with confidence and recency heat scoring; compact profile context is injected into word lookup, Pure Core, and chat, presenting contextual insight chips on matching weak spots.
+- **Independent Reading Positions**: Within one query, Instant, AI Lookup, and Pure Core each remember their own scroll position. Unvisited modes start at the top, and a new query resets all three.
+- **IN / OUT Learner Profile**: A one-tap search-bar control separates receptive input (IN) from productive expression (OUT). Chinese or Vietnamese support-language queries route to OUT automatically, unrelated third languages stay outside the English profile, and weaknesses, recommendations, and insight chips remain isolated by direction.
 
 ### 2. Multi-Dictionary Local Engines & Smart Routing
 - **Authoritative Offline Engines**: Oxford 9th Edition Bilingual (~52k entries) + 10th Edition Monolingual (~84k entries) + SPDict English-Vietnamese dictionary (~83k entries with 200k reverse index entries).
@@ -124,11 +125,11 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.25_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.25_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.26_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.26_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.25)
-- **[Lexicon_0.9.25_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.26)
+- **[Lexicon_0.9.26_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -139,9 +140,9 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.25)
-- **[Lexicon_0.9.25_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.25/Lexicon_0.9.25_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.25](https://github.com/jimytao/lexicon/releases/tag/v0.9.25).
+### Android (v0.9.26)
+- **[Lexicon_0.9.26_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.26](https://github.com/jimytao/lexicon/releases/tag/v0.9.26).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).

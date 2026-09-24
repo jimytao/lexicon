@@ -78,7 +78,7 @@ describe('stage-1 anchor reaches both halves', () => {
   })
 
   it('aiFullLookup forwards the anchor into the prompt builder', () => {
-    expect(aiSrc).toMatch(/getFullLookupPrompt\([\s\S]{0,200}?opts\.anchor\)/)
+    expect(aiSrc).toMatch(/getFullLookupPrompt\([\s\S]{0,240}?opts\.anchor, learningRoute\)/)
   })
 })
 

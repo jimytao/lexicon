@@ -13,12 +13,12 @@ import { resolveDictionaryContext, type MainDictionary } from './dictionaryConte
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
-import { buildProfilePromptContext } from './profile'
+import { buildProfilePromptContext, resolveCurrentLearningRoute } from './profile'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
-import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult } from '../types'
+import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult, LearningRoute } from '../types'
 
 /** 仅当模组出现在当前模式列表且 enabled 时才请求；不在列表 = 关闭（Lookup/Core 分轨依赖此语义） */
 function moduleEnabled(modules: ModuleFlag[], id: string): boolean {
@@ -875,7 +875,8 @@ function getFullLookupPrompt(
   monolingualWord: boolean = false,
   cognitive: 'lookup' | 'core' = 'lookup',
   explanationLanguage: 'zh' | 'vi' | 'en' = 'zh',
-  meaningsAnchor?: MeaningsAnchor
+  meaningsAnchor?: MeaningsAnchor,
+  learningRoute: LearningRoute = 'irrelevant',
 ): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   // Monolingual is a global "answer in English" switch — not limited to English input.
@@ -1083,7 +1084,7 @@ ${lang === 'vi' ? '- Vietnamese input: correctForm must be the natural English e
     }
   }
 
-  prompt += buildProfilePromptContext('compact')
+  prompt += buildProfilePromptContext('compact', learningRoute)
 
   return prompt
 }
@@ -1097,6 +1098,7 @@ export async function aiFullLookup(
 ): Promise<AiFullResult> {
   const config = getConfig()
   const lang = detectLanguage(word)
+  const learningRoute = resolveCurrentLearningRoute(word)
   
   // When both halves run in parallel the caller does ONE shared web search and
   // passes it in; only fall back to our own when called standalone.
@@ -1109,7 +1111,7 @@ export async function aiFullLookup(
   const dictionaryContext = resolveDictionaryContext(word, config)
   const cleaned = await callApi(
     getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples,
-      dictionaryContext.isMonolingual, cognitive, dictionaryContext.explanationLanguage, opts.anchor),
+      dictionaryContext.isMonolingual, cognitive, dictionaryContext.explanationLanguage, opts.anchor, learningRoute),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -1117,6 +1119,7 @@ export async function aiFullLookup(
     const parsed = JSON.parse(cleaned) as AiFullResult
     if (!parsed.meanings) parsed.meanings = []
     if (!parsed.examples) parsed.examples = []
+    if (parsed.profileInsight && learningRoute !== 'irrelevant') parsed.profileInsightDirection = learningRoute
     return parsed
   } catch { /* fall through */ }
   const objMatch = cleaned.match(/\{[\s\S]*\}/)
@@ -1125,6 +1128,7 @@ export async function aiFullLookup(
       const parsed = JSON.parse(objMatch[0]) as AiFullResult
       if (!parsed.meanings) parsed.meanings = []
       if (!parsed.examples) parsed.examples = []
+      if (parsed.profileInsight && learningRoute !== 'irrelevant') parsed.profileInsightDirection = learningRoute
       return parsed
     } catch { /* fall through */ }
   }
@@ -1209,6 +1213,7 @@ export async function aiPhraseQuery(
 ): Promise<PhraseResult> {
   const config = getConfig()
   const lang = detectLanguage(phrase)
+  const learningRoute = resolveCurrentLearningRoute(phrase)
 
   const webResults = opts.webResults ?? await performWebSearch(phrase, signal)
 
@@ -1232,6 +1237,7 @@ export async function aiPhraseQuery(
       queryType: phraseQueryType,
       meaningsAnchor: opts.anchor,
       explanationLanguage: dictionaryContext.explanationLanguage,
+      learningRoute,
     }),
     `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
     signal
@@ -1249,7 +1255,13 @@ export async function aiPhraseQuery(
       throw new Error(`AI returned invalid JSON for phrase query`)
     }
   }
-  return { phrase, ...parsed }
+  return {
+    phrase,
+    ...parsed,
+    profileInsightDirection: parsed.profileInsight && learningRoute !== 'irrelevant'
+      ? learningRoute
+      : undefined,
+  }
 }
 
 // ── AI 问答 ──
@@ -1270,7 +1282,7 @@ export async function askQuestion(
     : ''
   // Direction A — the learner's hot weak spots, so a follow-up answer can connect
   // the dots when relevant (opt-in; empty when nothing is hot).
-  const profileSection = buildProfilePromptContext('compact')
+  const profileSection = buildProfilePromptContext('compact', resolveCurrentLearningRoute(context))
   const tableRule = `Table orientation rule (mobile screen — NEVER exceed 3 columns): (A) If comparing N words across M attributes and N ≤ M: put the words as COLUMN headers (row 1 = word names, then one row per attribute) so columns = N ≤ 3. (B) If N > M: put attributes as COLUMN headers (row 1 = attribute names, one row per word) so columns = M ≤ 3. When either N or M > 3, pick whichever orientation keeps columns ≤ 3 and let rows grow. Never create a table wider than 3 columns.`
   const systemPrompt = isMono
     ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`

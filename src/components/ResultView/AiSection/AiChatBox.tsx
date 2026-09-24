@@ -3,7 +3,7 @@ import { useChatStore } from '../../../stores/chatStore'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { askQuestion } from '../../../services/ai'
 import { db } from '../../../services/db'
-import { recordAiChatEvent } from '../../../services/profile'
+import { recordAiChatEvent, resolveCurrentLearningRoute } from '../../../services/profile'
 import type { ChatMessage, CognitiveMode } from '../../../types'
 import { cognitiveCacheKey, normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
@@ -59,6 +59,7 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
     const requestContext = context
     const requestCognitive = cognitive
     const wordKey = normalizeQuery(requestContext) || requestContext
+    const learningRoute = resolveCurrentLearningRoute(requestContext)
 
     const userMsg: ChatMessage = { role: 'user', content: question }
     addMessage(wordKey, userMsg, requestCognitive)
@@ -83,7 +84,7 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
         addMessage(wordKey, assistantMsg, requestCognitive)
         const updatedAll = useChatStore.getState().getMessages(wordKey, requestCognitive)
         void db.saveUserWordConversation(wordKey, JSON.stringify(updatedAll), requestCognitive)
-        recordAiChatEvent(wordKey, question, reply, requestCognitive)
+        recordAiChatEvent(wordKey, question, reply, requestCognitive, learningRoute)
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return

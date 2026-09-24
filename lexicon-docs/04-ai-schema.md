@@ -177,7 +177,7 @@ Analyze this word and return the JSON.`
 - **练习**：Lookup `evaluateMeaningCheck`（释义核对）；Core 既有场景造句 `evaluateAnswer`
 - **conceptGraph.examples**（Core）：对象 `{ phrase, meaning, mindHint }`——短语 + 释义 + 母语心智延伸；禁止只返回裸字符串
 - 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况，以及 Mode 3 对词库词的全量认知视图
-- **`profileInsight?`（可选，Direction A / 2026-09-07）**：仅当本词明确关联用户某条「反复混淆」时，AI 返回一句话说明关联；否则整段省略。`getFullLookupPrompt` schema 声明该字段，并在 prompt 末尾按热度注入 `buildProfilePromptContext('compact')`（仅热度最高 ≤3 条弱点）。`JSON.parse` 直接透传（无字段白名单）。
+- **`profileInsight?` + `profileInsightDirection?`（可选）**：仅当本词明确关联当前 IN / OUT 证据线中的某条「反复混淆」时返回一句话；否则省略。`getFullLookupPrompt` 使用 `buildProfilePromptContext('compact', learningRoute)`，最多注入同方向 3 条热弱点；解析后由客户端把实际 `learningRoute` 写入 `profileInsightDirection`，旧缓存缺该字段时 UI 不展示洞察。
 
 ### `aiPhraseQuery(phrase, isFull?, signal?, cognitive?)`
 词组/句子 AI 查询。返回 `PhraseResult`。`cognitive: 'lookup' | 'core'`（默认 `lookup`）决定 prompt 重心与缓存分轨。  
@@ -198,10 +198,10 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
 - 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageIntro / usageScenes 中说明差异
 - Core 单词全量：`coreConcept.explanation` 停留在意象→用法分支层；**具体** when/where 交际场景写入 `usageScenes`，勿把场景长文塞进 explanation
-- **`profileInsight?`（可选，Direction A）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入 `'compact'`、`'sentence'` 注入 `'full'`（后者即原「参考弱点给 mentor tip」）。
+- **`profileInsight?` + `profileInsightDirection?`（可选）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入同方向 `'compact'`、`'sentence'` 注入同方向 `'full'`；`learningRoute='irrelevant'` 时完全不注入 Profile。
 
 ### `askQuestion(context, history, signal?)`
-AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。system prompt 会拼入 `buildProfilePromptContext('compact')`（Direction A）——热度最高的弱点，供追问回答按需连点成线；无热弱点时静默。
+AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。system prompt 会按原始查询路由拼入 `buildProfilePromptContext('compact', resolveCurrentLearningRoute(context))`；只读取同方向热弱点，第三语言或无热弱点时静默。
 
 - `context`：当前查询的单词或词组
 - `history`：`ChatMessage[]`，支持多轮对话
@@ -243,7 +243,8 @@ Settings 页面通过 `settingsStore` 持久化到 `localStorage['lexicon-settin
     "aiProvider": "gemini",
     "aiEndpoint": "https://...",
     "aiModel": "gemini-2.0-flash",
-    "aiApiKeys": { "gemini": "AIza..." }
+    "aiApiKeys": { "gemini": "AIza..." },
+    "defaultLearningDirection": "in"
   }
 }
 ```

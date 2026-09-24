@@ -19,18 +19,18 @@ const phraseSrc = read('services/aiPhrasePrompt.ts')
 describe('compact profile context is injected into the everyday AI prompts', () => {
   it('the live word full-lookup prompt (getFullLookupPrompt) appends the compact learner context + profileInsight schema', () => {
     const fn = aiSrc.slice(aiSrc.indexOf('function getFullLookupPrompt'), aiSrc.indexOf('export async function aiFullLookup'))
-    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*\)/)
+    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,\s*learningRoute\s*\)/)
     expect(fn).toContain('"profileInsight"')
   })
 
   it('the live phrase prompt appends compact for a plain phrase (full only for a sentence)', () => {
-    expect(phraseSrc).toMatch(/buildProfilePromptContext\([\s\S]{0,80}['"]compact['"]/)
-    expect(phraseSrc).toMatch(/buildProfilePromptContext\([\s\S]{0,80}['"]full['"]/)
+    expect(phraseSrc).toMatch(/buildProfilePromptContext\([\s\S]{0,120}['"]compact['"][\s\S]{0,120}learningRoute/)
+    expect(phraseSrc).toMatch(/buildProfilePromptContext\([\s\S]{0,120}['"]full['"][\s\S]{0,120}learningRoute/)
   })
 
   it('AI follow-up (askQuestion) injects the compact learner context', () => {
     const fn = aiSrc.slice(aiSrc.indexOf('export async function askQuestion'), aiSrc.indexOf('export async function askQuestion') + 2000)
-    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*\)/)
+    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,\s*resolveCurrentLearningRoute\(context\)\s*\)/)
   })
 })
 
@@ -49,4 +49,13 @@ describe('ProfileInsightChip is mounted where results render', () => {
       expect(read(view)).toContain('<ProfileInsightChip')
     })
   }
+
+  it('validates an insight against the original query, not an AI-corrected form', () => {
+    const chip = read('components/ResultView/ProfileInsightChip.tsx')
+    expect(chip).toContain('routeQuery?: string')
+    expect(chip).toMatch(/resolveLearningRoute\(routeQuery \|\| dismissKey,/)
+    expect(read('components/ResultView/AiFullView.tsx')).toContain('routeQuery={word}')
+    expect(read('components/ResultView/CoreCognitiveView.tsx')).toContain('routeQuery={word}')
+    expect(read('components/ResultView/PhraseView.tsx')).toContain('routeQuery={phrase}')
+  })
 })

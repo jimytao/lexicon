@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Mode, QueryType, SuggestItem, Language } from '../types'
+import type { Mode, QueryType, SuggestItem, Language, LearningDirection } from '../types'
 
 export function detectLanguage(input: string): Language {
   const trimmed = input.trim()
@@ -52,14 +52,29 @@ function getInitialMode(): Mode {
   return 'instant'
 }
 
+function getInitialLearningDirection(): LearningDirection {
+  try {
+    const stored = localStorage.getItem('lexicon-settings')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return parsed.state?.defaultLearningDirection === 'out' ? 'out' : 'in'
+    }
+  } catch (e) {
+    console.error('Failed to parse initial learning direction:', e)
+  }
+  return 'in'
+}
+
 interface SearchStore {
   query: string
   queryType: QueryType
   suggestions: SuggestItem[]
   mode: Mode
+  learningDirection: LearningDirection
   setQuery: (q: string) => void
   setQueryType: (t: QueryType) => void
   setMode: (m: Mode) => void
+  setLearningDirection: (direction: LearningDirection) => void
   setSuggestions: (s: SuggestItem[]) => void
   clear: () => void
 }
@@ -69,9 +84,11 @@ export const useSearchStore = create<SearchStore>((set) => ({
   queryType: 'word',
   suggestions: [],
   mode: getInitialMode(),
+  learningDirection: getInitialLearningDirection(),
   setQuery: (query) => set({ query, queryType: detectQueryType(query) }),
   setQueryType: (queryType) => set({ queryType }),
   setMode: (mode) => set({ mode }),
+  setLearningDirection: (learningDirection) => set({ learningDirection }),
   setSuggestions: (suggestions) => set({ suggestions }),
   clear: () => set({ query: '', queryType: 'word', suggestions: [] }),
 }))

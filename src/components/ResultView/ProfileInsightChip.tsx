@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { useT } from '../../i18n'
+import { useSearchStore } from '../../stores/searchStore'
+import { useSettingsStore } from '../../stores/settingsStore'
+import type { LearningDirection } from '../../types'
+import { resolveLearningRoute } from '../../utils/learningDirection'
 
 const DISMISS_KEY = 'lexicon-dismissed-insights'
 
@@ -25,6 +29,10 @@ interface ProfileInsightChipProps {
   insight?: string | null
   /** Stable key (normalised query) so a per-session dismiss sticks to this query. */
   dismissKey: string
+  /** Original query used to validate the route when the AI corrected or translated the display form. */
+  routeQuery?: string
+  /** Lane that produced this insight. Legacy cached insights omit it and stay hidden. */
+  direction?: LearningDirection
   /** Open the learner profile (currently: navigate to Settings). */
   onOpen: () => void
 }
@@ -34,12 +42,15 @@ interface ProfileInsightChipProps {
  * the AI decided the current word/phrase genuinely relates to a hot weakness, and
  * only until the learner dismisses it for this query this session.
  */
-export function ProfileInsightChip({ insight, dismissKey, onOpen }: ProfileInsightChipProps) {
+export function ProfileInsightChip({ insight, dismissKey, routeQuery, direction, onOpen }: ProfileInsightChipProps) {
   const t = useT()
+  const selectedDirection = useSearchStore(s => s.learningDirection)
+  const mainDictionary = useSettingsStore(s => s.mainDictionary)
   const [dismissed, setDismissed] = useState(() => readDismissed().has(dismissKey))
 
   const text = insight?.trim()
-  if (!text || dismissed) return null
+  const currentRoute = resolveLearningRoute(routeQuery || dismissKey, selectedDirection, mainDictionary)
+  if (!text || !direction || direction !== currentRoute || dismissed) return null
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation()

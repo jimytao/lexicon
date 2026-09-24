@@ -1,6 +1,10 @@
 export type Mode = 'instant' | 'ai' | 'core'
 export type QueryType = 'word' | 'phrase' | 'sentence'
 export type Language = 'en' | 'zh' | 'vi' | 'ja' | 'ko' | 'other'
+/** Learner intent for English acquisition: receptive input vs productive output. */
+export type LearningDirection = 'in' | 'out'
+/** `irrelevant` queries still work normally but never enter the English learner profile. */
+export type LearningRoute = LearningDirection | 'irrelevant'
 
 export interface SuggestItem {
   word: string
@@ -203,6 +207,8 @@ export interface AiFullResult {
   usageScenes?: Array<{ label: string; description: string }>
   /** Direction A: one short sentence linking this word to a recurring learner confusion. Omitted unless clearly relevant. */
   profileInsight?: string
+  /** Evidence lane used to generate profileInsight; absent on legacy caches. */
+  profileInsightDirection?: LearningDirection
 }
 
 export type WordAIResult = AiFullResult
@@ -251,6 +257,7 @@ export interface PhraseResult {
   prepSpatial?: PrepSpatialData
   /** Direction A: one short sentence linking this phrase to a recurring learner confusion. Omitted unless clearly relevant. */
   profileInsight?: string
+  profileInsightDirection?: LearningDirection
 }
 
 export type PhraseAnalysisResult = PhraseResult
@@ -310,16 +317,20 @@ export interface WeaknessPattern {
   confidence?: number
   /** ISO — most recent event that touched this pattern. Default: profile.lastUpdated. */
   lastExposedAt?: string
+  /** Evidence lane. Missing means legacy/unattributed and is never injected into prompts. */
+  learningDirection?: LearningDirection
 }
 
 export interface ExplorationFocus {
   category: string
   searchedItems: string[]
+  learningDirection?: LearningDirection
 }
 
 export interface ProfileRecommendation {
   conceptOrWord: string
   reason: string
+  learningDirection?: LearningDirection
 }
 
 export interface UserLanguageProfile {

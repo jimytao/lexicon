@@ -6,6 +6,7 @@
 
 import { buildProfilePromptContext } from './profile'
 import type { MeaningsAnchor } from './ai'
+import type { LearningRoute } from '../types'
 
 export type PhrasePromptQueryType = 'phrase' | 'sentence'
 
@@ -22,6 +23,7 @@ export interface BuildPhrasePromptOptions {
   /** Stage-1 resolution shared by both halves of a split request. */
   meaningsAnchor?: MeaningsAnchor
   explanationLanguage?: 'zh' | 'vi' | 'en'
+  learningRoute?: LearningRoute
 }
 
 function moduleEnabled(modules: Array<{ id: string; enabled: boolean }>, id: string): boolean {
@@ -39,6 +41,7 @@ export function buildPhrasePrompt({
   queryType = 'phrase',
   meaningsAnchor,
   explanationLanguage = 'zh',
+  learningRoute = 'irrelevant',
 }: BuildPhrasePromptOptions): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   const isCore = cognitive === 'core'
@@ -250,7 +253,10 @@ RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
     }
   }
 
-  prompt += buildProfilePromptContext(queryType === 'sentence' ? 'full' : 'compact')
+  prompt += buildProfilePromptContext(
+    queryType === 'sentence' ? 'full' : 'compact',
+    learningRoute,
+  )
 
   return prompt
 }

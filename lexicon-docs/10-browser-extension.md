@@ -472,7 +472,7 @@ node scripts/gen-dictionary-manifest.mjs   # → dist-dictionaries/manifest.json
 
 | 项 | 结果 |
 |---|---|
-| 悬浮按钮定位 | ✅ 选区 right/bottom + 6px，实测 113→118.75 / 172→178.47 |
+| 悬浮按钮定位 | ✅ 跟随用户松开的 focus 端：同行/跨行正向选择停靠末行右下，同行/跨行反向选择停靠首行左上；对应方向越出视口时翻到端点另一侧 |
 | Shadow DOM 双向隔离 | ✅ 宿主页 `button{background:red!important;border:6px dashed}` 与 `*{box-sizing:content-box!important}` 均未渗入（我们仍是 `border-box`、白底 1px）；宿主自己的按钮也未被我们改变 |
 | 选区保护 | ✅ `mousedown` 被 `preventDefault`，点击后选区仍在（否则拿不到文字） |
 | 点击 → 消息 | ✅ 发出 `{kind:'lookupSelection', text:'bank'}`，按钮随即收起 |
@@ -492,6 +492,10 @@ node scripts/gen-dictionary-manifest.mjs   # → dist-dictionaries/manifest.json
 >    样式隔离靠 Shadow DOM 本身，与 mode 无关。
 > 3. **视口尺寸为 0 时跳过边界收敛**。隐藏标签页会让 `innerWidth/innerHeight` 报 0，
 >    原先的收敛式会算出负值再被夹到左上角，看起来像「按钮跑到角落」。
+> 4. **方向按 `Selection.anchor/focus` 的 DOM 顺序判断**。`Range.start/end` 与
+>    `getClientRects()` 都会规范化为文档顺序，不能代表用户拖选方向；仅比较 Y 坐标也无法
+>    识别同行从右往左。方向、focus 端 rect 与双向视口翻边由 `selectionGeometry.ts` 的纯函数
+>    统一计算，并用同行/跨节点、正向/反向及边界用例锁定。
 
 ### P4 — 打磨与分发 ✅ 已完成（2026-09-18）
 - [x] Tauri / Capacitor API 动态加载，扩展构建用空实现裁剪原生依赖

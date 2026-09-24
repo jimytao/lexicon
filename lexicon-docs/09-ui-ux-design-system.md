@@ -103,6 +103,11 @@ Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
 - **Layout (scheme 1)**: `flex-col` — title + controls on the first row; description on a second full-width row.
 - **Contract**: `src/utils/settingsChoiceRowLayout.ts` (`SETTINGS_CHOICE_ROW_LAYOUT`).
 
+### `SearchBar` Learning Direction Control
+- The left search icon is a compact, single-state `IN ↓` / `OUT ↑` capsule, not two adjacent buttons and not a pre-search modal.
+- One click toggles the session direction and immediately returns focus to the textarea. Support-language queries auto-lock to OUT; unrelated third-language queries disable the capsule because they do not enter the English Profile.
+- `Default Learning Direction` belongs in the Local Data / Profile settings group as a 2-option `ChoiceRow`; it is independent of `Default Search Mode`.
+
 ### `Accordion` (Settings Menu)
 - **Purpose**: Hides secondary complexity without adding visual clutter; also used for **≥3 discrete options** (Appearance Light/Dark/System, Default Search Mode Instant/Lookup/Core) so collapsed rows stay glanceable (subtitle = current value) and expanded grids stay flush with AI Provider style.
 - **Rules**: MUST NOT carry individual emoji icons in its trigger header. MUST be flush with no outer border inside a `Group`.

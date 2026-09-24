@@ -69,11 +69,13 @@ export function CoreCognitiveView({
         <LexiconMemoryBadge word={aiFullResult?.correctForm || dictWordResult?.word || word} />
       </div>
 
-      {aiFullResult?.profileInsight && (
+      {aiFullResult?.profileInsight && aiFullResult.profileInsightDirection && (
         <div className="mb-3">
           <ProfileInsightChip
             insight={aiFullResult.profileInsight}
             dismissKey={aiFullResult?.correctForm || word}
+            routeQuery={word}
+            direction={aiFullResult.profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
         </div>

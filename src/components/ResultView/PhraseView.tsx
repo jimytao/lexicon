@@ -113,11 +113,13 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
         <LexiconMemoryBadge word={targetPhrase} />
       </div>
 
-      {phraseResult?.profileInsight && (
+      {phraseResult?.profileInsight && phraseResult.profileInsightDirection && (
         <div className="mb-3">
           <ProfileInsightChip
             insight={phraseResult.profileInsight}
             dismissKey={targetPhrase}
+            routeQuery={phrase}
+            direction={phraseResult.profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
         </div>

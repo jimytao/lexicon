@@ -16,6 +16,7 @@ export default tseslint.config(
       'android/**',
       'ios/**',
       'scripts/**',
+      'tools/**',
       '*.config.ts',
       '*.config.js',
       '*.config.mjs',

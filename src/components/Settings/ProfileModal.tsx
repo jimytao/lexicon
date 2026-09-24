@@ -44,14 +44,33 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
   const now = Date.now()
   const activeByHeat = profile ? sortActiveByHeat(profile, now) : []
-  const tiers: Array<{ tier: WeaknessTier; label: string; dot: string; items: WeaknessPattern[] }> = [
-    { tier: 'hot', label: t('profile.tierHot'), dot: 'bg-red-500', items: [] },
-    { tier: 'warm', label: t('profile.tierWarm'), dot: 'bg-amber-500', items: [] },
-    { tier: 'cool', label: t('profile.tierCool'), dot: 'bg-foreground-muted/40', items: [] },
-  ]
-  for (const w of activeByHeat) {
-    tiers.find((g) => g.tier === weaknessTier(weaknessHeat(w, now)))!.items.push(w)
+  const buildTiers = (items: WeaknessPattern[]) => {
+    const tiers: Array<{ tier: WeaknessTier; label: string; dot: string; items: WeaknessPattern[] }> = [
+      { tier: 'hot', label: t('profile.tierHot'), dot: 'bg-red-500', items: [] },
+      { tier: 'warm', label: t('profile.tierWarm'), dot: 'bg-amber-500', items: [] },
+      { tier: 'cool', label: t('profile.tierCool'), dot: 'bg-foreground-muted/40', items: [] },
+    ]
+    for (const w of items) {
+      const group = tiers.find((g) => g.tier === weaknessTier(weaknessHeat(w, now)))
+      group?.items.push(w)
+    }
+    return tiers
   }
+  const laneSections = [
+    {
+      key: 'in',
+      label: t('profile.inputLane'),
+      desc: t('profile.inputLaneDesc'),
+      items: activeByHeat.filter((w) => w.learningDirection === 'in'),
+    },
+    {
+      key: 'out',
+      label: t('profile.outputLane'),
+      desc: t('profile.outputLaneDesc'),
+      items: activeByHeat.filter((w) => w.learningDirection === 'out'),
+    },
+  ] as const
+  const legacyWeaknesses = activeByHeat.filter((w) => !w.learningDirection)
   const masteredWeaknesses = profile?.weaknessPatterns.filter((w) => w.status === 'mastered') ?? []
 
   const ConfidenceBar = ({ value }: { value?: number }) => {
@@ -109,53 +128,70 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                 {t('profile.activeGaps').replace('{count}', String(activeByHeat.length))}
               </span>
             </div>
-            {activeByHeat.length === 0 ? (
-              <div className="p-4 rounded-2xl border border-dashed border-border text-center text-xs text-foreground-muted">
-                {t('profile.activeEmpty')}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {tiers.filter((g) => g.items.length > 0).map((g) => (
-                  <div key={g.tier} className="space-y-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${g.dot}`} />
-                      <span className="text-[10px] font-bold text-foreground-muted/60 uppercase tracking-widest">
-                        {g.label} ({g.items.length})
+            <div className="space-y-5">
+              {activeByHeat.length === 0 && (
+                <div className="p-4 rounded-2xl border border-dashed border-border text-center text-xs text-foreground-muted">
+                  {t('profile.activeEmpty')}
+                </div>
+              )}
+                {laneSections.map((lane) => (
+                  <div key={lane.key} className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-foreground">{lane.label}</span>
+                        <p className="text-[10px] text-foreground-muted mt-0.5 leading-snug">{lane.desc}</p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-accent/10 text-accent shrink-0">
+                        {lane.key.toUpperCase()} · {lane.items.length}
                       </span>
                     </div>
-                    {g.items.map((w) => (
-                      <div
-                        key={w.id}
-                        className="p-3.5 rounded-2xl bg-background-soft border border-border flex flex-col gap-1.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-foreground">{w.description}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <ConfidenceBar value={w.confidence} />
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
-                              {t('profile.exposure')
-                                .replace('{track}', w.track)
-                                .replace('{count}', String(w.occurrenceCount))}
+                    {lane.items.length === 0 ? (
+                      <p className="text-[11px] text-foreground-muted/60 py-2">{t('profile.laneEmpty')}</p>
+                    ) : (
+                      buildTiers(lane.items).filter((g) => g.items.length > 0).map((g) => (
+                        <div key={`${lane.key}-${g.tier}`} className="space-y-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${g.dot}`} />
+                            <span className="text-[10px] font-bold text-foreground-muted/60 uppercase tracking-widest">
+                              {g.label} ({g.items.length})
                             </span>
                           </div>
+                          {g.items.map((w) => (
+                            <div key={w.id} className="p-3.5 rounded-2xl bg-background-soft border border-border flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-foreground">{w.description}</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <ConfidenceBar value={w.confidence} />
+                                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                                    {t('profile.exposure').replace('{track}', w.track).replace('{count}', String(w.occurrenceCount))}
+                                  </span>
+                                </div>
+                              </div>
+                              {w.contrastExample && (
+                                <div className="p-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[11px] text-foreground-muted font-mono leading-relaxed">
+                                  <span className="font-bold text-amber-600 dark:text-amber-400">{t('profile.contrast')} </span>
+                                  {w.contrastExample}
+                                </div>
+                              )}
+                              {w.sourceTrigger && (
+                                <p className="text-[10px] text-foreground-muted/70 truncate">{t('profile.source')}: {w.sourceTrigger}</p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                        {w.contrastExample && (
-                          <div className="p-2 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[11px] text-foreground-muted font-mono leading-relaxed">
-                            <span className="font-bold text-amber-600 dark:text-amber-400">{t('profile.contrast')} </span>
-                            {w.contrastExample}
-                          </div>
-                        )}
-                        {w.sourceTrigger && (
-                          <p className="text-[10px] text-foreground-muted/70 truncate">
-                            {t('profile.source')}: {w.sourceTrigger}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 ))}
-              </div>
-            )}
+                {legacyWeaknesses.length > 0 && (
+                  <div className="pt-3 border-t border-border/60">
+                    <p className="text-[10px] font-bold text-foreground-muted uppercase tracking-widest">
+                      {t('profile.legacyLane').replace('{count}', String(legacyWeaknesses.length))}
+                    </p>
+                    <p className="text-[10px] text-foreground-muted/70 mt-1 leading-snug">{t('profile.legacyLaneDesc')}</p>
+                  </div>
+                )}
+            </div>
           </div>
 
           {masteredWeaknesses.length > 0 && (
@@ -193,7 +229,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               <div className="grid grid-cols-1 gap-2">
                 {profile.recentExplorationFocus.map((f, i) => (
                   <div key={i} className="p-3 rounded-2xl bg-background-soft border border-border">
-                    <span className="text-xs font-bold text-accent block mb-1">{f.category}</span>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-bold text-accent">{f.category}</span>
+                      {f.learningDirection && (
+                        <span className="text-[9px] font-bold text-foreground-muted/70">{f.learningDirection.toUpperCase()}</span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1">
                       {f.searchedItems.map((item, j) => (
                         <span
@@ -224,7 +265,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                     key={i}
                     className="p-3.5 rounded-2xl bg-background border border-border/60 flex flex-col gap-1"
                   >
-                    <span className="text-xs font-bold text-accent">{r.conceptOrWord}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-accent">{r.conceptOrWord}</span>
+                      {r.learningDirection && (
+                        <span className="text-[9px] font-bold text-foreground-muted/70">{r.learningDirection.toUpperCase()}</span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-foreground-muted leading-snug">{r.reason}</p>
                   </div>
                 ))}

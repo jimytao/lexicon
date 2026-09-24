@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { migrateAppearance, type AppearanceMode } from '../services/appearance'
 import type { MainDictionary } from '../services/dictionaryContext'
+import type { LearningDirection } from '../types'
 import { useResultStore } from './resultStore'
 
 export type { AppearanceMode }
@@ -195,6 +196,8 @@ interface SettingsStore {
   maxExercises: number
   performanceMode: boolean
   defaultSearchMode: 'instant' | 'ai' | 'core'
+  /** Startup default for the search-bar IN/OUT learner evidence selector. */
+  defaultLearningDirection: LearningDirection
   /** 历史回放时若 Lookup 与 Core 双轨都有结果，优先展示哪一轨 */
   historyPreferCognitive: 'lookup' | 'core'
   triLingualExamples: boolean
@@ -228,6 +231,7 @@ interface SettingsStore {
   setMaxExercises: (v: number) => void
   setPerformanceMode: (v: boolean) => void
   setDefaultSearchMode: (v: 'instant' | 'ai' | 'core') => void
+  setDefaultLearningDirection: (v: LearningDirection) => void
   setHistoryPreferCognitive: (v: 'lookup' | 'core') => void
   setTriLingualExamples: (v: boolean) => void
   setModules: (v: AppModule[]) => void
@@ -263,6 +267,7 @@ export const useSettingsStore = create<SettingsStore>()(
       maxExercises: 5,
       performanceMode: false,
       defaultSearchMode: 'instant',
+      defaultLearningDirection: 'in',
       historyPreferCognitive: 'lookup',
       triLingualExamples: false,
       modules: DEFAULT_MODULES,
@@ -312,6 +317,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setMaxExercises: (maxExercises) => set({ maxExercises }),
       setPerformanceMode: (performanceMode) => set({ performanceMode }),
       setDefaultSearchMode: (defaultSearchMode) => set({ defaultSearchMode }),
+      setDefaultLearningDirection: (defaultLearningDirection) => set({ defaultLearningDirection }),
       setHistoryPreferCognitive: (historyPreferCognitive) => set({ historyPreferCognitive }),
       setTriLingualExamples: (triLingualExamples) => set({ triLingualExamples }),
       setModules: (modules) => set({ modules: normalizeModules(modules) }),
@@ -373,6 +379,7 @@ export const useSettingsStore = create<SettingsStore>()(
           ...current,
           ...rest,
           mainDictionary,
+          defaultLearningDirection: persistedState.defaultLearningDirection === 'out' ? 'out' : 'in',
           appearance: migrateAppearance(persistedState.appearance, legacyDarkMode),
           modules: normalizeModules(persistedState.modules),
           coreModules: normalizeCoreModules(persistedState.coreModules ?? DEFAULT_CORE_MODULES),

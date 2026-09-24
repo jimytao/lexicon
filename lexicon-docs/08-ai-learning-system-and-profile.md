@@ -3,8 +3,8 @@
 # Lexicon 智能学习系统、轻量 User Profile 与第二大脑 (Lexicon Memory) 架构规范
 
 > **状态**：Phase 5 后端已落地；弱项看板 UI（Memory Tab / Digest）已雪藏  
-> **更新日期**：2026-07-25  
-> **适用版本**：v0.8.x+
+> **更新日期**：2026-09-24
+> **适用版本**：v0.9.25+
 
 ---
 
@@ -14,8 +14,9 @@
 
 ### 核心设计哲学：
 1. **拒绝繁重系统**：不搭建复杂繁重的遗忘曲线算法、打卡机制或传统刷卡片 (Flashcards) 平台。
-2. **以小博大 (高性价比诊断)**：通过 **“高价值行为提取 + 动态 Profile 蒸馏”** 诊断用户的语言表达薄弱点与探索偏好。
+2. **以小博大 (高性价比诊断)**：通过 **“高价值行为提取 + 动态 Profile 蒸馏”** 诊断用户的理解缺口与语言表达薄弱点。
 3. **第二大脑沉淀 (Lexicon Memory)**：将用户的搜索疑问、自定义 Notes、专属 AI 追问与 Core 解释进行本地持久化关联，形成不可替代的个人语言知识资产。
+4. **证据归属优先**：教材、文章等外部英语只证明用户正在吸收什么（IN），不能证明用户会写冗长句；只有用户自己的英文表达与订正才可形成 OUT 语法 / 搭配弱点。
 
 ---
 
@@ -27,7 +28,7 @@
 
 每次触发 Profile 增量更新时，打包发送给 AI 的数据包含：
 
-1. **旧 Profile 状态 (`~1,000 Tokens`)**：当前记录的 `weaknessPatterns` 与 `explorationFocus`。
+1. **旧 Profile 状态 (`~1,000 Tokens`)**：仅发送本轮 `learningDirection` 对应的 `weaknessPatterns`、`explorationFocus` 与推荐；无方向旧数据不发送。
 2. **高价值行为增量 (`~1,500 Tokens`)**，包含三类信息：
    - **[源 A: 单词搜索]**：查过的词汇及对应的 Core 意象/空间延伸标签。
    - **[源 B: 句子/表达订正]**：用户的原始输入 + AI 剖析的 **`unnaturalMindModel` (思维违和感)**（例: 传入 *My eyesight is deep* 及 *“英文不用 depth 抽象视力”* 的剖析）。
@@ -58,18 +59,21 @@ export interface UserLanguageProfile {
     // Direction G (2026-09-07) — 本地「热度」引擎输入：
     confidence?: number;      // 0~1，AI 估计「用户是否已改过来」。复犯降、用对升。缺省 0.2
     lastExposedAt?: string;   // ISO，最近一次触碰该弱点的事件时间。缺省 profile.lastUpdated
+    learningDirection?: 'in' | 'out'; // 必填于新数据；缺省代表旧数据，隔离不注入 AI
   }>;
   
   // 近期探索偏好与思维倾向
   recentExplorationFocus: Array<{
     category: string;          // 类别 (例: "phrasal_verbs_with_out", "emotions_in_melbourne")
     searchedItems: string[];   // 关联词汇或短语
+    learningDirection?: 'in' | 'out';
   }>;
   
   // AI 归纳的个性化推荐学习节点
   recommendations: Array<{
     conceptOrWord: string;     // 推荐词或概念 (例: "beyond", "across")
     reason: string;            // 推荐理由 (例: "你近期频繁追问 out 的空间延伸，推荐拓展对比 beyond")
+    learningDirection?: 'in' | 'out';
   }>;
 }
 ```
@@ -78,6 +82,20 @@ export interface UserLanguageProfile {
 
 ## 4. 智能事件触发与蒸馏剪枝算法 (Event-Driven & Pruning Engine)
 
+### 4.0 IN / OUT / Irrelevant 路由（Evidence Ownership）
+
+`src/utils/learningDirection.ts` 的 `resolveLearningRoute(query, selectedDirection, mainDictionary)` 是唯一基础规则：
+
+| 查询语言 | 路由 | Profile 含义 |
+|---|---|---|
+| English | 当前搜索栏选择的 IN / OUT | IN = 外部输入理解；OUT = 用户主动英文表达 |
+| 学习者支持语言 | 自动 OUT | 英汉 / 英英下中文、英越下越南语；只代表「想表达什么」，不是语法错误 |
+| 其他语言 / 非语言 | `irrelevant` | 查询照常工作，但不入队、不诊断、不注入或显示 Profile 洞察 |
+
+搜索栏只显示一个可切换状态，不要求用户每次先选用途。`settingsStore.defaultLearningDirection` 决定冷启动默认值，`searchStore.learningDirection` 保存本次会话选择。支持语言自动 OUT 与 irrelevant 状态会禁用方向钮，避免错误覆盖自动路由。
+
+Profile 仍是一份 `UserLanguageProfile`，不是两本互不相识的账；每条新证据用 `learningDirection` 分区。这样可共享总诊断次数、更新时刻和管理入口，同时禁止 IN 材料污染 OUT 写作画像。
+
 ### 4.1 多路触发、会话聚合与崩溃恢复 (Flush Engine)
 
 为控制 Token 成本并保证关 App 后不丢账，**入队与触发解耦**：事件先写入 `localStorage`（`lexicon-pending-profile-events`），再由统一入口 `flushPendingProfileDiagnostics` 蒸馏。
@@ -85,8 +103,9 @@ export interface UserLanguageProfile {
 * **路径 A1（AI 追问 — 延迟聚合）**：
   - `recordAiChatEvent` **只入队**，并重置 **90s idle timer**（`CHAT_IDLE_MS`）；连续追问会不断推迟，整段会话通常只蒸馏一次。
   - **硬边界立刻 flush**（取消 idle）：换词搜索、Lookup ↔ Pure Core 切换、离开 Dictionary Tab、`pagehide` / `visibility hidden`、Settings 手动刷新。
-* **路径 A2（句子订正 — 仍即时）**：
-  - `recordSentenceCorrectionEvent` 入队后立即 flush（通常一次查词最多一次订正）。
+* **路径 A2（OUT 英文句子订正 — 仍即时）**：
+  - 只有 `learningDirection='out'` 且原文为英文时，`recordSentenceCorrectionEvent` 才写入高权重 sentence 事件并立即 flush。
+  - IN 英文材料与支持语言 OUT 查询降级为普通 lookup 证据，绝不由 `correctForm` 反推出用户语法弱点。
 * **路径 B（查词累计，阈值 12）**：
   - 普通查词 `unprocessed_count +1`，达到 **12** 时 flush；若队列里已有未冲刷的 chat，一并带上。
 * **成功才改账**：
@@ -117,18 +136,20 @@ export interface UserLanguageProfile {
 
 ### 4.2.2 Profile 上下文注入所有 AI 出口（Direction A，2026-09-07）
 
-`buildProfilePromptContext(variant)`（`src/services/profile.ts`）：
+`buildProfilePromptContext(variant, learningRoute)`（`src/services/profile.ts`）：
 
 | variant | 内容 | 注入点 |
 |--|--|--|
-| `'full'`（默认） | 全部 active 弱项 + 探索偏好 + 「mentor tip」指令 | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
-| `'compact'` | 仅 `hotWeaknesses(≤3)` + 一句 opt-in 指令；无 hot → `''` | `ai.ts` `getFullLookupPrompt`（单词 Lookup/Core）、`aiPhrasePrompt.ts` `buildPhrasePrompt`（词组）、`ai.ts` `askQuestion`（追问 system prompt） |
+| `'full'` | 当前方向全部 active 弱项 + 同方向探索偏好 + 「mentor tip」指令 | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
+| `'compact'` | 当前方向 `hotWeaknesses(≤3)` + 一句 opt-in 指令；无 hot → `''` | `ai.ts` `getFullLookupPrompt`（单词 Lookup/Core）、`aiPhrasePrompt.ts` `buildPhrasePrompt`（词组）、`ai.ts` `askQuestion`（追问 system prompt） |
+
+`learningRoute='irrelevant'` 直接返回空字符串。方向缺失的 legacy 弱点、探索与推荐不进入任何 prompt，等待未来有明确证据后由诊断 AI 重新建立带方向记录。
 
 > 注入点是 **live 路径**；`aiCombinedPrompt.ts`（`buildCombinedWordPrompt` 等）自 v0.9.15 起 `@deprecated`，不在注入范围。
 
-**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 的可选 `profileInsight?: string`。单词/词组 prompt 的 schema 声明它，并强指令「除非本词明确关联某条已列出的反复混淆，否则整段省略」。`aiFullLookup` / `aiPhraseQuery` 的 `JSON.parse` 直接透传（无字段白名单）。
+**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 可选 `profileInsight?: string`，客户端同时保存 `profileInsightDirection?: 'in' | 'out'`。单词/词组 prompt 强指令「除非本词明确关联当前方向已列出的反复混淆，否则省略」。旧缓存没有方向元数据时不显示。
 
-**`ProfileInsightChip`**（`src/components/ResultView/ProfileInsightChip.tsx`）：结果带 `profileInsight` 且未被 `sessionStorage`（`lexicon-dismissed-insights`，key = 规范化 query）dismiss 时，在结果头部渲染一条浅色 chip；点击 → `onGoToSettings()`。挂载于 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）、`AiFullView` / `CoreCognitiveView` / `PhraseView`（各自读自身结果 prop 的 `profileInsight`）。
+**`ProfileInsightChip`**（`src/components/ResultView/ProfileInsightChip.tsx`）：仅当结果含 `profileInsight`、方向与原始查询当前路线一致、且未被 `sessionStorage` dismiss 时渲染。路线校验必须使用原始 `routeQuery`，不能用 AI 的 `correctForm`，否则中文 OUT 查询翻成英文后会被默认 IN 错误隐藏。
 
 ### 4.3 动态剪枝与进化机制 (Pruning & Evolution)
 * **自动淘汰 (Mastered Pruning)**：当某个弱项在过去 30 天内未再暴露，且用户多次正确使用时，AI 在生成新 Profile 时将其标记为 `mastered` 或从 Active 列表中移除。
@@ -145,6 +166,16 @@ export interface UserLanguageProfile {
    - **查看当前画像 (`View Profile`)**：弹窗展示当前 Profile 的可视化卡片（展示 AI 归纳的弱项看板与探索倾向），让用户对 AI 掌握的个人情况一目了然。
    - **重置 Profile 数据 (`Reset AI Profile`)**：危险按钮。点击后仅清空 `user_profile.json`，让 AI 重新从零开始评估你的学习状态（不影响 SQLite 词汇笔记）。
    - **清空流动搜索日志 (`Clear Search Logs`)**：危险按钮。仅清空 100 条滚动搜索历史。
+3. **默认学习方向 (`defaultLearningDirection`)**：
+   - 位于 Local Data / Profile 设置组，使用 IN / OUT 两选项 `ChoiceRow`，与三种 `defaultSearchMode` 完全独立。
+   - 改动默认值时同步当前搜索栏方向，但每次查询前仍可在搜索栏单击覆盖。
+
+### 4.5 诊断 Prompt 的不可越界规则
+
+- IN 原文是外部材料：可推断词汇 / 理解缺口，不得推断用户偏爱长句、某种文风或会犯该句中的语法问题。
+- 只有 OUT 英文 sentence correction 能新增 syntax / collocation 弱点；支持语言 OUT 只能形成表达需求或概念缺口。
+- AI Chat 的证据主体是用户提出的问题，不是被查词条或作为上下文附带的教材段落。
+- AI 返回的新 `weaknessPatterns`、`recentExplorationFocus`、`recommendations` 必须携带 `learningDirection`；混合批次中无法可靠归属的项目保持无方向并进入 legacy 隔离，不得猜测。
 
 ---
 

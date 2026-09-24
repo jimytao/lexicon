@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useSearchStore, detectQueryType } from './stores/searchStore'
 import { useResultStore } from './stores/resultStore'
 import { useSettingsStore } from './stores/settingsStore'
 import { useHistoryStore } from './stores/historyStore'
 import { useSearch } from './hooks/useSearch'
 import { useAiLookup } from './hooks/useAiLookup'
-import type { WordResult, SuggestItem } from './types'
+import type { Mode, WordResult, SuggestItem } from './types'
 import { SearchBar } from './components/SearchBar'
 import { SegmentedControl } from './components/SearchBar/SegmentedControl'
 import { ResultView } from './components/ResultView'
@@ -40,11 +40,17 @@ import {
   flushPendingProfileDiagnostics,
   initProfileFlushListeners,
   recordLookupEvent,
+  resolveCurrentLearningRoute,
   resumePendingProfileDiagnostics,
 } from './services/profile'
 import { useT } from './i18n'
 import type { AiMode } from './stores/historyStore'
 import type { CognitiveMode } from './types'
+import {
+  getModeScrollPosition,
+  saveModeScrollPosition,
+  type ModeScrollPositions,
+} from './utils/modeScrollMemory'
 
 function getScrollableAncestor(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement
@@ -87,6 +93,8 @@ export function App() {
     settings: false,
   })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const modeScrollPositionsRef = useRef<ModeScrollPositions>({})
+  const pendingModeScrollRestoreRef = useRef<Mode | null>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const lastProfileQueryRef = useRef<string>('')
   const lastScrollTopRef = useRef(0)
@@ -264,10 +272,36 @@ export function App() {
     return () => sc.removeEventListener('scroll', handleScroll)
   }, [isKeyboardVisible, view])
 
+  // The three lookup modes share one outer scroll container. Restore the selected
+  // mode after React has committed its result view, before the browser paints it.
+  useLayoutEffect(() => {
+    if (pendingModeScrollRestoreRef.current !== mode) return
+    pendingModeScrollRestoreRef.current = null
+
+    const sc = scrollContainerRef.current
+    if (!sc) return
+    const maxScrollTop = Math.max(0, sc.scrollHeight - sc.clientHeight)
+    const top = getModeScrollPosition(modeScrollPositionsRef.current, mode, maxScrollTop)
+    sc.scrollTo({ top, behavior: 'auto' })
+    lastScrollTopRef.current = top
+    setIsAtTop(top <= 16)
+    setIsBottomNavVisible(top <= 80)
+  }, [mode])
+
   /** 点击分段控件切换模式时立刻补齐 AI（Lookup / Pure Core 均点击即搜），不依赖 useEffect / idle 门闩 */
   function handleModeChange(next: typeof mode) {
     const prev = useSearchStore.getState().mode
     if (prev === next) return
+
+    const sc = scrollContainerRef.current
+    if (sc) {
+      modeScrollPositionsRef.current = saveModeScrollPosition(
+        modeScrollPositionsRef.current,
+        prev,
+        sc.scrollTop,
+      )
+    }
+    pendingModeScrollRestoreRef.current = next
 
     // Lookup ↔ Pure Core is a different AI chat track — flush pending profile Q&A.
     if ((prev === 'ai' && next === 'core') || (prev === 'core' && next === 'ai')) {
@@ -358,8 +392,15 @@ export function App() {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function resetModeScrollPositions() {
+    modeScrollPositionsRef.current = {}
+    pendingModeScrollRestoreRef.current = null
+  }
+
   async function handleWordSelect(word: string, fromHistory = false) {
     await ensureSearchStateHydrated()
+    const learningRoute = resolveCurrentLearningRoute(word)
+    resetModeScrollPositions()
     scrollToTop()
     localWordSnapshotRef.current = null
     const nw = normalizeQuery(word)
@@ -376,7 +417,7 @@ export function App() {
     // NOT for phrase/sentence queries (those emit richer sentence-correction events)
     // and NOT for fromHistory revisits (already counted on first lookup).
     if (!fromHistory && queryType !== 'phrase' && queryType !== 'sentence') {
-      recordLookupEvent(word, result?.coreConcept?.image)
+      recordLookupEvent(word, result?.coreConcept?.image, learningRoute)
     }
 
     if (result) {
@@ -511,6 +552,7 @@ export function App() {
   async function handleForceAi(word: string) {
     const nw = normalizeQuery(word)
     if (!nw) return
+    resetModeScrollPositions()
     scrollToTop()
     // Save local snapshot if we currently have a local result for this word
     const currentWordResult = useResultStore.getState().wordResult
@@ -840,6 +882,7 @@ export function App() {
                     onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
                     profileInsight={combinedResult?.lookup?.profileInsight}
+                    profileInsightDirection={combinedResult?.lookup?.profileInsightDirection}
                   />
                 ) : (
                   <div className="fixed inset-0 z-[5] flex flex-col items-center justify-center pointer-events-none text-foreground-muted px-6">

@@ -7,6 +7,7 @@ import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
 import type { SuggestItem } from '../../types'
 import { normalizeQuery, hasAnyAiCacheEntry } from '../../utils/text'
+import { isLearningRouteForced, resolveLearningRoute } from '../../utils/learningDirection'
 import { useComposerFlowLayout } from '../../hooks/useComposerFlowLayout'
 import { useT } from '../../i18n'
 
@@ -18,8 +19,8 @@ interface SearchBarProps {
 
 export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBarProps) {
   const t = useT()
-  const { query, suggestions, setQuery, setSuggestions } = useSearchStore()
-  const { historyEnabled } = useSettingsStore()
+  const { query, suggestions, learningDirection, setQuery, setSuggestions, setLearningDirection } = useSearchStore()
+  const { historyEnabled, mainDictionary } = useSettingsStore()
   const { words: historyWords } = useHistoryStore()
   const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const containerRef = useRef<HTMLFormElement>(null)
@@ -27,6 +28,12 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
   const trimmedQuery = query.trim()
+  const effectiveRoute = resolveLearningRoute(trimmedQuery, learningDirection, mainDictionary)
+  const selectedDirectionLabel = learningDirection === 'in' ? 'IN' : 'OUT'
+  const displayedDirection = effectiveRoute === 'irrelevant' ? learningDirection : effectiveRoute
+  const displayedDirectionLabel = displayedDirection === 'in' ? 'IN' : 'OUT'
+  const isAutoRouted = !!trimmedQuery && isLearningRouteForced(trimmedQuery, mainDictionary)
+  const isProfileIrrelevant = !!trimmedQuery && effectiveRoute === 'irrelevant'
 
   // gap-3 of clearance from the buttons; 110px ≈ 4 lines before the text scrolls.
   // Once the caret leaves, a tall composer is just wasted space over the results —
@@ -171,12 +178,48 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
             : 'bg-background-soft border-border hover:border-foreground-muted/30'
         }`}
         >
-          <svg
-            className={`w-5 h-5 shrink-0 transition-colors mt-1.5 ${isFocused ? 'text-accent' : 'text-foreground-muted'}`}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          <button
+            type="button"
+            onClick={() => {
+              setLearningDirection(learningDirection === 'in' ? 'out' : 'in')
+              textareaRef.current?.focus()
+            }}
+            disabled={isAutoRouted || isProfileIrrelevant}
+            className={`w-[58px] h-10 -ml-1 mt-0.5 shrink-0 inline-flex items-center justify-center gap-1 rounded-full text-[11px] font-bold tracking-wide transition-all duration-200 ${
+              isProfileIrrelevant
+                ? 'bg-foreground/5 text-foreground-muted/35 cursor-default'
+                : 'bg-accent/10 text-accent hover:bg-accent/15 active:scale-95 disabled:opacity-80 disabled:cursor-default'
+            }`}
+            title={
+              isProfileIrrelevant
+                ? t('search.directionIrrelevant')
+                : isAutoRouted
+                  ? t('search.directionAutoOut')
+                  : t('search.directionToggle').replace('{direction}', selectedDirectionLabel)
+            }
+            aria-label={
+              isProfileIrrelevant
+                ? t('search.directionIrrelevant')
+                : isAutoRouted
+                  ? t('search.directionAutoOut')
+                  : t('search.directionToggle').replace('{direction}', selectedDirectionLabel)
+            }
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-          </svg>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+              {displayedDirection === 'in' ? (
+                <>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 21h14" />
+                </>
+              ) : (
+                <>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21V9m0 0 4 4m-4-4-4 4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 3h14" />
+                </>
+              )}
+            </svg>
+            <span>{displayedDirectionLabel}</span>
+          </button>
 
           {/* The text always wraps at the full width — the buttons float over the
               bottom-right corner, so they can only ever obstruct the last line. When

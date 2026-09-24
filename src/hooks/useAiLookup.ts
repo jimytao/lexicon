@@ -12,7 +12,7 @@ import {
   fillMissingConceptExamples,
   type MeaningsAnchor,
 } from '../services/ai'
-import { recordSentenceCorrectionEvent } from '../services/profile'
+import { recordSentenceCorrectionEvent, resolveCurrentLearningRoute } from '../services/profile'
 import { resolveDictionaryContext } from '../services/dictionaryContext'
 import { combineSignals } from '../utils/abortSignal'
 import { classifyAiRequestError } from '../utils/aiRequestErrors'
@@ -278,6 +278,7 @@ export function useAiLookup() {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
+    const learningRoute = resolveCurrentLearningRoute(phrase)
 
     const cognitive = cognitiveFromSearchMode(useSearchStore.getState().mode)
     const cached = getCachedPhrase(phrase, cognitive)
@@ -294,7 +295,7 @@ export function useAiLookup() {
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
       setPhraseResult(phrase, result, cognitive)
       if (result.unnaturalMindModel || result.correctForm) {
-        recordSentenceCorrectionEvent(phrase, result.correctForm, result.unnaturalMindModel)
+        recordSentenceCorrectionEvent(phrase, result.correctForm, result.unnaturalMindModel, learningRoute)
       }
     } catch (e) {
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
@@ -394,6 +395,7 @@ export function useAiLookup() {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
+    const learningRoute = resolveCurrentLearningRoute(phrase)
 
     if (!forceRefresh) {
       const cached = getCachedCombinedPhrase(phrase, tag)
@@ -452,7 +454,7 @@ export function useAiLookup() {
 
       const lr = captured.lookup
       if (lr && (lr.unnaturalMindModel || lr.correctForm)) {
-        recordSentenceCorrectionEvent(phrase, lr.correctForm, lr.unnaturalMindModel)
+        recordSentenceCorrectionEvent(phrase, lr.correctForm, lr.unnaturalMindModel, learningRoute)
       }
     } catch (e) {
       dispose()

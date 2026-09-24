@@ -231,6 +231,31 @@ describe('recordSentenceCorrectionEvent — still immediate', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getPendingEvents()).toHaveLength(0)
   })
+
+  it('downgrades IN material to an aggregated lookup instead of treating it as learner writing', async () => {
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordSentenceCorrectionEvent(
+      'Although the source sentence is long, it is not my writing.',
+      'Although the source sentence is long, it is not my writing.',
+      undefined,
+      'in',
+    )
+    await flushMicrotasks()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(getPendingEvents()).toHaveLength(1)
+    expect(getPendingEvents()[0]).toMatchObject({
+      type: 'lookup',
+      learningDirection: 'in',
+    })
+  })
+
+  it('does not enqueue irrelevant-language material', () => {
+    recordSentenceCorrectionEvent('Guten Morgen', 'Good morning', undefined, 'irrelevant')
+    expect(getPendingEvents()).toHaveLength(0)
+  })
 })
 
 describe('recordLookupEvent — accumulation path B', () => {
@@ -429,6 +454,7 @@ function mkWeakness(over: Partial<WeaknessPattern>): WeaknessPattern {
     track: over.track ?? 'vocabulary',
     status: over.status ?? 'learning',
     occurrenceCount: over.occurrenceCount ?? 1,
+    learningDirection: over.learningDirection ?? 'in',
     ...over,
   }
 }
@@ -484,8 +510,52 @@ describe('buildProfilePromptContext', () => {
   beforeEach(() => vi.setSystemTime(FIXED_NOW))
 
   it('returns "" for an empty profile in either variant', () => {
-    expect(buildProfilePromptContext('full')).toBe('')
-    expect(buildProfilePromptContext('compact')).toBe('')
+    expect(buildProfilePromptContext('full', 'in')).toBe('')
+    expect(buildProfilePromptContext('compact', 'out')).toBe('')
+  })
+
+  it('injects only the current IN or OUT evidence lane', () => {
+    seedProfile([
+      mkWeakness({ id: 'input-gap', description: 'INPUT_ONLY', learningDirection: 'in', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
+      mkWeakness({ id: 'output-gap', description: 'OUTPUT_ONLY', learningDirection: 'out', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
+    ])
+
+    const inputContext = buildProfilePromptContext('compact', 'in')
+    const outputContext = buildProfilePromptContext('compact', 'out')
+
+    expect(inputContext).toContain('INPUT_ONLY')
+    expect(inputContext).not.toContain('OUTPUT_ONLY')
+    expect(outputContext).toContain('OUTPUT_ONLY')
+    expect(outputContext).not.toContain('INPUT_ONLY')
+  })
+
+  it('quarantines legacy weaknesses without a learning direction', () => {
+    seedProfile([
+      mkWeakness({ id: 'legacy', description: 'LEGACY_UNATTRIBUTED', learningDirection: undefined, confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
+    ])
+    expect(buildProfilePromptContext('compact', 'in')).not.toContain('LEGACY_UNATTRIBUTED')
+    expect(buildProfilePromptContext('compact', 'out')).not.toContain('LEGACY_UNATTRIBUTED')
+  })
+
+  it('keeps legacy profile records local during diagnostic upserts', async () => {
+    seedProfile([
+      mkWeakness({ id: 'directed', description: 'DIRECTED_BASELINE', learningDirection: 'in' }),
+      mkWeakness({ id: 'legacy', description: 'LEGACY_LOCAL_ONLY', learningDirection: undefined }),
+    ])
+    const fetchMock = mockDiagnosticSuccess({ weaknessPatterns: [] })
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordAiChatEvent('run', 'How is this used?', 'In this context...', 'lookup', 'in')
+    await flushPendingProfileDiagnostics('manual')
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const request = JSON.parse(String(init.body))
+    const prompt = request.messages.find((m: { role: string }) => m.role === 'user').content as string
+    expect(prompt).toContain('DIRECTED_BASELINE')
+    expect(prompt).not.toContain('LEGACY_LOCAL_ONLY')
+    expect(getProfile().weaknessPatterns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'legacy', description: 'LEGACY_LOCAL_ONLY', learningDirection: undefined }),
+    ]))
   })
 
   it('compact: includes only hot weaknesses (excludes cool ones)', () => {
@@ -493,7 +563,7 @@ describe('buildProfilePromptContext', () => {
       mkWeakness({ id: 'hot', description: 'confuses deep with poor eyesight', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
       mkWeakness({ id: 'cool', description: 'article overuse before uncountables', confidence: 0.2, lastExposedAt: isoDaysAgo(40) }),
     ])
-    const out = buildProfilePromptContext('compact')
+    const out = buildProfilePromptContext('compact', 'in')
     expect(out).toContain('confuses deep with poor eyesight')
     expect(out).not.toContain('article overuse before uncountables')
   })
@@ -503,7 +573,7 @@ describe('buildProfilePromptContext', () => {
       mkWeakness({ id: 'a', confidence: 0.2, lastExposedAt: isoDaysAgo(40) }),
       mkWeakness({ id: 'b', confidence: 0.95, lastExposedAt: isoDaysAgo(0) }),
     ])
-    expect(buildProfilePromptContext('compact')).toBe('')
+    expect(buildProfilePromptContext('compact', 'in')).toBe('')
   })
 
   it('compact: caps at 3 hot weaknesses', () => {
@@ -512,14 +582,14 @@ describe('buildProfilePromptContext', () => {
         mkWeakness({ id: `h${i}`, description: `HOTMARK_${i}`, confidence: 0.05, lastExposedAt: isoDaysAgo(0) }),
       ),
     )
-    const out = buildProfilePromptContext('compact')
+    const out = buildProfilePromptContext('compact', 'in')
     const hits = [...out.matchAll(/HOTMARK_/g)].length
     expect(hits).toBe(3)
   })
 
   it('compact: instruction is soft / opt-in (no forced mentor tip)', () => {
     seedProfile([mkWeakness({ id: 'hot', confidence: 0.1, lastExposedAt: isoDaysAgo(0) })])
-    const out = buildProfilePromptContext('compact').toLowerCase()
+    const out = buildProfilePromptContext('compact', 'in').toLowerCase()
     expect(out).toMatch(/only if|optional|may add|do not force|never force/)
   })
 
@@ -528,14 +598,14 @@ describe('buildProfilePromptContext', () => {
       mkWeakness({ id: 'a', description: 'AA gap', confidence: 0.2, lastExposedAt: isoDaysAgo(40) }),
       mkWeakness({ id: 'b', description: 'BB gap', confidence: 0.2, lastExposedAt: isoDaysAgo(0) }),
     ])
-    const out = buildProfilePromptContext('full')
+    const out = buildProfilePromptContext('full', 'in')
     expect(out).toContain('AA gap')
     expect(out).toContain('BB gap')
     expect(out.toLowerCase()).toContain('mentor')
   })
 
-  it('defaults to the full variant when no argument is given', () => {
-    seedProfile([mkWeakness({ id: 'a', description: 'AA gap', confidence: 0.2, lastExposedAt: isoDaysAgo(40) })])
-    expect(buildProfilePromptContext()).toBe(buildProfilePromptContext('full'))
+  it('requires an attributable lane before returning profile evidence', () => {
+    seedProfile([mkWeakness({ id: 'a', description: 'AA gap', learningDirection: 'in', confidence: 0.2, lastExposedAt: isoDaysAgo(0) })])
+    expect(buildProfilePromptContext('compact', 'irrelevant')).toBe('')
   })
 })

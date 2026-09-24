@@ -169,7 +169,7 @@ describe('Direction A — phrase prompt personalization hook', () => {
 
   it('appends the compact learner context for a plain phrase, the full one for a sentence', () => {
     expect(readFileSync(join(__dirname, 'aiPhrasePrompt.ts'), 'utf8')).toMatch(
-      /buildProfilePromptContext\(\s*queryType === ['"]sentence['"] \? ['"]full['"] : ['"]compact['"]\s*\)/,
+      /buildProfilePromptContext\([\s\S]{0,120}queryType === ['"]sentence['"] \? ['"]full['"] : ['"]compact['"][\s\S]{0,120}learningRoute/,
     )
   })
 })

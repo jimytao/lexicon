@@ -8,7 +8,7 @@
 └── <main>
     │
     ├── (view === 'dictionary')
-    │   ├── <SearchBar /> + <SegmentedControl />   # Instant / AI / Core
+    │   ├── <SearchBar /> + <SegmentedControl />   # IN/OUT 方向钮 + Instant / AI / Core
     │   └── 条件渲染
     │       ├── <ResultView />         # 词库命中 + Instant/AI (+ LexiconMemoryBadge 只读 + ProfileInsightChip)
     │       ├── <CoreCognitiveView />  # Mode 3 Core（Usage Image + WordGraph + WordChoice…；无置顶 NativeMind）
@@ -24,7 +24,7 @@
     │
     └── (view === 'settings')
         └── <SettingsView />           # Group + Accordion + ProfileModal
-            └── <ProfileModal />       # Profile 弱项查看/重置（首页看板 Digest 已雪藏）；按热度排序 + hot/warm/cool 三段 + ConfidenceBar
+            └── <ProfileModal />       # 同一 Profile 内按 IN/OUT 分区；各自按 hot/warm/cool + ConfidenceBar 展示
 
 ### Profile 细化（Direction A + G，2026-09-07）
 
@@ -33,6 +33,13 @@
 - **`buildProfilePromptContext(variant: 'full' | 'compact' = 'full')`**（`src/services/profile.ts`）：`'compact'` 仅注入 `hotWeaknesses`，无 hot → `''`。live 注入点见 §4.2.2 表。
 - **`AiFullResult` / `PhraseResult`** 新增可选 `profileInsight?: string`（AI 按需返回；`JSON.parse` 透传）。
 - **`<ProfileInsightChip insight dismissKey onOpen />`**（`src/components/ResultView/ProfileInsightChip.tsx`）：结果头部浅色 chip，`sessionStorage` 记 dismiss；挂载于 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）+ `AiFullView` / `CoreCognitiveView` / `PhraseView`。
+
+### IN / OUT 学习方向（2026-09-24）
+
+- `SearchBar` 左侧方向胶囊替代静态放大镜：只呈现当前 `IN ↓` 或 `OUT ↑`，单击切换并把焦点还给 textarea；不会增加提交步骤。
+- `resolveLearningRoute(query, selectedDirection, mainDictionary)` 返回 `'in' | 'out' | 'irrelevant'`：英文使用手动方向；当前主词典对应的中文 / 越南语支持语言自动 OUT；第三语言与非语言内容为 irrelevant。
+- `ProfileModal` 使用一个 `UserLanguageProfile`，但分别显示 IN / OUT 弱点；无方向的旧数据进入 Legacy 隔离区，不参与 prompt 注入。
+- `ProfileInsightChip` 需要 `direction`，并用 `routeQuery`（原始查询，而非 AI 修正后的英文）复核当前路线；旧缓存没有方向元数据时保持隐藏。
 
 # SHELVED（未挂载，勿接回导航 / 结果页）
 # ├── <MemoryView />
@@ -47,6 +54,13 @@
 - 外层实际滚动容器是 `App.tsx` 的 `h-screen overflow-y-auto` 容器，禁止改用 `window.scrollTo()`。
 - `ImageViewer` 在 compact 列表模式且未放大时使用 `touch-action: pan-y`；放大后改为 `none`，避免图片查看手势与页面滚动互相抢占。
 
+### 查词模式滚动位置
+
+- Instant、AI Lookup 与 Pure Core 共用 `App.tsx` 的外层滚动容器，但同一次查询内通过 `modeScrollPositionsRef` 分别保存 `scrollTop`。
+- 点击分段控件时先记录离开模式的位置；目标模式完成 React 提交后，由 `useLayoutEffect` 无动画恢复。未访问模式默认位置为 0。
+- 新搜索、历史词条跳转与强制 AI 查询会清空三种模式的位置，防止上一个词的阅读进度污染新结果。
+- 若目标模式当前内容高度变短，恢复值会钳制到可滚动范围内。
+
 ## Zustand Store 设计
 
 ### searchStore
@@ -60,9 +74,11 @@ interface SearchStore {
   queryType: QueryType       // 'word' | 'phrase' | 'sentence'，setQuery 时自动推断
   suggestions: SuggestItem[] // 补全列表
   mode: Mode                 // 'instant' | 'ai'
+  learningDirection: LearningDirection // 当前会话方向：'in' | 'out'
   setQuery: (q: string) => void
   setQueryType: (t: QueryType) => void
   setMode: (m: Mode) => void
+  setLearningDirection: (d: LearningDirection) => void
   setSuggestions: (s: SuggestItem[]) => void
   clear: () => void
 }
@@ -126,6 +142,7 @@ interface SettingsStore {
   tavilyApiKey: string               // @deprecated 旧字段；与 searchApiKeys.tavily 双写，merge 时迁移
   maxExercises: number            // 练习题数，1–10，默认 5
   mainDictionary: 'en-zh' | 'en-vi' | 'en-en' // 默认词典；Monolingual 按查询类型临时覆盖为英英
+  defaultLearningDirection: LearningDirection // 搜索栏初始方向，默认 'in'
   chatRichContextDefault: boolean  // Chat 默认开启完整语境
   pronunciationAccent: 'uk' | 'us' // 默认发音口音偏好
   autoPlayPronunciation: boolean  // 查词时自动播放发音
@@ -140,6 +157,7 @@ interface SettingsStore {
   setAppearance: (v: 'light' | 'dark' | 'system') => void
   setMaxExercises: (v: number) => void
   setMainDictionary: (v: 'en-zh' | 'en-vi' | 'en-en') => void
+  setDefaultLearningDirection: (v: LearningDirection) => void
   setChatRichContextDefault: (v: boolean) => void
   setPronunciationAccent: (v: 'uk' | 'us') => void
   setAutoPlayPronunciation: (v: boolean) => void
@@ -155,6 +173,7 @@ export const useSettingsStore = create<SettingsStore>()(
       historyEnabled: true,
       appearance: 'system',
       maxExercises: 5,
+      defaultLearningDirection: 'in',
       setAiProvider: (aiProvider) => set({ aiProvider }),
       setAiEndpoint: (aiEndpoint) => set({ aiEndpoint }),
       setAiModel: (aiModel) => set({ aiModel }),

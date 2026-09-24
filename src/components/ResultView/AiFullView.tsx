@@ -56,11 +56,13 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
         <LexiconMemoryBadge word={aiFullResult?.correctForm || word} />
       </div>
 
-      {aiFullResult?.profileInsight && (
+      {aiFullResult?.profileInsight && aiFullResult.profileInsightDirection && (
         <div className="mb-3">
           <ProfileInsightChip
             insight={aiFullResult.profileInsight}
             dismissKey={aiFullResult?.correctForm || word}
+            routeQuery={word}
+            direction={aiFullResult.profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
         </div>

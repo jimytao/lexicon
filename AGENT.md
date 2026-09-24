@@ -106,6 +106,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 - 默认模式：`settingsStore.defaultSearchMode`（`instant` \| `ai` \| `core`）
 - 模式切换应**点击即生效**（Lookup / Pure Core 均有缓存恢复或立刻触发；勿仅依赖可能不同步的 `useEffect`）
+- 同一次查询内三种模式各自保存外层 `scrollTop`；未访问模式从顶部开始，新查询 / 历史词条跳转 / 强制 AI 时清空三份位置。恢复必须在模式视图提交后的 `useLayoutEffect` 中完成，禁止用平滑滚动穿过旧内容。
 - **切回 Instant**：`cancelAi()`（abort + generation 作废）→ 有本地快照则只显示 L1（卸下 AI 展示含 Chat，缓存保留）；无本地 → `searchSource=none` 清空结果区，保留搜索框
 - **空态**：无查询且无结果时，任意默认模式都显示小书引导（`showEmptyHome`），禁止 Core 空壳抢首页
 - 在 **Core** 下命中全量缓存时，**禁止**强制切回 `ai`
@@ -202,6 +203,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 - 类型与表：`UserLanguageProfile`、`UserWordMemory`、`user_word_memory` 等（见 `08`）
 - 服务：`src/services/profile.ts`；开关 `enableProfileDiagnostic`
+- **证据分轨**：同一个 Profile 内以 `learningDirection: 'in' | 'out'` 分隔输入理解与主动表达；旧的无方向数据保留但禁止注入 prompt。`resolveLearningRoute()` 将当前支持语言自动归 OUT、其他外语归 `irrelevant`。
 - **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；句子订正仍即时；查词累计 12；成功才删 pending / 重置计数；冷启动对含 chat/sentence 的队列续跑
 - 笔记 / 对话 / Core 意象经 DBService API 持久化；Web 侧有 localStorage 备份防护
 
@@ -258,7 +260,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - [x] AI 功能在单英文 / 双语模式下的 prompt 适配
 - [x] UK/US 发音、自动发音、离线 TTS、播放动效
 - [x] Pure Core（Mode 3）、设置模块化、认知模块开关
-- [x] Lexicon Memory + 轻量 User Profile 后端与 Settings `ProfileModal`
+- [x] Lexicon Memory + IN/OUT 双通道轻量 User Profile 后端与 Settings `ProfileModal`
 - [x] 弱项看板 UI 雪藏；底栏恢复 3 Tab
 - [x] 界面语言全量 i18n；`LexiconMemoryBadge` 只读展示（`UserNoteEditor` 已雪藏）
 - [x] 词组/句子 Lookup vs Pure Core：分轨 prompt + 缓存 + Core 心智优先 UI
@@ -290,8 +292,8 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - sql.js **不能**加入 `optimizeDeps.exclude`，否则浏览器无法 import CJS，词库加载失败
   （注意：部分旧文档示例仍写 `exclude: ['sql.js']`，以本备忘与实际 `vite.config` 为准）
 - `historyStore`：Zustand persist（localStorage），不走 `DBService.addHistory`
-- `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；`searchProvider`（`tavily`\|`brave`）+ `searchApiKeys` 同理；含 `appearance`、`coreModules`、`enableProfileDiagnostic` 等。解析当前联网搜索 Key 用导出的 `resolveSearchApiKey()`；联网是否生效只看 `ai.ts` 的 `webSearchReady()`
-- `searchStore`：`queryType`（word / phrase / sentence），`setQuery` 时自动推断
+- `settingsStore`：`aiApiKeys` / `aiModels` 按服务商分 key；`searchProvider`（`tavily`\|`brave`）+ `searchApiKeys` 同理；含 `appearance`、`coreModules`、`enableProfileDiagnostic`、`defaultLearningDirection` 等。解析当前联网搜索 Key 用导出的 `resolveSearchApiKey()`；联网是否生效只看 `ai.ts` 的 `webSearchReady()`
+- `searchStore`：`queryType`（word / phrase / sentence，`setQuery` 时自动推断）+ 当前会话 `learningDirection`（IN / OUT）
 - `capacitor.config.ts`：`server.androidScheme: 'http'`；`plugins.CapacitorHttp.enabled: true`；`plugins.Keyboard.resize: 'none'`
 - Android：`windowSoftInputMode="adjustResize"`；键盘遮挡由 `App.tsx` 监听 Capacitor Keyboard 事件动态处理
 - Android：`networkSecurityConfig` 信任用户 CA + 允许明文（代理兼容）
