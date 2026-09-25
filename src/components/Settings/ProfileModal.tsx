@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getProfile, triggerProfileDiagnostic } from '../../services/profile'
+import { getPendingEvents, getProfile, triggerProfileDiagnostic } from '../../services/profile'
 import type { UserLanguageProfile, WeaknessPattern } from '../../types'
 import { useT } from '../../i18n'
 import {
@@ -19,10 +19,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const t = useT()
   const [profile, setProfile] = useState<UserLanguageProfile | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
     if (isOpen) {
       setProfile(getProfile())
+      setPendingCount(getPendingEvents().length)
     }
   }, [isOpen])
 
@@ -38,6 +40,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         setProfile(getProfile())
       }
     } finally {
+      setPendingCount(getPendingEvents().length)
       setIsRefreshing(false)
     }
   }
@@ -283,10 +286,14 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           <button
             type="button"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || pendingCount === 0}
             className="px-4 py-2 rounded-xl border border-border text-xs font-bold text-accent hover:bg-accent/10 disabled:opacity-40 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
           >
-            {isRefreshing ? t('profile.refreshing') : t('profile.refresh')}
+            {isRefreshing
+              ? t('profile.refreshing')
+              : pendingCount === 0
+                ? t('profile.upToDate')
+                : t('profile.distillPending').replace('{count}', String(pendingCount))}
           </button>
           <button
             type="button"

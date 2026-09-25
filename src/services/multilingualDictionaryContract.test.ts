@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildCombinedPhrasePrompt, buildCombinedWordPrompt } from './aiCombinedPrompt'
-import { resolveDictionaryContext } from './dictionaryContext'
+import { resolveDictionaryContext, resolveLearnerLanguagePolicy } from './dictionaryContext'
 import { resolveDictionaryTarget } from './db.ops'
 import { useResultStore } from '../stores/resultStore'
 import { detectLanguage } from '../stores/searchStore'
@@ -111,6 +111,23 @@ describe('main dictionary and monolingual precedence', () => {
       explanationLanguage: 'en',
       isMonolingual: true,
     })
+  })
+
+  it('derives one learner-language policy from the effective dictionary', () => {
+    expect(resolveLearnerLanguagePolicy('satisfaction', {
+      ...useSettingsStore.getState(),
+      mainDictionary: 'en-zh',
+    })).toMatchObject({ nativeLanguage: 'zh', supportLanguage: 'zh', profileLanguage: 'zh' })
+
+    expect(resolveLearnerLanguagePolicy('satisfaction', {
+      ...useSettingsStore.getState(),
+      mainDictionary: 'en-vi',
+    })).toMatchObject({ nativeLanguage: 'vi', supportLanguage: 'vi', profileLanguage: 'vi' })
+
+    expect(resolveLearnerLanguagePolicy('satisfaction', {
+      ...useSettingsStore.getState(),
+      mainDictionary: 'en-en',
+    })).toMatchObject({ nativeLanguage: 'en', supportLanguage: null, profileLanguage: 'en' })
   })
 
   it('clears language-dependent AI caches when the main dictionary changes', () => {

@@ -42,11 +42,11 @@
 - **多行自适应输入**：主搜索框与 AI 提问框支持 1 至 4 行自适应扩展（严格换行，不溢出），移动端光标调准更流畅。
 - **双轨缓存与对比**：单次 AI 请求同时生成 Lookup 与 Pure Core 两套分析，双轨缓存支持 0 秒无缝对比切换。
 - **模式阅读位置独立记忆**：同一次查询中，Instant、AI Lookup 与 Pure Core 分别保留自己的滚动位置；第一次进入某模式从顶部开始，新查询会重新归零。
-- **IN / OUT 双通道个人画像**：搜索栏可一键标记输入学习（IN）或主动表达（OUT）；中文 / 越南语母语输入自动归入 OUT，其他外语查询不进入英语画像。弱点、推荐与即时提示按方向隔离，避免把教材长句误当成用户写作习惯。
+- **IN / OUT 双通道个人画像**：搜索栏在输入中和结果返回后都可一键切换输入学习（IN）或主动表达（OUT）；提交瞬间会冻结该条查询的方向，之后切换只影响下一次搜索。英汉允许英文/中文、英越允许英文/越南语、英英只允许英文进入画像，其他外语不进入英语画像；弱点、推荐与即时提示同时按方向和词典语言隔离。
 
 ### 2. 离线多地道词库与智能路由
 - **权威本地词库**：牛津高阶第 9 版中英双解（约 5.2 万条）+ 第 10 版纯英英（约 8.4 万条）+ SPDict 英语—越南语词典（约 8.3 万词条与 20 万条反向索引）。
-- **主词典与单语热切换**：随时在英汉与英越主词典之间切换，或一键覆盖开启纯英英单语模式，自适应排版。
+- **主词典与单语热切换**：随时在英汉、英越与英英主词典之间切换；也可按单词、短语或句子临时覆盖为纯英英模式。词典、AI 回答语言与 Profile 学习者身份同步切换。
 - **中文与越南语反向路由**：输入中文或越南语时自动反查匹配最佳地道英文对应词，并以母语者心智解析用法。
 
 ### 3. 认知语言学介词空间意象
@@ -124,11 +124,11 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 > **Windows** 桌面端与 **Android** 移动端原生支持**软件内自动检测与一键升级**。当发布新版本时，软件会自动弹出更新提醒，您也可在 Settings 设置页面直接检查更新并在线升级，无需每次重新手动下载安装包。
 
 ### Windows
-- **[Lexicon_0.9.26_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_x64-setup.exe)**（推荐，支持软件内自动更新）
-- **[Lexicon_0.9.26_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_x64_en-US.msi)**（MSI 安装包）
+- **[Lexicon_0.9.27_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.27/Lexicon_0.9.27_x64-setup.exe)**（推荐，支持软件内自动更新）
+- **[Lexicon_0.9.27_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.27/Lexicon_0.9.27_x64_en-US.msi)**（MSI 安装包）
 
-### macOS 桌面端 (v0.9.26)
-- **[Lexicon_0.9.26_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
+### macOS 桌面端 (v0.9.27)
+- **[Lexicon_0.9.27_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.27/Lexicon_0.9.27_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
 
 > **⚠️ macOS 首次打开提示“无法验证开发者”或“已损坏”解决方案（三种方式）：**  
 > 由于独立开源版本未购买 Apple 付费开发者 ID 证书，macOS Gatekeeper 默认会阻挡未签名应用。请按以下任意一种方法解除限制：
@@ -139,9 +139,9 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android 手机 / 平板 (v0.9.26)
-- **[Lexicon_0.9.26_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.26/Lexicon_0.9.26_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
-- 更多架构分包请见 [Releases v0.9.26](https://github.com/jimytao/lexicon/releases/tag/v0.9.26)。
+### Android 手机 / 平板 (v0.9.27)
+- **[Lexicon_0.9.27_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.27/Lexicon_0.9.27_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
+- 更多架构分包请见 [Releases v0.9.27](https://github.com/jimytao/lexicon/releases/tag/v0.9.27)。
 
 ### iOS（自签侧载）
 1. 安装 **[Sideloadly](https://sideloadly.io/)**（需官网版 iTunes + iCloud）。

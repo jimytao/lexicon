@@ -24,22 +24,23 @@
     │
     └── (view === 'settings')
         └── <SettingsView />           # Group + Accordion + ProfileModal
-            └── <ProfileModal />       # 同一 Profile 内按 IN/OUT 分区；各自按 hot/warm/cool + ConfidenceBar 展示
+            └── <ProfileModal />       # 同一 Profile 按 IN/OUT 展示；显示待归纳数量与诚实的近期热度标签
 
 ### Profile 细化（Direction A + G，2026-09-07）
 
 - **`src/utils/profileHeat.ts`**（纯函数）：`recencyWeight` / `weaknessHeat` / `weaknessTier` / `sortActiveByHeat` / `hotWeaknesses(limit=3)` + `DEFAULT_CONFIDENCE = 0.2`。详见 `08-ai-learning-system-and-profile.md` §4.2.1。
 - **`WeaknessPattern`** 新增可选 `confidence?: number`（0–1）+ `lastExposedAt?: string`（ISO）；`getProfile()` 读时回填。
-- **`buildProfilePromptContext(variant: 'full' | 'compact' = 'full')`**（`src/services/profile.ts`）：`'compact'` 仅注入 `hotWeaknesses`，无 hot → `''`。live 注入点见 §4.2.2 表。
+- **`buildProfilePromptContext(variant, route, learnerLanguage)`**（`src/services/profile.ts`）：compact 只注入同方向同词典语言的 hot 弱点（≤3）与近期探索（≤2）；full 注入 active 弱点（≤6）与探索（≤3）；mastered 不进入 live prompt。详见 `08` §4.2.2。
 - **`AiFullResult` / `PhraseResult`** 新增可选 `profileInsight?: string`（AI 按需返回；`JSON.parse` 透传）。
 - **`<ProfileInsightChip insight dismissKey onOpen />`**（`src/components/ResultView/ProfileInsightChip.tsx`）：结果头部浅色 chip，`sessionStorage` 记 dismiss；挂载于 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）+ `AiFullView` / `CoreCognitiveView` / `PhraseView`。
 
 ### IN / OUT 学习方向（2026-09-24）
 
-- `SearchBar` 左侧方向胶囊替代静态放大镜：只呈现当前 `IN ↓` 或 `OUT ↑`，单击切换并把焦点还给 textarea；不会增加提交步骤。
-- `resolveLearningRoute(query, selectedDirection, mainDictionary)` 返回 `'in' | 'out' | 'irrelevant'`：英文使用手动方向；当前主词典对应的中文 / 越南语支持语言自动 OUT；第三语言与非语言内容为 irrelevant。
-- `ProfileModal` 使用一个 `UserLanguageProfile`，但分别显示 IN / OUT 弱点；无方向的旧数据进入 Legacy 隔离区，不参与 prompt 注入。
-- `ProfileInsightChip` 需要 `direction`，并用 `routeQuery`（原始查询，而非 AI 修正后的英文）复核当前路线；旧缓存没有方向元数据时保持隐藏。
+- `SearchBar` 左侧方向胶囊替代静态放大镜：只呈现当前 `IN ↓` 或 `OUT ↑`，输入为空、正在输入或已有结果时都可单击切换并把焦点还给 textarea；不会增加提交步骤。方向按钮按下时不主动夺走鼠标焦点，textarea 重新聚焦会取消尚未执行的 200ms blur 任务；延迟关闭前还会复核真实 DOM 焦点，因此连续切换方向时历史记录保持稳定。
+- `resolveLearningRoute(query, selectedDirection, dictionaryRoutingSettings)` 返回 `'in' | 'out' | 'irrelevant'`，并服从单词 / 短语 / 句子的英英覆盖：英文和当前有效词典辅助语言都使用手动方向，英英没有辅助语言；第三语言与非语言内容仍为 irrelevant。
+- `App.handleWordSelect` 在 hydration / DB 查询前捕获 `directionSnapshot`，并把解析出的 route 显式传给 `triggerCombinedLookup` / `triggerCombinedPhraseQuery`；提交后再切换胶囊只影响下一条查询。
+- `resolveLearnerLanguagePolicy(query, settings)` 从同一有效词典给出 `zh` / `vi` / `en` Profile 身份。`ProfileModal` 使用一个 `UserLanguageProfile`，但证据按 IN / OUT + learnerLanguage 隔离；手动归纳按钮显示真实 pending 数，0 条时显示最新并禁用。
+- `ProfileInsightChip` 需要 `direction`，并优先用 App 保存的 `learningRoute` 快照复核；兼容回退才用 `routeQuery`（原始查询，而非 AI 修正后的英文）重新解析。旧缓存没有方向元数据时保持隐藏。
 
 # SHELVED（未挂载，勿接回导航 / 结果页）
 # ├── <MemoryView />
@@ -297,6 +298,8 @@ export function useComposerFlowLayout(value, { gap, maxHeight, collapsed }) {
 再次聚焦 → 展开，光标落到**文本末尾**并滚到底（长文不再 `select()`，避免一个按键清空全文）；
 单行短查询仍保持原来的 `select()` 全选。光标定位放在 `useLayoutEffect` 里（声明在本 hook 之后），
 必须等 hook 先把高度撑回去，否则 scrollTop 会被随后的高度变更重置。
+blur 延迟由 `createCancelableDelay()` 管理；focus 必须取消旧任务，回调执行前必须检查 `document.activeElement`，禁止让过期 blur 把仍有真实光标的输入框标记为失焦。
+单行或失焦折叠状态使用 `items-center`，展开的多行状态使用 `items-start`；只改变纵向对齐，不得改变 textarea 恒定满宽约束。
 
 **硬约束（勿违反）**：
 
@@ -424,9 +427,10 @@ interface SkeletonBlockProps {
   → 返回 correctForm="it's good for me to do" + 释义/场景/例句/练习
   → 大字显示正确形式，小字标注用户输入错误
 
-用户在 AiChatBox 提问（props: context + cognitive）
-  → askQuestion(context, history) [1-3s]
+用户在 AiChatBox 提问（props: context + cognitive + routeQuery + learningRoute）
+  → askQuestion(context, history, signal, richContext, routeQuery, learningRoute) [1-3s]
   → 回答写入 chatStore[cognitiveCacheKey]（Lookup / Core 分轨，persist）
   → 成功后双写 user_word_memory.ai_conversations_json 对应桶 + Profile chat 事件
+  → 问答语言 / learnerLanguage 按原始 routeQuery 判定，IN/OUT 使用当前结果的提交时快照；都不按 AI correctForm 或之后的按钮状态重猜
 ```
 

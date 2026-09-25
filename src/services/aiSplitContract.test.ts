@@ -61,6 +61,12 @@ describe('non-monolingual foreign input is explained in Chinese', () => {
 })
 
 describe('stage-1 anchor reaches both halves', () => {
+  it('runs the culture-aware gate in stage 1 and permits a natural short expression', () => {
+    const uses = aiSrc.match(/buildCultureAwareInputRule\(\)/g) ?? []
+    expect(uses.length).toBeGreaterThanOrEqual(2)
+    expect(aiSrc).toMatch(/closest natural English word or short expression/i)
+  })
+
   it('phrase prompt pins correctForm when an anchor is supplied', () => {
     const prompt = buildPhrasePrompt({
       modules: baseModules,

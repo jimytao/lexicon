@@ -105,7 +105,7 @@ Use shared `SectionHeading` (`src/components/ResultView/SectionHeading.tsx`):
 
 ### `SearchBar` Learning Direction Control
 - The left search icon is a compact, single-state `IN ↓` / `OUT ↑` capsule, not two adjacent buttons and not a pre-search modal.
-- One click toggles the session direction and immediately returns focus to the textarea. Support-language queries auto-lock to OUT; unrelated third-language queries disable the capsule because they do not enter the English Profile.
+- One click toggles the direction prepared for the next submission and immediately returns focus to the textarea. The capsule stays interactive while typing and after results appear, including for support-language or unrelated-language text. Submission snapshots the direction before asynchronous work begins, so later toggles never relabel the query already sent.
 - `Default Learning Direction` belongs in the Local Data / Profile settings group as a 2-option `ChoiceRow`; it is independent of `Default Search Mode`.
 
 ### `Accordion` (Settings Menu)

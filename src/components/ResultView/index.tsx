@@ -1,4 +1,4 @@
-import type { WordResult, AiAnalysis, SuggestItem, Mode, LearningDirection } from '../../types'
+import type { WordResult, AiAnalysis, SuggestItem, Mode, LearningDirection, LearningRoute } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -30,6 +30,7 @@ import { alignAiMeanings } from '../../utils/alignScenes'
 export { CoreCognitiveView } from './CoreCognitiveView'
 
 interface ResultViewProps {
+  routeQuery?: string
   wordResult: WordResult
   relatedPhrases: SuggestItem[]
   aiAnalysis: AiAnalysis | null
@@ -42,9 +43,11 @@ interface ResultViewProps {
   /** Direction A — carried from combinedResult.lookup (this view renders the L1 + increment). */
   profileInsight?: string
   profileInsightDirection?: LearningDirection
+  learningRoute?: LearningRoute
 }
 
 export function ResultView({
+  routeQuery,
   wordResult,
   relatedPhrases,
   aiAnalysis,
@@ -56,6 +59,7 @@ export function ResultView({
   onGoToSettings,
   profileInsight,
   profileInsightDirection,
+  learningRoute,
 }: ResultViewProps) {
   const t = useT()
   const { modules } = useSettingsStore()
@@ -79,6 +83,8 @@ export function ResultView({
           <ProfileInsightChip
             insight={profileInsight}
             dismissKey={wordResult.word}
+            routeQuery={routeQuery}
+            learningRoute={learningRoute}
             direction={profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
@@ -245,7 +251,7 @@ export function ResultView({
               }
               const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
               return (
-                <AiChatBox key={module.id} context={wordResult.word} cognitive="lookup" enrichedContext={enrichedContext} />
+                <AiChatBox key={module.id} context={wordResult.word} routeQuery={routeQuery} learningRoute={learningRoute} cognitive="lookup" enrichedContext={enrichedContext} />
               )
             }
             default:

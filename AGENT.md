@@ -11,7 +11,7 @@
 
 ## 项目简介
 
-**Lexicon** — 面向中文母语者的英语单词学习工具。
+**Lexicon** — 以中文母语学习者为起点，并支持英越 / 英英词典身份的英语学习工具。
 开发者：Julian（中文母语，英语学习者）
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
@@ -188,7 +188,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - 双语：`public/assets/databases/lexicon.db`（OALD9，约 52k）
 - 英英：`public/assets/databases/lexicon_en.db`（OALD10，约 84k）
 - 英越：`public/assets/databases/lexicon_vi.db`（SPDict，约 83k，含越南语反向索引）
-- Main Dictionary 可选英汉 / 英越 / 英英；单词、短语、句子的 Monolingual 开关按查询类型直接覆盖为英英，不再有 Auto Switch 开关。DB 与 AI 共用 `resolveDictionaryContext`。
+- Main Dictionary 可选英汉 / 英越 / 英英；单词、短语、句子的 Monolingual 开关按查询类型直接覆盖为英英，不再有 Auto Switch 开关。DB 与 AI 共用 `resolveDictionaryContext`；Profile / Prompt 通过 `resolveLearnerLanguagePolicy` 从同一有效词典解析学习者身份（英汉=`zh`、英越=`vi`、英英=`en`，无辅助语言）。
 
 ### 发音
 
@@ -203,8 +203,9 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 - 类型与表：`UserLanguageProfile`、`UserWordMemory`、`user_word_memory` 等（见 `08`）
 - 服务：`src/services/profile.ts`；开关 `enableProfileDiagnostic`
-- **证据分轨**：同一个 Profile 内以 `learningDirection: 'in' | 'out'` 分隔输入理解与主动表达；旧的无方向数据保留但禁止注入 prompt。`resolveLearningRoute()` 将当前支持语言自动归 OUT、其他外语归 `irrelevant`。
-- **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；句子订正仍即时；查词累计 12；成功才删 pending / 重置计数；冷启动对含 chat/sentence 的队列续跑
+- **证据分轨**：同一个 Profile 内同时以 `learningDirection: 'in' | 'out'` 与 `learnerLanguage: 'en' | 'zh' | 'vi'` 分隔输入 / 输出和词典语言；旧的无方向数据禁止注入 prompt，旧的无语言数据只兼容中文分区。英文与当前有效词典的辅助语言均服从手动 IN / OUT；英英没有辅助语言，其他外语归 `irrelevant`。方向按钮始终可切换，搜索必须在首个异步等待前冻结提交时 route，后续切换只影响下一条查询。
+- **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；只有存在实质修改的 OUT 英文订正即时；查词累计 12；诊断固定事件快照，成功只删该快照并按剩余 lookup 重算计数；冷启动对含 chat/sentence 的队列续跑。
+- **Profile 注入**：`buildProfilePromptContext(variant, route, learnerLanguage)` 只读取同方向同语言证据并排除 mastered；compact 最多 3 条热弱点 + 2 条探索方向，full 最多 6 条 active 弱点 + 3 条探索方向，均只能补充而不能取代标准分析。
 - 笔记 / 对话 / Core 意象经 DBService API 持久化；Web 侧有 localStorage 备份防护
 
 ---

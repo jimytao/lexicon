@@ -234,7 +234,9 @@ export function buildCombinedWordPrompt({
 
   const roleIntro = isMono
     ? `You are an expert English learning coach. You combine a clear vocabulary analyst (for understanding) and a native-speaker cognitive coach (for using). Return analysis in TWO complementary sections.`
-    : `你是英语学习双轨教练：在同一次回答中同时完成「理解记忆」（Lookup）和「母语用法」（Core）分析。`
+    : useVietnamese
+      ? `You are an English learning coach for Vietnamese native speakers. Return Lookup and Core analysis together, with all learner-facing explanations in Vietnamese.`
+      : `你是英语学习双轨教练：在同一次回答中同时完成「理解记忆」（Lookup）和「母语用法」（Core）分析。`
 
   const chineseInputRule = isZh ? `
 CRITICAL — CHINESE INPUT RULE (read this first):
@@ -326,6 +328,11 @@ export function buildCombinedPhrasePrompt({
   const isZh = lang === 'zh'
   const isForeign = lang !== 'en' && lang !== 'zh'
   const useVietnamese = !isMono && explanationLanguage === 'vi'
+  const transferLabel = useVietnamese
+    ? 'Vietnamese-to-English transfer'
+    : isMono
+      ? 'source-language transfer'
+      : 'Chinese-to-English transfer'
   const isShortPhrase = queryType === 'phrase'
   const wantUsage = mod(coreModules, 'usageScenes') || !isShortPhrase
 
@@ -353,9 +360,11 @@ export function buildCombinedPhrasePrompt({
     ? "If correctForm differs from input: explain why correctForm differs from input. When there are multiple changes (tense, collocation, typos, articles), MUST provide an itemized list using bullet points ('• original -> corrected: reason'). Omit if no change."
     : '如果 correctForm 与原文不同，说明改动原因。当有多处修改（如语法错误、介词误用、用词不当/搭配错误、拼写/大小写等）时，必须使用项目符号逐条列出（格式：• 原始词句 -> 修正词句：详细改动原因），禁止概括为模糊的单句抽象总结。无改动时省略。'
 
-  const unnaturalDesc = isMono
-    ? `{ "chineseThought": "how a Chinese-thinking learner would frame this", "nativeConcept": "how a native speaker actually conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking" }`
-    : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
+  const unnaturalDesc = useVietnamese
+    ? `{ "chineseThought": "cách diễn đạt bị ảnh hưởng bởi tiếng Việt (legacy field name)", "nativeConcept": "cách người bản ngữ tiếng Anh thực sự hình dung", "reusablePrinciple": "nguyên tắc có thể tái sử dụng" }`
+    : isMono
+      ? `{ "chineseThought": "source-language or non-native framing (legacy field name; do not assume Chinese)", "nativeConcept": "how a native English speaker conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking" }`
+      : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
 
   // ── SHARED correctForm / unnaturalMindModel (same for both sections) ───────
   const sharedFields = `"correctForm": "Minimal Fix version — fix actual grammar errors, preposition misuses, word misuses (incorrect word choice), and typos ONLY. Preserve user's original sentence structure and wording as much as possible.",
@@ -418,7 +427,9 @@ export function buildCombinedPhrasePrompt({
 
   const roleIntro = isMono
     ? `You are an expert English learning coach for phrase/sentence analysis. Return TWO complementary views in one JSON.`
-    : `你是英语学习双轨教练：对词组/句子同时完成「理解」（Lookup）和「母语用法」（Core）分析，在一次回答中返回。`
+    : useVietnamese
+      ? `You are an English learning coach for Vietnamese native speakers. Return Lookup and Core analysis together, with all learner-facing explanations in Vietnamese.`
+      : `你是英语学习双轨教练：对词组/句子同时完成「理解」（Lookup）和「母语用法」（Core）分析，在一次回答中返回。`
 
   const chineseInputRule = isZh ? `
 CRITICAL — CHINESE INPUT RULE:
@@ -474,7 +485,7 @@ ${chineseInputRule}
   - Tier 1: correctionNote explains Tier 1 minimal fix items point-by-point.
   - Tier 2: nativeForm provides polished native/formal rephrasing; nativeRationale explains why native speakers use this phrase/preposition.
 - correctionNote: Only when correctForm differs from input. Omit if no change.
-- unnaturalMindModel: Fill when input sounds like Chinese-to-English transfer. Omit if naturally idiomatic.
+- unnaturalMindModel: Fill only when the input clearly reflects ${transferLabel}. The legacy chineseThought field stores source-language framing; never assume Chinese in Vietnamese or English-English mode. Omit if naturally idiomatic.
 - FIELD OWNERSHIP: meaning = lexical gloss only (equivalents + sense nucleus). Put situational/intent content into usageIntro/usageScenes. Put feel/emotion into feelAnchor/emotionalTone. Do NOT invent wordChoiceContrast.
 ${isShortPhrase ? '- Short phrases: keep "meaning" to a lexical gloss (1-2 sentences max). Essays belong in usageIntro/usageScenes.' : `- CRITICAL — "meaning" is a FAITHFUL TRANSLATION, NEVER a summary. Translate like a literal, obedient translator, not like an editor writing an abstract:
   - Go SENTENCE BY SENTENCE in the original order — same sentence count, same order as the input.

@@ -1,3 +1,8 @@
+/** Shared gate: broaden interpretation only when the input itself supplies evidence. */
+export function buildCultureAwareInputRule(): string {
+  return '- INPUT INTERPRETATION GATE: Before analysis, determine whether the input is ordinary literal language or a culture-bound expression, such as slang, an internet meme, wordplay, a homophone or intentional misspelling, or regional usage; only when contextual or linguistic evidence supports the latter, recover its intended meaning in the source-language community and provide the closest natural target-language equivalent with a brief context note; otherwise follow the ordinary lexical or translation analysis unchanged. This gate changes interpretation only: preserve the existing JSON schema and every field-ownership rule.'
+}
+
 /** Shared contract for the native-speaker nuance carried by meaning scene cards. */
 export function buildNativeSceneDescription(isMono: boolean): string {
   return isMono

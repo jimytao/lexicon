@@ -2,14 +2,16 @@ import type {
   CognitiveMode,
   LearningDirection,
   LearningRoute,
+  ProfileLearnerLanguage,
   UserLanguageProfile,
   UnnaturalMindModel,
   WeaknessPattern,
 } from '../types'
 import { useSettingsStore } from '../stores/settingsStore'
 import { detectLanguage, useSearchStore } from '../stores/searchStore'
-import { DEFAULT_CONFIDENCE, hotWeaknesses } from '../utils/profileHeat'
+import { DEFAULT_CONFIDENCE, hotWeaknesses, sortActiveByHeat } from '../utils/profileHeat'
 import { resolveLearningRoute } from '../utils/learningDirection'
+import { resolveLearnerLanguagePolicy, type LearnerLanguagePolicy } from './dictionaryContext'
 
 export interface DiagnosticEvent {
   /** Stable id for success-only dequeue */
@@ -24,6 +26,8 @@ export interface DiagnosticEvent {
   cognitive?: CognitiveMode
   /** Receptive IN vs productive OUT evidence. Legacy events may be unattributed. */
   learningDirection?: LearningDirection
+  /** Effective dictionary learner language captured with the event. */
+  learnerLanguage?: ProfileLearnerLanguage
   timestamp: string
 }
 
@@ -113,41 +117,59 @@ const weaknessLine = (w: WeaknessPattern) =>
 
 /**
  * Learner-profile context for AI prompts.
- * - `'full'`   — every active weak spot + focus areas + mentor-tip instruction.
+ * - `'full'`   — up to 6 active weak spots + 3 focus areas + mentor-tip instruction.
  *                Used by the full-sentence correction prompt.
- * - `'compact'`— only the *hot* weaknesses (Direction G heat, ≤3) + a soft, opt-in
- *                instruction. Injected into everyday word / phrase / chat prompts so
- *                the profile can inform them without steering every answer.
+ * - `'compact'`— the *hot* weaknesses (Direction G heat, ≤3), up to 2 focus areas,
+ *                and a soft, opt-in instruction. Injected into everyday word / phrase /
+ *                chat prompts so the profile can inform them without steering every answer.
  * Returns `''` when there is nothing worth injecting.
  */
 export function buildProfilePromptContext(
   variant: 'full' | 'compact',
   direction: LearningRoute,
+  learnerLanguage: ProfileLearnerLanguage = 'zh',
 ): string {
   if (direction === 'irrelevant') return ''
   const profile = getProfile()
   const directedProfile: UserLanguageProfile = {
     ...profile,
-    weaknessPatterns: profile.weaknessPatterns.filter((w) => w.learningDirection === direction),
-    recentExplorationFocus: profile.recentExplorationFocus.filter((f) => f.learningDirection === direction),
-    recommendations: profile.recommendations.filter((r) => r.learningDirection === direction),
+    weaknessPatterns: profile.weaknessPatterns.filter(
+      (w) => w.learningDirection === direction
+        && (w.learnerLanguage ?? 'zh') === learnerLanguage
+        && w.status !== 'mastered',
+    ),
+    recentExplorationFocus: profile.recentExplorationFocus.filter(
+      (f) => f.learningDirection === direction && (f.learnerLanguage ?? 'zh') === learnerLanguage,
+    ),
+    recommendations: profile.recommendations.filter(
+      (r) => r.learningDirection === direction && (r.learnerLanguage ?? 'zh') === learnerLanguage,
+    ),
   }
 
   if (variant === 'compact') {
     const hot = hotWeaknesses(directedProfile, Date.now(), 3)
-    if (hot.length === 0) return ''
+    const focus = directedProfile.recentExplorationFocus.slice(0, 2)
+    if (hot.length === 0 && focus.length === 0) return ''
+    const weaknessSection = hot.length > 0
+      ? "\n=== LEARNER'S RECURRING CONFUSIONS (optional personalization) ===\n" + hot.map(weaknessLine).join('\n')
+      : ''
+    const focusSection = focus.length > 0
+      ? '\n=== RECENT LEARNING FOCUS (soft relevance only) ===\n' + focus
+          .map((item) => `- ${item.category}: ${(item.searchedItems || []).slice(0, 3).join(', ')}`)
+          .join('\n')
+      : ''
     return (
-      "\n\n=== LEARNER'S RECURRING CONFUSIONS (optional personalization) ===\n" +
-      hot.map(weaknessLine).join('\n') +
-      '\nINSTRUCTION: ONLY IF this query clearly relates to one of the confusions above, you MAY add one short contrast note. Never force it; if there is no clear link, ignore this section.\n'
+      `\n${weaknessSection}${focusSection}` +
+      '\nINSTRUCTION: ONLY IF clearly relevant, you MAY add one short contrast or choose one fitting example angle. Never replace, shorten, or distort the standard analysis; if there is no clear link, ignore this section.\n'
     )
   }
 
   if (!directedProfile.weaknessPatterns.length && !directedProfile.recentExplorationFocus.length) {
     return ''
   }
-  const weaknesses = directedProfile.weaknessPatterns.map(weaknessLine).join('\n')
+  const weaknesses = sortActiveByHeat(directedProfile, Date.now()).slice(0, 6).map(weaknessLine).join('\n')
   const focus = directedProfile.recentExplorationFocus
+    .slice(0, 3)
     .map(f => `- Category: ${f.category} (${(f.searchedItems || []).slice(0, 5).join(', ')})`)
     .join('\n')
 
@@ -159,10 +181,16 @@ export function buildProfilePromptContext(
 }
 
 /** Resolve the current query without asking the AI or adding a network call. */
-export function resolveCurrentLearningRoute(query: string): LearningRoute {
-  const { learningDirection } = useSearchStore.getState()
-  const { mainDictionary } = useSettingsStore.getState()
-  return resolveLearningRoute(query, learningDirection, mainDictionary)
+export function resolveCurrentLearningRoute(
+  query: string,
+  directionSnapshot: LearningDirection = useSearchStore.getState().learningDirection,
+): LearningRoute {
+  const settings = useSettingsStore.getState()
+  return resolveLearningRoute(query, directionSnapshot, settings)
+}
+
+function resolveCurrentLearnerLanguage(query: string): ProfileLearnerLanguage {
+  return resolveLearnerLanguagePolicy(query, useSettingsStore.getState()).profileLanguage
 }
 
 
@@ -192,6 +220,14 @@ export function getUnprocessedCount(): number {
 export function resetUnprocessedCount(): void {
   try {
     localStorage.setItem(UNPROCESSED_COUNT_KEY, '0')
+  } catch {
+    /* ignore */
+  }
+}
+
+function setUnprocessedCount(count: number): void {
+  try {
+    localStorage.setItem(UNPROCESSED_COUNT_KEY, String(Math.max(0, count)))
   } catch {
     /* ignore */
   }
@@ -355,16 +391,43 @@ async function runDiagnosticAi(
     return null
   }
 
+  const latestEvent = snapshot[snapshot.length - 1]
+  const latestContext = latestEvent?.wordOrContext ?? ''
+  const fallbackPolicy = resolveLearnerLanguagePolicy(latestContext, settings)
+  const targetLanguage = latestEvent?.learnerLanguage ?? fallbackPolicy.profileLanguage
+  const languagePolicy: LearnerLanguagePolicy = targetLanguage === 'vi'
+    ? { nativeLanguage: 'vi', supportLanguage: 'vi', profileLanguage: 'vi', dictionaryTarget: 'envi', isMonolingual: false }
+    : targetLanguage === 'en'
+      ? { nativeLanguage: 'en', supportLanguage: null, profileLanguage: 'en', dictionaryTarget: 'enen', isMonolingual: true }
+      : { nativeLanguage: 'zh', supportLanguage: 'zh', profileLanguage: 'zh', dictionaryTarget: 'enzh', isMonolingual: false }
+
+  // Pre-language profiles came from the original English-Chinese implementation.
+  // Keep that compatibility only in the zh lane; never leak it into vi/en prompts.
+  const ownsTargetLanguage = (item: { learnerLanguage?: ProfileLearnerLanguage }) =>
+    (item.learnerLanguage ?? 'zh') === targetLanguage
+
   // Preserve legacy entries locally, but never ask the model to assign them a
   // lane: their evidence ownership is unknowable after the fact.
-  const legacyWeaknesses = currentProfile.weaknessPatterns.filter((item) => !isLearningDirection(item.learningDirection))
-  const legacyFocus = currentProfile.recentExplorationFocus.filter((item) => !isLearningDirection(item.learningDirection))
-  const legacyRecommendations = currentProfile.recommendations.filter((item) => !isLearningDirection(item.learningDirection))
+  const preservedWeaknesses = currentProfile.weaknessPatterns.filter(
+    (item) => !isLearningDirection(item.learningDirection) || !ownsTargetLanguage(item),
+  )
+  const preservedFocus = currentProfile.recentExplorationFocus.filter(
+    (item) => !isLearningDirection(item.learningDirection) || !ownsTargetLanguage(item),
+  )
+  const preservedRecommendations = currentProfile.recommendations.filter(
+    (item) => !isLearningDirection(item.learningDirection) || !ownsTargetLanguage(item),
+  )
   const profileForDiagnostic: UserLanguageProfile = {
     ...currentProfile,
-    weaknessPatterns: currentProfile.weaknessPatterns.filter((item) => isLearningDirection(item.learningDirection)),
-    recentExplorationFocus: currentProfile.recentExplorationFocus.filter((item) => isLearningDirection(item.learningDirection)),
-    recommendations: currentProfile.recommendations.filter((item) => isLearningDirection(item.learningDirection)),
+    weaknessPatterns: currentProfile.weaknessPatterns.filter(
+      (item) => isLearningDirection(item.learningDirection) && ownsTargetLanguage(item),
+    ),
+    recentExplorationFocus: currentProfile.recentExplorationFocus.filter(
+      (item) => isLearningDirection(item.learningDirection) && ownsTargetLanguage(item),
+    ),
+    recommendations: currentProfile.recommendations.filter(
+      (item) => isLearningDirection(item.learningDirection) && ownsTargetLanguage(item),
+    ),
   }
 
   const normalPriorityEvents = snapshot.filter((e) => e.type === 'lookup')
@@ -394,37 +457,52 @@ ${
 Instruction: Execute an "Intelligent Upsert (智能增删改)" on the baseline profile using the above incremental learner events. Return ONLY the complete updated UserLanguageProfile JSON object according to the schema.
 `
 
-  const appLang = settings.appLanguage || 'zh'
-  const langRule =
-    appLang === 'en'
-      ? 'Output language: Write all weakness descriptions and recommendation reasons in simple, clear English.'
-      : 'Output language: Write all weakness descriptions and recommendation reasons in Chinese.'
+  const langRule = languagePolicy.profileLanguage === 'vi'
+    ? 'Output language: Write all weakness descriptions, focus categories, and recommendation reasons in Vietnamese.'
+    : languagePolicy.profileLanguage === 'zh'
+      ? 'Output language: Write all weakness descriptions, focus categories, and recommendation reasons in Chinese.'
+      : 'Output language: Write all weakness descriptions, focus categories, and recommendation reasons in clear English.'
+  const audienceScope = languagePolicy.nativeLanguage === 'vi'
+    ? 'Lexicon is an English learning tool for Vietnamese native speakers. Analyze English learning patterns and Vietnamese-to-English transfer only.'
+    : languagePolicy.nativeLanguage === 'zh'
+      ? 'Lexicon is an English learning tool for Chinese native speakers. Analyze English learning patterns and Chinese-to-English transfer only.'
+      : 'Lexicon is operating in English-English mode for a native or monolingual English user. Analyze English vocabulary, usage, register, clarity, and expression patterns without assuming second-language transfer.'
+  const transferErrorRule = languagePolicy.nativeLanguage === 'vi'
+    ? 'Vietnamese-to-English transfer errors'
+    : languagePolicy.nativeLanguage === 'zh'
+      ? 'Chinese-to-English transfer errors'
+      : 'English usage, register, or expression gaps'
+  const supportLanguageRule = languagePolicy.supportLanguage === 'vi'
+    ? 'OUT searches written in Vietnamese are expression needs, not English grammar errors. Put them in recent exploration focus or recommendations; never invent an English error from them.'
+    : languagePolicy.supportLanguage === 'zh'
+      ? 'OUT searches written in Chinese are expression needs, not English grammar errors. Put them in recent exploration focus or recommendations; never invent an English error from them.'
+      : 'English-English mode has no non-English support language. Ignore non-English events completely and never infer a translation-transfer error.'
 
   const systemPrompt = `You are an expert cognitive linguistics AI profile analyzer designed for high-context models (e.g. Gemini 2.0 Flash / Flash Lite).
 Your task is to perform an "Intelligent Upsert (智能增删改)" on the baseline user language profile using rich incremental events.
 
 CRITICAL SCOPE & LANGUAGE FILTER:
-Lexicon is strictly an English learning software for Chinese/English speakers.
-Analyze ONLY English learning patterns (English vocabulary, phrasal verbs, English syntax/thought, and Chinese-to-English translation transfers).
+${audienceScope}
 If any event is related to non-English learning languages (e.g. Japanese, Korean, French, etc.), COMPLETELY IGNORE IT and do NOT add it as a weakness pattern or recommendation.
 ${langRule}
 
 CRITICAL EVIDENCE LANES — NEVER MIX THEM:
 - IN means receptive learning from external material. The searched sentence is NOT the learner's writing. Never infer that the learner likes its style, writes long sentences, or made its grammatical choices. IN lookups may update receptive vocabulary/comprehension focus only.
 - OUT means productive learning. Only an OUT English Sentence Correction is evidence of the learner's own English production and may create syntax/collocation weakness patterns.
-- OUT searches written in the learner's support language are expression needs, not English grammar errors. Put them in recent exploration focus or recommendations, never invent an English error from them.
+- ${supportLanguageRule}
 - Q&A evidence comes from the learner's question. Do not attribute the surrounding quoted/context text to the learner.
 - Never infer personal style preferences from query length or source-text style.
 - Every newly created weakness, focus, and recommendation MUST carry learningDirection: "in" or "out" matching its evidence lane.
+- Every newly created weakness, focus, and recommendation MUST carry learnerLanguage: "${targetLanguage}". Never rewrite or merge another learnerLanguage lane.
 
 Intelligent Upsert Rules:
 1. BASELINE OVERWRITE: Take the existing user_profile.json as baseline. Modify and return an updated complete UserLanguageProfile JSON.
-2. ADD (增): Identify new mental model gaps, Chinese-thinking transfer errors, or vocabulary/phrase misuse patterns from high-priority sentence corrections and AI Q&A history.
+2. ADD (增): Identify new mental model gaps, ${transferErrorRule}, or vocabulary/phrase misuse patterns from high-priority sentence corrections and AI Q&A history.
 3. MODIFY (改): If a weakness pattern recurs, increment its occurrenceCount, refine its description, and provide/update its contrastExample (e.g. "My eyesight is deep -> My vision is poor / I'm short-sighted").
 4. DELETE/PRUNE (删/剪枝): Mark resolved or overcome items as status: "mastered". Maintain between 8 and 12 active items (status: "learning"). Prune stale/minor active items if active count exceeds 12.
 5. RECENT FOCUS: Synthesize 2~4 active exploration categories in recentExplorationFocus.
 6. RECOMMENDATIONS: Provide 3~5 high-value, deep recommendations with 1-sentence explanations directly linked to active weakness patterns or recent searches.
-7. CONFIDENCE (置信度): For every weakness set "confidence" (0..1) = your estimate that the learner has internalised the fix. LOWER it toward 0 when the pattern recurs in this batch; RAISE it toward 1 when the pattern is absent and the learner uses the correct form. Keep the prior value if there is no new evidence.
+7. CONFIDENCE (置信度): For every weakness set "confidence" (0..1) = your estimate that the learner has internalised the fix. LOWER it toward 0 when the pattern recurs in this batch. RAISE it only when this batch contains positive evidence that the learner used the corrected form successfully. Mere absence or elapsed time is NOT mastery evidence. Keep the prior value if there is no new evidence.
 8. LAST EXPOSED: Set "lastExposedAt" to the ISO timestamp of the most recent event in this batch that touched the pattern. If untouched this batch, keep the prior value.
 
 Schema requirements:
@@ -440,21 +518,24 @@ Schema requirements:
       "contrastExample": "My eyesight is deep -> My vision is poor / I'm short-sighted",
       "confidence": 0.3,
       "lastExposedAt": "2026-09-07T12:00:00.000Z",
-      "learningDirection": "in" | "out"
+      "learningDirection": "in" | "out",
+      "learnerLanguage": "${targetLanguage}"
     }
   ],
   "recentExplorationFocus": [
     {
       "category": "Category tag (e.g. phrasal_verbs_with_out)",
       "searchedItems": ["item1", "item2"],
-      "learningDirection": "in" | "out"
+      "learningDirection": "in" | "out",
+      "learnerLanguage": "${targetLanguage}"
     }
   ],
   "recommendations": [
     {
       "conceptOrWord": "Recommended word or spatial concept (e.g. beyond, across)",
       "reason": "1 sentence reason linking to recent weakness/searches",
-      "learningDirection": "in" | "out"
+      "learningDirection": "in" | "out",
+      "learnerLanguage": "${targetLanguage}"
     }
   ]
 }
@@ -523,6 +604,7 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
       confidence: clamp01(w.confidence) ?? prior?.confidence ?? DEFAULT_CONFIDENCE,
       lastExposedAt: w.lastExposedAt || prior?.lastExposedAt || nowIso,
       learningDirection: safeDirection(w.learningDirection, prior?.learningDirection ?? soleBatchDirection),
+      learnerLanguage: w.learnerLanguage ?? prior?.learnerLanguage ?? targetLanguage,
     }
   }
 
@@ -532,7 +614,7 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
     weaknessPatterns: Array.isArray(parsed.weaknessPatterns)
       ? [
           ...(parsed.weaknessPatterns as WeaknessPattern[]).map(mergeHeatFields),
-          ...legacyWeaknesses,
+          ...preservedWeaknesses,
         ]
       : currentProfile.weaknessPatterns,
     recentExplorationFocus: Array.isArray(parsed.recentExplorationFocus)
@@ -540,8 +622,9 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
           ...parsed.recentExplorationFocus.map((focus) => ({
             ...focus,
             learningDirection: safeDirection(focus.learningDirection, soleBatchDirection),
+            learnerLanguage: focus.learnerLanguage ?? targetLanguage,
           })),
-          ...legacyFocus,
+          ...preservedFocus,
         ]
       : currentProfile.recentExplorationFocus,
     recommendations: Array.isArray(parsed.recommendations)
@@ -549,15 +632,17 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
           ...parsed.recommendations.map((recommendation) => ({
             ...recommendation,
             learningDirection: safeDirection(recommendation.learningDirection, soleBatchDirection),
+            learnerLanguage: recommendation.learnerLanguage ?? targetLanguage,
           })),
-          ...legacyRecommendations,
+          ...preservedRecommendations,
         ]
       : currentProfile.recommendations,
   }
 }
 
 /**
- * Unified flush: snapshot pending → AI → on success remove only snapshot ids + reset count.
+ * Unified flush: snapshot pending → AI → on success remove only snapshot ids and
+ * recompute the lookup count from whatever arrived while the request was in flight.
  * Failure / kill-app leaves pending + count intact for cold-start or later triggers.
  */
 export async function flushPendingProfileDiagnostics(
@@ -572,10 +657,12 @@ export async function flushPendingProfileDiagnostics(
     return null
   }
 
-  const snapshot = getPendingEvents()
-  if (snapshot.length === 0) {
+  const pending = getPendingEvents()
+  if (pending.length === 0) {
     return null
   }
+  const targetLanguage = pending[0]?.learnerLanguage ?? 'zh'
+  const snapshot = pending.filter((event) => (event.learnerLanguage ?? 'zh') === targetLanguage)
 
   _isDiagnosticRunning = true
   clearChatIdleTimer()
@@ -586,15 +673,18 @@ export async function flushPendingProfileDiagnostics(
     if (updated) {
       saveProfile(updated)
       removeEventsByIds(snapshot.map((e) => e.id))
-      resetUnprocessedCount()
+      setUnprocessedCount(getPendingEvents().filter((event) => event.type === 'lookup').length)
       return updated
     }
   } catch (err) {
     console.warn('[profile] Profile diagnostic failed:', err)
   } finally {
     _isDiagnosticRunning = false
-    if (_queuedFlushReason && getPendingEvents().length > 0) {
-      const next = _queuedFlushReason
+    const remaining = getPendingEvents()
+    const shouldContinue = remaining.some((event) => event.type === 'chat' || event.type === 'sentence')
+      || remaining.filter((event) => event.type === 'lookup').length >= LOOKUP_FLUSH_THRESHOLD
+    if ((_queuedFlushReason || shouldContinue) && remaining.length > 0) {
+      const next = _queuedFlushReason ?? 'cold_start'
       _queuedFlushReason = null
       void flushPendingProfileDiagnostics(next)
     } else {
@@ -652,6 +742,7 @@ export function recordLookupEvent(
     wordOrContext: word,
     details: coreConcept,
     learningDirection: route,
+    learnerLanguage: resolveCurrentLearnerLanguage(word),
     timestamp: new Date().toISOString(),
   })
   savePendingEvents(events)
@@ -679,6 +770,17 @@ export function recordSentenceCorrectionEvent(
     return
   }
 
+  // correctForm is mandatory in the phrase schema, including for already-correct
+  // input. Only a substantive textual change is correction evidence; casing,
+  // whitespace and punctuation alone must not manufacture a learner weakness.
+  const comparable = (value: string) => value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/’/g, "'")
+    .replace(/\p{P}/gu, (mark) => (mark === "'" || mark === '-' ? mark : ''))
+    .replace(/[\p{S}\s]+/gu, '')
+  if (!correction.trim() || comparable(original) === comparable(correction)) return
+
   const events = getPendingEvents()
   events.push({
     id: newEventId(),
@@ -687,6 +789,7 @@ export function recordSentenceCorrectionEvent(
     details: correction,
     unnaturalMindModel,
     learningDirection: route,
+    learnerLanguage: resolveCurrentLearnerLanguage(original),
     timestamp: new Date().toISOString(),
   })
   savePendingEvents(events)
@@ -700,6 +803,7 @@ export function recordAiChatEvent(
   aiAnswer: string,
   cognitive: CognitiveMode = 'lookup',
   route: LearningRoute = resolveCurrentLearningRoute(wordOrContext),
+  routeQuery: string = wordOrContext,
 ): void {
   if (!isDiagnosticEnabled()) return
   if (route === 'irrelevant') return
@@ -713,6 +817,7 @@ export function recordAiChatEvent(
     aiAnswer,
     cognitive,
     learningDirection: route,
+    learnerLanguage: resolveCurrentLearnerLanguage(routeQuery),
     timestamp: new Date().toISOString(),
   })
   savePendingEvents(events)

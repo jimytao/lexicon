@@ -1,4 +1,4 @@
-import type { AiFullResult, WordResult } from '../../types'
+import type { AiFullResult, LearningRoute, WordResult } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { AiStatusBar, SkeletonBlock } from './AiSection/AiStatusBar'
@@ -32,6 +32,7 @@ interface CoreCognitiveViewProps {
   onRetry: () => void
   onWordClick: (word: string) => void
   onGoToSettings?: () => void
+  learningRoute?: LearningRoute
 }
 
 export function CoreCognitiveView({
@@ -43,6 +44,7 @@ export function CoreCognitiveView({
   onRetry,
   onWordClick,
   onGoToSettings,
+  learningRoute,
 }: CoreCognitiveViewProps) {
   const t = useT()
   const { coreModules = DEFAULT_CORE_MODULES } = useSettingsStore()
@@ -75,6 +77,7 @@ export function CoreCognitiveView({
             insight={aiFullResult.profileInsight}
             dismissKey={aiFullResult?.correctForm || word}
             routeQuery={word}
+            learningRoute={learningRoute}
             direction={aiFullResult.profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
@@ -262,6 +265,8 @@ export function CoreCognitiveView({
                   <AiChatBox
                     key={module.id}
                     context={corrected}
+                    routeQuery={word}
+                    learningRoute={learningRoute}
                     cognitive="core"
                     enrichedContext={enrichedContext}
                   />

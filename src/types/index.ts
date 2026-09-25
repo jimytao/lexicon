@@ -5,6 +5,7 @@ export type Language = 'en' | 'zh' | 'vi' | 'ja' | 'ko' | 'other'
 export type LearningDirection = 'in' | 'out'
 /** `irrelevant` queries still work normally but never enter the English learner profile. */
 export type LearningRoute = LearningDirection | 'irrelevant'
+export type ProfileLearnerLanguage = 'en' | 'zh' | 'vi'
 
 export interface SuggestItem {
   word: string
@@ -75,6 +76,7 @@ export interface EvaluationResult {
 }
 
 export interface UnnaturalMindModel {
+  /** Legacy JSON key; stores source-language framing for zh/vi, or neutral non-native framing. */
   chineseThought: string
   nativeConcept: string
   reusablePrinciple: string
@@ -319,18 +321,22 @@ export interface WeaknessPattern {
   lastExposedAt?: string
   /** Evidence lane. Missing means legacy/unattributed and is never injected into prompts. */
   learningDirection?: LearningDirection
+  /** Learner identity/evidence language implied by the effective dictionary. */
+  learnerLanguage?: ProfileLearnerLanguage
 }
 
 export interface ExplorationFocus {
   category: string
   searchedItems: string[]
   learningDirection?: LearningDirection
+  learnerLanguage?: ProfileLearnerLanguage
 }
 
 export interface ProfileRecommendation {
   conceptOrWord: string
   reason: string
   learningDirection?: LearningDirection
+  learnerLanguage?: ProfileLearnerLanguage
 }
 
 export interface UserLanguageProfile {

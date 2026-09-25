@@ -12,6 +12,12 @@ describe('learning direction UI contract', () => {
     expect(searchBarSource).toContain('setLearningDirection')
   })
 
+  it('keeps the direction control interactive while text or results are present', () => {
+    expect(searchBarSource).not.toContain('disabled={isAutoRouted || isProfileIrrelevant}')
+    expect(searchBarSource).not.toContain('isLearningRouteForced')
+    expect(searchBarSource).toMatch(/const displayedDirection = learningDirection/)
+  })
+
   it('offers a separate default direction choice in the Profile settings area', () => {
     expect(settingsSource).toContain("t('settings.defaultLearningDirection')")
     expect(settingsSource).toContain('setDefaultLearningDirection')

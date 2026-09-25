@@ -19,7 +19,7 @@ const phraseSrc = read('services/aiPhrasePrompt.ts')
 describe('compact profile context is injected into the everyday AI prompts', () => {
   it('the live word full-lookup prompt (getFullLookupPrompt) appends the compact learner context + profileInsight schema', () => {
     const fn = aiSrc.slice(aiSrc.indexOf('function getFullLookupPrompt'), aiSrc.indexOf('export async function aiFullLookup'))
-    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,\s*learningRoute\s*\)/)
+    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,\s*learningRoute\s*,\s*explanationLanguage\s*\)/)
     expect(fn).toContain('"profileInsight"')
   })
 
@@ -30,7 +30,16 @@ describe('compact profile context is injected into the everyday AI prompts', () 
 
   it('AI follow-up (askQuestion) injects the compact learner context', () => {
     const fn = aiSrc.slice(aiSrc.indexOf('export async function askQuestion'), aiSrc.indexOf('export async function askQuestion') + 2000)
-    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,\s*resolveCurrentLearningRoute\(context\)\s*\)/)
+    expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,/)
+  })
+
+  it('AI follow-up records the route from the original query rather than the corrected display context', () => {
+    const chat = read('components/ResultView/AiSection/AiChatBox.tsx')
+    expect(chat).toContain('routeQuery?: string')
+    expect(chat).toMatch(/resolveCurrentLearningRoute\(routeQuery \|\| requestContext\)/)
+    expect(read('components/ResultView/PhraseView.tsx')).toContain('routeQuery={phrase}')
+    expect(read('components/ResultView/AiFullView.tsx')).toContain('routeQuery={word}')
+    expect(read('components/ResultView/CoreCognitiveView.tsx')).toContain('routeQuery={word}')
   })
 })
 
@@ -57,5 +66,41 @@ describe('ProfileInsightChip is mounted where results render', () => {
     expect(read('components/ResultView/AiFullView.tsx')).toContain('routeQuery={word}')
     expect(read('components/ResultView/CoreCognitiveView.tsx')).toContain('routeQuery={word}')
     expect(read('components/ResultView/PhraseView.tsx')).toContain('routeQuery={phrase}')
+  })
+})
+
+describe('Profile modal actions describe their real behavior', () => {
+  it('shows and gates manual distillation by the pending event count', () => {
+    const modal = read('components/Settings/ProfileModal.tsx')
+    expect(modal).toContain('getPendingEvents')
+    expect(modal).toMatch(/pendingCount\s*===\s*0/)
+    expect(modal).toContain("replace('{count}', String(pendingCount))")
+  })
+})
+
+describe('search direction is a submit-time snapshot', () => {
+  it('captures the selected direction before hydration and passes the route into delayed AI work', () => {
+    const app = read('App.tsx')
+    const handler = app.slice(app.indexOf('async function handleWordSelect'), app.indexOf('function handleRetry'))
+    expect(handler.indexOf('directionSnapshot')).toBeGreaterThanOrEqual(0)
+    expect(handler.indexOf('directionSnapshot')).toBeLessThan(handler.indexOf('await ensureSearchStateHydrated()'))
+    expect(handler).toMatch(/triggerCombinedLookup\([^\n]+learningRoute\)/)
+    expect(handler).toMatch(/triggerCombinedPhraseQuery\([^\n]+learningRoute\)/)
+  })
+
+  it('lets AI lookup functions consume an explicit route instead of rereading mutable UI state', () => {
+    expect(aiSrc).toContain('learningRoute?: LearningRoute')
+    expect(aiSrc).toMatch(/opts\.learningRoute \?\? resolveCurrentLearningRoute\(word\)/)
+    expect(aiSrc).toMatch(/opts\.learningRoute \?\? resolveCurrentLearningRoute\(phrase\)/)
+  })
+
+  it('keeps follow-up chat and insight visibility on the active search snapshot', () => {
+    const chat = read('components/ResultView/AiSection/AiChatBox.tsx')
+    const chip = read('components/ResultView/ProfileInsightChip.tsx')
+    expect(chat).toContain('learningRoute?: LearningRoute')
+    expect(chat).toMatch(/requestLearningRoute = learningRoute \?\? resolveCurrentLearningRoute/)
+    expect(chat).toMatch(/askQuestion\([\s\S]{0,500}requestLearningRoute/)
+    expect(chip).toContain('learningRoute?: LearningRoute')
+    expect(chip).toMatch(/currentRoute = learningRoute \?\? resolveLearningRoute/)
   })
 })

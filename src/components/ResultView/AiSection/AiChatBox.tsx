@@ -4,7 +4,7 @@ import { useSettingsStore } from '../../../stores/settingsStore'
 import { askQuestion } from '../../../services/ai'
 import { db } from '../../../services/db'
 import { recordAiChatEvent, resolveCurrentLearningRoute } from '../../../services/profile'
-import type { ChatMessage, CognitiveMode } from '../../../types'
+import type { ChatMessage, CognitiveMode, LearningRoute } from '../../../types'
 import { cognitiveCacheKey, normalizeQuery } from '../../../utils/text'
 import { useT } from '../../../i18n'
 import { AI_CHAT_COMPOSER_LAYOUT } from '../../../utils/aiChatComposerLayout'
@@ -15,13 +15,17 @@ import { ChatMarkdown } from './ChatMarkdown'
 
 interface AiChatBoxProps {
   context: string        // correctForm — display / askQuestion context (not storage key alone)
+  /** Original user query; evidence routing must not be recalculated from an AI-corrected display form. */
+  routeQuery?: string
+  /** Immutable route captured when this search was submitted. */
+  learningRoute?: LearningRoute
   cognitive: CognitiveMode
   enrichedContext?: string
 }
 
 const EMPTY_MESSAGES: ChatMessage[] = []
 
-export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProps) {
+export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enrichedContext }: AiChatBoxProps) {
   const t = useT()
   const chatKey = cognitiveCacheKey(context, cognitive)
   const legacyLookupKey = cognitive === 'lookup' ? (normalizeQuery(context) || context) : null
@@ -40,9 +44,11 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
   const [richMode, setRichMode] = useState(chatRichContextDefault)
   const abortRef = useRef<AbortController | null>(null)
   const contextRef = useRef(context)
+  const routeQueryRef = useRef(routeQuery)
   const cognitiveRef = useRef(cognitive)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   contextRef.current = context
+  routeQueryRef.current = routeQuery
   cognitiveRef.current = cognitive
 
   // Keep richMode in sync when the user changes the default in Settings
@@ -57,9 +63,10 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const requestContext = context
+    const requestRouteQuery = routeQuery || requestContext
     const requestCognitive = cognitive
     const wordKey = normalizeQuery(requestContext) || requestContext
-    const learningRoute = resolveCurrentLearningRoute(requestContext)
+    const requestLearningRoute = learningRoute ?? resolveCurrentLearningRoute(routeQuery || requestContext)
 
     const userMsg: ChatMessage = { role: 'user', content: question }
     addMessage(wordKey, userMsg, requestCognitive)
@@ -77,14 +84,20 @@ export function AiChatBox({ context, cognitive, enrichedContext }: AiChatBoxProp
         requestContext,
         allMessages,
         abortRef.current.signal,
-        richMode && enrichedContext ? enrichedContext : undefined
+        richMode && enrichedContext ? enrichedContext : undefined,
+        requestRouteQuery,
+        requestLearningRoute,
       )
-      if (contextRef.current === requestContext && cognitiveRef.current === requestCognitive) {
+      if (
+        contextRef.current === requestContext
+        && (routeQueryRef.current || contextRef.current) === requestRouteQuery
+        && cognitiveRef.current === requestCognitive
+      ) {
         const assistantMsg: ChatMessage = { role: 'assistant', content: reply }
         addMessage(wordKey, assistantMsg, requestCognitive)
         const updatedAll = useChatStore.getState().getMessages(wordKey, requestCognitive)
         void db.saveUserWordConversation(wordKey, JSON.stringify(updatedAll), requestCognitive)
-        recordAiChatEvent(wordKey, question, reply, requestCognitive, learningRoute)
+        recordAiChatEvent(wordKey, question, reply, requestCognitive, requestLearningRoute, requestRouteQuery)
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return

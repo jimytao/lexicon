@@ -1,4 +1,4 @@
-import type { AiFullResult } from '../../types'
+import type { AiFullResult, LearningRoute } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { WordHeader } from './WordHeader'
 import { MeaningList } from './InstantSection/MeaningList'
@@ -33,9 +33,10 @@ interface AiFullViewProps {
   onRetry: () => void
   onWordClick: (word: string) => void
   onGoToSettings?: () => void
+  learningRoute?: LearningRoute
 }
 
-export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick, onGoToSettings }: AiFullViewProps) {
+export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onWordClick, onGoToSettings, learningRoute }: AiFullViewProps) {
   const t = useT()
   const { modules, monolingualWord } = useSettingsStore()
   const updateFullMnemonic = useResultStore(state => state.updateFullMnemonic)
@@ -62,6 +63,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
             insight={aiFullResult.profileInsight}
             dismissKey={aiFullResult?.correctForm || word}
             routeQuery={word}
+            learningRoute={learningRoute}
             direction={aiFullResult.profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
@@ -232,7 +234,7 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
                   parts.push(`文化背景: ${aiFullResult.culturalLore.content}`)
                 }
                 const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} cognitive="lookup" enrichedContext={enrichedContext} />
+                return <AiChatBox key={module.id} context={corrected} routeQuery={word} learningRoute={learningRoute} cognitive="lookup" enrichedContext={enrichedContext} />
               }
               default:
                 return null

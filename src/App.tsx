@@ -5,7 +5,7 @@ import { useSettingsStore } from './stores/settingsStore'
 import { useHistoryStore } from './stores/historyStore'
 import { useSearch } from './hooks/useSearch'
 import { useAiLookup } from './hooks/useAiLookup'
-import type { Mode, WordResult, SuggestItem } from './types'
+import type { LearningRoute, Mode, WordResult, SuggestItem } from './types'
 import { SearchBar } from './components/SearchBar'
 import { SegmentedControl } from './components/SearchBar/SegmentedControl'
 import { ResultView } from './components/ResultView'
@@ -97,6 +97,8 @@ export function App() {
   const pendingModeScrollRestoreRef = useRef<Mode | null>(null)
   const localWordSnapshotRef = useRef<{ wordResult: WordResult; relatedPhrases: SuggestItem[] } | null>(null)
   const lastProfileQueryRef = useRef<string>('')
+  const activeLearningRouteRef = useRef<LearningRoute>('irrelevant')
+  const [activeLearningRoute, setActiveLearningRoute] = useState<LearningRoute>('irrelevant')
   const lastScrollTopRef = useRef(0)
   const { mode, query, setMode } = useSearchStore()
   const {
@@ -322,7 +324,7 @@ export function App() {
         store.setCombinedResult(currentWord.word, cached)
         upgradeHistory(currentWord.word, 'full')
       } else if (store.aiStatus !== 'loading') {
-        triggerCombinedLookup(currentWord.word)
+        triggerCombinedLookup(currentWord.word, false, 'normal', activeLearningRouteRef.current)
         upgradeHistory(currentWord.word, 'full')
       }
       return
@@ -337,7 +339,7 @@ export function App() {
         if (cached) {
           store.setCombinedPhraseResult(target, cached)
         } else {
-          triggerCombinedPhraseQuery(target)
+          triggerCombinedPhraseQuery(target, false, 'normal', activeLearningRouteRef.current)
         }
         upgradeHistory(target, 'phrase')
       } else {
@@ -346,7 +348,7 @@ export function App() {
         if (cached) {
           store.setCombinedResult(target, cached)
         } else {
-          triggerCombinedLookup(target)
+          triggerCombinedLookup(target, false, 'normal', activeLearningRouteRef.current)
         }
         upgradeHistory(target, 'full')
       }
@@ -398,8 +400,11 @@ export function App() {
   }
 
   async function handleWordSelect(word: string, fromHistory = false) {
+    const directionSnapshot = useSearchStore.getState().learningDirection
     await ensureSearchStateHydrated()
-    const learningRoute = resolveCurrentLearningRoute(word)
+    const learningRoute = resolveCurrentLearningRoute(word, directionSnapshot)
+    activeLearningRouteRef.current = learningRoute
+    setActiveLearningRoute(learningRoute)
     resetModeScrollPositions()
     scrollToTop()
     localWordSnapshotRef.current = null
@@ -455,7 +460,7 @@ export function App() {
             store.setCombinedResult(word, cachedCombined, 'normal')
             upgradeHistory(word, 'full')
           } else {
-            triggerCombinedLookup(word, false, 'normal')
+            triggerCombinedLookup(word, false, 'normal', learningRoute)
             upgradeHistory(word, 'full')
           }
         } else {
@@ -499,14 +504,14 @@ export function App() {
           if (cachedPhrase) {
             store.setCombinedPhraseResult(word, cachedPhrase, activeTag)
           } else {
-            triggerCombinedPhraseQuery(word, false, activeTag)
+            triggerCombinedPhraseQuery(word, false, activeTag, learningRoute)
           }
         } else {
           const cachedFull = store.getCachedCombined(word, activeTag)
           if (cachedFull) {
             store.setCombinedResult(word, cachedFull, activeTag)
           } else {
-            triggerCombinedLookup(word, false, activeTag)
+            triggerCombinedLookup(word, false, activeTag, learningRoute)
           }
         }
       } else {
@@ -521,7 +526,7 @@ export function App() {
           if (cachedPhrase) {
             useResultStore.getState().setCombinedPhraseResult(word, cachedPhrase, 'normal')
           } else {
-            triggerCombinedPhraseQuery(word, false, 'normal')
+            triggerCombinedPhraseQuery(word, false, 'normal', learningRoute)
           }
           upgradeHistory(word, 'phrase', 'lookup')
         } else {
@@ -530,7 +535,7 @@ export function App() {
           if (cachedFull) {
             useResultStore.getState().setCombinedResult(word, cachedFull, 'normal')
           } else {
-            triggerCombinedLookup(word, false, 'normal')
+            triggerCombinedLookup(word, false, 'normal', learningRoute)
           }
           upgradeHistory(word, 'full', 'lookup')
         }
@@ -541,17 +546,21 @@ export function App() {
 
   function handleRetry() {
     if (searchSource === 'local' && wordResult && (mode === 'ai' || mode === 'core')) {
-      triggerCombinedLookup(wordResult.word)
+      triggerCombinedLookup(wordResult.word, false, 'normal', activeLearningRouteRef.current)
     } else if (searchSource === 'phrase' && query) {
-      triggerCombinedPhraseQuery(query)
+      triggerCombinedPhraseQuery(query, false, 'normal', activeLearningRouteRef.current)
     } else if (searchSource === 'ai-full' && query) {
-      triggerCombinedLookup(query)
+      triggerCombinedLookup(query, false, 'normal', activeLearningRouteRef.current)
     }
   }
 
   async function handleForceAi(word: string) {
     const nw = normalizeQuery(word)
     if (!nw) return
+    const directionSnapshot = useSearchStore.getState().learningDirection
+    const learningRoute = resolveCurrentLearningRoute(word, directionSnapshot)
+    activeLearningRouteRef.current = learningRoute
+    setActiveLearningRoute(learningRoute)
     resetModeScrollPositions()
     scrollToTop()
     // Save local snapshot if we currently have a local result for this word
@@ -570,11 +579,11 @@ export function App() {
     const qt = detectQueryType(word)
     if (qt === 'phrase' || qt === 'sentence') {
       setSearchSource('phrase')
-      triggerCombinedPhraseQuery(word, true)
+      triggerCombinedPhraseQuery(word, true, 'normal', learningRoute)
       if (useSettingsStore.getState().historyEnabled) addHistory(word, 'phrase', 'lookup')
     } else {
       setSearchSource('ai-full')
-      triggerCombinedLookup(word, true)
+      triggerCombinedLookup(word, true, 'normal', learningRoute)
       if (useSettingsStore.getState().historyEnabled) addHistory(word, 'full', 'lookup')
     }
   }
@@ -843,6 +852,7 @@ export function App() {
                 ) : showPhraseView ? (
                   <PhraseView
                     phrase={query}
+                    learningRoute={activeLearningRoute}
                     phraseResult={mode === 'core' ? (combinedPhraseResult?.core ?? phraseResult) : phraseResult}
                     aiStatus={mode === 'core' ? coreStatus : lookupStatus}
                     aiError={(mode === 'core' ? aiFailedHalves.core : aiFailedHalves.lookup) ? splitError : aiError}
@@ -852,6 +862,7 @@ export function App() {
                 ) : mode === 'core' ? (
                   <CoreCognitiveView
                     word={query}
+                    learningRoute={activeLearningRoute}
                     aiFullResult={combinedResult?.core ?? aiFullResult}
                     dictWordResult={searchSource === 'local' ? wordResult : null}
                     aiStatus={coreStatus}
@@ -863,6 +874,7 @@ export function App() {
                 ) : showAiFullView ? (
                   <AiFullView
                     word={query}
+                    learningRoute={activeLearningRoute}
                     aiFullResult={combinedResult?.lookup ?? aiFullResult}
                     aiStatus={lookupStatus}
                     aiError={aiFailedHalves.lookup ? splitError : aiError}
@@ -872,6 +884,8 @@ export function App() {
                   />
                 ) : wordResult ? (
                   <ResultView
+                    routeQuery={query}
+                    learningRoute={activeLearningRoute}
                     wordResult={wordResult}
                     relatedPhrases={relatedPhrases}
                     aiAnalysis={aiAnalysis}

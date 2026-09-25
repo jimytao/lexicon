@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useSearchStore } from '../../stores/searchStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useHistoryStore } from '../../stores/historyStore'
@@ -7,7 +7,7 @@ import { SuggestList } from '../SuggestList'
 import { HistoryList } from './HistoryList'
 import type { SuggestItem } from '../../types'
 import { normalizeQuery, hasAnyAiCacheEntry } from '../../utils/text'
-import { isLearningRouteForced, resolveLearningRoute } from '../../utils/learningDirection'
+import { createCancelableDelay } from '../../utils/cancelableDelay'
 import { useComposerFlowLayout } from '../../hooks/useComposerFlowLayout'
 import { useT } from '../../i18n'
 
@@ -20,26 +20,28 @@ interface SearchBarProps {
 export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBarProps) {
   const t = useT()
   const { query, suggestions, learningDirection, setQuery, setSuggestions, setLearningDirection } = useSearchStore()
-  const { historyEnabled, mainDictionary } = useSettingsStore()
+  const { historyEnabled } = useSettingsStore()
   const { words: historyWords } = useHistoryStore()
   const { aiCache, aiFullCache, phraseCache } = useResultStore()
   const containerRef = useRef<HTMLFormElement>(null)
   const suggestRequestRef = useRef(0)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
+  const blurDelayRef = useRef<ReturnType<typeof createCancelableDelay> | null>(null)
+  if (!blurDelayRef.current) blurDelayRef.current = createCancelableDelay()
   const trimmedQuery = query.trim()
-  const effectiveRoute = resolveLearningRoute(trimmedQuery, learningDirection, mainDictionary)
   const selectedDirectionLabel = learningDirection === 'in' ? 'IN' : 'OUT'
-  const displayedDirection = effectiveRoute === 'irrelevant' ? learningDirection : effectiveRoute
+  const displayedDirection = learningDirection
   const displayedDirectionLabel = displayedDirection === 'in' ? 'IN' : 'OUT'
-  const isAutoRouted = !!trimmedQuery && isLearningRouteForced(trimmedQuery, mainDictionary)
-  const isProfileIrrelevant = !!trimmedQuery && effectiveRoute === 'irrelevant'
 
   // gap-3 of clearance from the buttons; 110px ≈ 4 lines before the text scrolls.
   // Once the caret leaves, a tall composer is just wasted space over the results —
   // collapse it back to one line until the user comes back to edit.
   const { textareaRef, mirrorRef, actionsRef, containerRef: pillRef, reserveHeight, isMultiLine, isCollapsed } =
     useComposerFlowLayout(query, { gap: 12, maxHeight: 110, collapsed: !isFocused })
+  const composerAlignment = isMultiLine && !isCollapsed ? 'items-start' : 'items-center'
+
+  useEffect(() => () => blurDelayRef.current?.cancel(), [])
 
   // Runs after the layout hook has re-expanded the textarea in this same commit, so the
   // caret lands in text that is actually laid out and the scroll sticks.
@@ -170,7 +172,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         onSubmit={handleSubmit}
         className={`relative transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-100'}`}
       >
-        <div ref={pillRef} className={`relative flex items-start gap-3 px-4 py-2 min-h-[52px] border transition-all duration-300 shadow-sm overflow-hidden ${
+        <div ref={pillRef} className={`relative flex ${composerAlignment} gap-3 px-4 py-2 min-h-[52px] border transition-all duration-300 shadow-sm overflow-hidden ${
           isMultiLine && !isCollapsed ? 'rounded-2xl' : 'rounded-full'
         } ${
           isFocused
@@ -180,30 +182,14 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
         >
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               setLearningDirection(learningDirection === 'in' ? 'out' : 'in')
               textareaRef.current?.focus()
             }}
-            disabled={isAutoRouted || isProfileIrrelevant}
-            className={`w-[58px] h-10 -ml-1 mt-0.5 shrink-0 inline-flex items-center justify-center gap-1 rounded-full text-[11px] font-bold tracking-wide transition-all duration-200 ${
-              isProfileIrrelevant
-                ? 'bg-foreground/5 text-foreground-muted/35 cursor-default'
-                : 'bg-accent/10 text-accent hover:bg-accent/15 active:scale-95 disabled:opacity-80 disabled:cursor-default'
-            }`}
-            title={
-              isProfileIrrelevant
-                ? t('search.directionIrrelevant')
-                : isAutoRouted
-                  ? t('search.directionAutoOut')
-                  : t('search.directionToggle').replace('{direction}', selectedDirectionLabel)
-            }
-            aria-label={
-              isProfileIrrelevant
-                ? t('search.directionIrrelevant')
-                : isAutoRouted
-                  ? t('search.directionAutoOut')
-                  : t('search.directionToggle').replace('{direction}', selectedDirectionLabel)
-            }
+            className="w-[58px] h-10 -ml-1 shrink-0 inline-flex items-center justify-center gap-1 rounded-full text-[11px] font-bold tracking-wide transition-all duration-200 bg-accent/10 text-accent hover:bg-accent/15 active:scale-95"
+            title={t('search.directionToggle').replace('{direction}', selectedDirectionLabel)}
+            aria-label={t('search.directionToggle').replace('{direction}', selectedDirectionLabel)}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
               {displayedDirection === 'in' ? (
@@ -240,6 +226,7 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               placeholder={t('search.placeholder')}
               className="block w-full text-base font-medium outline-none bg-transparent text-foreground placeholder-foreground-muted/50 resize-none overflow-y-auto no-scrollbar leading-normal py-1"
               onFocus={(e) => {
+                blurDelayRef.current?.cancel()
                 // Coming back to a collapsed long query: resume at the end of the text
                 // instead of selecting it all, which would leave the whole thing one
                 // keystroke away from being wiped. Deferred — the caret can only be
@@ -250,7 +237,10 @@ export function SearchBar({ onWordSelect, onHistorySelect, onForceAi }: SearchBa
               }}
               onBlur={() => {
                 suggestRequestRef.current += 1
-                setTimeout(() => setIsFocused(false), 200)
+                blurDelayRef.current?.schedule(() => {
+                  if (document.activeElement === textareaRef.current) return
+                  setIsFocused(false)
+                }, 200)
               }}
             />
             <div aria-hidden style={{ height: reserveHeight }} />

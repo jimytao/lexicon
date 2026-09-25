@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { PhraseResult } from '../../types'
+import type { LearningRoute, PhraseResult } from '../../types'
 import type { AiStatus } from '../../stores/resultStore'
 import { DiffText } from './DiffText'
 import { ExampleList } from './InstantSection/ExampleList'
@@ -31,9 +31,10 @@ interface PhraseViewProps {
   aiError: string | null
   onRetry: () => void
   onGoToSettings?: () => void
+  learningRoute?: LearningRoute
 }
 
-export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings }: PhraseViewProps) {
+export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, onGoToSettings, learningRoute }: PhraseViewProps) {
   const t = useT()
   const {
     modules,
@@ -119,6 +120,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
             insight={phraseResult.profileInsight}
             dismissKey={targetPhrase}
             routeQuery={phrase}
+            learningRoute={learningRoute}
             direction={phraseResult.profileInsightDirection}
             onOpen={() => onGoToSettings?.()}
           />
@@ -499,7 +501,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   )
                 }
                 if (phraseResult.unnaturalMindModel) {
-                  parts.push(`思维违和感剖析: 中文直译("${phraseResult.unnaturalMindModel.chineseThought}") → 母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
+                  parts.push(`思维违和感剖析: 原语言迁移("${phraseResult.unnaturalMindModel.chineseThought}") → 英语母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
                 }
                 if (phraseResult.meaning) parts.push(`释义: ${phraseResult.meaning}`)
                 if (usageIntro) parts.push(`使用场景开场: ${usageIntro}`)
@@ -522,7 +524,7 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   parts.push(`文化背景: ${phraseResult.culturalLore.content}`)
                 }
                 const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} cognitive={phraseCognitive} enrichedContext={enrichedContext} />
+                return <AiChatBox key={module.id} context={corrected} routeQuery={phrase} learningRoute={learningRoute} cognitive={phraseCognitive} enrichedContext={enrichedContext} />
               }
               case 'preposition': {
                 const preps = detectSpatialPreps(phraseResult.correctForm || phrase)

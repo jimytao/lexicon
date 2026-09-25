@@ -9,14 +9,18 @@ import {
   type AppModule,
   type SearchProviderId,
 } from '../stores/settingsStore'
-import { resolveDictionaryContext, type MainDictionary } from './dictionaryContext'
+import {
+  resolveDictionaryContext,
+  resolveLearnerLanguagePolicy,
+  type MainDictionary,
+} from './dictionaryContext'
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
 import { buildProfilePromptContext, resolveCurrentLearningRoute } from './profile'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
-import { buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
+import { buildCultureAwareInputRule, buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
 import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult, LearningRoute } from '../types'
 
@@ -882,6 +886,7 @@ function getFullLookupPrompt(
   // Monolingual is a global "answer in English" switch — not limited to English input.
   const isMono = monolingualWord
   const isCore = cognitive === 'core'
+  const isVietnameseLearner = !isMono && explanationLanguage === 'vi'
 
   const meaningsZhDescription = isMono ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'" : "中文释义"
   const meaningsEnDescription = "English definition (or original language equivalent)"
@@ -1004,10 +1009,14 @@ function getFullLookupPrompt(
   const basePrompt = isCore
     ? (isMono
       ? `You are a native-speaker cognitive coach for English learners. Your job is NOT dictionary lookup — remodel how learners THINK about a word so they can use it the way natives do (mental picture, emotional stance, when/why to choose it, core image network).`
-      : `你是面向中文母语者的「母语者心智教练」。任务不是传统词典释义，而是帮助学习者用母语者心智理解单词：脑中画面、情感立场、为何选用，以及核心意象如何延伸到使用网络。`)
+      : isVietnameseLearner
+        ? `You are a native-speaker cognitive coach for Vietnamese learners of English. Teach native English mental models, emotional stance, word choice, and core-image extensions; write learner-facing content in Vietnamese.`
+        : `你是面向中文母语者的「母语者心智教练」。任务不是传统词典释义，而是帮助学习者用母语者心智理解单词：脑中画面、情感立场、为何选用，以及核心意象如何延伸到使用网络。`)
     : (isMono
       ? `You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations. Focus on clear meanings, memory aids (core image, etymology, nuance), and practical understanding.`
-      : `你是面向中文母语者的英语词汇分析师。重心是「理解与记忆」：清晰释义、核心意象、词源与近义辨析，帮助记住并理解这个词。`)
+      : isVietnameseLearner
+        ? `You are an English vocabulary analyst for Vietnamese native speakers. Focus on clear Vietnamese explanations, memory aids, core images, etymology, and nuance.`
+        : `你是面向中文母语者的英语词汇分析师。重心是「理解与记忆」：清晰释义、核心意象、词源与近义辨析，帮助记住并理解这个词。`)
   const multiLangPrompt = isCore
     ? `You are a cultural-cognitive coach for foreign words. Prioritize how natives conceptualize the word — social meaning, subculture nuance, and when it is the right choice.`
     : `You are a professional multi-language translator and cultural analyst. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
@@ -1024,6 +1033,7 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
+${buildCultureAwareInputRule()}
 ${isCore ? `- Do NOT fill a full dictionary meanings wall for English input (meanings may be []).
 - Do NOT invent nativeMindModel (legacy). Put feel into coreConcept.feelAnchor and emotion into coreConcept.emotionalTone.
 - coreConcept.gloss: REQUIRED short lexical gloss (equivalents + sense nucleus) before imagery.
@@ -1038,7 +1048,7 @@ ${buildNativeSceneRules(isMono)}
 - PRIORITY for Lookup: coreConcept > meanings/scenes > etymology > examples.`}
 - For abbreviations, explain what each letter stands for.
 - If the input is CHINESE: 
-  - correctForm: provide the best English word.
+  - correctForm: provide the closest natural English word or short expression; do not force a culture-bound expression into one word.
   ${isCore ? '- meanings: REQUIRED short list of 2-5 English candidates (en=word, zh=nuance vs input). Not a full dictionary wall.' : '- meanings: provide 2-5 English alternatives with nuances.'}
 - If the input is a FOREIGN LANGUAGE (not English/Chinese):
   - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
@@ -1084,7 +1094,7 @@ ${lang === 'vi' ? '- Vietnamese input: correctForm must be the natural English e
     }
   }
 
-  prompt += buildProfilePromptContext('compact', learningRoute)
+  prompt += buildProfilePromptContext('compact', learningRoute, explanationLanguage)
 
   return prompt
 }
@@ -1094,11 +1104,11 @@ export async function aiFullLookup(
   isFull: boolean = true,
   signal?: AbortSignal,
   cognitive: 'lookup' | 'core' = 'lookup',
-  opts: { anchor?: MeaningsAnchor; webResults?: string } = {}
+  opts: { anchor?: MeaningsAnchor; webResults?: string; learningRoute?: LearningRoute } = {}
 ): Promise<AiFullResult> {
   const config = getConfig()
   const lang = detectLanguage(word)
-  const learningRoute = resolveCurrentLearningRoute(word)
+  const learningRoute = opts.learningRoute ?? resolveCurrentLearningRoute(word)
   
   // When both halves run in parallel the caller does ONE shared web search and
   // passes it in; only fall back to our own when called standalone.
@@ -1209,11 +1219,11 @@ export async function aiPhraseQuery(
   isFull: boolean = true,
   signal?: AbortSignal,
   cognitive: 'lookup' | 'core' = 'lookup',
-  opts: { anchor?: MeaningsAnchor; webResults?: string } = {}
+  opts: { anchor?: MeaningsAnchor; webResults?: string; learningRoute?: LearningRoute } = {}
 ): Promise<PhraseResult> {
   const config = getConfig()
   const lang = detectLanguage(phrase)
-  const learningRoute = resolveCurrentLearningRoute(phrase)
+  const learningRoute = opts.learningRoute ?? resolveCurrentLearningRoute(phrase)
 
   const webResults = opts.webResults ?? await performWebSearch(phrase, signal)
 
@@ -1270,23 +1280,34 @@ export async function askQuestion(
   context: string,
   history: ChatMessage[],
   signal?: AbortSignal,
-  richContext?: string
+  richContext?: string,
+  routeQuery?: string,
+  learningRoute?: LearningRoute,
 ): Promise<string> {
   const config = getConfig()
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const isMono = getIsMono(context, config)
+  const routingQuery = routeQuery || context
+  const languagePolicy = resolveLearnerLanguagePolicy(routingQuery, config)
+  const isMono = languagePolicy.isMonolingual
   const richSection = richContext
     ? `\n\nHere is the analysis already displayed to the user for reference:\n${richContext}\n\nAnswer based on this context where relevant.`
     : ''
   // Direction A — the learner's hot weak spots, so a follow-up answer can connect
   // the dots when relevant (opt-in; empty when nothing is hot).
-  const profileSection = buildProfilePromptContext('compact', resolveCurrentLearningRoute(context))
+  const profileSection = buildProfilePromptContext(
+    'compact',
+    learningRoute ?? resolveCurrentLearningRoute(routingQuery),
+    languagePolicy.profileLanguage,
+  )
   const tableRule = `Table orientation rule (mobile screen — NEVER exceed 3 columns): (A) If comparing N words across M attributes and N ≤ M: put the words as COLUMN headers (row 1 = word names, then one row per attribute) so columns = N ≤ 3. (B) If N > M: put attributes as COLUMN headers (row 1 = attribute names, one row per word) so columns = M ≤ 3. When either N or M > 3, pick whichever orientation keeps columns ≤ 3 and let rows grow. Never create a table wider than 3 columns.`
-  const systemPrompt = isMono
-    ? `You are a helpful English learning assistant for learners who prefer English-only monolingual explanations.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in clear, simple, learner-friendly English (CEFR B1-B2 level), with English examples where appropriate.\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`
-    : `You are a helpful English learning assistant for Chinese native speakers.\nThe user is currently studying: "${context}".${richSection}${profileSection}\nAnswer their questions in Chinese, with English examples where appropriate.\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. 当需要对比多个词或概念时优先使用表格。${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`
+  const audienceRule = languagePolicy.profileLanguage === 'vi'
+    ? 'You are a helpful English learning assistant for Vietnamese native speakers.\nAnswer in Vietnamese, with English examples where appropriate.'
+    : languagePolicy.profileLanguage === 'zh'
+      ? 'You are a helpful English learning assistant for Chinese native speakers.\nAnswer in Chinese, with English examples where appropriate.'
+      : 'You are a helpful English language assistant for native or monolingual English users.\nAnswer in clear, natural English without assuming Chinese or Vietnamese language transfer.'
+  const systemPrompt = `${audienceRule}\nThe user is currently studying: "${context}".${richSection}${profileSection}\n${isMono ? 'Use clear, learner-friendly English (CEFR B1-B2 level) where possible.\n' : ''}Keep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },
@@ -2087,7 +2108,7 @@ export async function resolveQuerySkeleton(
   "senses": [ { "senseIndex": 1, "zh": "faithful full translation", "en": "original or polished English text" } ]
 }`
     : `{
-  "correctForm": "the English headword being explained (fix typos; for Chinese input, the single best English equivalent)",
+  "correctForm": "the English headword being explained (fix typos; for Chinese input, the closest natural English word or short expression; culture-bound inputs may require a phrase)",
   "pos": "primary part of speech",
   "phonetic": "IPA if English, else omit",
   "senses": [ { "senseIndex": 1, "pos": "n.", "zh": "core sense", "en": "English gloss" } ]
@@ -2106,6 +2127,7 @@ You are the fast disambiguation pass. Return ONLY a valid JSON object — no mar
 ${shape}
 
 Rules:
+${buildCultureAwareInputRule()}
 - correctForm is REQUIRED. It is the single thing every later pass must agree on.
 ${senseRule}
 - Be terse. This is a routing decision, not the final answer.${isMono ? '\n- ALL output text in English only.' : ''}`

@@ -19,7 +19,7 @@ import { classifyAiRequestError } from '../utils/aiRequestErrors'
 import { createAiRequestGate, shouldCommitAiDisplay } from '../utils/aiRequestGate'
 import { cognitiveFromSearchMode, normalizeQuery } from '../utils/text'
 import { aiFullNeedsExplanationFill, collocationsNeedFill, conceptGraphNeedsFill } from '../utils/aiCompleteness'
-import type { Meaning, CollocationData, ConceptGraph, ConceptGraphExample, PhraseResult } from '../types'
+import type { Meaning, CollocationData, ConceptGraph, ConceptGraphExample, LearningRoute, PhraseResult } from '../types'
 import type { CombinedHalf } from '../stores/resultStore'
 import type { SearchTag } from '../utils/combinedResult'
 
@@ -274,11 +274,11 @@ export function useAiLookup() {
   }, [getCachedAiFull, setAiFullResult, setAiStatus, setAiError])
 
   /** AI phrase/sentence query — Lookup vs Pure Core use separate prompts + caches */
-  const triggerPhraseQuery = useCallback(async (phrase: string) => {
+  const triggerPhraseQuery = useCallback(async (phrase: string, submittedRoute?: LearningRoute) => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
-    const learningRoute = resolveCurrentLearningRoute(phrase)
+    const learningRoute = submittedRoute ?? resolveCurrentLearningRoute(phrase)
 
     const cognitive = cognitiveFromSearchMode(useSearchStore.getState().mode)
     const cached = getCachedPhrase(phrase, cognitive)
@@ -291,7 +291,7 @@ export function useAiLookup() {
 
     setAiStatus('loading')
     try {
-      const result = await aiPhraseQuery(phrase, true, abortRef.current.signal, cognitive)
+      const result = await aiPhraseQuery(phrase, true, abortRef.current.signal, cognitive, { learningRoute })
       if (!shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) return
       setPhraseResult(phrase, result, cognitive)
       if (result.unnaturalMindModel || result.correctForm) {
@@ -317,7 +317,12 @@ export function useAiLookup() {
    * run the two halves as independent parallel requests so whichever tab the user
    * is looking at renders as soon as its own half arrives.
    */
-  const triggerCombinedLookup = useCallback(async (word: string, forceRefresh = false, tag: SearchTag = 'normal') => {
+  const triggerCombinedLookup = useCallback(async (
+    word: string,
+    forceRefresh = false,
+    tag: SearchTag = 'normal',
+    learningRoute?: LearningRoute,
+  ) => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
@@ -351,7 +356,7 @@ export function useAiLookup() {
 
       const runHalf = async (half: CombinedHalf) => {
         try {
-          const r = await aiFullLookup(word, true, signal, half, { anchor, webResults })
+          const r = await aiFullLookup(word, true, signal, half, { anchor, webResults, learningRoute })
           if (!commitOk()) { store().settleCombinedHalf(half); return }
           landed += 1
           store().commitCombinedHalf(word, half, r, tag)
@@ -391,11 +396,16 @@ export function useAiLookup() {
   }, [getCachedCombined, setCombinedResult, setAiError])
 
   /** v0.9.15: Split combined phrase/sentence call — same two-parallel-halves shape. */
-  const triggerCombinedPhraseQuery = useCallback(async (phrase: string, forceRefresh = false, tag: SearchTag = 'normal') => {
+  const triggerCombinedPhraseQuery = useCallback(async (
+    phrase: string,
+    forceRefresh = false,
+    tag: SearchTag = 'normal',
+    submittedRoute?: LearningRoute,
+  ) => {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
     const token = gateRef.current.begin()
-    const learningRoute = resolveCurrentLearningRoute(phrase)
+    const learningRoute = submittedRoute ?? resolveCurrentLearningRoute(phrase)
 
     if (!forceRefresh) {
       const cached = getCachedCombinedPhrase(phrase, tag)
@@ -425,7 +435,7 @@ export function useAiLookup() {
 
       const runHalf = async (half: CombinedHalf) => {
         try {
-          const r = await aiPhraseQuery(phrase, true, signal, half, { anchor, webResults })
+          const r = await aiPhraseQuery(phrase, true, signal, half, { anchor, webResults, learningRoute })
           if (!commitOk()) { store().settleCombinedHalf(half); return }
           landed += 1
           if (half === 'lookup') captured.lookup = r

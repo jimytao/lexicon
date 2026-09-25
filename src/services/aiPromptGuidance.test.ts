@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
+import {
+  buildCultureAwareInputRule,
+  buildNativeSceneDescription,
+  buildNativeSceneRules,
+} from './aiPromptGuidance'
 
 describe('native scene prompt guidance', () => {
   it('keeps bilingual scene descriptions in Chinese and resists forced positivity', () => {
@@ -19,5 +23,22 @@ describe('native scene prompt guidance', () => {
     expect(guidance).toMatch(/lexical tendency from context-only reading/i)
     expect(guidance).toMatch(/SCENE FIRST/i)
     expect(guidance).not.toMatch(/[\u3400-\u9fff]/)
+  })
+})
+
+describe('culture-aware input gate', () => {
+  it('recognizes culture-bound language only when there is evidence', () => {
+    const rule = buildCultureAwareInputRule()
+
+    expect(rule).toMatch(/slang.*internet meme.*wordplay.*homophone/is)
+    expect(rule).toMatch(/only when.*evidence/is)
+    expect(rule).toMatch(/source-language community/i)
+  })
+
+  it('keeps ordinary lexical analysis and existing field ownership unchanged', () => {
+    const rule = buildCultureAwareInputRule()
+
+    expect(rule).toMatch(/otherwise.*ordinary lexical or translation analysis unchanged/is)
+    expect(rule).toMatch(/preserve.*schema.*field-ownership/is)
   })
 })

@@ -8,6 +8,7 @@
 - 所有 AI 查询都返回 `correctForm` 字段用于拼写纠正；词组/句子查询额外返回 `correctionNote` 字段解释改动原因
 - 释义和例句在词库有结果时始终来自本地词库（L1），AI 不替换它们
 - 输出格式固定为 JSON，system prompt 严格约束，前端直接 parse
+- 所有主动 AI 查词入口共用**条件式文化表达识别闸门**：先判断输入是否有足够证据属于俚语、网络梗、文字游戏、谐音/故意错写或地域用法；仅命中时恢复源语言社群含义并给自然目标语对应，否则普通词义/翻译流程完全不变。此规则只改变输入解释，不得覆盖 JSON schema、字段职责或原有模块内容。
 - 模型推荐：Gemini 2.0 Flash（快、便宜、质量足够）
 - 练习按需生成（用户点击"生成练习"触发），评分每题独立调用
 
@@ -159,10 +160,20 @@ Analyze this word and return the JSON.`
 - `correction`：纠正后的句子（正确时为空）
 - 语法错误（时态、介词、句型）必须标为 incorrect；轻微拼写错误可忽略
 
+### Stage-1 意义锚点与文化表达识别
+
+`resolveQuerySkeleton(query, queryType, isMono, signal?)` 是 Lookup / Core 双半请求共享的快速消歧入口。中文单词输入会等待该锚点后再并行生成两半，其他输入可把骨架作为非阻塞预览。
+
+- `buildCultureAwareInputRule()` 同时注入 Stage-1、单词全量与词组/句子 Prompt，避免第一阶段把谐音梗或故意错写按字面锁错、后续两半又被错误锚点约束。
+- 识别必须有上下文或语言证据；普通输入明确继续原有 lexical / translation analysis，不得默认按 slang 处理。
+- 中文文化表达的 `correctForm` 可为最自然的英文单词或短表达；`senses` 保留候选义与差异。普通词仍返回普通英文 headword。
+- 闸门只负责确定“输入实际指什么”；`meaning`、`usageIntro` / `usageScenes`、`culturalLore`、`feelAnchor` / `emotionalTone` 继续遵守各自字段职责。
+
 ### `aiFullLookup(word, isFull?, signal?, cognitive?)`
 词库缺失（或 Mode 3 全量）单词的 AI 生成。返回 `AiFullResult`。`cognitive: 'lookup' | 'core'` 决定 prompt 与缓存分轨。
 
-- AI 与本地 DB 共用 `resolveDictionaryContext(query, settings)`：当前查询类型的 Monolingual 开关优先，输出与词典均为英语；否则英汉→中文、英越→越南语、英英→英语。AI 直接读取已 hydration 的实时 settings store，避免刚切换后继续使用旧持久化配置。
+- AI 与本地 DB 共用 `resolveDictionaryContext(query, settings)`：当前查询类型的 Monolingual 开关优先，输出与词典均为英语；否则英汉→中文、英越→越南语、英英→英语。`resolveLearnerLanguagePolicy(query, settings)` 在同一份有效词典结果上进一步确定学习者身份：英汉=`zh`，英越=`vi`，英英=`en` 且没有第二辅助语言。AI 直接读取已 hydration 的实时 settings store，避免刚切换后继续使用旧持久化配置。
+- `aiFullLookup` / `aiPhraseQuery` 的内部 options 可携带提交瞬间的 `learningRoute`。UI 在发起搜索前冻结它，后续切换 IN / OUT 不得让在途请求重新读取可变方向；未显式传入时才兼容回退到当前 store。
 
 - 共用：`correctForm`、`phonetic`、`pos`、`coreConcept`、`meanings`（含 scene）、`etymology`、`synonyms`、`examples` 等
 - **Lookup**：理解与记忆向；**不要** `nativeMindModel` / `conceptGraph` / `wordChoiceContrast`
@@ -177,7 +188,7 @@ Analyze this word and return the JSON.`
 - **练习**：Lookup `evaluateMeaningCheck`（释义核对）；Core 既有场景造句 `evaluateAnswer`
 - **conceptGraph.examples**（Core）：对象 `{ phrase, meaning, mindHint }`——短语 + 释义 + 母语心智延伸；禁止只返回裸字符串
 - 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况，以及 Mode 3 对词库词的全量认知视图
-- **`profileInsight?` + `profileInsightDirection?`（可选）**：仅当本词明确关联当前 IN / OUT 证据线中的某条「反复混淆」时返回一句话；否则省略。`getFullLookupPrompt` 使用 `buildProfilePromptContext('compact', learningRoute)`，最多注入同方向 3 条热弱点；解析后由客户端把实际 `learningRoute` 写入 `profileInsightDirection`，旧缓存缺该字段时 UI 不展示洞察。
+- **`profileInsight?` + `profileInsightDirection?`（可选）**：仅当本词明确关联当前 IN / OUT + 当前词典学习者语言证据线中的某条「反复混淆」时返回一句话；否则省略。`getFullLookupPrompt` 使用 `buildProfilePromptContext('compact', learningRoute, learnerLanguage)`，最多注入同方向同语言 3 条热弱点与 2 条近期探索方向；这些信息只能作为可选补充，不能替代或缩短标准分析。解析后由客户端把实际 `learningRoute` 写入 `profileInsightDirection`，旧缓存缺该字段时 UI 不展示洞察。
 
 ### `aiPhraseQuery(phrase, isFull?, signal?, cognitive?)`
 词组/句子 AI 查询。返回 `PhraseResult`。`cognitive: 'lookup' | 'core'`（默认 `lookup`）决定 prompt 重心与缓存分轨。  
@@ -187,6 +198,8 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
 - **Lookup**：词典式释义 / 订正 / 场景；`unnaturalMindModel` 仅在不地道时填写
 - **Pure Core**：母语者心智教练；**必填** `feelAnchor` / `emotionalTone`；`wordChoice` 开时填 `wordChoiceContrast`；优先交际意图与违和感对比（旧 nativeMindModel 不再要求）
 - `correctForm` 遵守严格的完整性约束：只做最小化纠错，绝不删减或截断原文内容；无错时与原文完全相同
+- Profile 只把 OUT 英文原文与 `correctForm` 的**实质差异**视为订正证据：原样返回、纯大小写 / 空白 / 装饰性标点变化不形成弱点；撇号、连字符等可能改变语法或词形的差异保留。
+- `unnaturalMindModel.chineseThought` 是为兼容旧缓存保留的字段名，实际职责是“源语言迁移思维”：英汉可分析中文迁移，英越可分析越南语迁移，英英不得臆造中文或越南语迁移。
 - **字段职责 FIELD OWNERSHIP（关键）**
   - **短词组 (`queryType=phrase`)**：`meaning` = 1–2 句短释义；**禁止**把来源/语域/俚语地域/情景/何时用/母语者心智长文写进 `meaning`
   - **长句/段落 (`queryType=sentence`)**：`meaning` = **忠实全文翻译，不是概括**。逐句对应、句数与顺序同原文，保留每个从句/修饰语/语气词/人名/数字；禁止概括、压缩、合并、加解读；禁止自造编号或小标题（原文自带的 `1/2` 等标记原样保留）；译文长度应与原文相当。
@@ -198,14 +211,16 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
 - 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageIntro / usageScenes 中说明差异
 - Core 单词全量：`coreConcept.explanation` 停留在意象→用法分支层；**具体** when/where 交际场景写入 `usageScenes`，勿把场景长文塞进 explanation
-- **`profileInsight?` + `profileInsightDirection?`（可选）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入同方向 `'compact'`、`'sentence'` 注入同方向 `'full'`；`learningRoute='irrelevant'` 时完全不注入 Profile。
+- **`profileInsight?` + `profileInsightDirection?`（可选）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入同方向、同学习者语言的 `'compact'`，对 `'sentence'` 注入 `'full'`；full 最多包含 6 条 active 弱点与 3 条探索方向，mastered 一律排除；`learningRoute='irrelevant'` 时完全不注入 Profile。
 
-### `askQuestion(context, history, signal?)`
-AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。system prompt 会按原始查询路由拼入 `buildProfilePromptContext('compact', resolveCurrentLearningRoute(context))`；只读取同方向热弱点，第三语言或无热弱点时静默。
+### `askQuestion(context, history, signal?, richContext?, routeQuery?, learningRoute?)`
+AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。`routeQuery` 必须传当前结果对应的**原始查询**，不能用 AI 修正后的 `context` 重新猜语言；`learningRoute` 传该结果提交时冻结的路线，避免用户为下一条搜索切换按钮后反改当前问答。system prompt 据此拼入同方向同语言的 compact Profile；第三语言或无相关证据时静默。
 
 - `context`：当前查询的单词或词组
 - `history`：`ChatMessage[]`，支持多轮对话
-- 回答用中文，适当穿插英文例句（单语言模式开启且查询词为英文时，自动改用简单英文进行回复）
+- `routeQuery`：当前卡片的原始搜索文本；缺省时为兼容旧调用回退到 `context`
+- `learningRoute`：当前结果的提交时 IN / OUT / irrelevant 快照；缺省时才兼容回退到当前 store
+- 回答语言由有效词典决定：英汉用中文并穿插英文例句，英越用越南语并穿插英文例句，英英仅用清晰英语且不假设中文 / 越南语迁移。
 
 ### `testConnection(signal?)`
 验证当前 Settings 配置是否可用。返回 `string`（模型回复）。

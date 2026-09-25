@@ -121,6 +121,20 @@ describe('buildPhrasePrompt — sentence / long text keeps full translation duty
 })
 
 describe('buildPhrasePrompt — culture stays distinct from usage', () => {
+  it('gates meme/slang interpretation without replacing normal analysis or field ownership', () => {
+    const prompt = buildPhrasePrompt({
+      modules: LOOKUP_MODULES,
+      lang: 'zh',
+      cognitive: 'lookup',
+      queryType: 'phrase',
+    })
+
+    expect(prompt).toMatch(/culture-bound expression/i)
+    expect(prompt).toMatch(/only when.*evidence/is)
+    expect(prompt).toMatch(/ordinary lexical or translation analysis unchanged/is)
+    expect(prompt).toMatch(/FIELD OWNERSHIP|字段职责/)
+  })
+
   it('keeps culturalLore distinct from usageScenes when culture enabled', () => {
     const prompt = buildPhrasePrompt({
       modules: LOOKUP_MODULES,
@@ -129,6 +143,36 @@ describe('buildPhrasePrompt — culture stays distinct from usage', () => {
       isFull: true,
     })
     expect(prompt).toMatch(/distinct from usageScenes|与 usageScenes 区分|勿与 usageScenes 重复/)
+  })
+})
+
+describe('buildPhrasePrompt — learner language identity', () => {
+  it('uses Vietnamese transfer framing for the English-Vietnamese dictionary', () => {
+    const prompt = buildPhrasePrompt({
+      modules: LOOKUP_MODULES,
+      lang: 'en',
+      cognitive: 'lookup',
+      queryType: 'sentence',
+      explanationLanguage: 'vi',
+    })
+    expect(prompt).toMatch(/Vietnamese native speakers|Vietnamese learner/i)
+    expect(prompt).toMatch(/Vietnamese-to-English|Vietnamese-influenced/i)
+    expect(prompt).not.toContain('Chinese native speakers')
+    expect(prompt).not.toContain('Chinese-to-English translation mindset')
+  })
+
+  it('does not assume Chinese transfer in English-English mode', () => {
+    const prompt = buildPhrasePrompt({
+      modules: LOOKUP_MODULES,
+      lang: 'en',
+      cognitive: 'lookup',
+      queryType: 'sentence',
+      isMono: true,
+      explanationLanguage: 'en',
+    })
+    expect(prompt).toMatch(/English-only|monolingual/i)
+    expect(prompt).not.toContain('Chinese-thinking learner')
+    expect(prompt).not.toContain('Chinese-to-English translation mindset')
   })
 })
 

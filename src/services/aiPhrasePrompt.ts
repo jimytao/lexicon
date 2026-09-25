@@ -5,6 +5,7 @@
  */
 
 import { buildProfilePromptContext } from './profile'
+import { buildCultureAwareInputRule } from './aiPromptGuidance'
 import type { MeaningsAnchor } from './ai'
 import type { LearningRoute } from '../types'
 
@@ -45,6 +46,12 @@ export function buildPhrasePrompt({
 }: BuildPhrasePromptOptions): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   const isCore = cognitive === 'core'
+  const isVietnameseLearner = !isMono && explanationLanguage === 'vi'
+  const transferLabel = isVietnameseLearner
+    ? 'Vietnamese-to-English transfer'
+    : isMono
+      ? 'source-language transfer'
+      : 'Chinese-to-English transfer'
   const isShortPhrase = queryType === 'phrase'
   const wantUsage = !isCore || isEnabled('usageScenes')
 
@@ -84,9 +91,11 @@ export function buildPhrasePrompt({
     ? "If correctForm differs from input: explain why correctForm differs from input. When there are multiple changes (tense, collocation, typos, articles), MUST provide an itemized list using bullet points ('• original -> corrected: reason'). Skip trivial capitalization unless necessary. Omit if no change."
     : '如果 correctForm 与原文不同，说明改动原因。当有多处修改（如语法错误、介词误用、用词不当/搭配错误、拼写/大小写等）时，必须使用项目符号逐条列出（格式：• 原始词句 -> 修正词句：详细改动原因），仅在最重要或有影响时提及细节，禁止概括为模糊的单句抽象总结。无改动时省略。'
 
-  const unnaturalDesc = isMono
-    ? `{ "chineseThought": "how a Chinese-thinking learner would frame this", "nativeConcept": "how a native speaker actually conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking/writing" }`
-    : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
+  const unnaturalDesc = isVietnameseLearner
+    ? `{ "chineseThought": "cách diễn đạt bị ảnh hưởng bởi tiếng Việt (legacy field name)", "nativeConcept": "cách người bản ngữ tiếng Anh thực sự hình dung", "reusablePrinciple": "nguyên tắc có thể tái sử dụng" }`
+    : isMono
+      ? `{ "chineseThought": "the source-language or non-native framing (legacy field name; do not assume Chinese)", "nativeConcept": "how a native English speaker conceptualizes it", "reusablePrinciple": "a reusable principle for future speaking/writing" }`
+      : `{ "chineseThought": "中文母语者的直译/迁移思维", "nativeConcept": "英语母语者真实心智映射", "reusablePrinciple": "可复用到其他表达的原则" }`
 
   let schema = `{\n  "correctForm": "Minimal Fix version — fix actual grammar errors, preposition misuses, word misuses (incorrect word choice), and typos ONLY. Preserve user's original sentence structure and wording as much as possible.",\n  "correctionNote": "${correctionNoteDesc}",\n  "nativeForm": "${nativeFormDesc}",\n  "nativeRationale": "${nativeRationaleDesc}",\n  "unnaturalMindModel": ${unnaturalDesc},\n  "meaning": "${meaningDesc}"`
 
@@ -134,10 +143,14 @@ export function buildPhrasePrompt({
   const basePrompt = isCore
     ? (isMono
       ? `You are a native-speaker cognitive coach for English learners. Your job is NOT dictionary lookup — it is to remodel how learners THINK about an expression so they can use it the way natives do (mental picture, emotional stance, cultural fit, when/why to choose it).`
-      : `你是面向中文母语者的「母语者心智教练」。你的任务不是传统词典释义，而是帮助学习者用母语者的心智模式理解表达：脑中画面、情感立场、文化得体性，以及何时/为何选用这个说法。`)
+      : isVietnameseLearner
+        ? `You are a native-speaker cognitive coach for Vietnamese learners of English. Teach native English mental models, communicative intent, emotional stance, and cultural fit.`
+        : `你是面向中文母语者的「母语者心智教练」。你的任务不是传统词典释义，而是帮助学习者用母语者的心智模式理解表达：脑中画面、情感立场、文化得体性，以及何时/为何选用这个说法。`)
     : (isMono
       ? `You are a professional English language analyst for learners who prefer English-only monolingual explanations.`
-      : `You are a professional English language analyst for Chinese native speakers.`)
+      : isVietnameseLearner
+        ? `You are a professional English language analyst for Vietnamese native speakers.`
+        : `You are a professional English language analyst for Chinese native speakers.`)
   const multiLangPrompt = isCore
     ? `You are a cultural-cognitive coach for foreign expressions. Prioritize how natives conceptualize the phrase — social meaning, subculture nuance, and when it is the right choice.`
     : `You are a professional multi-language translator and cultural analyst. You specialize in "Cultural Interpretation" — explaining the social, historical, and subculture (especially ACG/Internet) context behind foreign expressions.`
@@ -193,12 +206,13 @@ The JSON must follow this exact schema:
 ${schema}
 
 Rules:
+${buildCultureAwareInputRule()}
 ${fieldOwnership}
 ${meaningCompletenessRule}
 - CRITICAL — correctForm integrity: Do NOT delete, shorten, summarize, or truncate any part of the input. If input is a long sentence or multi-sentence paragraph, correctForm must preserve ALL sentences and content — only fix actual errors word by word. correctForm is a proofread copy, NOT a rewrite or summary.
 - If the input has NO real errors, set correctForm exactly equal to the input (copy it verbatim). Only change what is genuinely wrong.
 - correctionNote: Only include when correctForm differs from the input. Classify the change as one of: (a) understandable but unnatural/not idiomatic, (b) understandable but can flow better, (c) actual grammar/collocation error, (d) no real error, minor polish only. Mention capitalization/punctuation ONLY if it changes meaning or is a serious mistake. Omit correctionNote entirely if correctForm == input.
-- unnaturalMindModel: When input sounds unnatural, un-idiomatic, or reflects Chinese-to-English translation mindset, fill unnaturalMindModel with detailed cognitive breakdown (chineseThought, nativeConcept, reusablePrinciple). Omit if input is already natural.
+- unnaturalMindModel: When input sounds unnatural, unidiomatic, or clearly reflects ${transferLabel}, fill unnaturalMindModel with a detailed cognitive breakdown. The legacy chineseThought field stores the learner/source-language framing; never assume a transfer source that the active dictionary does not support. Omit if input is already natural.
 ${isCore ? `- Do NOT invent nativeMindModel (legacy). Fill feelAnchor + emotionalTone instead.
 - Do NOT invent wordChoiceContrast.
 - PRIORITY order for Pure Core: feelAnchor/emotionalTone > unnaturalMindModel (if any)${wantUsage ? ' > usageIntro/usageScenes' : ''} > meaning (lexical gloss still required and accurate).
@@ -256,6 +270,7 @@ RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
   prompt += buildProfilePromptContext(
     queryType === 'sentence' ? 'full' : 'compact',
     learningRoute,
+    explanationLanguage,
   )
 
   return prompt

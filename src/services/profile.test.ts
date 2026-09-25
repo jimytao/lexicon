@@ -256,6 +256,43 @@ describe('recordSentenceCorrectionEvent — still immediate', () => {
     recordSentenceCorrectionEvent('Guten Morgen', 'Good morning', undefined, 'irrelevant')
     expect(getPendingEvents()).toHaveLength(0)
   })
+
+  it('does not turn an unchanged, natural OUT sentence into a correction event', async () => {
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordSentenceCorrectionEvent(
+      'This sentence is already natural.',
+      'This sentence is already natural.',
+      undefined,
+      'out',
+    )
+    await flushMicrotasks()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(getPendingEvents()).toHaveLength(0)
+  })
+
+  it('ignores formatting-only changes as correction evidence', async () => {
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordSentenceCorrectionEvent('this is fine', 'This is fine.', undefined, 'out')
+    await flushMicrotasks()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(getPendingEvents()).toHaveLength(0)
+  })
+
+  it('keeps grammar-significant apostrophe corrections as evidence', async () => {
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordSentenceCorrectionEvent('I dont know', "I don't know", undefined, 'out')
+    await flushMicrotasks()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('recordLookupEvent — accumulation path B', () => {
@@ -514,6 +551,26 @@ describe('buildProfilePromptContext', () => {
     expect(buildProfilePromptContext('compact', 'out')).toBe('')
   })
 
+  it('recomputes the lookup counter from events added during an in-flight diagnostic', async () => {
+    const { fetchMock, release } = mockDiagnosticDeferred()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordAiChatEvent('first', 'q1', 'a1', 'lookup')
+    const flush1 = flushPendingProfileDiagnostics('context_change')
+    await flushMicrotasks()
+
+    recordLookupEvent('later-one')
+    recordLookupEvent('later-two')
+    expect(getUnprocessedCount()).toBe(2)
+
+    release()
+    await flush1
+    await flushMicrotasks()
+
+    expect(getPendingEvents().filter((event) => event.type === 'lookup')).toHaveLength(2)
+    expect(getUnprocessedCount()).toBe(2)
+  })
+
   it('injects only the current IN or OUT evidence lane', () => {
     seedProfile([
       mkWeakness({ id: 'input-gap', description: 'INPUT_ONLY', learningDirection: 'in', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
@@ -527,6 +584,18 @@ describe('buildProfilePromptContext', () => {
     expect(inputContext).not.toContain('OUTPUT_ONLY')
     expect(outputContext).toContain('OUTPUT_ONLY')
     expect(outputContext).not.toContain('INPUT_ONLY')
+  })
+
+  it('injects only profile evidence owned by the active dictionary language', () => {
+    seedProfile([
+      mkWeakness({ id: 'zh-gap', description: 'ZH_ONLY', learningDirection: 'in', learnerLanguage: 'zh', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
+      mkWeakness({ id: 'vi-gap', description: 'VI_ONLY', learningDirection: 'in', learnerLanguage: 'vi', confidence: 0.1, lastExposedAt: isoDaysAgo(0) }),
+    ])
+
+    expect(buildProfilePromptContext('compact', 'in', 'zh')).toContain('ZH_ONLY')
+    expect(buildProfilePromptContext('compact', 'in', 'zh')).not.toContain('VI_ONLY')
+    expect(buildProfilePromptContext('compact', 'in', 'vi')).toContain('VI_ONLY')
+    expect(buildProfilePromptContext('compact', 'in', 'vi')).not.toContain('ZH_ONLY')
   })
 
   it('quarantines legacy weaknesses without a learning direction', () => {
@@ -607,5 +676,109 @@ describe('buildProfilePromptContext', () => {
   it('requires an attributable lane before returning profile evidence', () => {
     seedProfile([mkWeakness({ id: 'a', description: 'AA gap', learningDirection: 'in', confidence: 0.2, lastExposedAt: isoDaysAgo(0) })])
     expect(buildProfilePromptContext('compact', 'irrelevant')).toBe('')
+  })
+
+  it('compact: carries at most two recent focus areas as soft example guidance', () => {
+    seedProfile([], {
+      recentExplorationFocus: [
+        { category: 'emotion_language', searchedItems: ['upset'], learningDirection: 'in' },
+        { category: 'workplace_tone', searchedItems: ['decline'], learningDirection: 'in' },
+        { category: 'travel', searchedItems: ['boarding'], learningDirection: 'in' },
+      ],
+    })
+    const out = buildProfilePromptContext('compact', 'in')
+    expect(out).toContain('emotion_language')
+    expect(out).toContain('workplace_tone')
+    expect(out).not.toContain('travel')
+    expect(out.toLowerCase()).toMatch(/only if|clearly relevant|never replace/)
+  })
+
+  it('full: excludes mastered weaknesses from live sentence personalization', () => {
+    seedProfile([
+      mkWeakness({ id: 'active', description: 'ACTIVE_GAP', status: 'learning' }),
+      mkWeakness({ id: 'done', description: 'MASTERED_GAP', status: 'mastered' }),
+    ])
+    const out = buildProfilePromptContext('full', 'in')
+    expect(out).toContain('ACTIVE_GAP')
+    expect(out).not.toContain('MASTERED_GAP')
+  })
+
+  it('full: caps active weakness injection to the six highest-priority items', () => {
+    seedProfile(Array.from({ length: 8 }, (_, index) => mkWeakness({
+      id: `full-${index}`,
+      description: `FULLMARK_${index}`,
+      confidence: index / 10,
+      lastExposedAt: isoDaysAgo(0),
+    })))
+    const out = buildProfilePromptContext('full', 'in')
+    expect([...out.matchAll(/FULLMARK_/g)]).toHaveLength(6)
+    expect(out).not.toContain('FULLMARK_7')
+  })
+})
+
+describe('profile diagnostic learner-language policy', () => {
+  it('uses Vietnamese identity and output language for the English-Vietnamese dictionary', async () => {
+    useSettingsStore.setState({
+      mainDictionary: 'en-vi',
+      monolingualWord: false,
+      monolingualPhrase: false,
+      monolingualSentence: false,
+    })
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordAiChatEvent('Tôi muốn nói điều này', 'Cách nói nào tự nhiên?', 'Try this expression.', 'lookup', 'out')
+    await flushPendingProfileDiagnostics('manual')
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const request = JSON.parse(String(init.body))
+    const system = request.messages.find((message: { role: string }) => message.role === 'system').content as string
+    expect(system).toContain('Vietnamese native speakers')
+    expect(system).toContain('Vietnamese-to-English')
+    expect(system).not.toContain('Chinese-to-English')
+  })
+
+  it('uses an English-native identity and no transfer assumption for English-English', async () => {
+    useSettingsStore.setState({ mainDictionary: 'en-en' })
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordAiChatEvent('register', 'Is this too formal?', 'It is formal.', 'lookup', 'in')
+    await flushPendingProfileDiagnostics('manual')
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const request = JSON.parse(String(init.body))
+    const system = request.messages.find((message: { role: string }) => message.role === 'system').content as string
+    expect(system).toContain('English-English mode')
+    expect(system).toContain('without assuming second-language transfer')
+    expect(system).not.toContain('Chinese-to-English')
+  })
+
+  it('preserves another dictionary language lane without exposing it to this diagnostic', async () => {
+    seedProfile([
+      mkWeakness({ id: 'zh-existing', description: 'ZH_PRIVATE_LANE', learnerLanguage: 'zh', learningDirection: 'out' }),
+      mkWeakness({ id: 'vi-existing', description: 'VI_ACTIVE_LANE', learnerLanguage: 'vi', learningDirection: 'out' }),
+    ])
+    useSettingsStore.setState({
+      mainDictionary: 'en-vi',
+      monolingualWord: false,
+      monolingualPhrase: false,
+      monolingualSentence: false,
+    })
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    recordAiChatEvent('Tôi muốn nói điều này', 'Cách nói nào tự nhiên?', 'Try this expression.', 'lookup', 'out')
+    await flushPendingProfileDiagnostics('manual')
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const request = JSON.parse(String(init.body))
+    const userPrompt = request.messages.find((message: { role: string }) => message.role === 'user').content as string
+    expect(userPrompt).toContain('VI_ACTIVE_LANE')
+    expect(userPrompt).not.toContain('ZH_PRIVATE_LANE')
+    expect(getProfile().weaknessPatterns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'zh-existing', learnerLanguage: 'zh' }),
+      expect.objectContaining({ id: 'w1', learnerLanguage: 'vi' }),
+    ]))
   })
 })
