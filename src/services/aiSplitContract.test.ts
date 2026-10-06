@@ -2,7 +2,7 @@
  * v0.9.15 contracts the split architecture depends on:
  *  - monolingual means "answer in English whatever I type", so it is NOT gated
  *    on the input language (prompt side AND UI side must agree);
- *  - with monolingual off, foreign input must be explained in Chinese;
+ *  - with monolingual off, foreign input is explained in the learner's native language;
  *  - the stage-1 anchor is carried into both halves so they cannot diverge.
  */
 import { describe, expect, it } from 'vitest'
@@ -21,8 +21,9 @@ const baseModules = [
 ]
 
 describe('monolingual is language-independent', () => {
-  it('getIsMono no longer bails out on non-English input', () => {
-    const fn = aiSrc.slice(aiSrc.indexOf('function getIsMono'), aiSrc.indexOf('function getSystemPrompt'))
+  it('the per-query language helper does not bail out on non-English input', () => {
+    const fn = aiSrc.slice(aiSrc.indexOf('function getLanguageSpec'), aiSrc.indexOf('export interface MeaningsAnchor'))
+    expect(fn).toContain('resolveNativeLanguage(query, config)')
     expect(fn).not.toContain("if (lang !== 'en') return false")
   })
 
@@ -36,25 +37,28 @@ describe('monolingual is language-independent', () => {
   })
 })
 
-describe('non-monolingual foreign input is explained in Chinese', () => {
+describe('non-monolingual foreign input is explained in the native language', () => {
   it('word prompt states it explicitly rather than leaving it to roleIntro', () => {
-    expect(aiSrc).toMatch(/MUST be written in Chinese/)
+    expect(aiSrc).toMatch(/buildInputDirectionRule\(spec, lang\)/)
+    expect(aiSrc).toMatch(/buildNativeLanguageContract\(spec\)/)
   })
 
-  it('phrase prompt adds the rule for ja input', () => {
-    const prompt = buildPhrasePrompt({ modules: baseModules, lang: 'ja', isMono: false })
+  it('phrase prompt translates and explains ja input in Chinese for the zh lane', () => {
+    const prompt = buildPhrasePrompt({ modules: baseModules, lang: 'ja', explanationLanguage: 'zh' })
+    expect(prompt).toMatch(/Input in another language: translate it into Chinese/)
     expect(prompt).toMatch(/MUST be written in Chinese/)
   })
 
-  it('phrase prompt omits the rule for en and zh input', () => {
+  it('phrase prompt always carries the language contract, for en and zh input too', () => {
     for (const lang of ['en', 'zh']) {
-      const prompt = buildPhrasePrompt({ modules: baseModules, lang, isMono: false })
-      expect(prompt).not.toMatch(/MUST be written in Chinese/)
+      const prompt = buildPhrasePrompt({ modules: baseModules, lang, explanationLanguage: 'zh' })
+      expect(prompt).toMatch(/LEARNER LANGUAGE CONTRACT/)
+      expect(prompt).not.toMatch(/Input in another language/)
     }
   })
 
-  it('monolingual wins over the foreign-input rule', () => {
-    const prompt = buildPhrasePrompt({ modules: baseModules, lang: 'ja', isMono: true })
+  it('monolingual (resolved as en) wins over the foreign-input rule', () => {
+    const prompt = buildPhrasePrompt({ modules: baseModules, lang: 'ja', explanationLanguage: 'en' })
     expect(prompt).toMatch(/ALL output text must be in English only/)
     expect(prompt).not.toMatch(/MUST be written in Chinese/)
   })

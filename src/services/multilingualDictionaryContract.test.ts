@@ -189,8 +189,8 @@ describe('Vietnamese prompt direction', () => {
       coreModules: CORE_MODULES,
       lang: 'vi',
       queryType: 'sentence',
-      explanationLanguage: 'vi',
-      isMono: true,
+      // The resolver folds monolingual into the language itself (vi + mono => en).
+      explanationLanguage: 'en',
     } as never)
 
     expect(prompt).toMatch(/ALL output text must be in English only/i)

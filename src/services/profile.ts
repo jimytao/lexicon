@@ -11,7 +11,8 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { detectLanguage, useSearchStore } from '../stores/searchStore'
 import { DEFAULT_CONFIDENCE, hotWeaknesses, sortActiveByHeat } from '../utils/profileHeat'
 import { resolveLearningRoute } from '../utils/learningDirection'
-import { resolveLearnerLanguagePolicy, type LearnerLanguagePolicy } from './dictionaryContext'
+import { learnerLanguagePolicyFor, resolveLearnerLanguagePolicy, type LearnerLanguagePolicy } from './dictionaryContext'
+import { buildNativeLanguageContract, getNativeLanguage } from './nativeLanguage'
 
 export interface DiagnosticEvent {
   /** Stable id for success-only dequeue */
@@ -395,11 +396,8 @@ async function runDiagnosticAi(
   const latestContext = latestEvent?.wordOrContext ?? ''
   const fallbackPolicy = resolveLearnerLanguagePolicy(latestContext, settings)
   const targetLanguage = latestEvent?.learnerLanguage ?? fallbackPolicy.profileLanguage
-  const languagePolicy: LearnerLanguagePolicy = targetLanguage === 'vi'
-    ? { nativeLanguage: 'vi', supportLanguage: 'vi', profileLanguage: 'vi', dictionaryTarget: 'envi', isMonolingual: false }
-    : targetLanguage === 'en'
-      ? { nativeLanguage: 'en', supportLanguage: null, profileLanguage: 'en', dictionaryTarget: 'enen', isMonolingual: true }
-      : { nativeLanguage: 'zh', supportLanguage: 'zh', profileLanguage: 'zh', dictionaryTarget: 'enzh', isMonolingual: false }
+  const languagePolicy: LearnerLanguagePolicy = learnerLanguagePolicyFor(targetLanguage)
+  const spec = getNativeLanguage(languagePolicy.nativeLanguage)
 
   // Pre-language profiles came from the original English-Chinese implementation.
   // Keep that compatibility only in the zh lane; never leak it into vi/en prompts.
@@ -457,26 +455,16 @@ ${
 Instruction: Execute an "Intelligent Upsert (智能增删改)" on the baseline profile using the above incremental learner events. Return ONLY the complete updated UserLanguageProfile JSON object according to the schema.
 `
 
-  const langRule = languagePolicy.profileLanguage === 'vi'
-    ? 'Output language: Write all weakness descriptions, focus categories, and recommendation reasons in Vietnamese.'
-    : languagePolicy.profileLanguage === 'zh'
-      ? 'Output language: Write all weakness descriptions, focus categories, and recommendation reasons in Chinese.'
-      : 'Output language: Write all weakness descriptions, focus categories, and recommendation reasons in clear English.'
-  const audienceScope = languagePolicy.nativeLanguage === 'vi'
-    ? 'Lexicon is an English learning tool for Vietnamese native speakers. Analyze English learning patterns and Vietnamese-to-English transfer only.'
-    : languagePolicy.nativeLanguage === 'zh'
-      ? 'Lexicon is an English learning tool for Chinese native speakers. Analyze English learning patterns and Chinese-to-English transfer only.'
-      : 'Lexicon is operating in English-English mode for a native or monolingual English user. Analyze English vocabulary, usage, register, clarity, and expression patterns without assuming second-language transfer.'
-  const transferErrorRule = languagePolicy.nativeLanguage === 'vi'
-    ? 'Vietnamese-to-English transfer errors'
-    : languagePolicy.nativeLanguage === 'zh'
-      ? 'Chinese-to-English transfer errors'
-      : 'English usage, register, or expression gaps'
-  const supportLanguageRule = languagePolicy.supportLanguage === 'vi'
-    ? 'OUT searches written in Vietnamese are expression needs, not English grammar errors. Put them in recent exploration focus or recommendations; never invent an English error from them.'
-    : languagePolicy.supportLanguage === 'zh'
-      ? 'OUT searches written in Chinese are expression needs, not English grammar errors. Put them in recent exploration focus or recommendations; never invent an English error from them.'
-      : 'English-English mode has no non-English support language. Ignore non-English events completely and never infer a translation-transfer error.'
+  const langRule = `Output language: Write all weakness descriptions, focus categories, and recommendation reasons in ${spec.isEnglish ? 'clear English' : spec.name}.`
+  const audienceScope = spec.isEnglish
+    ? 'Lexicon is operating in English-English mode for a native or monolingual English user. Analyze English vocabulary, usage, register, clarity, and expression patterns without assuming second-language transfer.'
+    : `Lexicon is an English learning tool for ${spec.audience}. Analyze English learning patterns and ${spec.transferLabel} only.`
+  const transferErrorRule = spec.isEnglish
+    ? 'English usage, register, or expression gaps'
+    : `${spec.transferLabel} errors`
+  const supportLanguageRule = spec.supportLanguage
+    ? `OUT searches written in ${getNativeLanguage(spec.supportLanguage).name} are expression needs, not English grammar errors. Put them in recent exploration focus or recommendations; never invent an English error from them.`
+    : 'English-English mode has no non-English support language. Ignore non-English events completely and never infer a translation-transfer error.'
 
   const systemPrompt = `You are an expert cognitive linguistics AI profile analyzer designed for high-context models (e.g. Gemini 2.0 Flash / Flash Lite).
 Your task is to perform an "Intelligent Upsert (智能增删改)" on the baseline user language profile using rich incremental events.
@@ -553,7 +541,7 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
       temperature: 0.3,
       max_tokens: 3000,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: systemPrompt + buildNativeLanguageContract(spec) },
         { role: 'user', content: userPrompt },
       ],
     }),

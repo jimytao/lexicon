@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { getNativeLanguage } from './nativeLanguage'
 import {
   buildCultureAwareInputRule,
   buildNativeSceneDescription,
@@ -6,18 +7,23 @@ import {
 } from './aiPromptGuidance'
 
 describe('native scene prompt guidance', () => {
-  it('keeps bilingual scene descriptions in Chinese and resists forced positivity', () => {
-    const description = buildNativeSceneDescription(false)
-    const rules = buildNativeSceneRules(false)
+  it('asks for scenes in the learner language and resists forced positivity', () => {
+    for (const code of ['zh', 'vi'] as const) {
+      const spec = getNativeLanguage(code)
+      const description = buildNativeSceneDescription(spec)
+      const rules = buildNativeSceneRules(spec)
 
-    expect(description).toMatch(/褒义、贬义、中性/)
-    expect(description).toMatch(/画面感/)
-    expect(rules).toMatch(/不得把克制、匮乏或算计包装成积极品质/)
-    expect(rules).toMatch(/场景是骨架/)
+      expect(description).toContain(`2-4 sentences in ${spec.name}`)
+      expect(description).toMatch(/positive, negative, neutral, or mixed/)
+      expect(rules).toContain(`(written in ${spec.name})`)
+      expect(rules).toMatch(/Never turn restraint, deprivation, or self-denial into praise/)
+      expect(rules).toMatch(/The scene IS the main body/)
+    }
   })
 
   it('keeps monolingual guidance entirely in English', () => {
-    const guidance = `${buildNativeSceneDescription(true)}\n${buildNativeSceneRules(true)}`
+    const en = getNativeLanguage('en')
+    const guidance = `${buildNativeSceneDescription(en)}\n${buildNativeSceneRules(en)}`
 
     expect(guidance).toContain('NATIVE SCENE CONTRACT')
     expect(guidance).toMatch(/lexical tendency from context-only reading/i)

@@ -107,16 +107,16 @@ describe('buildCombinedWordPrompt — schema structure', () => {
       coreModules: CORE_MODULES,
       lang: 'en',
     })
-    expect(bilingualPrompt).toContain('场景为主·语感收尾')
-    expect(bilingualPrompt).toMatch(/褒义、贬义、中性/)
-    expect(bilingualPrompt).toMatch(/动机或代价/)
-    expect(bilingualPrompt).toMatch(/不要硬造/)
+    expect(bilingualPrompt).toContain('NATIVE SCENE CONTRACT for every scene.description (written in Chinese)')
+    expect(bilingualPrompt).toMatch(/usual valence.*speaker stance/i)
+    expect(bilingualPrompt).toMatch(/motive, cost, trade-off/)
+    expect(bilingualPrompt).toMatch(/Do not manufacture a contrast/i)
 
     const monolingualPrompt = buildCombinedWordPrompt({
       lookupModules: LOOKUP_MODULES,
       coreModules: CORE_MODULES,
       lang: 'en',
-      monolingualWord: true,
+      explanationLanguage: 'en',
     })
     expect(monolingualPrompt).toContain('NATIVE SCENE CONTRACT')
     expect(monolingualPrompt).toMatch(/usual valence.*speaker stance/i)
@@ -210,12 +210,12 @@ describe('buildCombinedPhrasePrompt — schema structure', () => {
     expect(prompt).toMatch(/minimal fix|Minimal Fix|保持句子结构/i)
   })
 
-  it('Monolingual Mode (isMono) — requires English-only explanations', () => {
+  it('Monolingual Mode (resolved as en) — requires English-only explanations', () => {
     const prompt = buildCombinedPhrasePrompt({
       lookupModules: LOOKUP_MODULES,
       coreModules: CORE_PHRASE_MODULES,
       lang: 'en',
-      isMono: true,
+      explanationLanguage: 'en',
       queryType: 'sentence',
     })
     expect(prompt).toMatch(/ALL output text must be in English only/i)

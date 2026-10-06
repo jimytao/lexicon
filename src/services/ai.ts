@@ -12,8 +12,17 @@ import {
 import {
   resolveDictionaryContext,
   resolveLearnerLanguagePolicy,
+  resolveNativeLanguage,
   type MainDictionary,
 } from './dictionaryContext'
+import {
+  buildInputDirectionRule,
+  buildNativeLanguageContract,
+  exampleGlossDesc,
+  getNativeLanguage,
+  type ExplanationLanguage,
+  type NativeLanguageSpec,
+} from './nativeLanguage'
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
@@ -151,11 +160,12 @@ function modulesForPhraseCognitive(config: AiConfig, cognitive: 'lookup' | 'core
 }
 
 /**
- * Monolingual mode = "whatever I type, answer me in English", so it is NOT gated
- * on the input language. Only the query TYPE picks which of the three toggles applies.
+ * The learner's native language for this query (monolingual switch > main dictionary).
+ * Monolingual mode = "whatever I type, answer me in English", so it is NOT gated on the
+ * input language. Every prompt below writes explanations in `spec.name`.
  */
-function getIsMono(query: string, config: AiConfig): boolean {
-  return resolveDictionaryContext(query, config).isMonolingual
+function getLanguageSpec(query: string, config: AiConfig): NativeLanguageSpec {
+  return resolveNativeLanguage(query, config)
 }
 
 /**
@@ -170,11 +180,13 @@ export interface MeaningsAnchor {
   senses: Array<{ pos?: string; zh: string; en?: string; senseIndex: number }>
 }
 
-const ZH_CORE_CONCEPT_MAP_RULE = `\n- ZH-EN CONCEPT MAP MODE: The user typed Chinese and wants to feel how English carves up this concept. Do NOT silently pick one English word and explain only that one.
+function buildZhCoreConceptMapRule(spec: NativeLanguageSpec): string {
+  return `\n- ZH-EN CONCEPT MAP MODE: The user typed Chinese and wants to feel how English carves up this concept. Do NOT silently pick one English word and explain only that one.
 - coreConcept: describe how English splits this Chinese concept into distinct senses, and what separates them.
 - synonyms: MUST list the 3-5 competing English candidates; each whenToUse states the exact situation a native reaches for it over the others.
 - wordChoiceContrast: contrast the candidates head to head (feel, register, who says it, what it implies).
-- meanings: the candidate English words, each with the Chinese nuance note that separates it from its neighbours.`
+- meanings: the candidate English words, each with a ${spec.name} nuance note that separates it from its neighbours.`
+}
 
 /**
  * Render the stage-1 anchor into a prompt block. Lookup must reproduce the senses
@@ -203,47 +215,36 @@ function buildAnchorBlock(anchor: MeaningsAnchor | undefined, isCore: boolean): 
 function getSystemPrompt(
   modules: Array<{ id: string; enabled: boolean }>,
   includeExamples: boolean = false,
-  monolingualWord: boolean = false
+  spec: NativeLanguageSpec = getNativeLanguage('zh'),
 ): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
+  const L = spec.name
 
   const includeSemantic = isEnabled('dictionary')
   const includeExampleSchema = includeExamples && isEnabled('examples')
 
-  const meaningsZhDescription = monolingualWord 
-    ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'"
-    : "（情景前缀）中文释义"
-  const sceneLabel = monolingualWord ? "2-4 word English context tag" : "2-4字的情景标签"
-  const sceneDesc = buildNativeSceneDescription(monolingualWord)
-  const partMeaning = monolingualWord ? "meaning in English" : "中文含义（来源语言）"
-  const anchorNote = monolingualWord 
-    ? "1 sentence in English: how this anchor word embodies the root meaning, helping association"
-    : "1句话中文：此锚点词如何体现词根含义，帮助联想记忆"
-  const storyDesc = monolingualWord ? "in English" : "1-2句话，说明字面意义如何演变成现在的含义"
-  const derivedMeaning = monolingualWord ? "meaning in English" : "中文含义"
-  const synonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的情感色彩、使用场景或强度差异"
-  const antonymDistinction = monolingualWord ? "English nuance explanation" : "1句话，说明与主词的对比含义、使用场景或词义强弱差异"
+  const meaningsZhDescription = `${L} meaning with a short context prefix, e.g. '(of a goal) a feeling of satisfaction' (written in ${L})`
+  const sceneLabel = `short ${L} context tag (2-4 words)`
+  const sceneDesc = buildNativeSceneDescription(spec)
 
-  let schema = `{\n  "meanings": [\n    {\n      "senseIndex": 1,\n      "zh": "${meaningsZhDescription}",\n      "pos": "该义项对应的词性 (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词或名词短语描述（3-6个英文单词，如 'person running business in office'）"` : ''}\n    }\n  ]`
+  let schema = `{\n  "meanings": [\n    {\n      "senseIndex": 1,\n      "zh": "${meaningsZhDescription}",\n      "pos": "part of speech for this sense (noun/verb/adj/adv/phrase)"${includeSemantic ? `,\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "a concrete English noun phrase for image search (3-6 English words, e.g. 'person running business in office')"` : ''}\n    }\n  ]`
 
   if (isEnabled('coreConcept')) {
-    schema += `,\n  "coreConcept": {\n    "image": "${monolingualWord ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${monolingualWord ? '1 short sentence unifying main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
+    schema += `,\n  "coreConcept": {\n    "image": "1 short sentence in ${L}: vivid core image for memory",\n    "explanation": "1 short sentence in ${L} unifying the main senses for memory (light)"\n  }`
   }
-  
+
   if (isEnabled('etymology')) {
-    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "词根或词缀（对应原词中的实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始拉丁/希腊语形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词，e.g. select",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [\n      { "word": "派生词", "pos": "n./v./adj./adv.", "meaning": "${derivedMeaning}" }\n    ]\n  }`
+    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "root or affix (the actual letter segment in the word)",\n        "meaning": "meaning in ${L}",\n        "sourceForm": "(roots only) original Latin/Greek form, e.g. legere",\n        "anchor": "(roots only) a simple common word sharing this root, e.g. select",\n        "anchorNote": "(roots only) 1 sentence in ${L}: how this anchor word embodies the root meaning, helping association"\n      }\n    ],\n    "story": "1-2 sentences in ${L}: how the literal sense evolved into today's meaning",\n    "derivedWords": [\n      { "word": "derived word", "pos": "n./v./adj./adv.", "meaning": "meaning in ${L}" }\n    ]\n  }`
   }
-  
+
   if (isEnabled('synonyms')) {
-    schema += `,\n  "synonyms": [\n    {\n      "word": "近义词",\n      "distinction": "${synonymDistinction}"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "反义词",\n      "distinction": "${antonymDistinction}"\n    }\n  ]`
+    schema += `,\n  "synonyms": [\n    {\n      "word": "synonym",\n      "distinction": "1 sentence in ${L}: difference from the headword in emotional coloring, usage scene or intensity"\n    }\n  ],\n  "antonyms": [\n    {\n      "word": "antonym",\n      "distinction": "1 sentence in ${L}: contrast with the headword in meaning, usage scene or strength"\n    }\n  ]`
   }
 
   const wantChunks = isEnabled('chunks')
   const wantCollocations = isEnabled('collocations')
   if (wantChunks || wantCollocations) {
-    const collocationsNote = monolingualWord
-      ? "REQUIRED: clear English meaning of this phrase (what it means), not just 'common phrase'"
-      : "必填：用中文清楚解释这个词组是什么意思（释义），禁止只写「常用」或空话"
+    const collocationsNote = `REQUIRED: clear ${L} meaning of this phrase (what it means), not just 'common phrase'`
     const chunksPart = wantChunks
       ? `"chunks": [\n      { "chunk": "Common PREPOSITIONAL phrase (prep+N, V+prep(+N), phrasal with prep)", "note": "${collocationsNote}" }\n    ]`
       : `"chunks": []`
@@ -254,26 +255,18 @@ function getSystemPrompt(
   }
 
   if (includeExampleSchema) {
-    const exampleZh = monolingualWord ? "English meaning / explanation" : "中文翻译"
-    schema += `,\n  "examples": [\n    { "en": "Example sentence using this word", "zh": "${exampleZh}" }\n  ]`
+    schema += `,\n  "examples": [\n    { "en": "Example sentence using this word", "zh": "${exampleGlossDesc(spec)}" }\n  ]`
   }
 
   if (isEnabled('culture')) {
-    const cultureContent = monolingualWord
-      ? "1-2 sentences in English: the word's cultural origin, register (formal/informal/slang/technical), or notable usage shift"
-      : "1-2句中文：词的文化来源、语域（正式/口语/俚语/专业）或值得注意的用法演变"
-    schema += `,\n  "culturalLore": {\n    "title": "${monolingualWord ? '2-4 word English tag (e.g. Gen-Z Slang, Legal Jargon)' : '2-4字标签（如 网络用语、医学术语）'}",\n    "content": "${cultureContent}",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+    schema += `,\n  "culturalLore": {\n    "title": "short ${L} tag (2-4 words, e.g. Gen-Z Slang, Legal Jargon)",\n    "content": "1-2 sentences in ${L}: the word's cultural origin, register (formal/informal/slang/technical), or notable usage shift",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
   }
-  
+
   schema += `\n}`
 
-  const roleDescription = monolingualWord
-    ? "You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations."
-    : "You are a professional English vocabulary analyst for Chinese native speakers."
+  let prompt = `You are a professional English vocabulary analyst for ${spec.audience}.
 
-  let prompt = `${roleDescription}
-
-Given an English word and its basic Chinese translation, analyze the word deeply.
+Given an English word and its basic dictionary translation, analyze the word deeply.
 
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
@@ -283,10 +276,10 @@ ${schema}
 Rules:
 - meanings array length must match the number of meanings provided in the user message
 - MUST set senseIndex (1 for [Sense 1], 2 for [Sense 2], etc.). Output meanings matching the exact input sense order.
-${includeSemantic ? `${monolingualWord ? '- scene is REQUIRED for EVERY meaning — never omit it.' : '- scene是每个义项的必填字段，一个都不能省略。'}
-${buildNativeSceneRules(monolingualWord)}` : ''}
+${includeSemantic ? `- scene is REQUIRED for EVERY meaning — never omit it.
+${buildNativeSceneRules(spec)}` : ''}
 ${isEnabled('etymology') ? `- etymology.parts must cover ALL meaningful morphemes (prefix + root + suffix)
-- For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 ${monolingualWord ? 'English' : 'Chinese'} sentence: how the anchor word embodies the root meaning)
+- For each ROOT morpheme: fill sourceForm (original Latin/Greek root form, e.g. "legere"), anchor (a common word the learner likely knows sharing this root, e.g. "select" for -lect-), anchorNote (1 ${L} sentence: how the anchor word embodies the root meaning)
 - For pure prefixes/suffixes (e.g. in-, -tion, -ual): omit sourceForm, anchor, anchorNote
 - etymology.story: 1-2 sentences max
 - etymology.derivedWords: list 3-6 words derived from this word (different POS forms, prefixed variants)` : ''}
@@ -296,39 +289,41 @@ ${isEnabled('synonyms') ? `- synonyms: provide 3-5 words, ordered from closest t
 - antonyms distinction: 1 sentence each` : ''}
 ${wantChunks ? `- collocations.chunks: 4-6 COMMON PREPOSITIONAL phrases only (prep+N, V+prep(+N)). Explain the preposition's role in the note.` : ''}
 ${wantCollocations ? `- collocations.collocations: 4-6 OTHER common phrases (adj+N, V+N, etc). Do NOT put prepositional phrases here.` : ''}
-${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY item MUST include a clear meaning in ${monolingualWord ? 'English' : 'Chinese'}. Never use "N/A", "常用", or empty notes.` : ''}
+${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY item MUST include a clear meaning in ${L}. Never use "N/A", "common", or empty notes.` : ''}
 ${includeExampleSchema ? `- examples: provide 3-5 natural, common, learner-friendly sentences` : ''}
 - If the word has only one meaning, meanings array has one item
 - Keep the entire response concise and compact
 - Never output anything outside the JSON object`
 
-  if (monolingualWord) {
-    prompt += `\n- ALL output text must be in English only. No Chinese characters anywhere.`
-  }
   if (isEnabled('culture')) {
     prompt += `\n- culturalLore.register must be exactly one of: formal, informal, slang, technical, neutral\n- culturalLore.content: focus on what makes this word culturally interesting — register, origin, or shift in usage. Do NOT repeat etymology.`
   }
 
-  return prompt
+  return prompt + buildNativeLanguageContract(spec)
 }
 
-const EXERCISES_SYSTEM_PROMPT = `You are a language practice exercise designer for Chinese learners.
+function getExercisesSystemPrompt(spec: NativeLanguageSpec): string {
+  const L = spec.name
+  return `You are a language practice exercise designer for ${spec.audience}.
 
-Given a word/phrase in a specific language and its meanings, generate practice scenarios.
+Given a word/phrase and its meanings, generate practice scenarios.
 
 Return ONLY a valid JSON array. No markdown. No explanation.
 
 [
-  { "scenario": "中文场景描述，具体的日常情境，让学习者用目标词造句" }
+  { "scenario": "Scenario description in ${L}: a concrete everyday context in which the learner writes a sentence using the target word/phrase." }
 ]
 
 Rules:
-- The "scenario" field MUST ALWAYS be written in Chinese (中文), regardless of the target word's language.
+- The "scenario" field MUST ALWAYS be written in ${L}, regardless of the target word's language.
 - The learner should be expected to use the target word/phrase (in its original language) in their response.
 - Prioritize the most COMMON and PRACTICAL meanings/usages.
-- Never output anything outside the JSON array`
+- Never output anything outside the JSON array.${buildNativeLanguageContract(spec)}`
+}
 
-const EVAL_SYSTEM_PROMPT = `You are a language writing coach for Chinese learners.
+function getEvalSystemPrompt(spec: NativeLanguageSpec): string {
+  const L = spec.name
+  return `You are a language writing coach for ${spec.audience}.
 
 Evaluate whether the student's sentence correctly uses the given word/phrase in the given scenario.
 
@@ -336,20 +331,26 @@ Return ONLY a valid JSON object. No markdown. No explanation.
 
 {
   "correct": true or false,
-  "feedback": "具体错误说明（中文），correct 为 true 时输出空字符串",
-  "correction": "纠正后的句子，correct 为 true 时输出空字符串"
+  "feedback": "Specific feedback in ${L}. If correct is true, output an empty string.",
+  "correction": "The corrected sentence. If correct is true, output an empty string."
 }
 
 Rules:
 - Mark correct ONLY if BOTH the meaning AND grammar are right.
 - Grammar errors in the target language must be marked incorrect.
-- feedback must be in Chinese, explain the specific rule that was violated.
+- feedback must be in ${L}, explaining the specific rule or usage nuance that was violated.
 - correction must be a natural, corrected version of the student's sentence.
-- Never output anything outside the JSON object.`
+- Never output anything outside the JSON object.${buildNativeLanguageContract(spec)}`
+}
 
-function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>, includeExamples: boolean = false, monolingualWord: boolean = false): string {
+/** Dictionary meanings line: the legacy `zh` field holds the active native language. */
+function formatSenseLine(m: { zh: string; en: string }, spec: NativeLanguageSpec): string {
+  return spec.isEnglish ? `EN: ${m.en || m.zh}` : `${spec.code.toUpperCase()}: ${m.zh} | EN: ${m.en}`
+}
+
+function buildUserPrompt(word: string, meanings: Array<{ zh: string; en: string }>, includeExamples: boolean = false, spec: NativeLanguageSpec = getNativeLanguage('zh')): string {
   const meaningsText = meanings
-    .map((m, i) => monolingualWord ? `[Sense ${i + 1}] EN: ${m.en}` : `[Sense ${i + 1}] ZH: ${m.zh} | EN: ${m.en}`)
+    .map((m, i) => `[Sense ${i + 1}] ${formatSenseLine(m, spec)}`)
     .join('\n')
 
   return `Word: ${word}\n\nMeanings from dictionary:\n${meaningsText}${includeExamples ? '\n\nThe dictionary has no example sentences for this word. Generate examples in the JSON.' : ''}\n\nAnalyze this word and return the JSON.`
@@ -366,8 +367,8 @@ export async function analyzeWord(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const isMono = getIsMono(word, config)
-  const userPrompt = buildUserPrompt(word, meanings, includeExamples, isMono)
+  const spec = getLanguageSpec(word, config)
+  const userPrompt = buildUserPrompt(word, meanings, includeExamples, spec)
   const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
@@ -382,7 +383,7 @@ export async function analyzeWord(
         model: config.model,
         temperature: 0.3,
         messages: [
-          { role: 'system', content: getSystemPrompt(config.modules, includeExamples, isMono) },
+          { role: 'system', content: getSystemPrompt(config.modules, includeExamples, spec) },
           { role: 'user', content: userPrompt },
         ],
       }),
@@ -660,53 +661,6 @@ export async function searchWebImage(query: string, signal?: AbortSignal): Promi
   }
 }
 
-function getExercisesSystemPrompt(isMono: boolean): string {
-  if (isMono) {
-    return `You are a language practice exercise designer for English learners.
-
-Given a word/phrase and its meanings, generate practice scenarios.
-
-Return ONLY a valid JSON array. No markdown. No explanation.
-
-[
-  { "scenario": "Scenario description in simple English, creating a concrete everyday context for the learner to write a sentence using the target word/phrase." }
-]
-
-Rules:
-- The scenario MUST be written entirely in simple, learner-friendly English (CEFR B1-B2 level).
-- The learner should be expected to use the target word/phrase in their response.
-- Prioritize the most COMMON and PRACTICAL meanings/usages.
-- Never output anything outside the JSON array.`
-  }
-
-  return EXERCISES_SYSTEM_PROMPT
-}
-
-function getEvalSystemPrompt(isMono: boolean): string {
-  if (isMono) {
-    return `You are a language writing coach for English learners.
-
-Evaluate whether the student's sentence correctly uses the given word/phrase in the given scenario.
-
-Return ONLY a valid JSON object. No markdown. No explanation.
-
-{
-  "correct": true or false,
-  "feedback": "Specific feedback/explanation in English. If correct is true, output an empty string.",
-  "correction": "The corrected sentence. If correct is true, output an empty string."
-}
-
-Rules:
-- Mark correct ONLY if BOTH the meaning AND grammar are right.
-- Grammar errors in the target language must be marked incorrect.
-- feedback must be in simple English, explaining the specific rule or usage nuance that was violated.
-- correction must be a natural, corrected version of the student's sentence.
-- Never output anything outside the JSON object.`
-  }
-
-  return EVAL_SYSTEM_PROMPT
-}
-
 export async function generateExercises(
   word: string,
   meanings: Array<{ zh: string; en: string }>,
@@ -714,20 +668,18 @@ export async function generateExercises(
   signal?: AbortSignal
 ): Promise<Exercise[]> {
   const config = getConfig()
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
 
   const meaningsText = meanings
-    .map((m, i) => isMono ? `${i + 1}. EN: ${m.en}` : `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
+    .map((m, i) => `${i + 1}. ${formatSenseLine(m, spec)}`)
     .join('\n')
 
   const lang = detectLanguage(word)
   const langNames: Record<string, string> = { en: 'English', zh: 'Chinese', ja: 'Japanese', ko: 'Korean' }
   const langName = langNames[lang] || 'the target language'
 
-  const userPrompt = isMono
-    ? `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios for learning this ${langName} expression.`
-    : `Target Word Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios. Each scenario description MUST be written in Chinese (中文). The learner will write their response using the target word in ${langName}.`
-  const cleaned = await callApi(getExercisesSystemPrompt(isMono), userPrompt, signal)
+  const userPrompt = `Target Word Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practice scenarios. Each scenario description MUST be written in ${spec.name}. The learner will write their response using the target word in ${langName}.`
+  const cleaned = await callApi(getExercisesSystemPrompt(spec), userPrompt, signal)
 
   // Primary parse
   try {
@@ -753,9 +705,9 @@ export async function evaluateAnswer(
   signal?: AbortSignal
 ): Promise<EvaluationResult> {
   const config = getConfig()
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
   const userPrompt = `Word: ${word}\nScenario: ${scenario}\nStudent's answer: "${userAnswer}"\n\nEvaluate the answer.`
-  const cleaned = await callApi(getEvalSystemPrompt(isMono), userPrompt, signal)
+  const cleaned = await callApi(getEvalSystemPrompt(spec), userPrompt, signal)
 
   try {
     return JSON.parse(cleaned) as EvaluationResult
@@ -781,7 +733,7 @@ Return ONLY a valid JSON array. No markdown. No explanation.
 [
   {
     "sentence": "A clear, natural example sentence in the target language containing the target word/phrase.",
-    "targetMeaning": "The specific meaning/sense of the target word demonstrated in this sentence.",
+    "targetMeaning": "The specific meaning/sense of the target word demonstrated in this sentence, written in the learner's language (see the contract below).",
     "hint": "Optional short context clue for the learner."
   }
 ]
@@ -799,10 +751,10 @@ export async function generateMeaningExercises(
   signal?: AbortSignal
 ): Promise<MeaningExercise[]> {
   const config = getConfig()
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
 
   const meaningsText = meanings
-    .map((m, i) => isMono ? `${i + 1}. EN: ${m.en}` : `${i + 1}. ZH: ${m.zh} | EN: ${m.en}`)
+    .map((m, i) => `${i + 1}. ${formatSenseLine(m, spec)}`)
     .join('\n')
 
   const lang = detectLanguage(word)
@@ -810,7 +762,7 @@ export async function generateMeaningExercises(
   const langName = langNames[lang] || 'the target language'
 
   const userPrompt = `Language: ${langName}\nTarget Word/Phrase: ${word}\n\nMeanings:\n${meaningsText}\n\nGenerate exactly ${count} practical example sentences containing '${word}', each demonstrating one of its common meanings in context.`
-  const cleaned = await callApi(MEANING_EXERCISES_SYSTEM_PROMPT, userPrompt, signal)
+  const cleaned = await callApi(MEANING_EXERCISES_SYSTEM_PROMPT + buildNativeLanguageContract(spec), userPrompt, signal)
 
   try {
     return JSON.parse(cleaned) as MeaningExercise[]
@@ -837,22 +789,19 @@ export async function evaluateMeaningCheck(
   signal?: AbortSignal
 ): Promise<{ correct: boolean; feedback: string }> {
   const config = getConfig()
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
   const meaningLines = meanings
     .map((m, i) => `${i + 1}. ${m.zh || ''}${m.en ? ` / ${m.en}` : ''}`.trim())
     .filter(Boolean)
     .join('\n')
 
-  const system = isMono
-    ? `You check whether a learner correctly understands the meaning of a word/phrase in a specific example sentence context. Return ONLY JSON: {"correct":true|false,"feedback":"..."}.
-If roughly right (core sense in context captured), correct=true and feedback a short confirmation (e.g. "Correct.").
-If wrong or incomplete, correct=false and feedback briefly corrects in simple English — do NOT require a full sentence from the learner.`
-    : `你核对学习者是否理解了词/词组在特定例句中的含义。只返回 JSON：{"correct":true|false,"feedback":"..."}。
-抓住例句中该词的核心意思 → correct=true，feedback 简短确认（如「回答正确！此句中表示...」）。
-偏差大或偏离义项 → correct=false，feedback 用中文简短解析该句中的实际释义与用词习惯。不要要求学习者造完整句。`
+  const system = `You check whether a learner correctly understands the meaning of a word/phrase in a specific example sentence context. Return ONLY JSON: {"correct":true|false,"feedback":"..."}.
+If roughly right (core sense in context captured), correct=true and feedback is a short confirmation in ${spec.name} that restates what the word means in this sentence.
+If wrong or incomplete, correct=false and feedback briefly explains, in ${spec.name}, the actual meaning in this sentence and the usage habit — do NOT require a full sentence from the learner.
+The learner may answer in English or ${spec.name}; judge the meaning, not the language.${buildNativeLanguageContract(spec)}`
 
   const contextPart = sentenceContext ? `Example Sentence: "${sentenceContext}"\nTarget Meaning: ${targetMeaning || 'unspecified'}\n` : ''
-  const userPrompt = `Word/phrase: ${word}\n${contextPart}Reference meanings:\n${meaningLines || '(none)'}\nLearner's guess (zh or en OK): "${userGuess}"\n\nEvaluate understanding in context.`
+  const userPrompt = `Word/phrase: ${word}\n${contextPart}Reference meanings:\n${meaningLines || '(none)'}\nLearner's guess (any language OK): "${userGuess}"\n\nEvaluate understanding in context.`
   const cleaned = await callApi(system, userPrompt, signal)
 
   try {
@@ -876,28 +825,23 @@ function getFullLookupPrompt(
   webSearchResults?: string,
   isFull: boolean = true,
   triLingual: boolean = false,
-  monolingualWord: boolean = false,
   cognitive: 'lookup' | 'core' = 'lookup',
-  explanationLanguage: 'zh' | 'vi' | 'en' = 'zh',
+  explanationLanguage: ExplanationLanguage = 'zh',
   meaningsAnchor?: MeaningsAnchor,
   learningRoute: LearningRoute = 'irrelevant',
 ): string {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
-  // Monolingual is a global "answer in English" switch — not limited to English input.
-  const isMono = monolingualWord
+  // Monolingual is already folded in: explanationLanguage === 'en' means "answer in English".
+  const spec = getNativeLanguage(explanationLanguage)
+  const L = spec.name
   const isCore = cognitive === 'core'
-  const isVietnameseLearner = !isMono && explanationLanguage === 'vi'
+  // The learner's own language is a source of expression needs, not "foreign" culture material.
+  const isForeign = lang !== 'en' && lang !== 'zh' && lang !== spec.code
 
-  const meaningsZhDescription = isMono ? "English meaning with context prefix, e.g. '(of a goal) a feeling of satisfaction'" : "中文释义"
+  const meaningsZhDescription = `${L} meaning with a short context prefix, e.g. '(of a goal) a feeling of satisfaction' (written in ${L})`
   const meaningsEnDescription = "English definition (or original language equivalent)"
-  const sceneLabel = isMono ? "2-4 word English context tag" : "2-4字情景标签"
-  const sceneDesc = buildNativeSceneDescription(isMono)
-  const partMeaning = isMono ? "meaning in English" : "含义"
-  const anchorNote = isMono ? "1 sentence in English: how this anchor word embodies the root meaning, helping association" : "1句话中文：此词如何体现词根，帮助联想"
-  const storyDesc = isMono ? "in English" : `1-2句话说明${lang !== 'en' && lang !== 'zh' ? '词汇构成/来源' : '词根词缀/来源'}`
-  const derivedMeaning = isMono ? "meaning in English" : "含义"
-  const synonymDistinction = isMono ? "English nuance explanation" : "与主词的差异"
-  const antonymDistinction = isMono ? "English nuance explanation" : "与主词的对比差异"
+  const sceneLabel = `short ${L} context tag (2-4 words)`
+  const sceneDesc = buildNativeSceneDescription(spec)
 
   // Lookup: meanings + light coreConcept. Core: thick usage image + feel/emotion anchors; no dictionary wall.
   let schema = `{\n  "correctForm": "the correct spelling of this word (fix typos if any)",\n  "phonetic": "phonetic transcription (IPA for English, Kana/Romaji for Japanese, etc.)",\n  "pos": "primary part of speech (noun/verb/adj/adv/abbr/etc.)"`
@@ -905,51 +849,38 @@ function getFullLookupPrompt(
   const wantCoreConcept = isEnabled('coreConcept') || isEnabled('dictionary') || isCore
   if (wantCoreConcept) {
     if (isCore) {
-      const feelDesc = isMono
-        ? '1 short line: sensory feel / atmosphere only (NOT a full scene; do not repeat explanation)'
-        : '1句短感觉锚：氛围/体感即可，禁止写成长场景，勿重复 explanation'
-      const emotionDesc = isMono
-        ? '1 short line: emotional tone when natives use this word'
-        : '1句情绪底色：母语者用此词时的情感态度'
-      schema += `,\n  "coreConcept": {\n    "gloss": "${isMono ? "Short lexical gloss: English equivalents + sense nucleus (NOT a scene essay)" : '短词典对译：中文等价词 + 一句义核（禁止情景散文）'}",\n    "image": "${isMono ? '1-2 sentences: core physical/metaphorical image' : '1-2句核心意象'}",\n    "explanation": "${isMono ? '2-4 sentences: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)' : '2-4句：意象如何导向真实用法分支——母语者何时/为何这样延伸（比记忆锚点更细，偏「怎么用」）'}",\n    "feelAnchor": "${feelDesc}",\n    "emotionalTone": "${emotionDesc}"\n  }`
+      schema += `,\n  "coreConcept": {\n    "gloss": "Short lexical gloss in ${L}: equivalents + sense nucleus (NOT a scene essay)",\n    "image": "1-2 sentences in ${L}: core physical/metaphorical image",\n    "explanation": "2-4 sentences in ${L}: how this image guides REAL USAGE branches — when/why natives extend it this way (richer than a memory tip)",\n    "feelAnchor": "1 short line in ${L}: sensory feel / atmosphere only (NOT a full scene; do not repeat explanation)",\n    "emotionalTone": "1 short line in ${L}: emotional tone when natives use this word"\n  }`
     } else {
-      schema += `,\n  "coreConcept": {\n    "image": "${isMono ? '1 short sentence: vivid core image for memory' : '1句画面感核心意象（记忆锚点）'}",\n    "explanation": "${isMono ? '1 short sentence unifying the main senses for memory' : '1句统领主要义项，帮助记住（轻量）'}"\n  }`
+      schema += `,\n  "coreConcept": {\n    "image": "1 short sentence in ${L}: vivid core image for memory",\n    "explanation": "1 short sentence in ${L} unifying the main senses for memory (light)"\n  }`
     }
   }
 
   // Lookup: full meanings. Core EN: no wall. Core ZH reverse lookup: short English candidates.
   if (!isCore) {
-    schema += `,\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "一个用于搜图的具体英文名词描述（3-6个英文单词，如 'person running business in office'）"\n    }\n  ]`
+    schema += `,\n  "meanings": [\n    {\n      "zh": "${meaningsZhDescription}",\n      "en": "${meaningsEnDescription}",\n      "pos": "specific part of speech",\n      "scene": {\n        "label": "${sceneLabel}",\n        "description": "${sceneDesc}"\n      },\n      "imageQuery": "a concrete English noun phrase for image search (3-6 English words, e.g. 'person running business in office')"\n    }\n  ]`
   } else if (lang === 'zh') {
-    schema += `,\n  "meanings": [\n    {\n      "zh": "该英文候选与中文输入的细微差别（中文，1句）",\n      "en": "English candidate word/phrase",\n      "pos": "part of speech"\n    }\n  ]`
+    schema += `,\n  "meanings": [\n    {\n      "zh": "in ${L}, 1 sentence: how this English candidate differs in nuance from the Chinese input",\n      "en": "English candidate word/phrase",\n      "pos": "part of speech"\n    }\n  ]`
   } else {
     schema += `,\n  "meanings": []`
   }
 
   // For foreign languages, etymology is less about roots/affixes and more about composition or origin
   if (isFull && isEnabled('etymology') && !isCore) {
-    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "构词成分（对应原词实际字母片段）",\n        "meaning": "${partMeaning}",\n        "sourceForm": "（仅词根）原始词根形式，e.g. legere",\n        "anchor": "（仅词根）含此词根的简单常见词",\n        "anchorNote": "（仅词根）${anchorNote}"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [{ "word": "相关词", "pos": "词性", "meaning": "${derivedMeaning}" }]\n  }`
+    const storyDesc = `1-2 sentences in ${L}: ${isForeign ? 'word composition / origin' : 'roots, affixes and origin'}`
+    schema += `,\n  "etymology": {\n    "parts": [\n      {\n        "segment": "word component (the actual letter segment in the word)",\n        "meaning": "meaning in ${L}",\n        "sourceForm": "(roots only) original root form, e.g. legere",\n        "anchor": "(roots only) a simple common word sharing this root",\n        "anchorNote": "(roots only) 1 sentence in ${L}: how this anchor word embodies the root, helping association"\n      }\n    ],\n    "story": "${storyDesc}",\n    "derivedWords": [{ "word": "related word", "pos": "part of speech", "meaning": "meaning in ${L}" }]\n  }`
   }
   if (isFull && isEnabled('synonyms')) {
-    const whenToUseDesc = isMono
-      ? (isCore
-        ? '1 sentence: mental fit — when natives pick THIS near-synonym AND when the HEADWORD fits better'
-        : '1 sentence in English: when and why native speakers choose this specific word')
-      : (isCore
-        ? '1句适用心智：何时用该近义词，以及何时仍应选主词'
-        : '1句中文：母语者在何时及为何使用该词 (如: slim -> 表示夸奖优雅的瘦)')
-    schema += `,\n  "synonyms": [{ "word": "近义词", "distinction": "${synonymDistinction}", "tone": "one of: positive | negative | neutral | informal", "whenToUse": "${whenToUseDesc}" }],\n  "antonyms": [{ "word": "反义词", "distinction": "${antonymDistinction}" }]`
+    const whenToUseDesc = isCore
+      ? `1 sentence in ${L}: mental fit — when natives pick THIS near-synonym AND when the HEADWORD fits better`
+      : `1 sentence in ${L}: when and why native speakers choose this specific word (e.g. slim -> a complimentary, graceful kind of thin)`
+    schema += `,\n  "synonyms": [{ "word": "synonym", "distinction": "in ${L}: nuance vs the headword", "tone": "one of: positive | negative | neutral | informal", "whenToUse": "${whenToUseDesc}" }],\n  "antonyms": [{ "word": "antonym", "distinction": "in ${L}: contrast with the headword" }]`
   }
 
   const wantChunks = isFull && isEnabled('chunks')
   const wantCollocations = isFull && isEnabled('collocations')
   if (wantChunks || wantCollocations) {
-    const collocationsNote = isMono
-      ? "REQUIRED: clear English meaning for learners"
-      : "必填：中文释义，让学习者不看原文也能懂"
-    const spatialDesc = isMono
-      ? "For prep phrases: briefly explain the preposition's spatial/logical role; omit if none"
-      : "介词语组必填倾向：点明介词在搭配里的空间/逻辑角色；没有则省略字段，勿填 N/A"
+    const collocationsNote = `REQUIRED: clear ${L} meaning, understandable without the original`
+    const spatialDesc = `in ${L}: for prep phrases, name the preposition's spatial/logical role in the collocation; omit the field if none — never N/A`
     const chunksPart = wantChunks
       ? `"chunks": [\n      { "chunk": "COMMON PREPOSITIONAL phrase only (prep+N, V+prep(+N))", "note": "${collocationsNote}", "spatialExtension": "${spatialDesc}" }\n    ]`
       : `"chunks": []`
@@ -960,68 +891,44 @@ function getFullLookupPrompt(
   }
 
   if (isEnabled('examples') && !isCore) {
-    const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign && triLingual) {
-      schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "中文翻译" }\n  ]`
+      schema += `,\n  "examples": [\n    { "original": "Example sentence in target language", "en": "English translation", "zh": "${L} translation" }\n  ]`
     } else {
-      const exampleZh = isMono ? "English meaning / explanation" : "中文翻译"
-      schema += `,\n  "examples": [\n    { "en": "Example sentence in original language (or target language)", "zh": "${exampleZh}" }\n  ]`
+      schema += `,\n  "examples": [\n    { "en": "Example sentence in original language (or target language)", "zh": "${exampleGlossDesc(spec)}" }\n  ]`
     }
   }
 
   if (isFull && isEnabled('usageScenes') && isCore) {
-    const usLabel = isMono ? '2-4 word English scene tag' : '2-4字场景标签'
-    const usDesc = isMono
-      ? '1-2 sentences: when natives use this word, communicative job, typical sentence pattern'
-      : '1-2句：母语者何时用、完成什么交际任务、典型句式（不是翻译例句墙）'
-    schema += `,\n  "usageScenes": [\n    { "label": "${usLabel}", "description": "${usDesc}" }\n  ]`
+    schema += `,\n  "usageScenes": [\n    { "label": "short ${L} scene tag (2-4 words)", "description": "1-2 sentences in ${L}: when natives use this word, communicative job, typical sentence pattern (not a translation example wall)" }\n  ]`
   }
-  
+
   if (isFull && isEnabled('culture')) {
-    const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign) {
       // Foreign words: keep deep subculture/ACG focus
-      schema += `,\n  "culturalLore": {\n    "title": "趣味背景/文化渊源标签",\n    "content": "1-3句中文，介绍这个词的历史、文化背景、流行原因等",\n    "subculture": "如果是二次元、游戏圈、网络流行语，说明其来源 and 圈内含义",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+      schema += `,\n  "culturalLore": {\n    "title": "short ${L} tag for the fun background / cultural origin",\n    "content": "1-3 sentences in ${L}: the word's history, cultural background, or why it became popular",\n    "subculture": "in ${L}: if it is ACG / gaming / internet slang, its source and in-group meaning",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
     } else {
       // English / Chinese words: focus on register + cultural note
-      const cultureContent = isMono
-        ? "1-2 sentences in English: the word's cultural origin, register (formal/informal/slang/technical), or notable usage shift"
-        : "1-2句中文：词的文化来源、语域（正式/口语/俚语/专业）或值得注意的用法演变"
-      schema += `,\n  "culturalLore": {\n    "title": "${isMono ? '2-4 word English tag (e.g. Gen-Z Slang, Legal Jargon)' : '2-4字标签（如 网络用语、医学术语）'}",\n    "content": "${cultureContent}",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
+      schema += `,\n  "culturalLore": {\n    "title": "short ${L} tag (2-4 words, e.g. Gen-Z Slang, Legal Jargon)",\n    "content": "1-2 sentences in ${L}: the word's cultural origin, register (formal/informal/slang/technical), or notable usage shift",\n    "register": "one of: formal | informal | slang | technical | neutral"\n  }`
     }
   }
 
   if (isCore && isEnabled('wordGraph')) {
-    const exMeaning = isMono
-      ? "REQUIRED: clear English meaning of this phrase"
-      : "必填：这个短语/短句的中文释义"
-    const exMind = isMono
-      ? "REQUIRED: how a native speaker's mental image / why this usage grows from the root core"
-      : "必填：母语者心智/意象——为何从根意象延伸出这个用法（1句）"
-    schema += `,\n  "conceptGraph": {\n    "rootCore": "${isMono ? '1-3 word core concept label' : '1-3字核心归纳'}",\n    "branches": [\n      {\n        "category": "${isMono ? 'Domain category (e.g. Physical Motion, Machines, Business)' : '延伸领域分类 (如: 物理运动, 机器运转, 经营管理)'}",\n        "explanation": "${isMono ? '1 sentence explaining why this branch derives from the root core' : '1句话解释该分支领域为何会从 Core 衍生出来'}",\n        "examples": [\n          {\n            "phrase": "${isMono ? 'typical phrase or short expression' : '典型表达/短语'}",\n            "meaning": "${exMeaning}",\n            "mindHint": "${exMind}"\n          }\n        ]\n      }\n    ]\n  }`
+    schema += `,\n  "conceptGraph": {\n    "rootCore": "1-3 word core concept label in ${L}",\n    "branches": [\n      {\n        "category": "Domain category in ${L} (e.g. Physical Motion, Machines, Business)",\n        "explanation": "1 sentence in ${L} explaining why this branch derives from the root core",\n        "examples": [\n          {\n            "phrase": "typical English phrase or short expression",\n            "meaning": "REQUIRED: clear ${L} meaning of this phrase",\n            "mindHint": "REQUIRED, 1 sentence in ${L}: the native speaker's mental image — why this usage grows from the root core"\n          }\n        ]\n      }\n    ]\n  }`
   }
 
   // Direction A — optional personalization hook; OMITTED unless clearly relevant.
-  schema += `,\n  "profileInsight": "OPTIONAL — OMIT this field entirely unless this word clearly relates to one of the learner's listed recurring confusions; then ONE short sentence naming the link"`
+  schema += `,\n  "profileInsight": "OPTIONAL — OMIT this field entirely unless this word clearly relates to one of the learner's listed recurring confusions; then ONE short sentence in ${L} naming the link"`
 
   schema += `\n}`
 
   const basePrompt = isCore
-    ? (isMono
-      ? `You are a native-speaker cognitive coach for English learners. Your job is NOT dictionary lookup — remodel how learners THINK about a word so they can use it the way natives do (mental picture, emotional stance, when/why to choose it, core image network).`
-      : isVietnameseLearner
-        ? `You are a native-speaker cognitive coach for Vietnamese learners of English. Teach native English mental models, emotional stance, word choice, and core-image extensions; write learner-facing content in Vietnamese.`
-        : `你是面向中文母语者的「母语者心智教练」。任务不是传统词典释义，而是帮助学习者用母语者心智理解单词：脑中画面、情感立场、为何选用，以及核心意象如何延伸到使用网络。`)
-    : (isMono
-      ? `You are a professional English vocabulary analyst for learners who prefer English-only monolingual explanations. Focus on clear meanings, memory aids (core image, etymology, nuance), and practical understanding.`
-      : isVietnameseLearner
-        ? `You are an English vocabulary analyst for Vietnamese native speakers. Focus on clear Vietnamese explanations, memory aids, core images, etymology, and nuance.`
-        : `你是面向中文母语者的英语词汇分析师。重心是「理解与记忆」：清晰释义、核心意象、词源与近义辨析，帮助记住并理解这个词。`)
+    ? `You are a native-speaker cognitive coach for ${spec.audience}. Your job is NOT dictionary lookup — remodel how learners THINK about a word so they can use it the way natives do (mental picture, emotional stance, when/why to choose it, core image network).`
+    : `You are a professional English vocabulary analyst for ${spec.audience}. Focus on understanding and memory: clear meanings, memory aids (core image, etymology, nuance), and practical understanding.`
   const multiLangPrompt = isCore
-    ? `You are a cultural-cognitive coach for foreign words. Prioritize how natives conceptualize the word — social meaning, subculture nuance, and when it is the right choice.`
-    : `You are a professional multi-language translator and cultural analyst. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
+    ? `You are a cultural-cognitive coach for foreign words, explaining them to ${spec.audience}. Prioritize how natives conceptualize the word — social meaning, subculture nuance, and when it is the right choice.`
+    : `You are a professional multi-language translator and cultural analyst for ${spec.audience}. Your core mission is NOT just translation, but "Cultural Interpretation" — explaining the social, historical, and subculture context behind foreign words.`
 
-  let prompt = `${lang === 'en' || lang === 'zh' ? basePrompt : multiLangPrompt}
+  let prompt = `${isForeign ? multiLangPrompt : basePrompt}
 
 Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} word, provide a complete analysis${isCore ? ' with native-mind priority' : ' for understanding and memory'}.
 
@@ -1044,18 +951,19 @@ ${isEnabled('wordGraph') ? '- conceptGraph: REQUIRED. Examples MUST be { phrase,
 - PRIORITY for Pure Core: coreConcept > conceptGraph > prep chunks > other collocations > synonyms > usageScenes > culture.` : `- meanings: most common practical senses (typically 2-8, by frequency) — dictionary-style glosses, not scene essays.
 - coreConcept: LIGHT memory anchor (short image + short unifying line). Do NOT invent nativeMindModel, conceptGraph, or wordChoiceContrast.
 - scene is REQUIRED for EVERY meaning in the meanings array — never omit it for any sense, even rare ones.
-${buildNativeSceneRules(isMono)}
+${buildNativeSceneRules(spec)}
 - PRIORITY for Lookup: coreConcept > meanings/scenes > etymology > examples.`}
 - For abbreviations, explain what each letter stands for.
-- If the input is CHINESE: 
+- If the input is CHINESE:
   - correctForm: provide the closest natural English word or short expression; do not force a culture-bound expression into one word.
   ${isCore ? '- meanings: REQUIRED short list of 2-5 English candidates (en=word, zh=nuance vs input). Not a full dictionary wall.' : '- meanings: provide 2-5 English alternatives with nuances.'}
 - If the input is a FOREIGN LANGUAGE (not English/Chinese):
-  - PRIORITY: Provide deep cultural/subculture context in "culturalLore". 
+  - PRIORITY: Provide deep cultural/subculture context in "culturalLore".
   - Explain the specific historical or social context behind the word.
   - For ACG (Anime/Comic/Games) or internet terms, specify the source and why it is popular.
+${buildInputDirectionRule(spec, lang)}
 ${isFull && isEnabled('etymology') && !isCore ? `- etymology.parts: each segment must correspond to the actual letters in the target word
-- For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 ${isMono ? 'English' : 'Chinese'} sentence connecting anchor → root meaning)
+- For each ROOT morpheme: fill sourceForm (original Latin/Greek form), anchor (a common word the learner likely knows sharing this root), anchorNote (1 ${L} sentence connecting anchor → root meaning)
 - For pure prefixes/suffixes: omit sourceForm, anchor, anchorNote` : ''}
 ${wantChunks ? (isCore
     ? `- collocations.chunks: For ordinary content words, 4-6 COMMON PREPOSITIONAL phrases ONLY. note MUST explain meaning AND the preposition's role. spatialExtension preferred for spatial/logic.`
@@ -1063,30 +971,18 @@ ${wantChunks ? (isCore
 ${wantCollocations ? (isCore
     ? `- collocations.collocations: For ordinary content words, 4-6 OTHER common phrases (no prep focus). Do NOT put prep phrases here.`
     : `- collocations.collocations: 4-6 OTHER common phrases (no prep focus). Do NOT put prep phrases here.`) : ''}
-${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY non-empty item needs clear meaning in ${isMono ? 'English' : 'Chinese'}. Never "N/A" / "常用" / empty notes on real items.` : ''}
+${(wantChunks || wantCollocations) ? `- CRITICAL — note: EVERY non-empty item needs clear meaning in ${L}. Never "N/A" / "common" / empty notes on real items.` : ''}
 ${isCore && (wantChunks || wantCollocations) ? `- SKIP collocations when redundant with conceptGraph (Pure Core rule C): If the headword is a discourse particle / tag-question remnant / sentence-final tag / interjection (e.g. innit, eh) and the only natural "phrases" would be sentence frames that merely repeat conceptGraph examples (It's …, innit? / …, innit!), return "chunks": [] and "collocations": []. Do NOT invent filler frames. Ordinary content words (nouns/verbs/adjectives like shrug, sheen) MUST still fill collocations normally.` : ''}
 ${isFull && isEnabled('usageScenes') && isCore ? `- usageScenes: 3-5 native usage scenes / communicative jobs / typical patterns — not a translation example wall.` : ''}
 ${isFull && isEnabled('synonyms') ? `- synonyms: 3-5 with tone + whenToUse; antonyms: 3-5.` : ''}
 ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences.` : ''}
 - Keep everything concise.`
 
-  if (isMono) {
-    prompt += `\n- ALL output text must be in English only. No Chinese characters anywhere.`
-  } else if (explanationLanguage === 'vi') {
-    prompt += `
-- VIETNAMESE LEARNER MODE: ALL explanatory text, glosses, translations, scenes, notes and stories MUST be written in Vietnamese. The legacy "zh" JSON fields must contain Vietnamese, not Chinese.
-${lang === 'vi' ? '- Vietnamese input: correctForm must be the natural English equivalent; explain that English choice in Vietnamese.' : lang === 'en' ? '- English input: explain and translate the English word in Vietnamese.' : '- Translate and explain this input in Vietnamese.'}`
-  } else if (lang !== 'en' && lang !== 'zh') {
-    // Non-mono + foreign input: this app targets Chinese speakers, so explanations must
-    // be Chinese. Previously only implied by roleIntro, and the model drifted to English.
-    prompt += `\n- The input is a ${lang} term, but ALL explanatory text (meanings, scenes, notes, stories) MUST be written in Chinese. Keep the original ${lang} term and its romanization only where they identify the word itself.`
-  }
-  if (isCore && lang === 'zh' && !isMono) {
-    prompt += ZH_CORE_CONCEPT_MAP_RULE
+  if (isCore && lang === 'zh' && !spec.isEnglish) {
+    prompt += buildZhCoreConceptMapRule(spec)
   }
   prompt += buildAnchorBlock(meaningsAnchor, isCore)
   if (isFull && isEnabled('culture')) {
-    const isForeign = lang !== 'en' && lang !== 'zh'
     if (isForeign) {
       prompt += `\n- culturalLore: PRIORITY for foreign words. Provide deep cultural/subculture context. Specify ACG source, historical origin, or social context.`
     } else {
@@ -1095,6 +991,7 @@ ${lang === 'vi' ? '- Vietnamese input: correctForm must be the natural English e
   }
 
   prompt += buildProfilePromptContext('compact', learningRoute, explanationLanguage)
+  prompt += buildNativeLanguageContract(spec)
 
   return prompt
 }
@@ -1121,7 +1018,7 @@ export async function aiFullLookup(
   const dictionaryContext = resolveDictionaryContext(word, config)
   const cleaned = await callApi(
     getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples,
-      dictionaryContext.isMonolingual, cognitive, dictionaryContext.explanationLanguage, opts.anchor, learningRoute),
+      cognitive, dictionaryContext.explanationLanguage, opts.anchor, learningRoute),
     `${langName}: ${word}\n\nAnalyze this word and return the JSON.`,
     signal
   )
@@ -1155,10 +1052,8 @@ export async function fillMissingCollocationNotes(
   const missing = items.filter((i) => !i.note?.trim() || i.note === 'N/A' || i.note === '常用')
   if (missing.length === 0) return []
 
-  const isMono = getIsMono(word, config)
-  const system = isMono
-    ? `You fill missing meanings for English chunks/collocations. Return ONLY a JSON array. Each item: {"chunk":"...","note":"clear English meaning (REQUIRED)"}. NEVER use N/A. Do not invent new chunks — only explain the given list.`
-    : `你为英语语块/搭配补全缺失释义。只返回 JSON 数组。每项：{"chunk":"...","note":"必填中文释义"}。禁止 N/A、「常用」。不要新增语块，只解释给定列表。`
+  const spec = getLanguageSpec(word, config)
+  const system = `You fill missing meanings for English chunks/collocations. Return ONLY a JSON array. Each item: {"chunk":"...","note":"clear ${spec.name} meaning (REQUIRED)"}. NEVER use N/A or "common". Do not invent new chunks — only explain the given list.${buildNativeLanguageContract(spec)}`
 
   const cleaned = await callApi(
     system,
@@ -1190,10 +1085,8 @@ export async function fillMissingConceptExamples(
   )
   if (missing.length === 0) return []
 
-  const isMono = getIsMono(word, config)
-  const system = isMono
-    ? `You complete native-mind explanations for concept-tree phrases. Return ONLY JSON array of {"phrase","meaning","mindHint"}. meaning=what it means; mindHint=how a native links it to root core "${rootCore}". REQUIRED fields. No N/A.`
-    : `你为概念树短语补全释义与母语心智。只返回 JSON 数组：{"phrase","meaning","mindHint"}。meaning=中文释义；mindHint=母语者如何从根意象「${rootCore}」延伸到此用法。字段必填。禁止 N/A。`
+  const spec = getLanguageSpec(word, config)
+  const system = `You complete native-mind explanations for concept-tree phrases. Return ONLY JSON array of {"phrase","meaning","mindHint"}. meaning = what it means, in ${spec.name}; mindHint = in ${spec.name}, how a native speaker extends the root core "${rootCore}" to this usage. REQUIRED fields. No N/A.${buildNativeLanguageContract(spec)}`
 
   const cleaned = await callApi(
     system,
@@ -1242,7 +1135,6 @@ export async function aiPhraseQuery(
       webSearchResults: webResults,
       isFull,
       triLingual: config.triLingualExamples,
-      isMono: dictionaryContext.isMonolingual,
       cognitive,
       queryType: phraseQueryType,
       meaningsAnchor: opts.anchor,
@@ -1290,7 +1182,7 @@ export async function askQuestion(
 
   const routingQuery = routeQuery || context
   const languagePolicy = resolveLearnerLanguagePolicy(routingQuery, config)
-  const isMono = languagePolicy.isMonolingual
+  const spec = getNativeLanguage(languagePolicy.nativeLanguage)
   const richSection = richContext
     ? `\n\nHere is the analysis already displayed to the user for reference:\n${richContext}\n\nAnswer based on this context where relevant.`
     : ''
@@ -1302,12 +1194,10 @@ export async function askQuestion(
     languagePolicy.profileLanguage,
   )
   const tableRule = `Table orientation rule (mobile screen — NEVER exceed 3 columns): (A) If comparing N words across M attributes and N ≤ M: put the words as COLUMN headers (row 1 = word names, then one row per attribute) so columns = N ≤ 3. (B) If N > M: put attributes as COLUMN headers (row 1 = attribute names, one row per word) so columns = M ≤ 3. When either N or M > 3, pick whichever orientation keeps columns ≤ 3 and let rows grow. Never create a table wider than 3 columns.`
-  const audienceRule = languagePolicy.profileLanguage === 'vi'
-    ? 'You are a helpful English learning assistant for Vietnamese native speakers.\nAnswer in Vietnamese, with English examples where appropriate.'
-    : languagePolicy.profileLanguage === 'zh'
-      ? 'You are a helpful English learning assistant for Chinese native speakers.\nAnswer in Chinese, with English examples where appropriate.'
-      : 'You are a helpful English language assistant for native or monolingual English users.\nAnswer in clear, natural English without assuming Chinese or Vietnamese language transfer.'
-  const systemPrompt = `${audienceRule}\nThe user is currently studying: "${context}".${richSection}${profileSection}\n${isMono ? 'Use clear, learner-friendly English (CEFR B1-B2 level) where possible.\n' : ''}Keep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.`
+  const audienceRule = spec.isEnglish
+    ? 'You are a helpful English language assistant for native or monolingual English users.\nAnswer in clear, natural English without assuming any second-language transfer.'
+    : `You are a helpful English learning assistant for ${spec.audience}.\nAnswer in ${spec.name}, with English examples where appropriate.`
+  const systemPrompt = `${audienceRule}\nThe user is currently studying: "${context}".${richSection}${profileSection}\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.${buildNativeLanguageContract(spec)}`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },
@@ -1338,44 +1228,46 @@ export async function askQuestion(
 }
 
 // ── AI 助记生成 ──
-const MNEMONIC_SYSTEM_PROMPT = `You are a creative English mnemonic expert. Your goal is to evaluate and provide the most effective memory aids for a given word.
+function getMnemonicSystemPrompt(spec: NativeLanguageSpec): string {
+  const L = spec.name
+  return `You are a creative English mnemonic expert for ${spec.audience}. Your goal is to evaluate and provide the most effective memory aids for a given word.
 
 Generate mnemonics for ALL THREE approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
 
-1. PHILOLOGY (词源逻辑):
+1. PHILOLOGY:
    GOAL: Write a vivid, flowing NARRATIVE — NOT a factual etymology list. The learner already sees a structured breakdown of roots/affixes elsewhere; here you must turn that knowledge into a durable mental image.
    HOW:
-   - Open with an anchor word the learner likely already knows that shares the same root (e.g. "你已经知道 select / collect"), then use it as a bridge: show HOW the shared root connects to the target word's meaning.
+   - Open with an anchor word the learner likely already knows that shares the same root (e.g. "you already know select / collect"), then use it as a bridge: show HOW the shared root connects to the target word's meaning.
    - Describe a concrete scene, metaphor, or action that makes the root meaning visceral and memorable (e.g. a Roman scholar picking books, a river flowing through/splitting).
    - End by snapping back to the target word — why the image *is* the word's meaning.
    - Symbolic letter shapes (A=sharp top, V=valley) and letter interchanges (d↔t, v↔b) can be woven in if they add insight.
    - High score if the root connection is clear and the scene is vivid enough to replay in memory.
 
-2. STORY (趣味故事):
-   - Chinese homophones (scorpion -> 死抠屁眼, pest -> 拍死它).
+2. STORY:
+   - ${spec.soundAlikeHint}.
    - Absurd, vivid, or humorous stories.
-   - High score if the word sounds like a funny Chinese phrase.
+   - High score if the sound-alike or story is memorable and funny.
 
-3. SMART (智能联想):
+3. SMART:
    - A hybrid approach or a completely unique association (e.g., visual cues, connection to pop culture, or breaking the word into recognizable "mini-words" that aren't strictly roots).
    - Use this if the other two methods feel forced or weak.
 
 JSON Output Schema:
 {
   "philology": {
-    "content": "Mnemonic narrative in Chinese, 2-4 sentences.",
+    "content": "Mnemonic narrative in ${L}, 2-4 sentences.",
     "score": 90,
-    "reason": "Brief explanation of why this method works well or poorly."
+    "reason": "Brief explanation in ${L} of why this method works well or poorly."
   },
   "story": {
-    "content": "Mnemonic text in Chinese.",
+    "content": "Mnemonic text in ${L}, 1-3 sentences.",
     "score": 30,
-    "reason": "Brief explanation."
+    "reason": "Brief explanation in ${L}."
   },
   "smart": {
-    "content": "Mnemonic text in Chinese.",
+    "content": "Mnemonic text in ${L}, 1-3 sentences.",
     "score": 60,
-    "reason": "Brief explanation."
+    "reason": "Brief explanation in ${L}."
   },
   "bestType": "philology" | "story" | "smart"
 }
@@ -1385,199 +1277,65 @@ Rules:
 - story.content and smart.content: 1-3 sentences each.
 - bestType must indicate the approach with the highest score. If scores are close, prioritize: Philology > Story > Smart.
 - Scores must be honest. If a word is extremely hard to remember, scores should reflect that.
-- Return ONLY the JSON object.`
+- Return ONLY the JSON object.${buildNativeLanguageContract(spec)}`
+}
 
 // ── AI 词组助记生成 ──
-const PHRASE_MNEMONIC_SYSTEM_PROMPT = `You are an English phrasal verb and idiom expert. Your goal is to help students understand the "why" behind phrases, especially those involving prepositions.
+function getPhraseMnemonicSystemPrompt(spec: NativeLanguageSpec): string {
+  const L = spec.name
+  return `You are an English phrasal verb and idiom expert for ${spec.audience}. Your goal is to help students understand the "why" behind phrases, especially those involving prepositions.
 
 Explain phrases from a NATIVE SPEAKER'S perspective, providing mnemonics for these approaches:
 
-1. CORE IMAGE (核心意象 - mapped to "philology"):
+1. CORE IMAGE (mapped to "philology"):
    - Explain the root image of the preposition (e.g., 'in' is entering a space, 'up' is completeness/arrival, 'off' is detachment).
    - Use vivid metaphors (e.g., "pop in" is like a quick head-pop into a room through a window).
    - Show how the combination creates a logical "mental movie".
 
-2. STORY (趣味故事 - mapped to "story"):
+2. STORY (mapped to "story"):
    - Use the historical origin or a modern humorous scenario to link the words.
 
-3. SMART (智能联想 - mapped to "smart"):
+3. SMART (mapped to "smart"):
    - Other intuitive ways to remember the phrase, or practical usage cues.
 
 JSON Output Schema:
 {
   "philology": {
-    "content": "Core image explanation in Chinese.",
+    "content": "Core image explanation in ${L}.",
     "score": 90,
-    "reason": "Why this core image makes sense."
+    "reason": "Why this core image makes sense, in ${L}."
   },
   "story": {
-    "content": "Story or origin explanation in Chinese.",
+    "content": "Story or origin explanation in ${L}.",
     "score": 30,
-    "reason": "Why this story helps."
+    "reason": "Why this story helps, in ${L}."
   },
   "smart": {
-    "content": "Smart association in Chinese.",
+    "content": "Smart association in ${L}.",
     "score": 60,
-    "reason": "Why this association is useful."
+    "reason": "Why this association is useful, in ${L}."
   },
   "bestType": "philology" | "story" | "smart"
 }
 
 Rules:
-- Focus on the "Native Thinking" (母语者思维).
+- Focus on native-speaker thinking.
 - Explain the logic of prepositions clearly.
 - bestType must be the highest scoring one.
-- Never output anything outside the JSON object.`
-
-function getMnemonicSystemPrompt(isMono: boolean): string {
-  if (isMono) {
-    return `You are a creative English mnemonic expert. Your goal is to evaluate and provide the most effective memory aids for a given word.
-
-Generate mnemonics for ALL THREE approaches and score each (0-100) based on its "potential to help a student remember the word permanently":
-
-1. PHILOLOGY:
-   GOAL: Write a vivid, flowing NARRATIVE — NOT a factual etymology list. The learner already sees a structured breakdown of roots/affixes elsewhere; here you must turn that knowledge into a durable mental image.
-   HOW:
-   - Open with an anchor word the learner likely already knows that shares the same root (e.g. "If you know select or collect..."), then use it as a bridge: show HOW the shared root connects to the target word's meaning.
-   - Describe a concrete scene, metaphor, or action that makes the root meaning visceral and memorable (e.g., a scholar picking books, a river flowing through).
-   - End by snapping back to the target word — why the image *is* the word's meaning.
-   - High score if the root connection is clear and the scene is vivid.
-
-2. STORY:
-   - Absurd, vivid, or humorous stories in English.
-   - You can use English wordplay, rhyming words, spelling mnemonics, or puns (e.g., "hear" has "ear", "d-e-s-s-e-r-t" has double "s" because you want Sweet Stuff, "desert" has one "s" because it's Sandy).
-   - High score if the association is memorable and funny.
-
-3. SMART:
-   - A hybrid approach or a unique association (e.g., visual cues based on letter shapes like V representing a valley, connection to pop culture, or breaking the word into recognizable "mini-words" that aren't strictly roots).
-   - Use this if the other two methods feel forced or weak.
-
-JSON Output Schema:
-{
-  "philology": {
-    "content": "Mnemonic narrative in English, 2-4 sentences.",
-    "score": 90,
-    "reason": "Brief explanation of why this method works well or poorly, in English."
-  },
-  "story": {
-    "content": "Mnemonic text in English, 1-3 sentences.",
-    "score": 30,
-    "reason": "Brief explanation in English."
-  },
-  "smart": {
-    "content": "Mnemonic text in English, 1-3 sentences.",
-    "score": 60,
-    "reason": "Brief explanation in English."
-  },
-  "bestType": "philology" | "story" | "smart"
+- Never output anything outside the JSON object.${buildNativeLanguageContract(spec)}`
 }
 
-Rules:
-- philology.content MUST be a narrative paragraph, NOT a bullet list or etymology fact-dump. It should read like a mini story or vivid metaphor, 2-4 sentences.
-- bestType must indicate the approach with the highest score. If scores are close, prioritize: Philology > Story > Smart.
-- Scores must be honest.
-- ALL output text must be in English only. No Chinese characters anywhere. Use clear, learner-friendly English.
-- Return ONLY the JSON object.`
-  }
-
-  return MNEMONIC_SYSTEM_PROMPT
-}
-
-function getPhraseMnemonicSystemPrompt(isMono: boolean): string {
-  if (isMono) {
-    return `You are an English phrasal verb and idiom expert. Your goal is to help students understand the "why" behind phrases, especially those involving prepositions.
-
-Explain phrases from a NATIVE SPEAKER'S perspective, providing mnemonics for these approaches:
-
-1. CORE IMAGE (mapped to "philology"):
-   - Explain the root image of the preposition in English (e.g., 'in' is entering a space, 'up' is completeness/arrival, 'off' is detachment).
-   - Use vivid metaphors (e.g., "pop in" is like a quick head-pop into a room through a window).
-   - Show how the combination creates a logical "mental movie".
-
-2. STORY (mapped to "story"):
-   - Use the historical origin or a modern humorous scenario in English to link the words.
-
-3. SMART (mapped to "smart"):
-   - Other intuitive ways to remember the phrase, or practical usage cues in English.
-
-JSON Output Schema:
-{
-  "philology": {
-    "content": "Core image explanation in English.",
-    "score": 90,
-    "reason": "Why this core image makes sense, in English."
-  },
-  "story": {
-    "content": "Story or origin explanation in English.",
-    "score": 30,
-    "reason": "Why this story helps, in English."
-  },
-  "smart": {
-    "content": "Smart association in English.",
-    "score": 60,
-    "reason": "Why this association is useful, in English."
-  },
-  "bestType": "philology" | "story" | "smart"
-}
-
-Rules:
-- Focus on the "Native Thinking" (母语者思维).
-- Explain the logic of prepositions clearly.
-- bestType must be the highest scoring one.
-- ALL output text must be in English only. No Chinese characters anywhere. Use clear, learner-friendly English.
-- Never output anything outside the JSON object.`
-  }
-
-  return PHRASE_MNEMONIC_SYSTEM_PROMPT
-}
-
-function getSingleMnemonicPrompt(isMono: boolean): string {
-  if (isMono) {
-    return `You are a creative English mnemonic expert. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
+function getSingleMnemonicPrompt(spec: NativeLanguageSpec): string {
+  const L = spec.name
+  return `You are a creative English mnemonic expert for ${spec.audience}. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
 
 There are three types of mnemonics:
-1. PHILOLOGY (词源逻辑 / 核心意象):
+1. PHILOLOGY (etymology logic / core image):
    - For words: Write a vivid, flowing narrative paragraph (2-4 sentences) connecting the word's root/affix to its meaning using an anchor word the learner likely knows (e.g. collect/select). Describe a concrete scene/metaphor. DO NOT output a bullet list or factual etymology dump.
    - For phrases: Explain the core image of the preposition/verb combination (e.g., 'in' is entering space, 'up' is completion) with vivid metaphors and a logical "mental movie".
-2. STORY (趣味故事):
-   - Use English wordplay, rhyming words, puns, spelling tricks, or absurd, vivid, or humorous stories in English (1-3 sentences).
-3. SMART (智能联想):
-   - A hybrid approach or a completely unique association in English (e.g., visual letter shapes, pop culture, breaking the word into recognizable "mini-words") (1-3 sentences).
-
-Input parameters:
-- Word/Phrase: The target expression.
-- Type: The requested mnemonic type (philology | story | smart).
-- Current Mnemonic Content: The current mnemonic of this type that the user wants to change. YOU MUST generate a completely different one. Do not repeat or slightly rephrase the current one.
-- User's Mnemonic Idea (optional): An idea or related word proposed by the user.
-
-If User's Mnemonic Idea is provided:
-1. Carefully check/verify the idea. Is it correct, helpful, and logical for remembering the word?
-2. If it is viable and helpful, adopt and expand it into a fully formed mnemonic of the requested type.
-3. If it is NOT viable or misleading:
-   - Generate a new, correct mnemonic of the requested type.
-   - In the "reason" field, explain gently in English why the user's idea might not be the best fit and explain the logic of the new mnemonic.
-
-Output format MUST be a valid JSON object:
-{
-  "content": "Mnemonic text in English.",
-  "score": 0-100 score representing memory effectiveness,
-  "reason": "Brief explanation in English. If the user provided an idea, explain if it was adopted/why or why not."
-}
-
-Rules:
-- ALL output text must be in English only. No Chinese characters anywhere. Use clear, learner-friendly English.
-- Return ONLY the JSON object. No markdown code fences. No extra text.`
-  }
-
-  return `You are a creative English mnemonic expert. Your goal is to generate or refine a single mnemonic of a specific type for a given English word or phrase.
-
-There are three types of mnemonics:
-1. PHILOLOGY (词源逻辑 / 核心意象):
-   - For words: Write a vivid, flowing narrative paragraph (2-4 sentences) connecting the word's root/affix to its meaning using an anchor word the learner likely knows (e.g. collect/select). Describe a concrete scene/metaphor. DO NOT output a bullet list or factual etymology dump.
-   - For phrases: Explain the core image of the preposition/verb combination (e.g., 'in' is entering space, 'up' is completion) with vivid metaphors and a logical "mental movie".
-2. STORY (趣味故事):
-   - Use Chinese homophones, absurd, vivid, or humorous stories (1-3 sentences).
-3. SMART (智能联想):
+2. STORY (fun story):
+   - ${spec.soundAlikeHint}, or absurd, vivid, or humorous stories (1-3 sentences).
+3. SMART (smart association):
    - A hybrid approach or a completely unique association (e.g., visual letter shapes, pop culture, breaking the word into recognizable "mini-words") (1-3 sentences).
 
 Input parameters:
@@ -1591,17 +1349,17 @@ If User's Mnemonic Idea is provided:
 2. If it is viable and helpful, adopt and expand it into a fully formed mnemonic of the requested type.
 3. If it is NOT viable or misleading:
    - Generate a new, correct mnemonic of the requested type.
-   - In the "reason" field, explain gently in Chinese why the user's idea might not be the best fit (e.g., "您的想法挺有趣，不过该词跟...可能更有关系...") and explain the logic of the new mnemonic.
+   - In the "reason" field, explain gently in ${L} why the user's idea might not be the best fit, and explain the logic of the new mnemonic.
 
 Output format MUST be a valid JSON object:
 {
-  "content": "Mnemonic text in Chinese.",
+  "content": "Mnemonic text in ${L}.",
   "score": 0-100 score representing memory effectiveness,
-  "reason": "Brief explanation in Chinese. If the user provided an idea, explain if it was adopted/why or why not."
+  "reason": "Brief explanation in ${L}. If the user provided an idea, explain if it was adopted/why or why not."
 }
 
 Rules:
-- Return ONLY the JSON object. No markdown code fences. No extra text.`
+- Return ONLY the JSON object. No markdown code fences. No extra text.${buildNativeLanguageContract(spec)}`
 }
 
 export async function generatePhraseMnemonic(
@@ -1609,9 +1367,9 @@ export async function generatePhraseMnemonic(
   signal?: AbortSignal
 ): Promise<import('../types').Mnemonic> {
   const config = getConfig()
-  const isMono = getIsMono(phrase, config)
+  const spec = getLanguageSpec(phrase, config)
   const cleaned = await callApi(
-    getPhraseMnemonicSystemPrompt(isMono),
+    getPhraseMnemonicSystemPrompt(spec),
     `Phrase: ${phrase}\n\nGenerate a mnemonic from a native speaker's perspective and return the JSON.`,
     signal
   )
@@ -1633,9 +1391,9 @@ export async function generateMnemonic(
   signal?: AbortSignal
 ): Promise<import('../types').Mnemonic> {
   const config = getConfig()
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
   const cleaned = await callApi(
-    getMnemonicSystemPrompt(isMono),
+    getMnemonicSystemPrompt(spec),
     `Word: ${word}\n\nGenerate a mnemonic for this word and return the JSON.`,
     signal
   )
@@ -1672,10 +1430,10 @@ ${ideaPrompt}
 Please generate or refine the mnemonic for this type based on the instructions.`
 
   const config = getConfig()
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
 
   const cleaned = await callApi(
-    getSingleMnemonicPrompt(isMono),
+    getSingleMnemonicPrompt(spec),
     userPrompt,
     signal
   )
@@ -1912,27 +1670,24 @@ export async function testConnection(signal?: AbortSignal): Promise<string> {
   return reply || '连接成功'
 }
 
+function prepImageryFieldDescs(spec: NativeLanguageSpec) {
+  const L = spec.name
+  return {
+    coreIdeaPlaceholder: `2-4 short ${L} keywords joined by ' · ' (e.g. Increase · Completion · Creation, written in ${L})`,
+    phraseExplanationPlaceholder: `2-3 sentences in ${L} explaining how this preposition's spatial imagery shapes the meaning of this specific phrase`,
+    smartAssocPlaceholder: `1-sentence ${L} quick visual summary / memory cue (can use emoji or → notation)`,
+    languageRule: `All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in clear, learner-friendly ${L}.`,
+  }
+}
+
 export async function generatePrepImagery(
   phrase: string,
   prepositions: string[],
   signal?: AbortSignal
 ): Promise<PrepSpatialData> {
   const config = getConfig()
-  const isMono = getIsMono(phrase, config)
-
-  const coreIdeaPlaceholder = isMono
-    ? 'Increase · Completion · Creation'
-    : '增加 · 完成 · 创造'
-  const phraseExplanationPlaceholder = isMono
-    ? "2-3 sentences in English explaining how the preposition's imagery applies to this phrase"
-    : '2-3句中文，说明该介词的空间意象具体如何塑造了此短语的含义'
-  const smartAssocPlaceholder = isMono
-    ? '1-sentence quick visual summary in English (can use emoji or → notation)'
-    : '1句中文趣味联想/记忆线索 (可使用 emoji 或 → 符号)'
-
-  const languageRule = isMono
-    ? 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in English only. No Chinese characters.'
-    : 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in clear, learner-friendly Chinese.'
+  const spec = getLanguageSpec(phrase, config)
+  const { coreIdeaPlaceholder, phraseExplanationPlaceholder, smartAssocPlaceholder, languageRule } = prepImageryFieldDescs(spec)
 
   const userPrompt = `Phrase: "${phrase}"\nPrepositions to explain: ${prepositions.join(', ')}\n\nReturn the JSON.`
   
@@ -1979,7 +1734,7 @@ Rules:
 - phraseExplanation must reference the specific phrase, not just the preposition in isolation
 - smartAssoc should be a memorable one-liner
 - ${languageRule}
-- Return ONLY the JSON object.`
+- Return ONLY the JSON object.${buildNativeLanguageContract(spec)}`
 
   const cleaned = await callApi(systemPrompt, userPrompt, signal)
   try {
@@ -2002,21 +1757,8 @@ export async function regenerateSinglePrepItem(
   signal?: AbortSignal
 ): Promise<PrepSpatialItem> {
   const config = getConfig()
-  const isMono = getIsMono(phrase, config)
-
-  const coreIdeaPlaceholder = isMono
-    ? 'Increase · Completion · Creation'
-    : '增加 · 完成 · 创造'
-  const phraseExplanationPlaceholder = isMono
-    ? "2-3 sentences in English explaining how this preposition's imagery applies to this specific phrase"
-    : '2-3句中文，说明该介词的空间意象具体如何塑造了此短语的含义'
-  const smartAssocPlaceholder = isMono
-    ? '1-sentence quick visual summary in English (can use emoji or → notation)'
-    : '1句中文趣味联想/记忆线索 (可使用 emoji 或 → 符号)'
-
-  const languageRule = isMono
-    ? 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in English only. No Chinese characters.'
-    : 'All explanation text (coreIdea, phraseExplanation, smartAssoc) MUST be in clear, learner-friendly Chinese.'
+  const spec = getLanguageSpec(phrase, config)
+  const { coreIdeaPlaceholder, phraseExplanationPlaceholder, smartAssocPlaceholder, languageRule } = prepImageryFieldDescs(spec)
 
   const currentPrompt = currentContent ? `Current explanation content to change: "${currentContent}"` : ''
   const userPrompt = `Phrase: "${phrase}"\nPreposition to explain: ${preposition}\n${currentPrompt}\n\nReturn the JSON.`
@@ -2058,7 +1800,7 @@ Rules:
 - phraseExplanation must reference the specific phrase, not just the preposition in isolation
 - smartAssoc should be a memorable one-liner
 - ${languageRule}
-- Return ONLY the JSON object.`
+- Return ONLY the JSON object.${buildNativeLanguageContract(spec)}`
 
   const cleaned = await callApi(systemPrompt, userPrompt, signal)
   try {
@@ -2087,7 +1829,7 @@ Rules:
 export async function resolveQuerySkeleton(
   query: string,
   queryType: 'word' | 'phrase' | 'sentence',
-  isMono: boolean = false,
+  explanationLanguage: ExplanationLanguage = 'zh',
   signal?: AbortSignal
 ): Promise<MeaningsAnchor> {
   const config = getConfig()
@@ -2098,26 +1840,26 @@ export async function resolveQuerySkeleton(
   const isSentence = queryType === 'sentence'
   const isZhInput = lang === 'zh'
 
-  const roleDesc = isMono
-    ? 'You are a professional English vocabulary analyst.'
-    : 'You are a professional English vocabulary analyst for Chinese native speakers.'
+  const spec = getNativeLanguage(explanationLanguage)
+  const L = spec.name
+  const roleDesc = `You are a professional English vocabulary analyst for ${spec.audience}.`
 
   const shape = isSentence
     ? `{
   "correctForm": "the corrected / cleaned form of the input text",
-  "senses": [ { "senseIndex": 1, "zh": "faithful full translation", "en": "original or polished English text" } ]
+  "senses": [ { "senseIndex": 1, "zh": "faithful full ${L} translation", "en": "original or polished English text" } ]
 }`
     : `{
   "correctForm": "the English headword being explained (fix typos; for Chinese input, the closest natural English word or short expression; culture-bound inputs may require a phrase)",
   "pos": "primary part of speech",
   "phonetic": "IPA if English, else omit",
-  "senses": [ { "senseIndex": 1, "pos": "n.", "zh": "core sense", "en": "English gloss" } ]
+  "senses": [ { "senseIndex": 1, "pos": "n.", "zh": "core sense in ${L}", "en": "English gloss" } ]
 }`
 
   const senseRule = isSentence
     ? '- senses: EXACTLY 1 item, a faithful translation. Never summarize.'
     : isZhInput
-      ? '- senses: 2-5 items. The user typed Chinese, so each sense is a DISTINCT English candidate for that concept, ordered best-first, with "en" = the English word and "zh" = the nuance that separates it from the others.'
+      ? `- senses: 2-5 items. The user typed Chinese, so each sense is a DISTINCT English candidate for that concept, ordered best-first, with "en" = the English word and "zh" = the ${L} nuance that separates it from the others.`
       : '- senses: 1-4 primary dictionary senses, ordered by frequency.'
 
   const systemPrompt = `${roleDesc}
@@ -2130,7 +1872,7 @@ Rules:
 ${buildCultureAwareInputRule()}
 - correctForm is REQUIRED. It is the single thing every later pass must agree on.
 ${senseRule}
-- Be terse. This is a routing decision, not the final answer.${isMono ? '\n- ALL output text in English only.' : ''}`
+- Be terse. This is a routing decision, not the final answer.${buildNativeLanguageContract(spec)}`
 
   const userPrompt = `Input: "${query}"\n\nReturn the resolution JSON.`
 
@@ -2220,7 +1962,6 @@ export async function aiCombinedLookup(
     webSearchResults: webResults,
     isFull,
     triLingual: config.triLingualExamples,
-    monolingualWord: dictionaryContext.isMonolingual,
     explanationLanguage: dictionaryContext.explanationLanguage,
     meaningsAnchor,
   })
@@ -2273,7 +2014,6 @@ export async function aiCombinedPhraseQuery(
     webSearchResults: webResults,
     isFull,
     triLingual: config.triLingualExamples,
-    isMono: dictionaryContext.isMonolingual,
     queryType: phraseQueryType,
     meaningsAnchor,
     explanationLanguage: dictionaryContext.explanationLanguage,
@@ -2309,16 +2049,12 @@ export async function enrichSingleMeaning(
   if (!config.apiKey) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
-  const isMono = getIsMono(word, config)
+  const spec = getLanguageSpec(word, config)
 
-  const sceneLabel = isMono ? '2-4 word English context tag' : '2-4字的情景标签'
-  const sceneDesc = buildNativeSceneDescription(isMono)
+  const sceneLabel = `short ${spec.name} context tag (2-4 words)`
+  const sceneDesc = buildNativeSceneDescription(spec)
 
-  const roleDesc = isMono
-    ? 'You are a professional English vocabulary analyst for learners who prefer English-only explanations.'
-    : 'You are a professional English vocabulary analyst for Chinese native speakers.'
-
-  const systemPrompt = `${roleDesc}
+  const systemPrompt = `You are a professional English vocabulary analyst for ${spec.audience}.
 
 Given a single word and one of its specific meanings, generate BOTH:
 1. A vivid scene explanation (scene: { label, description })
@@ -2336,13 +2072,11 @@ Return ONLY a valid JSON object. No markdown code fences. No explanation. No pre
 
 Rules:
 - description must be conversational and vivid, NOT dictionary-style
-${buildNativeSceneRules(isMono)}
+${buildNativeSceneRules(spec)}
 - imageQuery MUST be a concrete English noun phrase (3-6 words) depicting this specific sense
-- Never output anything outside the JSON object${isMono ? '\n- ALL output text must be in English only.' : ''}`
+- Never output anything outside the JSON object${buildNativeLanguageContract(spec)}`
 
-  const meaningText = isMono
-    ? `EN: ${meaning.en || meaning.zh}`
-    : `ZH: ${meaning.zh} | EN: ${meaning.en}`
+  const meaningText = formatSenseLine(meaning, spec)
 
   const userPrompt = `Word: ${word}
 

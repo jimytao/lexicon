@@ -135,6 +135,20 @@ Analyze this word and return the JSON.`
 }
 ```
 
+## 学习者母语（Native Language）契约
+
+**一处决定，处处读取。** 所有面向学习者的 Prompt 的解释语言只由一条链路决定，任何 Prompt 构造函数都不得自行判断「是中文还是越南语」：
+
+1. `resolveDictionaryContext(query, settings)`（`src/services/dictionaryContext.ts`）：当前查询类型的 Monolingual 开关 **优先于** Main Dictionary → 得到 `explanationLanguage: 'zh' | 'vi' | 'en'`（单语言已折叠为 `'en'`，因此不再单独传 `isMono`）。
+2. `getNativeLanguage(code)` / `resolveNativeLanguage(query, settings)`（`src/services/nativeLanguage.ts`）：从注册表 `NATIVE_LANGUAGES` 取 `NativeLanguageSpec`（`name`、`audience`、`transferLabel`、`supportLanguage`、`dictionaryTarget`、`soundAlikeHint` 等）。
+3. 每个 Prompt 的字段说明都是**语言中立的英文模板**，用 `${spec.name}` 插入语言名（如 `1-3 sentences in ${L}`）；不再有 `isMono ? 英文 : 中文` 的双份描述。
+4. 每个 Prompt **末尾**统一追加 `buildNativeLanguageContract(spec)`：所有解释性文字必须用 `spec.name`；只有英文词条/表达本身、被引用的英文片段（如 `原文 -> 改正` 两侧）、英文例句、schema 枚举值保留英文；旧字段名 `zh` 填 `spec.name`。英英模式则为 English only + CEFR B1–B2。
+5. 输入方向（母语输入 / 英文输入 / 第三语言输入）统一由 `buildInputDirectionRule(spec, lang)` 生成。
+
+**新增一种语言**：在 `NATIVE_LANGUAGES` 加一条，并在 `dictionaryContext.ts` 的 `MAIN_DICTIONARY_LANGUAGE` 映射对应主词典即可，Prompt 代码无需改动。`nativeLanguage.test.ts` 锁定：所有构造函数以同一份契约结尾、vi/en Prompt 不含任何汉字、zh Prompt 不出现 Vietnamese、Prompt 源码中不得再出现 `isMono` / `explanationLanguage === 'vi'` 之类的语言分支。
+
+> 例外：图片翻译（`aiImageTranslate*`）的目标语言由用户在嵌字页单独选择，不走此契约。
+
 ## AI 服务函数
 
 `src/services/ai.ts` 导出以下函数：
@@ -148,7 +162,7 @@ Analyze this word and return the JSON.`
 ### `generateExercises(word, meanings, count, signal?)`
 按需生成练习场景。返回 `Exercise[]`。
 
-- 每条 `Exercise` 只有 `scenario`（中文场景描述，在单语言模式下为简单英文场景描述）
+- 每条 `Exercise` 只有 `scenario`（用学习者母语 `spec.name` 写的场景描述；英英模式为简单英文）
 - `count` 由 `settingsStore.maxExercises` 控制（默认 5，范围 1–10）
 - JSON 解析同样有 regex array fallback
 
@@ -156,13 +170,13 @@ Analyze this word and return the JSON.`
 评分单道练习。返回 `EvaluationResult`。
 
 - `correct: boolean`
-- `feedback`：中文错误说明（正确时为空，在单语言模式下为英文错误说明）
+- `feedback`：用学习者母语写的错误说明（正确时为空）
 - `correction`：纠正后的句子（正确时为空）
 - 语法错误（时态、介词、句型）必须标为 incorrect；轻微拼写错误可忽略
 
 ### Stage-1 意义锚点与文化表达识别
 
-`resolveQuerySkeleton(query, queryType, isMono, signal?)` 是 Lookup / Core 双半请求共享的快速消歧入口。中文单词输入会等待该锚点后再并行生成两半，其他输入可把骨架作为非阻塞预览。
+`resolveQuerySkeleton(query, queryType, explanationLanguage, signal?)` 是 Lookup / Core 双半请求共享的快速消歧入口。中文单词输入会等待该锚点后再并行生成两半，其他输入可把骨架作为非阻塞预览。
 
 - `buildCultureAwareInputRule()` 同时注入 Stage-1、单词全量与词组/句子 Prompt，避免第一阶段把谐音梗或故意错写按字面锁错、后续两半又被错误锚点约束。
 - 识别必须有上下文或语言证据；普通输入明确继续原有 lexical / translation analysis，不得默认按 slang 处理。
@@ -207,7 +221,7 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
   - 情景 / 语域提示 / 母语选用意图 → `usageIntro`（Usage Contexts 开场白）+ `usageScenes`（具体场景卡）
   - Core 感觉/情绪 → `feelAnchor` / `emotionalTone`（短句，勿写成 usageIntro）
   - 语域/文化条目 → `culturalLore`（与 usageScenes 区分）
-- `correctionNote` 分类标注改动类型：能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调
+- `correctionNote`：多处改动必须逐条 `• <英文原片段> -> <英文改正片段>：<用母语写的原因>`，只有两侧引用片段保留英文。模型内部按「能理解但不地道 / 能理解但更通畅 / 语法或搭配有误 / 无实质错误微调」判断改动类型，但**不输出**这些英文分类标签
 - 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageIntro / usageScenes 中说明差异
 - Core 单词全量：`coreConcept.explanation` 停留在意象→用法分支层；**具体** when/where 交际场景写入 `usageScenes`，勿把场景长文塞进 explanation
@@ -220,7 +234,7 @@ AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）�
 - `history`：`ChatMessage[]`，支持多轮对话
 - `routeQuery`：当前卡片的原始搜索文本；缺省时为兼容旧调用回退到 `context`
 - `learningRoute`：当前结果的提交时 IN / OUT / irrelevant 快照；缺省时才兼容回退到当前 store
-- 回答语言由有效词典决定：英汉用中文并穿插英文例句，英越用越南语并穿插英文例句，英英仅用清晰英语且不假设中文 / 越南语迁移。
+- 回答语言由有效词典决定（见「学习者母语契约」）：用 `spec.name` 回答并穿插英文例句；英英仅用清晰英语且不假设任何迁移。
 
 ### `testConnection(signal?)`
 验证当前 Settings 配置是否可用。返回 `string`（模型回复）。
@@ -229,13 +243,13 @@ AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）�
 Phase 1 图片翻译（仅 OCR + 翻译，无 bbox）。返回 `TextBlock[]`。用于翻译列表视图。
 
 ### `generateMnemonic(word, signal?)`
-为单词生成三种方式的记忆助记（词源逻辑、趣味故事、智能联想）。返回 `Mnemonic`。单语言模式下生成英文内容与原因，且故事使用英文 wordplay/rhyme 替代中文谐音。
+为单词生成三种方式的记忆助记（词源逻辑、趣味故事、智能联想）。返回 `Mnemonic`。内容与原因均用学习者母语；趣味故事的谐音来源取 `spec.soundAlikeHint`（中文谐音 / 越南语近音 / 英文 wordplay）。
 
 ### `generatePhraseMnemonic(phrase, signal?)`
-为词组/短语生成三种方式的记忆助记。返回 `Mnemonic`。单语言模式下生成英文内容与原因。
+为词组/短语生成三种方式的记忆助记。返回 `Mnemonic`。内容与原因均用学习者母语。
 
 ### `generateSingleMnemonic(word, type, isPhrase, currentMnemonicContent?, userIdea?, signal?)`
-生成或重新生成单个指定类型的助记（支持用户想法提议与校验）。返回 `MnemonicItem`。单语言模式下生成英文内容与原因，提议校验与回复同样切换为英文。
+生成或重新生成单个指定类型的助记（支持用户想法提议与校验）。返回 `MnemonicItem`。内容、原因与对用户提议的校验回复均用学习者母语。
 
 ### `aiImageTranslateFull(imageBase64, sourceLang, targetLang, signal?)`（已废弃 v0.6.0）
 ~~Phase 2 图片翻译（OCR + 翻译 + bbox/polygon）。~~

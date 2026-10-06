@@ -13,7 +13,7 @@ import {
   type MeaningsAnchor,
 } from '../services/ai'
 import { recordSentenceCorrectionEvent, resolveCurrentLearningRoute } from '../services/profile'
-import { resolveDictionaryContext } from '../services/dictionaryContext'
+import { resolveDictionaryContext, type ExplanationLanguage } from '../services/dictionaryContext'
 import { combineSignals } from '../utils/abortSignal'
 import { classifyAiRequestError } from '../utils/aiRequestErrors'
 import { createAiRequestGate, shouldCommitAiDisplay } from '../utils/aiRequestGate'
@@ -118,11 +118,11 @@ async function resolveWordAnchor(
     }
   }
 
-  const isMono = resolveDictionaryContext(word, useSettingsStore.getState()).isMonolingual
+  const language = resolveDictionaryContext(word, useSettingsStore.getState()).explanationLanguage
 
   if (detectLanguage(word) === 'zh') {
     try {
-      const skeleton = await resolveQuerySkeleton(word, 'word', isMono, signal)
+      const skeleton = await resolveQuerySkeleton(word, 'word', language, signal)
       if (commitOk()) useResultStore.getState().applyQuerySkeleton(word, skeleton, 'word')
       return skeleton
     } catch (e) {
@@ -132,7 +132,7 @@ async function resolveWordAnchor(
     }
   }
 
-  void previewSkeleton(word, 'word', isMono, signal, commitOk)
+  void previewSkeleton(word, 'word', language, signal, commitOk)
   return undefined
 }
 
@@ -144,11 +144,10 @@ async function resolvePhraseAnchor(
 ): Promise<MeaningsAnchor | undefined> {
   const dictionaryContext = resolveDictionaryContext(phrase, useSettingsStore.getState())
   const isSentence = dictionaryContext.queryType === 'sentence'
-  const isMono = dictionaryContext.isMonolingual
 
   // A sentence has exactly one faithful reading and the halves cannot diverge on
   // it, so there is nothing to arbitrate — resolve only to paint the gist early.
-  void previewSkeleton(phrase, isSentence ? 'sentence' : 'phrase', isMono, signal, commitOk)
+  void previewSkeleton(phrase, isSentence ? 'sentence' : 'phrase', dictionaryContext.explanationLanguage, signal, commitOk)
   return undefined
 }
 
@@ -159,11 +158,11 @@ async function resolvePhraseAnchor(
 function previewSkeleton(
   query: string,
   kind: 'word' | 'phrase' | 'sentence',
-  isMono: boolean,
+  language: ExplanationLanguage,
   signal: AbortSignal,
   commitOk: () => boolean,
 ): Promise<void> {
-  return resolveQuerySkeleton(query, kind, isMono, signal)
+  return resolveQuerySkeleton(query, kind, language, signal)
     .then((skeleton) => {
       if (!commitOk()) return
       useResultStore.getState().applyQuerySkeleton(query, skeleton, kind === 'word' ? 'word' : 'phrase')

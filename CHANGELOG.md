@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-10-06 — AI 输出母语统一与多语言扩展架构 (v0.9.28)
+
+### 用户可见
+1. **「为什么这么改？」改用母语解释**：词组/句子订正说明逐条按 `• 原文片段 -> 改正片段：原因` 输出，只有前后两段被修改的英文原样保留，原因严格使用当前母语（英汉=中文、英越=越南语、英英=英语）；不再出现整段英文解释，也不再把 (a)–(d) 英文分类标签直接显示给用户。
+2. **所有 AI 板块统一跟随当前母语**：释义、场景、词源、近义辨析、搭配、概念树、地道表达说明、追问、助记、介词意象、练习场景与评分反馈、释义核对、缺项补全、Stage-1 消歧都使用同一母语；切换主词典或开关 Monolingual 后不会残留上一种语言的措辞。
+3. **修复英越用户在部分功能中收到中文**：练习场景、造句评分、释义核对、补全搭配/概念树释义、助记、介词意象、单义项场景补全等此前只区分「是否单语」，英越词典下会默认输出中文，现已改为越南语。
+4. **修复英英模式外语输入的文化背景仍为中文**：英英（Monolingual）模式下查询日语等外语时，文化背景字段改为英文。
+5. **越南语输入不再按「外语文化梗」处理**：英越词典下输入越南语，按母语输入给出自然英文表达并用越南语讲解，不再优先套用 ACG / 亚文化外语分析。
+6. **助记趣味故事按母语取谐音**：中文用中文谐音，越南语用越南语近音，英英用英文文字游戏 / 押韵。
+
+### 工程与验证
+- 新增 `src/services/nativeLanguage.ts`：母语注册表 `NATIVE_LANGUAGES`（`name` / `audience` / `transferLabel` / `supportLanguage` / `dictionaryTarget` / `soundAlikeHint`），以及 `buildNativeLanguageContract()`（所有 Prompt 末尾统一追加的母语契约）、`buildInputDirectionRule()`（母语 / 英文 / 第三语言输入方向）与 `exampleGlossDesc()`。
+- `dictionaryContext.ts`：Monolingual 开关优先于主词典的判定保持只在 `resolveDictionaryContext()` 一处完成，主词典→语言改为映射表；新增 `resolveNativeLanguage()` 与 `learnerLanguagePolicyFor()`，`resolveLearnerLanguagePolicy()` 与 Profile 诊断改由注册表派生，不再手写三份策略对象。
+- `ai.ts`、`aiPhrasePrompt.ts`、`aiCombinedPrompt.ts`、`aiPromptGuidance.ts`、`profile.ts`：全部字段说明改为语言中立的英文模板（`in ${spec.name}`），移除 `isMono ? 英文 : 中文` 双份描述、`isVietnameseLearner` / `useVietnamese` 与 `explanationLanguage === 'vi'` 分支；Prompt 构造函数不再接收 `isMono` / `monolingualWord`，单语已折叠为 `explanationLanguage='en'`。`resolveQuerySkeleton()` 第三个参数由 `isMono` 改为 `explanationLanguage`，`useAiLookup.ts` 同步。
+- 新增语言只需在注册表加一条并映射主词典，Prompt 代码无需改动。图片翻译目标语言仍由嵌字页独立选择，不受此契约影响。
+- 新增 `nativeLanguage.test.ts`：锁定 Monolingual 优先级、所有构造函数以同一契约结尾、订正说明格式、vi / en Prompt 不含任何汉字、zh Prompt 不出现 Vietnamese，以及 Prompt 源码不得再出现按具体语言分支；顺带修复合并版词组 Prompt 在中文线中残留 "Vietnamese or English-English mode" 措辞。旧测试中依赖中文措辞或 `isMono` 参数的断言同步更新。
+- 文档：`lexicon-docs/04-ai-schema.md` 新增「学习者母语（Native Language）契约」章节，`AGENT.md` 补充禁止在 Prompt 中写语言分支的约定。
+- 全量回归：40 个测试文件、364 项测试全部通过；`tsc -b` 通过；ESLint 0 error（67 个既有 warning）。
+
 ## 2026-09-25 — IN / OUT 快照、Profile 证据收敛与文化表达识别 (v0.9.27)
 
 ### 用户可见

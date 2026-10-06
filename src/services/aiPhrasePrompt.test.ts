@@ -167,7 +167,6 @@ describe('buildPhrasePrompt — learner language identity', () => {
       lang: 'en',
       cognitive: 'lookup',
       queryType: 'sentence',
-      isMono: true,
       explanationLanguage: 'en',
     })
     expect(prompt).toMatch(/English-only|monolingual/i)

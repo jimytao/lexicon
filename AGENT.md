@@ -189,6 +189,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - 英英：`public/assets/databases/lexicon_en.db`（OALD10，约 84k）
 - 英越：`public/assets/databases/lexicon_vi.db`（SPDict，约 83k，含越南语反向索引）
 - Main Dictionary 可选英汉 / 英越 / 英英；单词、短语、句子的 Monolingual 开关按查询类型直接覆盖为英英，不再有 Auto Switch 开关。DB 与 AI 共用 `resolveDictionaryContext`；Profile / Prompt 通过 `resolveLearnerLanguagePolicy` 从同一有效词典解析学习者身份（英汉=`zh`、英越=`vi`、英英=`en`，无辅助语言）。
+- **学习者母语契约**：所有 AI Prompt 的解释语言只从 `src/services/nativeLanguage.ts` 的注册表读取（`getNativeLanguage(explanationLanguage)` → `spec.name` 插入英文模板，末尾统一追加 `buildNativeLanguageContract(spec)`）。**禁止**在 Prompt 代码里写 `isMono ? … : 中文` 或 `=== 'vi'` 之类的语言分支；新增语言只加注册表条目 + 主词典映射。详见 `lexicon-docs/04-ai-schema.md`「学习者母语契约」。
 
 ### 发音
 
