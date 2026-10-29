@@ -68,7 +68,10 @@ const UPDATE_URLS = [
   'https://gcore.jsdelivr.net/gh/jimytao/lexicon@master/version.json'
 ]
 
-const EXTENSION_RELEASE_URL = 'https://github.com/jimytao/lexicon/releases/tag/extension-preview'
+/** Extension ZIPs ship in the same versioned Release as the APK / EXE / IPA. */
+export function extensionReleaseUrl(version: string): string {
+  return `https://github.com/jimytao/lexicon/releases/tag/v${version}`
+}
 
 function getCurrentVersion(): string {
   if (isExtension()) {
@@ -245,11 +248,11 @@ export const useUpdateStore = create<UpdateState>()(
         if (status !== 'available' || !manifest) return
 
         // Preview extensions are installed as unpacked ZIPs, so the browser cannot
-        // replace them automatically. Send users to the stable extension release
-        // page, where README-style install/update instructions and the latest ZIPs
-        // live, instead of entering the native APK/Tauri download flow.
+        // replace them automatically. Send users to the new version's Release page,
+        // where the extension ZIPs sit next to the other platforms' packages,
+        // instead of entering the native APK/Tauri download flow.
         if (isExtension()) {
-          window.open(EXTENSION_RELEASE_URL, '_blank', 'noopener,noreferrer')
+          window.open(extensionReleaseUrl(manifest.version), '_blank', 'noopener,noreferrer')
           set({ isModalOpen: false })
           return
         }

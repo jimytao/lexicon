@@ -249,7 +249,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 **上传 / 发版门禁**：凡 `git push`、正式发版或用户要求「上传代码」，必须先执行根目录 `workflow.md` 的 **§0 上传前文档门禁**（用 git 锚定上次远程基线 → 补全 CHANGELOG → 校对中英文 README）。未通过门禁不得推送。
 
-发版相关：Release Notes 以 `CHANGELOG.md` 为真相源；临时 notes 用完可删。签名 / `version.json` **必须**走 `scripts/release/*.ps1`（`Load-ReleaseEnv` → 构建 → `Sign-TauriBundle` → `Write-VersionJson` → `Assert-ReleaseGates`），禁止把路径塞进 `TAURI_SIGNING_PRIVATE_KEY`、禁止 BOM、禁止未通过门禁就 push（详见 `workflow.md` §3–§4）。
+发版相关：Release Notes 以 `CHANGELOG.md` 为真相源；临时 notes 用完可删。签名 / `version.json` **必须**走 `scripts/release/*.ps1`（`Load-ReleaseEnv` → 构建 → `Sign-TauriBundle` → `Write-VersionJson` → `Assert-ReleaseGates`），禁止把路径塞进 `TAURI_SIGNING_PRIVATE_KEY`、禁止 BOM、禁止未通过门禁就 push（详见 `workflow.md` §3–§4）。**一个版本一个 Release**：浏览器扩展两个 ZIP 与 EXE / MSI / APK / IPA / DMG 同挂 `vX.Y.Z`，不再上传到 `extension-preview`（v0.9.28 起冻结，勿删）；`dictionaries` 是词库数据频道，不属于软件包。**上传并用 `gh release view` 核验后，必须按 `workflow.md` §8 删除本地编译产物**（APK、Extension ZIP、`dist-ext/`、Tauri bundle、临时 release notes、Android build 输出），并跑清理核验；未清理不算发版完成。
 
 ---
 

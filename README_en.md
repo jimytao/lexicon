@@ -83,9 +83,9 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 
 ### Download & First Installation
 
-1. Open the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview), and download the latest version for your system under **Assets**:
-   - Windows / Linux: `lexicon-extension-<version>.zip`
-   - macOS: `lexicon-extension-<version>-macos.zip`
+1. Download the package for your system (it ships in the same [Releases v0.9.28](https://github.com/jimytao/lexicon/releases/tag/v0.9.28) as the desktop, Android and iOS builds):
+   - Windows / Linux: **[lexicon-extension-0.9.28.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.28/lexicon-extension-0.9.28.zip)**
+   - macOS: **[lexicon-extension-0.9.28-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.28/lexicon-extension-0.9.28-macos.zip)**
    - Both packages have the same features; do not download Source code or any `.db` files.
 2. **Extract the ZIP completely** into a permanent folder, such as `Documents/Lexicon Extension`. Do not run directly inside the archive, and do not move or delete this folder after installation.
 3. Open your browser's extension management page:
@@ -97,9 +97,11 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 
 ### Updating Extension
 
-The extension version tracks the main Lexicon releases. When an update is detected, the extension will display an in-app notice; clicking it opens the [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview). Because preview builds are installed unpacked, browsers cannot auto-replace local files.
+The extension version tracks the main Lexicon releases. When an update is detected, the extension will display an in-app notice; clicking it opens that new version's Release page (the same Release as the other platforms' packages). Because preview builds are installed unpacked, browsers cannot auto-replace local files.
 
-1. Download the latest ZIP for your system from the Release **Assets**, and extract it completely.
+> The old `extension-preview` Release has not been updated since v0.9.28 and only keeps past builds; download new versions from the matching versioned Release.
+
+1. Download the ZIP for your system from the new version's Release **Assets**, and extract it completely.
 2. Replace your previous extracted directory with the new one while keeping the folder path unchanged; do not loosely mix new files into the old directory.
 3. Return to `chrome://extensions` or `edge://extensions`, find Lexicon, and click the **Reload** button on the extension card.
 4. Open the Lexicon Side Panel, and verify the new version in **Settings → Current Version**.

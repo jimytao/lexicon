@@ -81,9 +81,9 @@ Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 In
 
 ### 下载与首次安装
 
-1. 打开 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview)，在页面底部的 **Assets** 中下载最新版本：
-   - Windows / Linux：`lexicon-extension-<版本号>.zip`
-   - macOS：`lexicon-extension-<版本号>-macos.zip`
+1. 下载对应系统的扩展包（与桌面端、Android、iOS 安装包同在 [Releases v0.9.28](https://github.com/jimytao/lexicon/releases/tag/v0.9.28) 下）：
+   - Windows / Linux：**[lexicon-extension-0.9.28.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.28/lexicon-extension-0.9.28.zip)**
+   - macOS：**[lexicon-extension-0.9.28-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.28/lexicon-extension-0.9.28-macos.zip)**
    - 两个包的功能相同；不要下载 Source code，也不需要下载任何 `.db` 文件。
 2. 将 ZIP **完整解压**到一个准备长期保留的文件夹，例如 `Documents/Lexicon Extension`。不要直接在压缩包内打开，也不要在安装后删除或移动这个文件夹。
 3. 打开浏览器扩展管理页：
@@ -95,9 +95,11 @@ Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 In
 
 ### 更新 Extension
 
-Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩展内会显示更新提示；点击提示会直接打开上面的 [Browser Extension Preview Release](https://github.com/jimytao/lexicon/releases/tag/extension-preview)。当前 Preview 采用开发者模式安装，不会像商店扩展一样自动替换文件。
+Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩展内会显示更新提示；点击提示会直接打开该新版本的 Release 页面（与其他平台安装包同一个 Release）。当前 Preview 采用开发者模式安装，不会像商店扩展一样自动替换文件。
 
-1. 从 Release 的 **Assets** 下载对应系统的最新版 ZIP，并完整解压。
+> 旧的 `extension-preview` Release 自 v0.9.28 起不再更新，只保留历史版本；新版请到对应版本号的 Release 下载。
+
+1. 从新版本 Release 的 **Assets** 下载对应系统的 ZIP，并完整解压。
 2. 推荐用新版解压目录替换旧版目录，同时保持最终目录位置不变；不要把新版文件零散混入旧目录。
 3. 回到 `chrome://extensions` 或 `edge://extensions`，找到 Lexicon，点击卡片上的「重新加载（Reload）」按钮。
 4. 打开 Lexicon 侧栏，在 **Settings → 当前版本** 确认版本号已经更新。

@@ -1,53 +1,49 @@
 # CHANGELOG
 
-## Unreleased — 2026-10-30 Profile 归纳截断修复
+## Unreleased — 学习者证据 Harness、Profile 归纳可靠性与三词典标签修复
 
-- Chrome 实测（Gemini）：后台 Profile 归纳的回答被 `max_tokens: 3000` 截断（`finish_reason: "length"`），JSON 不完整，整批被静默拒收，记录留在队列里；会话内两次归纳均未写入，冷启动重试才成功。
-- 归纳请求输出上限改为 8192（`DIAGNOSTIC_MAX_TOKENS`）；发给 AI 的旧画像不再带程序自有的 `verifiedProductionIds` / `verifiedProductionTexts`，减少无用回写。
-- 输出被截断、不是合法 JSON、或未通过结构校验时，控制台输出 `[profile]` 警告说明原因；事件仍保留待下次归纳，行为不变。
-- 新增 3 项回归测试（截断 / 校验失败可见、基线不含验证字段）；44 文件 / 455 项通过，TypeScript 通过，ESLint 0 error。
-
-## Unreleased — 2026-10-30 文档核对
-
-- 对照本轮实际改动核对开发日志、执行记录、架构 / UI / 数据库 / AI / Profile 文档、双语 README 和 Agent 上下文；在执行记录中补文档覆盖清单。
-- 修正旧正文仍把气泡限定为“反复混淆”、遗漏 extension / referenceId / v4 缓存规则、旧库损伤误写成当前状态等不一致；补联想跳过条件、诊断快照与验证字段、三库复查命令和各平台分发限制。
-- 保留修复前基线、过程中的测试数量与门禁版本，明确最终验收为 452 项测试、提示门禁 v4；本次仅同步文档与代码注释，未新增功能、提交或发布。
-- 随后用户授权在 `feat/learner-evidence-harness` 本地提交本轮全部修复、三库及记录，包含此前未跟踪的英越库；仅 commit，不推送或发布。前述“未提交”为授权前的历史状态。
-
-## Unreleased — 2026-10-29 核验与修复（本地完成，未发布）
-
-- 修复前基线为 `0dcc889`，父提交为 `e24db9e`；完整证据、正确行为、问题编号、执行计划和验收结果统一记录在 [`lexicon-docs/12-learner-evidence-audit.md`](lexicon-docs/12-learner-evidence-audit.md)。以下上一轮 Unreleased 描述保留为历史，不能当作已覆盖所有边界的验收结论。
-- 用户明确：结果页气泡是 **AI 自选的学习联系 / 回顾**，可解释旧错、真实进步、相似与不同的用法，也可作有价值的一句延伸；无合适内容必须省略，禁止凑数。不得把气泡做成必须出现的表现评分或固定评价模板。
-- 本轮先记录再修改；每项按问题编号更新实际改动与验证。原始 MDX 保留，生成库先在临时目录验证，不直接以未经核验的转换结果覆盖旧库。
-- 修复追问将订正版标成原文的问题；提问引用与自主输出分开，正确但无需订正的 OUT 表达也可作为延迟归纳的 `production` 证据。掌握度上升绑定事件 ID，稳定掌握至少需两条不同原文的已验证表达，验证记录由代码维护。
-- 诊断严格校验本轮全部方向的结果和字段；缺项 / 坏结构保留待处理记录。分批发送最早 12 条高价值事件 / 40 条 lookup，发送、验收和删除同一快照；预算外事件继续排队。
-- 气泡支持可选 `repeat / improved / related / extension`；历史联系须引用实际 Profile 编号，只有重复错误与进步才需判断本人表达；旧缓存保留分析、隐藏未经新版校验的气泡。
-- 三转换器按义项词性分组，沿用原 schema；修英英标签边界、旧英汉 A 音恢复和英越摘要头碎片过滤。构建词库改用 Node 内置 `node:sqlite`（本机 Node 24.18 验证），不影响 App 的 SQLite 引擎；详细数据比对与应用状态见执行记录。
-- 历史搜索字符串不作为权威词义事实；追问与探索注入明确禁止为未知历史词串编造释义，可省略提示。
-- 追加修复 S01：重复搜索同词后粘贴新前缀不再错误略过联想；skip 标记只绑定已提交词面。
-- 最终验证：44 文件 / 452 项测试通过；Web / extension build、TypeScript 通过；ESLint 0 error / 87 warning。Chrome 已验证原文追问、可省略气泡、三库标签与恢复义项、一次粘贴联想。三库已本地应用，线上 Release 未更新。
-
-## Unreleased — 学习者证据 Harness：来源标签、IN / OUT 分线蒸馏与 AI 结论校验
+> 版本号待定。完整证据、问题编号（E01–E04 / D01–D07 / S01–S03）、修复前后对比与验收记录见 [`lexicon-docs/12-learner-evidence-audit.md`](lexicon-docs/12-learner-evidence-audit.md)。
 
 ### 用户可见
-1. **弱点气泡不再把 AI 的改正当成你的进步**：此前句子查询中，AI 先把 “fails charging” 改成 “fails to charge”，随后又在紫色气泡里夸你“这次正确使用了 fails to charge”。现在气泡必须逐字引用你原文里的词：说“你用对了”时，这些词必须是你自己写的且没被改动；说“又犯了”时，这些词必须确实被订正改掉；核对不通过就不显示。只是话题相同（例如都在描述设备）不再算作关联。
-2. **IN 模式不再表扬或批评别人写的句子**：IN 下查询的是外部材料，气泡只会提示“这里涉及你在学的模式”。
-3. **IN / OUT 画像不再互相串线**：后台约每 12 次查询批量归纳一次（省 token 的做法不变），但一批里的 IN 和 OUT 记录现在分组交给 AI、分键收回，归属由代码决定；本批没有新记录的那条线完全不会被改写。
-4. **“已掌握”更难被误判**：AI 想提高某条弱点的掌握度或标为已掌握，必须引用你亲手写对、且没被 AI 改动的原文；AI 的订正只算“犯错”的证据。
-5. **修复后台归纳失败时可能空转**：没有 API Key、AI 返回坏 JSON 或离线时，同一批记录不再立即无限重试。
-6. **词典释义的「可数 / 不可数」等标签变成小标签**：原来释义开头显示 `[[countable] 海或湖的）湾` 这类乱括号，现在显示为 `（海或湖的）湾`，旁边与 NOUN 同一行出现小标签；中文界面显示「可数」「及物」「非正式」「正式」等，英文界面显示原文。英汉、英英、英越三本词典的语法、语体、学科、地区标签都已处理（英越的领域标签如 `y học` 以越南语原样显示）。
-7. **修复英汉词典中文释义的其他显示错误**：补回丢失的左括号「（」；约 7.7k 条义项原来把情景说明（如「金融」「足球」「人的行为或性格」）误当成释义显示，现已换回真正的释义；英文释义行末尾不再重复中文。
-8. **英越词典不再出现词性碎片「义项」**：如 `& phó từ`、`, số nhiều abaci` 不再作为一条释义显示；搜索联想与相关词组里被截断的标签（如 `[[uncounta`）也一并清理。
+1. **学习联想气泡不再把 AI 的改正当成你的进步**：此前句子查询中，AI 先把 “fails charging” 改成 “fails to charge”，又在紫色气泡里夸你“这次正确使用了 fails to charge”。现在说“你用对了 / 又犯了”时，气泡必须逐字引用你原文里的词：用对的词必须是你自己写的且订正后仍保留，犯错的词必须确实被订正改掉；核对不通过就不显示。
+2. **气泡变成可有可无的“学习联想”**：标题由“关联你的薄弱点”改为“学习联想”。没有值得说的就不出现，不再凑数；除了回顾旧错和真实进步，也可以对比不同但相关的结构（如 fail to do 与 avoid doing），或给一句有用的延伸。提到“你以前……”必须对应 Profile 里真实存在的记录；一次用对只说这次用对，不会说“已经掌握”。旧缓存的分析仍可回看，但未经新规则核对的旧气泡会隐藏。
+3. **IN 模式不再表扬或批评别人写的句子**：IN 查询的是外部材料，气泡只会提示其中涉及你在学的内容。
+4. **追问时 AI 引用的是你的原句**：句子页的追问框此前收到的是 AI 改过的句子，并被当成你的原文，所以追问时 AI 会说你写的是 “fails to charge”。现在原句与 AI 改句分开传递，追问能逐字引用你真正写下的内容。
+5. **IN / OUT 画像不再互相串线**：后台仍按批归纳（约每 12 次查询或特殊操作一次，省 token 的做法不变），但一批里的 IN 和 OUT 记录分组交给 AI、分键收回，归属由代码决定；本批没有新记录的那条线完全不会被改写。
+6. **“掌握度”只认你亲手写出的英文**：提高某条弱点的掌握度，必须指向一条 OUT 句子记录，并引用你原文中、订正后仍保留的那几个词；追问里的问句、AI 的订正都不算。写对、无需订正的 OUT 句子现在也会记作“自主表达”证据（停止操作约 90 秒后再归纳）。标为“已掌握”至少需要两句不同的、经程序核对的自主表达。
+7. **后台归纳不再悄悄丢记录**：此前发给 AI 的记录有上限，删除时却删掉整批，超出上限的记录从未归纳就没了；AI 只返回部分方向或格式不全时也会被当作成功。现在发送、核对、删除用同一批记录，超出的继续排队；回答不完整就整批保留到下次。
+8. **后台归纳不再被截断**：实测 Gemini 的归纳回答会被输出上限截断，JSON 写到一半就结束，整批被拒且没有任何提示，画像一直不更新。现在输出上限提高，发给 AI 的内容更精简；若再出现截断或格式问题，控制台会显示原因。
+9. **历史搜索词不再被当作真实单词**：随手打错的搜索串（如 abatibay）不会再被 AI 附会出词义写进学习联想。
+10. **词典的「可数 / 不可数」等变成小标签**：释义开头原来的 `[[countable] 海或湖的）湾` 这类乱括号，现在显示为 `（海或湖的）湾`，旁边与 NOUN 同行出现小标签；中文界面显示「可数」「及物」「非正式」「复数」等，英文界面显示原文。英汉、英英、英越三本词典都已处理；源词典没有的标签不会推断补造。
+11. **英汉词典释义修复**：补回丢失的左括号「（」；约 7.7k 条义项原来把情景说明（如「金融」「足球」）误当释义显示，已换回真正的释义；英文行末不再重复中文；「A 音」等含字母的释义与 music 等标签正确分开；bench 的「法官」义项恢复。
+12. **英越词典修复**：`& phó từ`、`, số nhiều abaci` 这类词性碎片不再作为释义显示，搜索联想与相关词组同步清理；每个义项按自己的词性显示（bay 不再全部标成 ADJ）；abacus、aback 等此前漏掉的义项已恢复。
+13. **英英词典修复**：学科标签不再截断或误取，如 acceleration 正确显示「不可数」「物理」。
+14. **搜索联想修复**：重复搜索同一个词之后，一次粘贴进新的前缀，现在会立即出现联想，不必再多打一个字。
+15. **浏览器扩展与其他平台同一个 Release 发版**：扩展 ZIP 不再累积在长期 `extension-preview` Release 里，而是和 Windows / macOS / Android / iOS 安装包一起挂在对应版本号（`vX.Y.Z`）下；扩展内的更新提示直接打开新版本的 Release 页面，README 的扩展下载链接也改为指向具体版本。
 
 ### 工程与验证
-- 新增 `src/harness/`（纯函数，不读存储 / store / 网络）：`provenance.ts`（`tagText` 来源标签、`PROVENANCE_LEGEND`、整词比对 `containsSpan`）、`lanes.ts`（IN / OUT 分线工具）、`profileContext.ts`（`buildLaneProfileContext`，原 `buildProfilePromptContext` 实现迁入）、`insightGate.ts`（`buildProfileInsightField` / `gateProfileInsight`）、`diagnostic.ts`（`buildDiagnosticPrompts` / `applyDiagnosticResult`，`DiagnosticEvent` 类型迁入）、`index.ts` 统一出口。
-- `profile.ts` 只保留存储、入队与 flush 时机；`buildProfilePromptContext` 变为读存储后的薄包装；诊断 prompt 按 `### OUT LANE` / `### IN LANE` 分组、附时间戳，只发送有新证据的线的旧画像；输出 schema 改为 `{ "in": {...}, "out": {...} }`；单线批次兼容旧扁平格式，混合批次的扁平答案视为不可用；去掉“保持 8–12 条 active”规则，改为每线最多 8 条且禁止凑数。缺方向的旧事件不再发给 AI。flush 仅在成功后才连续执行。
-- `ai.ts` / `aiPhrasePrompt.ts`：`profileInsight` schema 改为 `{ kind, learnerSpan?, text }`，只有 OUT 英文输入提供 `repeat` / `improved`；`aiFullLookup` / `aiPhraseQuery` 解析后统一经 `withCheckedInsight()` 校验并写入提交时方向；词组输入按方向包上 `<learner_original>` / `<external_material>`；`askQuestion` 把页面已展示的 AI 分析标为 `<ai_generated>`。sentence 的 full Profile 指令改为分方向的“如实优先于鼓励”。
-- 新增 `harness/insightGate.test.ts`、`harness/diagnostic.test.ts`（含 “fails charging” 原始案例）；`profile.test.ts`、`profileWiring.test.ts`、`aiPhrasePrompt.test.ts` 同步更新。
-- 词典标签：新增 `src/utils/meaningLabels.ts`（`cleanDictionaryMeaning` / `cleanDictionaryBrief` / `isDictionaryHeaderFragment` / `localizeMeaningLabel`，只剥离每一段都是已知标签的前缀，`(in Britain)` 等正文保留；整行只有标签时保留原文）与 31 项测试（夹具均取自三本真实词库）；`MeaningList`、`SuggestList`、`PhrasesSection`、`db.ops.ts` 接入；`i18n` 新增约 120 个 `meaning.label.*` 中文键。**未修改任何 `.db` 文件**，修复全部在显示时完成。
-- 转换脚本 `mdx-to-sqlite.mjs` / `mdx-en-to-sqlite.mjs` / `mdx-en-vi-to-sqlite.mjs` 修复双括号、丢失「（」、只取首个 `<reg>`、取错 `<chn>`、英文列混入中文、OALD10 学科标签截断、SPDict 例句正则吞掉后续义项与词性头碎片；已用真实 MDX 在内存中全量解析验证（未落盘建库）。
-- 文档：`08-ai-learning-system-and-profile.md` 新增 §4.2.1b 并更新 §4.2.2 / §4.5，`04-ai-schema.md`、`01-architecture.md`、`03-database.md`、`05-components.md`、`AGENT.md` 同步。
-- 全量回归：43 个测试文件、422 项测试全部通过；`tsc -b` 通过；ESLint 0 error。
+- 新增 `src/harness/`（纯函数，不读存储 / store / 网络），`index.ts` 统一出口：
+  - `provenance.ts`：`tagText` 来源标签（`learner_original` / `external_material` / `ai_generated` / `learner_question`，会剥掉文本中伪造的标签）、`PROVENANCE_LEGEND`、`buildStudyContext`（原句与 AI 改句分块）、整词比对 `containsSpan`；
+  - `lanes.ts`：IN / OUT 分线工具；`profileContext.ts`：`buildLaneProfileContext`（原 `buildProfilePromptContext` 实现迁入，注入条目带 `referenceId`，附“历史检索串未经验证”规则）；
+  - `insightGate.ts`：`buildProfileInsightField` / `gateProfileInsight` / `learningReferences`，气泡 schema 为 `{ kind: repeat | improved | related | extension, referenceId?, learnerSpan?, text }`；
+  - `diagnostic.ts`：`selectDiagnosticSnapshot` / `buildDiagnosticPrompts` / `applyDiagnosticResult`，`DiagnosticEvent` 类型迁入并新增 `production` 事件。
+- `profile.ts` 只保留存储、入队与 flush 时机：快照在入口处按预算截取（最早 12 条高价值 + 40 条 lookup），发送 / 验收 / 出队一致；输出按 `{ "in": {...}, "out": {...} }` 分键，有新证据的方向必须完整返回三数组并逐项校验字段，否则整批保留；单线批次兼容旧扁平格式。缺方向的旧事件不再发给 AI。flush 仅在成功后才续批，失败不再空转。
+- 掌握度证据：`improvementQuote` + `improvementEventId` 必须对应同批 OUT sentence / production 事件，且引文同时出现在原文与订正中；程序累计 `WeaknessPattern.verifiedProductionIds` / `verifiedProductionTexts`（最多各 8 条，不采信 AI 回传的同名字段），新 `mastered` 需至少两条不同原文。
+- 诊断请求 `max_tokens` 由 3000 提高到 `DIAGNOSTIC_MAX_TOKENS = 8192`；发给 AI 的基线画像去掉 `verifiedProduction*`；`finish_reason: "length"`、非法 JSON、校验失败分别输出 `[profile]` 警告，事件仍保留。
+- `ai.ts` / `aiPhrasePrompt.ts`：`aiFullLookup` / `aiPhraseQuery` 解析后统一经 `withCheckedInsight()` 校验，写入提交时的方向与 `profileInsightVersion = 4`；`resultStore` 读缓存时隐藏非 v4 气泡、保留分析。`askQuestion` 用 `buildStudyContext` 分开原句与展示文本，页面已有分析标为 `<ai_generated>`；`AiChatBox` 按原始查询记录追问事件。
+- 词典显示：新增 `src/utils/meaningLabels.ts`（`cleanDictionaryMeaning` / `cleanDictionaryBrief` / `isDictionaryHeaderFragment` / `localizeMeaningLabel`，只剥离每一段都是已知标签的前缀，`(in Britain)` 等正文保留）；`MeaningList`、`SuggestList`、`PhrasesSection`、`db.ops.ts` 接入；`i18n` 新增约 120 个 `meaning.label.*` 中文键。`useSearch` 的联想跳过标记改为绑定已提交的词面。
+- 词库重建：三个转换脚本（`mdx-to-sqlite.mjs` / `mdx-en-to-sqlite.mjs` / `mdx-en-vi-to-sqlite.mjs`）修复括号、标签边界（英英脚本中误写的 U+0008）、`<chn>` 取值、SPDict 例句正则吞义项等问题，按义项词性拆分条目（schema 不变），改用 Node 内置 `node:sqlite`（Node 24.18 验证，App 的 SQLite 引擎不变）。三库已重建：英汉 51,902→51,959 词条 / 99,392→99,477 义项，英英不变，英越 83,066→83,071 词条 / 135,194→146,901 义项，旧词条零丢失、`quick_check` 均为 ok。`lexicon_vi.db` 首次纳入 Git；`LEXICON_ASSET_VERSION` 升为 `2026-10-29-labels-pos2`，原生端会重新拷贝词库。新增 `scripts/audit-dictionaries.mjs` / `dictionary-entries.mjs` 与 `lexicon-docs/evidence/2026-10-29/` 比对报告。
+- 发版流程：`updateStore.ts` 以 `extensionReleaseUrl(manifest.version)` 打开 `releases/tag/v<版本>`，取代硬编码的 `extension-preview`（新增 `updateStore.test.ts`）。`workflow.md` 改为“一个版本号一个 Release”：§6 删除向 `extension-preview` 追加 ZIP 的步骤（该 Release 自 v0.9.28 冻结、保留不删），§0 / §7 核对扩展链接指向本版；§8 本地产物清理改为强制，补删 `dist-ext/` 与 Tauri bundle，并新增必须执行的清理核验脚本。`AGENT.md` 同步这两条约束；双语 README 的扩展下载改为 v0.9.28 直链。
+- 测试：新增 `harness/insightGate.test.ts`、`harness/diagnostic.test.ts`（含 “fails charging” 原始案例）、`utils/meaningLabels.test.ts`、`services/dictionaryConverters.test.ts`，以及截断 / 校验失败可见、基线不含验证字段等回归；`profile.test.ts`、`profileWiring.test.ts`、`aiPhrasePrompt.test.ts`、`spdictParser.test.ts`、`resultStoreSplit.test.ts` 同步更新。
+- 文档：新增 `lexicon-docs/12-learner-evidence-audit.md`；`08-ai-learning-system-and-profile.md`（§4.2.1b 等）、`04-ai-schema.md`、`01`、`02`、`03`、`05`、`06`、`11`、`lexicon-docs/README.md`、双语 README、`AGENT.md` 同步。
+- 全量回归：45 个测试文件、457 项测试全部通过；`tsc -b` 通过；Web build 通过（extension build 于 10-29 验收通过）；ESLint 0 error（89 个 warning，多为测试中的非空断言）。
+- Chrome 实测（真实 Gemini API）：OUT 错句气泡如实提示“再次误用”、对句的进步提示有原文依据；追问逐字引用原句；归纳请求上限 8192、正常结束、JSON 完整，画像写入正确方向，队列清空且无 `[profile]` 警告；三库标签、恢复的义项与一次粘贴联想均正常。
+
+### 已知限制
+- 线上扩展的词库下载仍是旧 Release，需发布新词库资产 / manifest 后才能拿到新义项；iOS / Android / Tauri 升级后的词库重新拷贝尚未在真机验证。
+- 单句自主表达对置信度的提升幅度由 AI 决定（实测一次从 0.05 升到 0.4），程序只核对证据来源，不限制幅度。
+- 每个写对的 OUT 句子都会在停止操作约 90 秒后单独触发一次归纳，比纯批量归纳多花 token。
+- 已安装 v0.9.28 及更早版本扩展的用户，点击更新提示仍会打开 `extension-preview`；那里不再有新版 ZIP，需要从对应版本的 Release 手动下载一次，之后的版本会直接跳到正确页面。
 
 ## 2026-10-06 — AI 输出母语统一与多语言扩展架构 (v0.9.28)
 

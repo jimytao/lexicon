@@ -11,6 +11,8 @@
 **未完成下方「0. 上传前文档门禁」之前，禁止 `git push`、禁止创建 Release、禁止上传二进制产物。**  
 **正式发版时：未通过 §3.5 / `Assert-ReleaseGates.ps1` 之前，禁止 `git push`、禁止打 tag、禁止 `gh release`。**
 
+**一个版本号对应一个 GitHub Release：Windows / macOS / Android / iOS 安装包与浏览器扩展 ZIP 全部挂在 `vX.Y.Z` 下（§6）。全部上传并核验后，必须按 §8 删除本地编译产物并通过清理核验，发版才算完成。**
+
 ### 发版脚本（优先调用，勿手写易错环境变量）
 
 | 脚本 | 用途 |
@@ -114,7 +116,7 @@ git diff $BASE...HEAD --stat -- README.md README_en.md
 | 3 | **查词模式名称**是否与产品一致：`Instant` / `AI Lookup` / `Pure Core`（勿再写过时的「仅 AI mode」） | 改正文与配置 AI 小节 |
 | 4 | **设置入口**是否与现状一致（当前为底栏 **Settings Tab 全页**，不是右上角抽屉） | 改「配置 AI」操作步骤 |
 | 5 | **底栏导航**描述是否为 3 Tab：Dict / Image / Settings | 改正文 |
-| 6 | **下载链接版本号**是否指向即将发布 / 已发布的 `vX.Y.Z`（发版时必改；普通 push 若未发版可暂留旧链接，但不得指向不存在的文件） | 同步改 Windows / Android 链接与 Releases tag 链接 |
+| 6 | **下载链接版本号**是否指向即将发布 / 已发布的 `vX.Y.Z`（发版时必改；普通 push 若未发版可暂留旧链接，但不得指向不存在的文件）。浏览器扩展与 Windows / macOS / Android 同在 `vX.Y.Z` Release 下，不再指向 `extension-preview` | 同步改 Windows / macOS / Android / Extension 链接与 Releases tag 链接 |
 | 7 | **技术栈版本**（如 Vite / Capacitor / Tauri）是否与 `package.json` 严重不符 | 小幅更正 |
 | 8 | 中英文两份的**功能点集合一致**（一侧有、另一侧无 → 补齐） | 成对编辑 |
 
@@ -131,7 +133,7 @@ Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前
 - [ ] `$BASE` 已锚定，且已阅读 `git log $BASE..HEAD` 与相关 diff  
 - [ ] `CHANGELOG.md` 已覆盖上次上传以来的功能增减与重要修复  
 - [ ] `README.md` 与 `README_en.md` 已按 0.4 清单校对，无「文档承诺了 App 里没有的功能」  
-- [ ] 若本次是发版：README 下载链接版本号已改为新版本 `X.X.X`
+- [ ] 若本次是发版：README 下载链接版本号已改为新版本 `X.X.X`（含 Extension 的两个 ZIP 链接）
 
 **任一未勾选 → 停在本节补文档，不得上传。**
 
@@ -414,15 +416,12 @@ gh release create "v$V" -t "Lexicon v$V" -F release_notes.txt `
 
 若 Release 已用空资产创建，可改为 `gh release upload "v$V" ...`。
 
-README 的扩展下载链接指向长期 `extension-preview` Release，所以正式版 Release 上传后，还必须同步这个分发入口：
-
-```powershell
-gh release upload "extension-preview" `
-  "lexicon-extension-${V}.zip" `
-  "lexicon-extension-${V}-macos.zip"
-```
-
-> 资产名带版本号，通常不需要 `--clobber`。如果重发同一版扩展，必须先确认覆盖的正是目标版本，再使用 `--clobber`。
+> [!IMPORTANT]
+> **浏览器扩展与 APK / EXE / MSI / IPA / DMG 同属一个版本 Release**：两个 Extension ZIP 只上传到本版 `v$V`，与其他安装包同一个版本号、同一份更新说明。
+> - **不再**往长期 `extension-preview` Release 追加 ZIP。它自 v0.9.28 起冻结，只为旧版扩展的历史链接保留；禁止删除，也禁止继续上传。
+> - 扩展内的「有新版本」提示会打开 `releases/tag/v<最新版本号>`（`src/stores/updateStore.ts`），README 的扩展下载链接也指向 `v$V` 的资产，所以 ZIP 漏传到本版 Release 就是发版失败。
+> - `dictionaries` Release 是扩展首启下载的**词库数据**频道（可覆盖上传，见 `lexicon-docs/10-browser-extension.md`），不是软件包，不受本条约束。
+> - 资产名带版本号，通常不需要 `--clobber`。如果重发同一版资产，必须先确认覆盖的正是目标版本，再使用 `--clobber`。
 
 ## 7. 最终核验 (Final Verification)
 
@@ -435,9 +434,7 @@ $V = "X.X.X"
 
 # 远程资产
 gh release view "v$V" --json assets --jq '.assets[].name'
-# 期望至少含：x64-setup.exe、x64_en-US.msi、5 个 apk、2 个 extension zip；稍后出现 Lexicon.ipa
-gh release view "extension-preview" --json assets --jq '.assets[].name'
-# 期望包含本版的 2 个 extension zip
+# 期望至少含：x64-setup.exe、x64_en-US.msi、5 个 apk、2 个 extension zip；稍后出现 Lexicon.ipa、universal.dmg、macOS.app.zip
 
 # iOS & macOS Actions
 gh run list --workflow=ios-build.yml --limit 1
@@ -448,25 +445,51 @@ gh run list --workflow=macos-build.yml --limit 1
 - [ ] `version.json` 的 `version` / `url` / `signature` 与本版 `.sig` 一致，无 BOM，`is_major` 符合用户意图（默认 false）  
 - [ ] GitHub Release 含 Windows + Android 产物  
 - [ ] GitHub Release 含 `lexicon-extension-$V.zip` + `lexicon-extension-$V-macos.zip`，两者 ZIP 根目录均直接含 `manifest.json`
-- [ ] `extension-preview` Release 也已同步本版两个 ZIP，README 的长期下载入口可用
+- [ ] README / README_en 的扩展下载链接指向本版 `v$V` 的两个 ZIP，且链接可下载；未向 `extension-preview` 追加任何资产
 - [ ] Chrome / Edge 加载 `dist-ext/` 验收通过；macOS 快捷键如未真机验证，必须明确向用户说明
 - [ ] iOS 与 macOS workflows 触发成功且产物挂上（或已向用户说明仍在构建）  
 - [ ] 向用户回报 Release URL  
 
 全部通过后进入 §8 清理。
 
-## 8. 清理本地构建产物 (Cleanup)
-在确认 GitHub Release 已成功发布且所有平台产物（Windows EXE/MSI, Android APKs；建议等 iOS `.ipa` 也挂上）已完整上传后，**务必**清理：
+## 8. 清理本地构建产物 (Cleanup)（强制，发版的最后一步）
+
+**触发条件**：§7 已用 `gh release view "v$V"` 确认本版 Release 含全部本地上传的软件包（Windows EXE / MSI、5 个 APK、2 个 Extension ZIP）。满足后**必须立即删除本地编译产物**，不得留到下次发版，也不得以「之后可能还要用」为由跳过。iOS `.ipa` 与 macOS `.dmg` / `.app.zip` 由 GitHub Actions 在云端构建，本地没有产物；它们未挂上时照样清理本地产物，并向用户说明仍在构建。
+
+**前置**：资产未全部上传成功 → **禁止**清理（否则无法补传）；先补传，再回到本节。
 
 ```powershell
 $V = "X.X.X"
+# 1. 根目录安装包与扩展包
 Remove-Item "Lexicon_${V}_*.apk" -Force -ErrorAction SilentlyContinue
 Remove-Item "lexicon-extension-${V}.zip", "lexicon-extension-${V}-macos.zip" -Force -ErrorAction SilentlyContinue
+# 2. 临时 release notes
 Remove-Item release_notes.txt, release_notes_zh.md, release_notes_en.md -Force -ErrorAction SilentlyContinue
+# 3. 扩展构建目录（已打进 ZIP）
+Remove-Item -Recurse -Force dist-ext -ErrorAction SilentlyContinue
+# 4. Android 构建输出
 cd android; .\gradlew.bat clean; cd ..
-# 建议彻底释放空间（下次 tauri:build 会较慢）：
-Remove-Item -Recurse -Force src-tauri\target -ErrorAction SilentlyContinue
+# 5. Tauri 安装包（EXE / MSI / .sig）；必须删除
+Remove-Item -Recurse -Force src-tauri\target\release\bundle -ErrorAction SilentlyContinue
+# 可选：彻底释放空间（下次 tauri:build 会较慢）
+# Remove-Item -Recurse -Force src-tauri\target -ErrorAction SilentlyContinue
 ```
 
-- **保持环境整洁**：工作区不残留已发布二进制；临时 release notes **不要** commit。  
+**清理核验**（必须执行并向用户回报结果）：
+
+```powershell
+$left = @(
+  Get-ChildItem -File -Filter "Lexicon_*.apk" -ErrorAction SilentlyContinue
+  Get-ChildItem -File -Filter "lexicon-extension-*.zip" -ErrorAction SilentlyContinue
+  Get-ChildItem -File -Filter "release_notes*" -ErrorAction SilentlyContinue
+  Get-ChildItem -Recurse -File "src-tauri\target\release\bundle" -Include *.exe, *.msi, *.sig -ErrorAction SilentlyContinue
+  Get-ChildItem -Recurse -File "android\app\build\outputs\apk" -Filter *.apk -ErrorAction SilentlyContinue
+) | Where-Object { $_ }
+if (Test-Path dist-ext) { $left += Get-Item dist-ext }
+if ($left.Count -gt 0) { $left.FullName; throw "Local release artifacts remain — clean them before reporting done." }
+"Local release artifacts cleaned."
+```
+
+- **不要删**：`.env.release`、`src-tauri/lexicon.key`、`*.keystore` 等签名密钥，以及 `public/assets/databases/*.db`（词库源资产，不是编译产物）。
+- **保持环境整洁**：工作区不残留已发布二进制；临时 release notes **不要** commit。
 - **密钥**：`.env.release` / `*.key` / `*.keystore` 永不入库。
