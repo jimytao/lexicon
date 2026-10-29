@@ -55,6 +55,14 @@ describe('buildDiagnosticPrompts', () => {
     expect(user).not.toContain('IN_BASELINE')
   })
 
+  it('keeps app-owned production evidence out of the baseline sent to the AI', () => {
+    const p = profile([wk({ id: 'o', learningDirection: 'out', verifiedProductionIds: ['ev1'], verifiedProductionTexts: ['the update failed to install'] })])
+    const { user } = buildDiagnosticPrompts([mixedBatch[0]!], p, zh)
+    expect(user).toContain('"id": "o"')
+    expect(user).not.toContain('verifiedProduction')
+    expect(user).not.toContain('the update failed to install')
+  })
+
   it('ignores events that carry no lane', () => {
     expect(buildDiagnosticPrompts([ev({ type: 'chat' })], profile([]), zh).lanes).toEqual([])
   })

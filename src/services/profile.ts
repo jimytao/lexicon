@@ -30,6 +30,8 @@ const PENDING_EVENTS_KEY = 'lexicon-pending-profile-events'
 
 /** Idle quiet period before aggregating AI chat into one Profile diagnostic. */
 export const CHAT_IDLE_MS = 90_000
+/** Thinking models spend part of this on reasoning; 3000 cut real answers off mid-JSON. */
+export const DIAGNOSTIC_MAX_TOKENS = 8192
 
 const LOOKUP_FLUSH_THRESHOLD = 12
 
@@ -302,7 +304,7 @@ async function runDiagnosticAi(
     body: JSON.stringify({
       model,
       temperature: 0.3,
-      max_tokens: 3000,
+      max_tokens: DIAGNOSTIC_MAX_TOKENS,
       messages: [
         { role: 'system', content: prompts.system + buildNativeLanguageContract(spec) },
         { role: 'user', content: prompts.user },
@@ -317,6 +319,10 @@ async function runDiagnosticAi(
   const data = await res.json()
   const raw = data.choices?.[0]?.message?.content ?? ''
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
+  // A rejected answer keeps the events queued; say why, or the profile just stops updating.
+  if (data.choices?.[0]?.finish_reason === 'length') {
+    console.warn(`[profile] Diagnostic output hit max_tokens (${DIAGNOSTIC_MAX_TOKENS}); events stay queued.`)
+  }
 
   let parsed: unknown = null
   try {
@@ -332,12 +338,20 @@ async function runDiagnosticAi(
     }
   }
 
-  return applyDiagnosticResult(parsed, {
+  if (parsed === null) {
+    console.warn('[profile] Diagnostic output is not valid JSON; events stay queued.')
+    return null
+  }
+  const applied = applyDiagnosticResult(parsed, {
     current: currentProfile,
     snapshot,
     targetLanguage,
     nowIso: new Date().toISOString(),
   })
+  if (!applied) {
+    console.warn(`[profile] Diagnostic output failed validation for lanes ${prompts.lanes.join(', ')}; events stay queued.`)
+  }
+  return applied
 }
 
 /**

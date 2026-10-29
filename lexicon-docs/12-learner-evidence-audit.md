@@ -146,3 +146,10 @@
 ### 2026-10-30 后续本地提交授权
 
 用户在文档复核后明确要求“在这个分支做 commit”。提交范围为当前 `feat/learner-evidence-harness` 上本轮代码、回归测试、三份生成库、开发文档与比对报告；此前未跟踪的 `lexicon_vi.db` 一并纳入。上文“未提交 / 英越仍未跟踪”保留为当时的过程状态，以本节授权后的 Git 记录为准。未要求 push / merge / 发布，实机与线上资产的待验收状态不变。提交前 `git diff --check` 通过；代码未发生新逻辑变更，沿用 452 项测试及构建结果。
+
+### 2026-10-30 复核追加 S03：Profile 归纳输出被截断、静默丢批（Claude 复核）
+
+- 复现：Chrome localhost:5173（Gemini `models/gemini-3.5-flash`）OUT 提交对句 `The update failed to install last night, so I restarted the laptop.`，产生 production 事件；90s 后归纳请求返回 200，但 `finish_reason: "length"`，content 3577 字符止于 recommendations 中途。JSON 解析失败 → `applyDiagnosticResult` 得到 null → 不保存、不出队、无日志。同一会话较早的错句 + 追问两次归纳也未写入，刷新后冷启动重试才成功。
+- 原因：`max_tokens: 3000`（本轮之前已有）对思考型模型偏小；基线画像越写越长，且 E02 新增的 `verifiedProductionIds/Texts` 也随基线发出并被模型原样回写。
+- 补法：`DIAGNOSTIC_MAX_TOKENS = 8192`；`baselineFor` 去掉两项程序自有字段；截断 / 非法 JSON / 校验不通过分别 `console.warn('[profile] …')`。失败仍保留整批，不改变 E04 的严格校验与出队语义。
+- 验证：新增 3 项回归；44 文件 / 455 项通过，`tsc -b` 通过，ESLint 0 error。修复后未再用真实 API 重跑 Chrome 归纳。

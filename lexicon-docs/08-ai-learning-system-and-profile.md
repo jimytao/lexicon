@@ -172,6 +172,8 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
 
 缺方向的旧事件无法归属任何一条线：不发给 AI，flush 成功后直接消费。flush 失败（无 Key、坏 JSON、离线）后**不再立即自我重试**，避免同一批事件空转；等下一次触发。
 
+输出预算与失败可见性（2026-10-30）：诊断请求 `max_tokens` 为 `DIAGNOSTIC_MAX_TOKENS`（8192，`services/profile.ts`）。原 3000 在 Gemini 思考型模型上实测被推理 + 回写整条画像耗尽，`finish_reason: "length"`，JSON 中途截断，整批被静默拒收。现在：发给 AI 的基线画像去掉 `verifiedProductionIds` / `verifiedProductionTexts`（程序自有证据，AI 无权修改，回写只浪费输出）；输出被截断、不是合法 JSON、或未通过上面第 4–5 条校验时，`console.warn('[profile] …')` 说明原因，事件照旧保留。
+
 ### 4.2.2 可选学习联系与上下文注入（2026-10-29 核验后）
 
 用户确认气泡可省略，无数量要求。它可以回顾旧错 / 真实进步，也可以对比不同但相关的结构、联系过去的探索，或作一句有价值的延伸。解释由 AI 自然表达，不以固定评分模板替代。

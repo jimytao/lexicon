@@ -121,7 +121,10 @@ function baselineFor(profile: UserLanguageProfile, lane: LearningDirection) {
   const strip = <T extends { learningDirection?: LearningDirection; learnerLanguage?: ProfileLearnerLanguage }>(items: T[]) =>
     items.filter((item) => item.learningDirection === lane).map(({ learningDirection: _l, learnerLanguage: _g, ...rest }) => rest)
   return {
-    weaknessPatterns: strip(profile.weaknessPatterns),
+    // Verified-production evidence is app-owned: the AI cannot change it, and echoing
+    // it back only spends output tokens.
+    weaknessPatterns: strip(profile.weaknessPatterns)
+      .map(({ verifiedProductionIds: _ids, verifiedProductionTexts: _texts, ...rest }) => rest),
     recentExplorationFocus: strip(profile.recentExplorationFocus),
     recommendations: strip(profile.recommendations),
   }

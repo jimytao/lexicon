@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased — 2026-10-30 Profile 归纳截断修复
+
+- Chrome 实测（Gemini）：后台 Profile 归纳的回答被 `max_tokens: 3000` 截断（`finish_reason: "length"`），JSON 不完整，整批被静默拒收，记录留在队列里；会话内两次归纳均未写入，冷启动重试才成功。
+- 归纳请求输出上限改为 8192（`DIAGNOSTIC_MAX_TOKENS`）；发给 AI 的旧画像不再带程序自有的 `verifiedProductionIds` / `verifiedProductionTexts`，减少无用回写。
+- 输出被截断、不是合法 JSON、或未通过结构校验时，控制台输出 `[profile]` 警告说明原因；事件仍保留待下次归纳，行为不变。
+- 新增 3 项回归测试（截断 / 校验失败可见、基线不含验证字段）；44 文件 / 455 项通过，TypeScript 通过，ESLint 0 error。
+
 ## Unreleased — 2026-10-30 文档核对
 
 - 对照本轮实际改动核对开发日志、执行记录、架构 / UI / 数据库 / AI / Profile 文档、双语 README 和 Agent 上下文；在执行记录中补文档覆盖清单。

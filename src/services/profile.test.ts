@@ -29,6 +29,7 @@ const memoryStorage = vi.hoisted(() => {
 import { useSettingsStore } from '../stores/settingsStore'
 import {
   CHAT_IDLE_MS,
+  DIAGNOSTIC_MAX_TOKENS,
   buildProfilePromptContext,
   flushPendingProfileDiagnostics,
   getPendingEvents,
@@ -508,6 +509,34 @@ describe('diagnostic acceptance and bounded dequeue', () => {
     expect(getPendingEvents().map(e => e.id)).toEqual(before)
     expect(getProfile().totalDiagnosticsRun).toBe(0)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('asks for enough output room and reports a truncated answer instead of failing silently', async () => {
+    // The real Gemini failure: finish_reason "length", JSON cut off mid-string.
+    const fetchMock = vi.fn(async (_url: string, _init: { body: string }) => ({ ok: true, json: async () => ({
+      choices: [{ finish_reason: 'length', message: { content: '{"out": {"weaknessPatterns": [{"id": "weakness_fail' } }],
+    }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    recordAiChatEvent('writing', 'why?', 'explanation', 'lookup', 'out')
+    const before = getPendingEvents().map(e => e.id)
+    expect(await flushPendingProfileDiagnostics('manual')).toBeNull()
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).max_tokens).toBe(DIAGNOSTIC_MAX_TOKENS)
+    expect(DIAGNOSTIC_MAX_TOKENS).toBeGreaterThan(3000)
+    expect(warn.mock.calls.map(c => String(c[0]))).toEqual(expect.arrayContaining([
+      expect.stringContaining('max_tokens'),
+      expect.stringContaining('not valid JSON'),
+    ]))
+    expect(getPendingEvents().map(e => e.id)).toEqual(before)
+    warn.mockRestore()
+  })
+  it('reports a well-formed answer that fails validation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ out: {} }) } }] }) })))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    recordAiChatEvent('writing', 'why?', 'explanation', 'lookup', 'out')
+    expect(await flushPendingProfileDiagnostics('manual')).toBeNull()
+    expect(warn.mock.calls.map(c => String(c[0]))).toEqual(expect.arrayContaining([expect.stringContaining('failed validation')]))
+    expect(getPendingEvents()).toHaveLength(1)
+    warn.mockRestore()
   })
   it('removes only the actual bounded feed and leaves the excess lookup records pending', async () => {
     vi.stubGlobal('fetch', mockDiagnosticSuccess({ weaknessPatterns: [] }))
