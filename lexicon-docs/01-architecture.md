@@ -107,6 +107,7 @@ lexicon/
 │   │   ├── db.ts           # 存储层抽象接口（见 03-database.md）
 │   │   ├── ai.ts           # AI 调用服务（见 04-ai-schema.md）
 │   │   └── ocr.ts          # Tesseract.js OCR 服务（图片文字定位）
+│   ├── harness/            # 学习者证据 Harness：来源标签 / IN·OUT 分线 / AI 输出校验（纯函数，见 08 §4.2.1b）
 │   ├── stores/
 │   │   ├── searchStore.ts
 │   │   ├── resultStore.ts

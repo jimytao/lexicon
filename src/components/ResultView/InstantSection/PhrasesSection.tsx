@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { SuggestItem } from '../../../types'
 import { useT } from '../../../i18n'
+import { cleanDictionaryBrief } from '../../../utils/meaningLabels'
 
 interface PhrasesSectionProps {
   phrases: SuggestItem[]
@@ -31,7 +32,7 @@ export function PhrasesSection({ phrases, onPhraseClick }: PhrasesSectionProps) 
             className="w-full flex items-center justify-between gap-2 text-left px-3 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <span className="text-sm text-gray-700 dark:text-gray-200 shrink-0">{p.word}</span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 text-right leading-relaxed">{p.zhBrief}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 text-right leading-relaxed">{cleanDictionaryBrief(p.zhBrief)}</span>
           </button>
         ))}
       </div>

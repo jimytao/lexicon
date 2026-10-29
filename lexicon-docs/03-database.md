@@ -137,6 +137,13 @@ export async function warmupDictionary(): Promise<void>
 
 推荐的 MDX 解析库：`mdict-analysis`（npm）或 Python 的 `readmdict`（先生成 TSV 再用 Node 导入）。
 
+### 释义单元格里的标签与已知转换损伤（2026-10-29）
+
+- `meanings.zh` / `meanings.en` 开头内联语法与语体标签：`[grammar] (labels) 释义`（OALD9 / OALD10），SPDict 为越南语领域标签 `(y học)` 等。UI 不直接显示原文，而是经 `src/utils/meaningLabels.ts` 的 `cleanDictionaryMeaning()` 剥成小标签。
+- **当前随包发布的 `lexicon.db` 仍带旧转换器的损伤，在显示时修复**：`[[countable]` 双括号、中文释义丢失开头的 `（`（约 1.8 万行）、约 7.7k 行把情景标签译文（如「金融」「足球」）误当成释义（从英文列末尾的完整中文恢复）、英文列末尾重复中文。`lexicon_en.db` 有约 1.5k 条被截断的学科标签 `(music the 6th …`。
+- `db.ops.ts` 的 `lookupWithRunner` 过滤 SPDict 被拆成「义项」的词性头碎片（`& phó từ`、`, số nhiều abaci`）；若某词条全部都是碎片则保留原样，绝不让词条变空。
+- 三个转换脚本已修复上述问题，导出 `parseEntry` 等纯函数，仅在直接执行时才建库。**尚未重新生成任何 `.db`**；下次重建 SPDict 义项数会从约 13.5 万升到约 14.6 万（此前被例句正则吞掉的义项会恢复）。现有 `lexicon.db` 例句中的少量旧损伤（约 67 条孤立 `）`）只能靠重建修复。
+
 ## 词库文件大小估算
 
 | 内容 | 估算大小 |

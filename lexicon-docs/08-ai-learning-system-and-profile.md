@@ -28,7 +28,7 @@
 
 每次触发 Profile 增量更新时，打包发送给 AI 的数据包含：
 
-1. **旧 Profile 状态 (`~1,000 Tokens`)**：仅发送本轮 `learningDirection` 对应的 `weaknessPatterns`、`explorationFocus` 与推荐；无方向旧数据不发送。
+1. **旧 Profile 状态 (`~1,000 Tokens`)**：按 IN / OUT 分组，**只发送本批次有新证据的那几条线**的 `weaknessPatterns`、`explorationFocus` 与推荐；无方向旧数据不发送。
 2. **高价值行为增量 (`~1,500 Tokens`)**，包含三类信息：
    - **[源 A: 单词搜索]**：查过的词汇及对应的 Core 意象/空间延伸标签。
    - **[源 B: 句子/表达订正]**：用户的原始输入 + AI 剖析的 **`unnaturalMindModel` (思维违和感)**（例: 传入 *My eyesight is deep* 及 *“英文不用 depth 抽象视力”* 的剖析）。
@@ -141,20 +141,53 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
 
 用途：① `ProfileModal` 按 heat 排序 + 三段分层（近期重复出现 / 仍需关注 / 近期未再出现）+ confidence 小条；② Direction A 决定往 prompt 里塞哪几条弱点、结果页 chip 何时可能出现。时间只降低提醒优先级，**没有出现绝不等于已经掌握**；`getProfile()` 读时对旧 profile 回填 `confidence`/`lastExposedAt`。
 
+### 4.2.1b 学习者证据 Harness（`src/harness/`，2026-10-29）
+
+所有「AI 被告知什么关于学习者、以及 App 接受 AI 返回什么」的逻辑集中在 `src/harness/`。模块全部是纯函数（不读存储、不读 store、不发请求）；存储、入队、flush 时机仍在 `services/profile.ts`。
+
+两种标签都由**代码**打，AI 只读不打：
+
+| 标签 | 模块 | 含义 |
+|--|--|--|
+| 来源（provenance） | `provenance.ts` | `<learner_original>` = 学习者原样输入；`<external_material>` = 学习者在读的外部材料（IN）；`<ai_generated>` = AI 写的订正 / 分析 / 回答，**永远不是学习者能力的证据** |
+| 方向（lane） | `lanes.ts` | IN / OUT 在提交时由 `resolveLearningRoute` 决定并写入每条事件；AI 返回的方向字段一律不采信 |
+
+| 模块 | 职责 |
+|--|--|
+| `profileContext.ts` | `buildLaneProfileContext(profile, variant, route, lang)`：按方向 + 词典语言过滤后注入日常 prompt；`profile.ts` 的 `buildProfilePromptContext` 只是读存储后的薄包装 |
+| `insightGate.ts` | 结果页弱点气泡的 schema（`buildProfileInsightField`）与代码校验（`gateProfileInsight`），见 4.2.2 |
+| `diagnostic.ts` | 批量蒸馏：`buildDiagnosticPrompts` 组装分线 prompt，`applyDiagnosticResult` 按线合并并校验，见 4.5 |
+
+**批量蒸馏的分线规则（省 token 的批处理保持不变：约 12 次查词或硬边界才跑一次）**：
+1. 本批事件按 `### OUT LANE` / `### IN LANE` 分组，每段文字带来源标签和时间戳；
+2. 只发送有新证据的那几条线的旧画像；
+3. AI 必须按 `{ "in": {...}, "out": {...} }` 分键返回，条目归属哪条线**由所在的键决定**，条目内的方向字段被覆盖；
+4. 本批没有新证据的线（或 AI 漏掉该键）保持原样，AI 无权改写；
+5. 混合批次返回旧的扁平格式 → 视为不可用，事件保留到下次；单一方向批次仍兼容扁平格式；
+6. 提高 `confidence` 或标记 `mastered` 必须附 `improvementQuote`：一段学习者亲手写下、且没被 AI 订正改动的原文（OUT 句子原文中订正后仍保留的部分，或学习者的追问原文）。校验失败 → 置信度与状态回退到原值。`improvementQuote` 不落盘；
+7. 每条线 active 弱点上限 8 条，不再要求「保持 8–12 条」（那条规则会诱导 AI 凑数编造弱点）。
+
+缺方向的旧事件无法归属任何一条线：不发给 AI，flush 成功后直接消费。flush 失败（无 Key、坏 JSON、离线）后**不再立即自我重试**，避免同一批事件空转；等下一次触发。
+
 ### 4.2.2 Profile 上下文注入所有 AI 出口（Direction A，2026-09-07）
 
-`buildProfilePromptContext(variant, learningRoute, learnerLanguage)`（`src/services/profile.ts`）：
+`buildProfilePromptContext(variant, learningRoute, learnerLanguage)`（`src/services/profile.ts`，实现在 `src/harness/profileContext.ts`）：
 
 | variant | 内容 | 注入点 |
 |--|--|--|
-| `'full'` | 当前方向 + 当前语言按 heat 排序的 active 弱项（≤6）+ 近期探索（≤3）+ 「mentor tip」指令 | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
+| `'full'` | 当前方向 + 当前语言按 heat 排序的 active 弱项（≤6）+ 近期探索（≤3）+ 分方向的「mentor tip」指令（OUT：只拿 `<learner_original>` 比对、同一种错误才算、如实优先于鼓励；IN：输入不是学习者写的，不得表扬或批评其措辞） | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
 | `'compact'` | 当前方向 + 当前语言 `hotWeaknesses(≤3)` + 近期探索（≤2）+ opt-in 指令；两者均空 → `''` | `ai.ts` `getFullLookupPrompt`（单词 Lookup/Core）、`aiPhrasePrompt.ts` `buildPhrasePrompt`（词组）、`ai.ts` `askQuestion`（追问 system prompt） |
 
 两种 variant 都排除 `mastered`，而且 Profile 只能补充标准分析，绝不能替代、缩短或删除原有 schema 字段职责。`learningRoute='irrelevant'` 直接返回空字符串。方向缺失的 legacy 弱点、探索与推荐不进入任何 prompt，等待未来有明确证据后由诊断 AI 重新建立带方向记录。
 
 > 注入点是 **live 路径**；`aiCombinedPrompt.ts`（`buildCombinedWordPrompt` 等）自 v0.9.15 起 `@deprecated`，不在注入范围。
 
-**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 可选 `profileInsight?: string`，客户端同时保存 `profileInsightDirection?: 'in' | 'out'`。单词/词组 prompt 强指令「除非本词明确关联当前方向已列出的反复混淆，否则省略」。旧缓存没有方向元数据时不显示。
+**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 可选 `profileInsight?: string`，客户端同时保存 `profileInsightDirection?: 'in' | 'out'`。AI 侧返回的是对象 `{ kind, learnerSpan?, text }`，经 `gateProfileInsight` 校验后才写成字符串：
+- `related`：只说「涉及这个模式」，不表扬不批评；所有方向可用（单词查询、IN、中文 OUT 只允许这一种）；
+- `repeat`：仅 OUT 英文原文；`learnerSpan` 必须逐字出现在学习者原文里，且被 AI 订正改掉了；
+- `improved`：仅 OUT 英文原文；`learnerSpan` 必须逐字出现在原文里，且订正后仍保留。
+
+校验不通过、或 AI 返回裸字符串（无法校验）→ 不显示气泡。比对忽略大小写、弯引号、空白和标点，按整词匹配。方向取提交时快照，不采信 AI。旧缓存没有方向元数据时不显示。
 
 **`ProfileInsightChip`**（`src/components/ResultView/ProfileInsightChip.tsx`）：仅当结果含 `profileInsight`、方向与当前结果的提交时 `learningRoute` 快照一致、且未被 `sessionStorage` dismiss 时渲染；不能跟随之后为下一条搜索切换的按钮。兼容回退必须使用原始 `routeQuery`，不能用 AI 的 `correctForm`。`AiChatBox` 同样必须把原始 `routeQuery` 和冻结的 `learningRoute` 传给 `askQuestion` 与 `recordAiChatEvent`。
 
@@ -183,7 +216,8 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
 - IN 原文是外部材料：可推断词汇 / 理解缺口，不得推断用户偏爱长句、某种文风或会犯该句中的语法问题。
 - 只有 OUT 英文 sentence correction 能新增 syntax / collocation 弱点；支持语言 OUT 只能形成表达需求或概念缺口。
 - AI Chat 的证据主体是用户提出的问题，不是被查词条或作为上下文附带的教材段落。
-- AI 返回的新 `weaknessPatterns`、`recentExplorationFocus`、`recommendations` 必须携带 `learningDirection` 与 `learnerLanguage`；混合批次中无法可靠归属的项目进入 legacy 隔离，不得猜测。
+- 方向由分键决定：AI 把条目放在 `"in"` 还是 `"out"` 键下，代码据此写入 `learningDirection`，并统一写入当前 `learnerLanguage`；条目自带的方向字段不采信（见 4.2.1b）。
+- AI 的订正是「犯错」的证据，永远不是「掌握」的证据；置信度上升 / mastered 必须有通过代码校验的 `improvementQuote`。
 
 ---
 

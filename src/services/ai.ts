@@ -27,11 +27,12 @@ import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
 import { buildProfilePromptContext, resolveCurrentLearningRoute } from './profile'
+import { PROVENANCE_LEGEND, buildProfileInsightField, gateProfileInsight, isLane, querySource, tagText, type InsightCheckContext } from '../harness'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { buildCultureAwareInputRule, buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
-import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult, LearningRoute } from '../types'
+import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult, LearningDirection, LearningRoute } from '../types'
 
 /** 仅当模组出现在当前模式列表且 enabled 时才请求；不在列表 = 关闭（Lookup/Core 分轨依赖此语义） */
 function moduleEnabled(modules: ModuleFlag[], id: string): boolean {
@@ -916,8 +917,9 @@ function getFullLookupPrompt(
     schema += `,\n  "conceptGraph": {\n    "rootCore": "1-3 word core concept label in ${L}",\n    "branches": [\n      {\n        "category": "Domain category in ${L} (e.g. Physical Motion, Machines, Business)",\n        "explanation": "1 sentence in ${L} explaining why this branch derives from the root core",\n        "examples": [\n          {\n            "phrase": "typical English phrase or short expression",\n            "meaning": "REQUIRED: clear ${L} meaning of this phrase",\n            "mindHint": "REQUIRED, 1 sentence in ${L}: the native speaker's mental image — why this usage grows from the root core"\n          }\n        ]\n      }\n    ]\n  }`
   }
 
-  // Direction A — optional personalization hook; OMITTED unless clearly relevant.
-  schema += `,\n  "profileInsight": "OPTIONAL — OMIT this field entirely unless this word clearly relates to one of the learner's listed recurring confusions; then ONE short sentence in ${L} naming the link"`
+  // Direction A — optional personalization hook. A searched word is never the
+  // learner's own writing, so only a neutral link is allowed (checked by the harness).
+  schema += `,\n  ${buildProfileInsightField(L, false)}`
 
   schema += `\n}`
 
@@ -996,6 +998,20 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
   return prompt
 }
 
+/**
+ * Replace the AI's raw `profileInsight` with the harness-checked bubble text (or
+ * nothing). The lane is the submitted route, never something the AI reported.
+ */
+function withCheckedInsight<T extends { profileInsight?: string; profileInsightDirection?: LearningDirection }>(
+  parsed: T,
+  ctx: InsightCheckContext,
+): T {
+  const insight = gateProfileInsight(parsed.profileInsight as unknown, ctx)
+  parsed.profileInsight = insight
+  parsed.profileInsightDirection = insight && isLane(ctx.route) ? ctx.route : undefined
+  return parsed
+}
+
 export async function aiFullLookup(
   word: string,
   isFull: boolean = true,
@@ -1026,8 +1042,7 @@ export async function aiFullLookup(
     const parsed = JSON.parse(cleaned) as AiFullResult
     if (!parsed.meanings) parsed.meanings = []
     if (!parsed.examples) parsed.examples = []
-    if (parsed.profileInsight && learningRoute !== 'irrelevant') parsed.profileInsightDirection = learningRoute
-    return parsed
+    return withCheckedInsight(parsed, { route: learningRoute })
   } catch { /* fall through */ }
   const objMatch = cleaned.match(/\{[\s\S]*\}/)
   if (objMatch) {
@@ -1035,8 +1050,7 @@ export async function aiFullLookup(
       const parsed = JSON.parse(objMatch[0]) as AiFullResult
       if (!parsed.meanings) parsed.meanings = []
       if (!parsed.examples) parsed.examples = []
-      if (parsed.profileInsight && learningRoute !== 'irrelevant') parsed.profileInsightDirection = learningRoute
-      return parsed
+      return withCheckedInsight(parsed, { route: learningRoute })
     } catch { /* fall through */ }
   }
   throw new Error(`AI returned invalid JSON for full lookup`)
@@ -1141,7 +1155,7 @@ export async function aiPhraseQuery(
       explanationLanguage: dictionaryContext.explanationLanguage,
       learningRoute,
     }),
-    `${langName}: ${phrase}\n\nAnalyze and return the JSON.`,
+    `${langName}: ${learningRoute === 'irrelevant' ? phrase : tagText(querySource(learningRoute), phrase)}\n\nAnalyze and return the JSON.`,
     signal
   )
   let parsed: Omit<PhraseResult, 'phrase'>
@@ -1157,13 +1171,14 @@ export async function aiPhraseQuery(
       throw new Error(`AI returned invalid JSON for phrase query`)
     }
   }
-  return {
-    phrase,
-    ...parsed,
-    profileInsightDirection: parsed.profileInsight && learningRoute !== 'irrelevant'
-      ? learningRoute
-      : undefined,
-  }
+  // Only the learner's own English can be praised or blamed; a Chinese OUT query
+  // is an expression need and its correctForm is a translation.
+  const learnerText = learningRoute === 'out' && lang === 'en' ? phrase : undefined
+  return withCheckedInsight({ phrase, ...parsed }, {
+    route: learningRoute,
+    learnerText,
+    correctedText: learnerText ? parsed.correctForm : undefined,
+  })
 }
 
 // ── AI 问答 ──
@@ -1183,21 +1198,21 @@ export async function askQuestion(
   const routingQuery = routeQuery || context
   const languagePolicy = resolveLearnerLanguagePolicy(routingQuery, config)
   const spec = getNativeLanguage(languagePolicy.nativeLanguage)
+  const route = learningRoute ?? resolveCurrentLearningRoute(routingQuery)
+  const tagged = route !== 'irrelevant'
+  // The displayed analysis is AI-written; the studied text belongs to its lane.
+  const studied = tagged ? tagText(querySource(route), context) : `"${context}"`
   const richSection = richContext
-    ? `\n\nHere is the analysis already displayed to the user for reference:\n${richContext}\n\nAnswer based on this context where relevant.`
+    ? `\n\nHere is the analysis already displayed to the user for reference:\n${tagged ? tagText('ai', richContext) : richContext}\n\nAnswer based on this context where relevant.`
     : ''
   // Direction A — the learner's hot weak spots, so a follow-up answer can connect
   // the dots when relevant (opt-in; empty when nothing is hot).
-  const profileSection = buildProfilePromptContext(
-    'compact',
-    learningRoute ?? resolveCurrentLearningRoute(routingQuery),
-    languagePolicy.profileLanguage,
-  )
+  const profileSection = buildProfilePromptContext('compact', route, languagePolicy.profileLanguage)
   const tableRule = `Table orientation rule (mobile screen — NEVER exceed 3 columns): (A) If comparing N words across M attributes and N ≤ M: put the words as COLUMN headers (row 1 = word names, then one row per attribute) so columns = N ≤ 3. (B) If N > M: put attributes as COLUMN headers (row 1 = attribute names, one row per word) so columns = M ≤ 3. When either N or M > 3, pick whichever orientation keeps columns ≤ 3 and let rows grow. Never create a table wider than 3 columns.`
   const audienceRule = spec.isEnglish
     ? 'You are a helpful English language assistant for native or monolingual English users.\nAnswer in clear, natural English without assuming any second-language transfer.'
     : `You are a helpful English learning assistant for ${spec.audience}.\nAnswer in ${spec.name}, with English examples where appropriate.`
-  const systemPrompt = `${audienceRule}\nThe user is currently studying: "${context}".${richSection}${profileSection}\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.${buildNativeLanguageContract(spec)}`
+  const systemPrompt = `${audienceRule}\nThe user is currently studying: ${studied}.${richSection}${tagged ? PROVENANCE_LEGEND : ''}${profileSection}\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.${buildNativeLanguageContract(spec)}`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },

@@ -6,6 +6,7 @@ import { useResultStore } from '../../../stores/resultStore'
 import { searchWebImage, enrichSingleMeaning } from '../../../services/ai'
 import { useResolvedDark } from '../../../hooks/useResolvedDark'
 import { useT } from '../../../i18n'
+import { cleanDictionaryMeaning, localizeMeaningLabel } from '../../../utils/meaningLabels'
 
 interface MeaningListProps {
   meanings: Meaning[]
@@ -129,6 +130,7 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
 
   const handleEnrichMeaning = async (index: number, meaning: Meaning) => {
     if (sceneGenLoading[index]) return
+    const cleaned = cleanDictionaryMeaning(meaning)
 
     abortRefs.current[index]?.abort()
     const controller = new AbortController()
@@ -140,7 +142,8 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
     try {
       const result = await enrichSingleMeaning(
         word ?? '',
-        { zh: meaning.zh, en: meaning.en },
+        // Labels and converter damage would only add noise to the prompt.
+        { zh: cleaned.zh, en: cleaned.en },
         controller.signal
       )
       setLocalScenes(prev => ({ ...prev, [index]: result.scene }))
@@ -175,6 +178,8 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
           const palette = POS_COLORS[m.pos ?? ''] ?? { bg: '#F3F4F6', text: '#374151', darkBg: '#1F2937', darkText: '#D1D5DB' }
           const badgeBg = darkMode ? palette.darkBg : palette.bg
           const badgeText = darkMode ? palette.darkText : palette.text
+          const clean = cleanDictionaryMeaning(m)
+          const labels = [...clean.grammar, ...clean.register]
 
           // Scene 优先级：props 传入 > 本地生成 > meaning 本身带有
           const activeScene: Scene | undefined = scenes?.[i] ?? localScenes[i] ?? m.scene
@@ -204,19 +209,35 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="text-base font-bold text-foreground leading-snug">
-                      {monolingualWord ? (m.en || m.zh) : m.zh}
+                      {monolingualWord ? (clean.en || clean.zh) : clean.zh}
                     </p>
-                    {m.pos && (
-                      <span
-                        className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm shrink-0"
-                        style={{ backgroundColor: badgeBg, color: badgeText }}
-                      >
-                        {m.pos}
+                    {(m.pos || labels.length > 0) && (
+                      <span className="flex flex-wrap items-center gap-1">
+                        {m.pos && (
+                          <span
+                            className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm shrink-0"
+                            style={{ backgroundColor: badgeBg, color: badgeText }}
+                          >
+                            {m.pos}
+                          </span>
+                        )}
+                        {labels.map((label) => {
+                          const shown = localizeMeaningLabel(label, t)
+                          return (
+                            <span
+                              key={label}
+                              title={shown === label ? undefined : label}
+                              className="text-[9px] font-medium leading-none px-1 py-[3px] rounded-sm bg-foreground/5 text-foreground-muted whitespace-nowrap shrink-0"
+                            >
+                              {shown}
+                            </span>
+                          )
+                        })}
                       </span>
                     )}
                   </div>
-                  {!monolingualWord && m.en && m.en !== m.zh && (
-                    <p className="text-sm text-foreground-muted mt-1 leading-relaxed font-medium">{m.en}</p>
+                  {!monolingualWord && clean.en && clean.en !== clean.zh && (
+                    <p className="text-sm text-foreground-muted mt-1 leading-relaxed font-medium">{clean.en}</p>
                   )}
                   
                   {/* 场景解释卡片 */}
@@ -302,7 +323,7 @@ export function MeaningList({ meanings, scenes, word, enableSceneGenerate }: Mea
                               {imgCurrent && (
                                 <img
                                   src={imgCurrent}
-                                  alt={`Visual helper for ${m.zh || m.en}`}
+                                  alt={`Visual helper for ${clean.zh || clean.en}`}
                                   onLoad={() => setImageResolved(prev => ({ ...prev, [i]: true }))}
                                   onError={() => handleImageError(i, imgCurrent)}
                                   className={`w-full max-h-48 object-cover rounded-xl transition-transform duration-500 hover:scale-105 ${imgResolved ? '' : 'hidden'}`}

@@ -7,6 +7,7 @@
  */
 
 import { buildProfilePromptContext } from './profile'
+import { PROVENANCE_LEGEND, buildProfileInsightField } from '../harness'
 import { buildCultureAwareInputRule } from './aiPromptGuidance'
 import {
   buildInputDirectionRule,
@@ -110,8 +111,9 @@ export function buildPhrasePrompt({
     }
   }
 
-  // Direction A — optional personalization hook; OMITTED unless clearly relevant.
-  schema += `,\n  "profileInsight": "OPTIONAL — OMIT this field entirely unless this phrase clearly relates to one of the learner's listed recurring confusions; then ONE short sentence in ${L} naming the link"`
+  // Direction A — optional personalization hook, verified by the harness after the
+  // call. Praise / blame is only possible when the input is the learner's own English.
+  schema += `,\n  ${buildProfileInsightField(L, learningRoute === 'out' && lang === 'en')}`
 
   schema += `\n}`
 
@@ -202,6 +204,9 @@ RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
 - Stay consistent with this resolved reading: ${senses.map(sn => sn.zh || sn.en || '').filter(Boolean).join(' / ')}`
     }
   }
+
+  // aiPhraseQuery wraps the input in a provenance tag; explain the tags once.
+  if (learningRoute !== 'irrelevant') prompt += PROVENANCE_LEGEND
 
   prompt += buildProfilePromptContext(
     queryType === 'sentence' ? 'full' : 'compact',

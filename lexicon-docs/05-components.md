@@ -350,6 +350,10 @@ interface WordHeaderProps {
 }
 
 // MeaningList
+// 渲染 cleanDictionaryMeaning()（src/utils/meaningLabels.ts）的结果：语法 / 语体标签
+// 作为小标签与 POS 徽章同一行（bg-foreground/5，经 i18n `meaning.label.*` 本地化；
+// 英文界面与越南语标签显示原文），主行与英文行只显示去标签后的文字。
+// SuggestList / PhrasesSection 的 zhBrief 同样经 cleanDictionaryBrief()。
 interface MeaningListProps {
   meanings: Meaning[]
   scenes?: Scene[]    // AI mode 时传入，与 meanings 对应

@@ -37,12 +37,23 @@ export function parseSpdictEntry(word, rawDefinition) {
     if (!posLabel) continue
     const pos = POS.get(posLabel)
     let body = block.slice(posLabel.length)
-    body = body.replace(/=[^=+!@*]{2,200}\+[^=+!@*]{2,240}/gu, ' ')
+    // The example translation stops at the next ` - ` sense separator. Letting it
+    // run to the next `+` swallowed `- (+ in) …`, merging two senses into
+    // `… đúng + in) sự tồn tại`.
+    body = body.replace(/=[^=+!@*]{2,200}\+.*?(?=\s+-\s|\s=|\s[@!*]|$)/gu, ' ')
     body = body.split(/\s[@!]/u, 1)[0]
+    // Text between the POS label and the first ` - ` is header info
+    // (`& tính từ`, `, số nhiều abaci, abacuses`), not a sense.
+    const firstSense = body.search(/(?:^|\s)-\s/u)
+    if (firstSense >= 0) body = body.slice(firstSense)
+    let pendingLabel = ''
     for (const part of body.split(/\s+-\s+/u)) {
       const zh = clean(part).replace(/^[-–—]\s*/u, '')
-      if (!zh || zh.length > 300 || /^\([^)]*\)$/u.test(zh)) continue
-      meanings.push({ zh, en: '', pos })
+      if (!zh || zh.length > 300) continue
+      // A bare `(kiến trúc)` labels the following sense; keep it instead of dropping it.
+      if (/^\([^)]*\)$/u.test(zh)) { pendingLabel = `${pendingLabel}${zh} `; continue }
+      meanings.push({ zh: pendingLabel + zh, en: '', pos })
+      pendingLabel = ''
       if (meanings.length >= 30) break
     }
   }

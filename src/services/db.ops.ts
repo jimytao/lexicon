@@ -1,5 +1,6 @@
 import type { ChatMessage, CognitiveMode, SuggestItem, WordResult, Meaning, Example, UserWordMemory } from '../types'
 import { normalizeQuery } from '../utils/text'
+import { isDictionaryHeaderFragment } from '../utils/meaningLabels'
 import {
   parseAiConversationsBuckets,
   setBucketMessages,
@@ -399,11 +400,14 @@ export async function lookupWithRunner(
           `SELECT zh, en FROM meanings WHERE entry_id = ? ORDER BY seq`,
           [id]
         )
-        const meanings = meaningRes.map((r) => ({
-          zh: r.zh as string,
-          en: r.en as string,
-          pos: pos,
-        }))
+        const realSenses = meaningRes.filter((r) => !isDictionaryHeaderFragment(r.zh as string))
+        // Never empty an entry: a fragment beats a hit with no senses at all.
+        const meanings = (realSenses.length > 0 ? realSenses : meaningRes)
+          .map((r) => ({
+            zh: r.zh as string,
+            en: r.en as string,
+            pos: pos,
+          }))
         allMeanings.push(...meanings)
 
         const exampleRes = await runner.exec(

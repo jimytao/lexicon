@@ -318,7 +318,7 @@ describe('recordLookupEvent — accumulation path B', () => {
     const body = JSON.parse(String(fetchInit!.body))
     const userContent = body.messages.find((m: { role: string }) => m.role === 'user').content as string
     expect(userContent).toContain('run')
-    expect(userContent).toContain('AI Follow-up')
+    expect(userContent).toContain('Follow-up Q&A')
     expect(getPendingEvents()).toHaveLength(0)
     expect(getUnprocessedCount()).toBe(0)
   })
@@ -387,6 +387,7 @@ describe('resumePendingProfileDiagnostics — cold start', () => {
           userQuestion: 'q',
           aiAnswer: 'a',
           cognitive: 'lookup',
+          learningDirection: 'in',
           timestamp: new Date().toISOString(),
         },
       ]),
@@ -411,6 +412,7 @@ describe('resumePendingProfileDiagnostics — cold start', () => {
           type: 'sentence',
           wordOrContext: 'My eyesight is deep',
           details: 'My vision is poor',
+          learningDirection: 'out',
           timestamp: new Date().toISOString(),
         },
       ]),
@@ -420,6 +422,24 @@ describe('resumePendingProfileDiagnostics — cold start', () => {
     await flushMicrotasks()
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('consumes a legacy queue with no IN/OUT lane without asking the AI', async () => {
+    const fetchMock = mockDiagnosticSuccess()
+    vi.stubGlobal('fetch', fetchMock)
+
+    localStorage.setItem(
+      PENDING_KEY,
+      JSON.stringify([
+        { id: 'legacy-sent', type: 'sentence', wordOrContext: 'My eyesight is deep', details: 'My vision is poor', timestamp: new Date().toISOString() },
+      ]),
+    )
+
+    await resumePendingProfileDiagnostics()
+    await flushMicrotasks()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(getPendingEvents()).toHaveLength(0)
   })
 
   it('does not flush when pending is lookup-only (wait for path B)', async () => {

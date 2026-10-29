@@ -226,6 +226,7 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageIntro / usageScenes 中说明差异
 - Core 单词全量：`coreConcept.explanation` 停留在意象→用法分支层；**具体** when/where 交际场景写入 `usageScenes`，勿把场景长文塞进 explanation
 - **`profileInsight?` + `profileInsightDirection?`（可选）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入同方向、同学习者语言的 `'compact'`，对 `'sentence'` 注入 `'full'`；full 最多包含 6 条 active 弱点与 3 条探索方向，mastered 一律排除；`learningRoute='irrelevant'` 时完全不注入 Profile。
+- **来源标签（Harness）**：`learningRoute !== 'irrelevant'` 时，User Prompt 中的输入由代码包成 `<learner_original>`（OUT）或 `<external_material>`（IN），System Prompt 末尾追加 `PROVENANCE_LEGEND`。AI 返回的 `profileInsight` 为 `{ kind: 'repeat' | 'improved' | 'related', learnerSpan?, text }`；只有 OUT 且输入为英文时 schema 才提供 `repeat` / `improved`。解析后由 `gateProfileInsight` 用原文与 `correctForm` 逐字校验，不通过即丢弃（规则见 `08` §4.2.2）。
 
 ### `askQuestion(context, history, signal?, richContext?, routeQuery?, learningRoute?)`
 AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。`routeQuery` 必须传当前结果对应的**原始查询**，不能用 AI 修正后的 `context` 重新猜语言；`learningRoute` 传该结果提交时冻结的路线，避免用户为下一条搜索切换按钮后反改当前问答。system prompt 据此拼入同方向同语言的 compact Profile；第三语言或无相关证据时静默。
@@ -234,6 +235,7 @@ AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）�
 - `history`：`ChatMessage[]`，支持多轮对话
 - `routeQuery`：当前卡片的原始搜索文本；缺省时为兼容旧调用回退到 `context`
 - `learningRoute`：当前结果的提交时 IN / OUT / irrelevant 快照；缺省时才兼容回退到当前 store
+- 来源标签：路线非 `irrelevant` 时，「正在学习」的文本按方向标为 `<learner_original>` / `<external_material>`，`richContext`（页面上已展示的 AI 分析）标为 `<ai_generated>`，并追加 `PROVENANCE_LEGEND`
 - 回答语言由有效词典决定（见「学习者母语契约」）：用 `spec.name` 回答并穿插英文例句；英英仅用清晰英语且不假设任何迁移。
 
 ### `testConnection(signal?)`

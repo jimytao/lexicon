@@ -20,7 +20,25 @@ describe('compact profile context is injected into the everyday AI prompts', () 
   it('the live word full-lookup prompt (getFullLookupPrompt) appends the compact learner context + profileInsight schema', () => {
     const fn = aiSrc.slice(aiSrc.indexOf('function getFullLookupPrompt'), aiSrc.indexOf('export async function aiFullLookup'))
     expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,\s*learningRoute\s*,\s*explanationLanguage\s*\)/)
-    expect(fn).toContain('"profileInsight"')
+    // A searched word is never learner writing: only a neutral "related" insight.
+    expect(fn).toMatch(/buildProfileInsightField\(\s*L\s*,\s*false\s*\)/)
+  })
+
+  it('every AI insight passes the harness gate before it can reach the bubble', () => {
+    const full = aiSrc.slice(aiSrc.indexOf('export async function aiFullLookup'), aiSrc.indexOf('// ── AI 词组/句子查询'))
+    const phrase = aiSrc.slice(aiSrc.indexOf('export async function aiPhraseQuery'), aiSrc.indexOf('// ── AI 问答'))
+    expect(full).toContain('withCheckedInsight(parsed')
+    expect(full).not.toMatch(/profileInsightDirection\s*=\s*learningRoute/)
+    expect(phrase).toContain('withCheckedInsight(')
+    expect(phrase).toMatch(/correctedText:\s*learnerText \? parsed\.correctForm/)
+  })
+
+  it('tags the phrase input and the chat context by who wrote them', () => {
+    const phrase = aiSrc.slice(aiSrc.indexOf('export async function aiPhraseQuery'), aiSrc.indexOf('// ── AI 问答'))
+    expect(phrase).toMatch(/tagText\(querySource\(learningRoute\), phrase\)/)
+    const chat = aiSrc.slice(aiSrc.indexOf('export async function askQuestion'), aiSrc.indexOf('export async function askQuestion') + 2500)
+    expect(chat).toContain("tagText('ai', richContext)")
+    expect(phraseSrc).toContain('PROVENANCE_LEGEND')
   })
 
   it('the live phrase prompt appends compact for a plain phrase (full only for a sentence)', () => {

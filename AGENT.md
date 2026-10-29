@@ -207,6 +207,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - **证据分轨**：同一个 Profile 内同时以 `learningDirection: 'in' | 'out'` 与 `learnerLanguage: 'en' | 'zh' | 'vi'` 分隔输入 / 输出和词典语言；旧的无方向数据禁止注入 prompt，旧的无语言数据只兼容中文分区。英文与当前有效词典的辅助语言均服从手动 IN / OUT；英英没有辅助语言，其他外语归 `irrelevant`。方向按钮始终可切换，搜索必须在首个异步等待前冻结提交时 route，后续切换只影响下一条查询。
 - **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；只有存在实质修改的 OUT 英文订正即时；查词累计 12；诊断固定事件快照，成功只删该快照并按剩余 lookup 重算计数；冷启动对含 chat/sentence 的队列续跑。
 - **Profile 注入**：`buildProfilePromptContext(variant, route, learnerLanguage)` 只读取同方向同语言证据并排除 mastered；compact 最多 3 条热弱点 + 2 条探索方向，full 最多 6 条 active 弱点 + 3 条探索方向，均只能补充而不能取代标准分析。
+- **学习者证据 Harness（`src/harness/`，硬约束）**：凡是「AI 被告知关于学习者的内容」和「App 接受的 AI 关于学习者的结论」都必须经 harness。两种标签都由代码打、AI 只读：来源（`<learner_original>` / `<external_material>` / `<ai_generated>`）与 IN / OUT 方向。结果页弱点气泡必须通过 `gateProfileInsight`（引用学习者原文逐字校验，AI 自己的 `correctForm` 不算学习者证据）；批量诊断按方向分键返回、由所在键盖方向章、无新证据的方向不许改写、置信度上升 / mastered 必须有通过校验的 `improvementQuote`。Harness 模块保持纯函数，存储与 flush 时机留在 `profile.ts`。详见 `08` §4.2.1b。
 - 笔记 / 对话 / Core 意象经 DBService API 持久化；Web 侧有 localStorage 备份防护
 
 ---
@@ -274,6 +275,11 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 ### 最近一次重要改动
 
+**2026-10-29（未发版）** — 学习者证据 Harness + 词典标签显示修复：
+- 新增 `src/harness/`：来源标签（学习者 / 外部材料 / AI）与 IN / OUT 分线全部由代码打；弱点气泡经 `gateProfileInsight` 逐字校验；批量诊断按方向分键返回、由键盖章、无新证据的方向不许改写。见上方「学习者证据 Harness」与 `08` §4.2.1b。
+- 词典释义标签在显示时由 `src/utils/meaningLabels.ts` 剥成小标签并修复旧转换损伤；**随包 `.db` 未重建**，转换脚本已修好待下次重建。见 `03-database.md`。
+
+此前：
 **2026-09-07** — Brave Search 适配（桌面走 Rust HTTP）+ 联网图片候选轮询 + 联网判定收敛：
 - 联网是否发请求，唯一入口 `webSearchReady(config)`（`ai.ts`）：`webSearchEnabled === true && searchApiKey.length > 0`。开关切换**不**清结果缓存。
 - 新增第二个联网搜索服务商 Brave Search：`settingsStore` 增 `searchProvider: 'tavily' | 'brave'` + `searchApiKeys`（按服务商分槽，旧 `tavilyApiKey` 经 `merge` 迁移、双写兼容）；Settings 内按钮式选择（复用 AI Provider 网格样式），`isWeb() && brave` 时显示「网页版不可用」提示。

@@ -210,6 +210,17 @@ describe('Direction A — phrase prompt personalization hook', () => {
     expect(prompt).toMatch(/OMIT[\s\S]{0,160}?(recurring|confusion|weak)/i)
   })
 
+  it('offers praise / blame kinds only for the learner\'s own English (OUT), never for IN material', () => {
+    const outPrompt = buildPhrasePrompt({ modules: LOOKUP_MODULES, lang: 'en', queryType: 'sentence', learningRoute: 'out' })
+    expect(outPrompt).toMatch(/"repeat" \| "improved" \| "related"/)
+    expect(outPrompt).toContain('<learner_original>')
+    const inPrompt = buildPhrasePrompt({ modules: LOOKUP_MODULES, lang: 'en', queryType: 'sentence', learningRoute: 'in' })
+    expect(inPrompt).toContain('Only kind "related"')
+    expect(inPrompt).not.toMatch(/"repeat" \| "improved"/)
+    const zhOut = buildPhrasePrompt({ modules: LOOKUP_MODULES, lang: 'zh', queryType: 'sentence', learningRoute: 'out' })
+    expect(zhOut).toContain('Only kind "related"')
+  })
+
   it('appends the compact learner context for a plain phrase, the full one for a sentence', () => {
     expect(readFileSync(join(__dirname, 'aiPhrasePrompt.ts'), 'utf8')).toMatch(
       /buildProfilePromptContext\([\s\S]{0,120}queryType === ['"]sentence['"] \? ['"]full['"] : ['"]compact['"][\s\S]{0,120}learningRoute/,

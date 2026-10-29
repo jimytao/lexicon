@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## Unreleased — 学习者证据 Harness：来源标签、IN / OUT 分线蒸馏与 AI 结论校验
+
+### 用户可见
+1. **弱点气泡不再把 AI 的改正当成你的进步**：此前句子查询中，AI 先把 “fails charging” 改成 “fails to charge”，随后又在紫色气泡里夸你“这次正确使用了 fails to charge”。现在气泡必须逐字引用你原文里的词：说“你用对了”时，这些词必须是你自己写的且没被改动；说“又犯了”时，这些词必须确实被订正改掉；核对不通过就不显示。只是话题相同（例如都在描述设备）不再算作关联。
+2. **IN 模式不再表扬或批评别人写的句子**：IN 下查询的是外部材料，气泡只会提示“这里涉及你在学的模式”。
+3. **IN / OUT 画像不再互相串线**：后台约每 12 次查询批量归纳一次（省 token 的做法不变），但一批里的 IN 和 OUT 记录现在分组交给 AI、分键收回，归属由代码决定；本批没有新记录的那条线完全不会被改写。
+4. **“已掌握”更难被误判**：AI 想提高某条弱点的掌握度或标为已掌握，必须引用你亲手写对、且没被 AI 改动的原文；AI 的订正只算“犯错”的证据。
+5. **修复后台归纳失败时可能空转**：没有 API Key、AI 返回坏 JSON 或离线时，同一批记录不再立即无限重试。
+6. **词典释义的「可数 / 不可数」等标签变成小标签**：原来释义开头显示 `[[countable] 海或湖的）湾` 这类乱括号，现在显示为 `（海或湖的）湾`，旁边与 NOUN 同一行出现小标签；中文界面显示「可数」「及物」「非正式」「正式」等，英文界面显示原文。英汉、英英、英越三本词典的语法、语体、学科、地区标签都已处理（英越的领域标签如 `y học` 以越南语原样显示）。
+7. **修复英汉词典中文释义的其他显示错误**：补回丢失的左括号「（」；约 7.7k 条义项原来把情景说明（如「金融」「足球」「人的行为或性格」）误当成释义显示，现已换回真正的释义；英文释义行末尾不再重复中文。
+8. **英越词典不再出现词性碎片「义项」**：如 `& phó từ`、`, số nhiều abaci` 不再作为一条释义显示；搜索联想与相关词组里被截断的标签（如 `[[uncounta`）也一并清理。
+
+### 工程与验证
+- 新增 `src/harness/`（纯函数，不读存储 / store / 网络）：`provenance.ts`（`tagText` 来源标签、`PROVENANCE_LEGEND`、整词比对 `containsSpan`）、`lanes.ts`（IN / OUT 分线工具）、`profileContext.ts`（`buildLaneProfileContext`，原 `buildProfilePromptContext` 实现迁入）、`insightGate.ts`（`buildProfileInsightField` / `gateProfileInsight`）、`diagnostic.ts`（`buildDiagnosticPrompts` / `applyDiagnosticResult`，`DiagnosticEvent` 类型迁入）、`index.ts` 统一出口。
+- `profile.ts` 只保留存储、入队与 flush 时机；`buildProfilePromptContext` 变为读存储后的薄包装；诊断 prompt 按 `### OUT LANE` / `### IN LANE` 分组、附时间戳，只发送有新证据的线的旧画像；输出 schema 改为 `{ "in": {...}, "out": {...} }`；单线批次兼容旧扁平格式，混合批次的扁平答案视为不可用；去掉“保持 8–12 条 active”规则，改为每线最多 8 条且禁止凑数。缺方向的旧事件不再发给 AI。flush 仅在成功后才连续执行。
+- `ai.ts` / `aiPhrasePrompt.ts`：`profileInsight` schema 改为 `{ kind, learnerSpan?, text }`，只有 OUT 英文输入提供 `repeat` / `improved`；`aiFullLookup` / `aiPhraseQuery` 解析后统一经 `withCheckedInsight()` 校验并写入提交时方向；词组输入按方向包上 `<learner_original>` / `<external_material>`；`askQuestion` 把页面已展示的 AI 分析标为 `<ai_generated>`。sentence 的 full Profile 指令改为分方向的“如实优先于鼓励”。
+- 新增 `harness/insightGate.test.ts`、`harness/diagnostic.test.ts`（含 “fails charging” 原始案例）；`profile.test.ts`、`profileWiring.test.ts`、`aiPhrasePrompt.test.ts` 同步更新。
+- 词典标签：新增 `src/utils/meaningLabels.ts`（`cleanDictionaryMeaning` / `cleanDictionaryBrief` / `isDictionaryHeaderFragment` / `localizeMeaningLabel`，只剥离每一段都是已知标签的前缀，`(in Britain)` 等正文保留；整行只有标签时保留原文）与 31 项测试（夹具均取自三本真实词库）；`MeaningList`、`SuggestList`、`PhrasesSection`、`db.ops.ts` 接入；`i18n` 新增约 120 个 `meaning.label.*` 中文键。**未修改任何 `.db` 文件**，修复全部在显示时完成。
+- 转换脚本 `mdx-to-sqlite.mjs` / `mdx-en-to-sqlite.mjs` / `mdx-en-vi-to-sqlite.mjs` 修复双括号、丢失「（」、只取首个 `<reg>`、取错 `<chn>`、英文列混入中文、OALD10 学科标签截断、SPDict 例句正则吞掉后续义项与词性头碎片；已用真实 MDX 在内存中全量解析验证（未落盘建库）。
+- 文档：`08-ai-learning-system-and-profile.md` 新增 §4.2.1b 并更新 §4.2.2 / §4.5，`04-ai-schema.md`、`01-architecture.md`、`03-database.md`、`05-components.md`、`AGENT.md` 同步。
+- 全量回归：43 个测试文件、422 项测试全部通过；`tsc -b` 通过；ESLint 0 error。
+
 ## 2026-10-06 — AI 输出母语统一与多语言扩展架构 (v0.9.28)
 
 ### 用户可见
