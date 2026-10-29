@@ -26,12 +26,12 @@ import type {
 import { DEFAULT_CONFIDENCE } from '../utils/profileHeat'
 import { getNativeLanguage, type NativeLanguageSpec } from '../services/nativeLanguage'
 import { LANES, LANE_TITLE, isLane, partitionByLane, querySource } from './lanes'
-import { PROVENANCE_LEGEND, containsSpan, tagText } from './provenance'
+import { PROVENANCE_LEGEND, containsSpan, normalizeForMatch, tagText } from './provenance'
 
 export interface DiagnosticEvent {
   /** Stable id for success-only dequeue */
   id: string
-  type: 'lookup' | 'sentence' | 'chat'
+  type: 'lookup' | 'sentence' | 'production' | 'chat'
   /** Learner-typed (OUT) or external (IN) text; for chat, the studied query. */
   wordOrContext: string
   /** sentence: the AI's correction. lookup: the AI's core-concept summary. */
@@ -57,10 +57,10 @@ function clamp01(n: unknown): number | undefined {
   return n < 0 ? 0 : n > 1 ? 1 : n
 }
 
-/** Same token budget as before: the newest high-priority and lookup events only. */
-function capSnapshot(snapshot: readonly DiagnosticEvent[]): DiagnosticEvent[] {
-  const high = new Set(snapshot.filter((e) => e.type !== 'lookup').slice(-MAX_HIGH_PRIORITY_EVENTS))
-  const lookups = new Set(snapshot.filter((e) => e.type === 'lookup').slice(-MAX_LOOKUP_EVENTS))
+/** Bound the token budget using the oldest queued high-priority and lookup events. */
+export function selectDiagnosticSnapshot(snapshot: readonly DiagnosticEvent[]): DiagnosticEvent[] {
+  const high = new Set(snapshot.filter((e) => e.type !== 'lookup').slice(0, MAX_HIGH_PRIORITY_EVENTS))
+  const lookups = new Set(snapshot.filter((e) => e.type === 'lookup').slice(0, MAX_LOOKUP_EVENTS))
   return snapshot.filter((e) => high.has(e) || lookups.has(e))
 }
 
@@ -78,16 +78,17 @@ function formatLaneEvents(lane: LearningDirection, events: readonly DiagnosticEv
   let i = 0
   while (i < events.length) {
     const e = events[i]!
-    const at = e.timestamp ? `[${e.timestamp}] ` : ''
+    const at = `[eventId=${e.id}] ${e.timestamp ? `[${e.timestamp}] ` : ''}`
     if (e.type === 'lookup') {
       const concept = e.details ? ` (AI core concept: ${tagText('ai', e.details)})` : ''
       normal.push(`- ${at}searched ${tagText(studied, e.wordOrContext)}${concept}`)
       i += 1
       continue
     }
-    if (e.type === 'sentence') {
+    if (e.type === 'sentence' || e.type === 'production') {
       const mind = e.unnaturalMindModel ? ` | AI analysis: ${tagText('ai', JSON.stringify(e.unnaturalMindModel))}` : ''
-      high.push(`- ${at}Sentence correction: learner wrote ${tagText('learner', e.wordOrContext)} → AI corrected to ${tagText('ai', e.details || '')}${mind}`)
+      const label = e.type === 'production' ? 'Independent production (no substantive correction, not a mistake)' : 'Sentence correction'
+      high.push(`- ${at}${label}: learner wrote ${tagText('learner', e.wordOrContext)} → AI ${e.type === 'production' ? 'accepted' : 'corrected to'} ${tagText('ai', e.details || '')}${mind}`)
       i += 1
       continue
     }
@@ -100,7 +101,7 @@ function formatLaneEvents(lane: LearningDirection, events: readonly DiagnosticEv
     while (i < events.length) {
       const cur = events[i]!
       if (cur.type !== 'chat' || `${cur.wordOrContext}||${cur.cognitive ?? ''}` !== key) break
-      lines.push(`    Q${n}: ${tagText('learner', cur.userQuestion || '')}`)
+      lines.push(`    Q${n}: ${tagText('question', cur.userQuestion || '')}`)
       lines.push(`    A${n}: ${tagText('ai', (cur.aiAnswer || '').slice(0, 1000))}`)
       n += 1
       i += 1
@@ -141,7 +142,7 @@ export function buildDiagnosticPrompts(
   laneProfileForLanguage: UserLanguageProfile,
   spec: NativeLanguageSpec,
 ): DiagnosticPrompts {
-  const events = capSnapshot(snapshot)
+  const events = snapshot
   const lanes = activeLanes(events)
   const byLane = partitionByLane(events)
 
@@ -181,6 +182,7 @@ Instruction: Execute an "Intelligent Upsert (智能增删改)" on each lane's ba
       "confidence": 0.3,
       "lastExposedAt": "2026-09-07T12:00:00.000Z",
       "improvementQuote": "OPTIONAL — only when raising confidence or marking mastered: the learner's correct words copied EXACTLY from a <learner_original> block"
+      ,"improvementEventId": "REQUIRED with improvementQuote: the exact eventId of the OUT sentence/production containing that independent production, never a Q&A event"
     }`
   const laneSchema = `{
     "weaknessPatterns": [ ${weaknessSchema} ],
@@ -203,6 +205,7 @@ CRITICAL EVIDENCE LANES — NEVER MIX THEM:
 - ${supportLanguageRule}
 - Q&A evidence comes from the learner's question. Do not attribute the surrounding quoted/context text or the AI answer to the learner.
 - Never infer personal style preferences from query length or source-text style.
+- A search string is not an authoritative word or definition. It may be a typo or meaningless. Do not invent a lexical meaning or treat an unsupported prior AI gloss as a verified fact; retain only grounded learning questions/patterns.
 - Put every item under the key of the lane whose events justify it. Never move an item from one lane to the other.
 
 Intelligent Upsert Rules (apply per lane):
@@ -212,7 +215,7 @@ Intelligent Upsert Rules (apply per lane):
 4. DELETE/PRUNE (删/剪枝): Keep at most ${MAX_ACTIVE_PER_LANE} active items (status: "learning") per lane; prune stale/minor ones beyond that. Never invent items to reach a number.
 5. RECENT FOCUS: Synthesize 1~3 active exploration categories per lane.
 6. RECOMMENDATIONS: Provide 2~4 high-value recommendations per lane with 1-sentence explanations directly linked to that lane's weakness patterns or searches.
-7. CONFIDENCE (置信度): For every weakness set "confidence" (0..1) = your estimate that the learner has internalised the fix. LOWER it toward 0 when the pattern recurs in this batch. RAISE it (or set status "mastered") ONLY when a <learner_original> block shows the learner already using the correct form by themselves, and copy those exact words into "improvementQuote". An AI correction is evidence of a mistake, never of mastery. Mere absence or elapsed time is NOT mastery evidence. Keep the prior value if there is no new evidence.
+7. CONFIDENCE (置信度): For every weakness set "confidence" (0..1) = your estimate that the learner has internalised the fix. LOWER it toward 0 when the pattern recurs in this batch. RAISE it ONLY when an OUT sentence event shows the learner already using the correct form by themselves; provide both "improvementQuote" and "improvementEventId". Q&A wording can quote a correction and is NEVER proof of independent production. An AI correction is evidence of a mistake, never of mastery. One correct instance may show progress, not stable mastery. Preserve existing weakness IDs. Mere absence or elapsed time is NOT mastery evidence. Keep the prior value if there is no new evidence.
 8. LAST EXPOSED: Set "lastExposedAt" to the timestamp of the most recent event in this batch that touched the pattern. If untouched this batch, keep the prior value.
 
 Output schema (include ONLY the lane keys ${laneKeys}):
@@ -226,13 +229,31 @@ OUTPUT REQUIREMENT: Output ONLY raw valid JSON (1500~3000 Tokens output capacity
 }
 
 interface LaneSection {
-  weaknessPatterns?: unknown
-  recentExplorationFocus?: unknown
-  recommendations?: unknown
+  weaknessPatterns: unknown[]
+  recentExplorationFocus: unknown[]
+  recommendations: unknown[]
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function validSection(value: unknown): value is LaneSection {
+  if (!isObject(value)) return false
+  const text = (v: unknown) => typeof v === 'string' && v.trim().length > 0
+  const optionalText = (v: unknown) => v === undefined || typeof v === 'string'
+  return Array.isArray(value.weaknessPatterns) && value.weaknessPatterns.every((w: unknown) =>
+    isObject(w) && text(w.id) && text(w.description) && text(w.sourceTrigger)
+    && ['vocabulary', 'phrase_metaphor', 'syntax_thought'].includes(String(w.track))
+    && ['learning', 'mastered'].includes(String(w.status))
+    && typeof w.occurrenceCount === 'number' && Number.isInteger(w.occurrenceCount) && w.occurrenceCount >= 0
+    && optionalText(w.contrastExample) && optionalText(w.lastExposedAt)
+    && (w.confidence === undefined || (typeof w.confidence === 'number' && Number.isFinite(w.confidence))))
+    && new Set(value.weaknessPatterns.map(w => w.id)).size === value.weaknessPatterns.length
+    && Array.isArray(value.recentExplorationFocus) && value.recentExplorationFocus.every((f: unknown) =>
+      isObject(f) && text(f.category) && Array.isArray(f.searchedItems) && f.searchedItems.every(text))
+    && Array.isArray(value.recommendations) && value.recommendations.every((r: unknown) =>
+      isObject(r) && text(r.conceptOrWord) && text(r.reason))
 }
 
 /** Lane-keyed answer, or a flat answer when the batch only had one lane (older prompt shape). */
@@ -242,26 +263,26 @@ function readLaneSections(parsed: unknown, lanes: LearningDirection[]): Partial<
     const out: Partial<Record<LearningDirection, LaneSection>> = {}
     for (const lane of lanes) {
       const section = parsed[lane]
-      if (isObject(section)) out[lane] = section
+      if (!validSection(section)) return null
+      out[lane] = section
     }
     return out
   }
   // A flat answer cannot say which lane each item belongs to, so it is only
   // usable when the batch itself had a single lane.
-  if (lanes.length === 1 && ('weaknessPatterns' in parsed || 'recentExplorationFocus' in parsed || 'recommendations' in parsed)) {
+  if (lanes.length === 1 && validSection(parsed)) {
     return { [lanes[0]!]: parsed as LaneSection }
   }
   return null
 }
 
 /** Words the learner typed in this lane that no AI correction changed. */
-function isLearnerQuote(quote: unknown, laneEvents: readonly DiagnosticEvent[]): boolean {
+function isLearnerQuote(quote: unknown, eventId: unknown, laneEvents: readonly DiagnosticEvent[]): boolean {
   if (typeof quote !== 'string' || !quote.trim()) return false
   return laneEvents.some((e) => {
-    if (e.type === 'sentence') {
+    if (e.id === eventId && (e.type === 'sentence' || e.type === 'production') && e.learningDirection === 'out') {
       return containsSpan(e.wordOrContext, quote) && containsSpan(e.details || '', quote)
     }
-    if (e.type === 'chat') return containsSpan(e.userQuestion || '', quote)
     return false
   })
 }
@@ -316,21 +337,35 @@ export function applyDiagnosticResult(parsed: unknown, args: ApplyDiagnosticArgs
     weaknesses.push(...(Array.isArray(section.weaknessPatterns) ? section.weaknessPatterns : priorWeaknesses)
       .filter(isObject)
       .map((raw) => {
-        const { improvementQuote, ...rest } = raw as unknown as WeaknessPattern & { improvementQuote?: unknown }
+        const { improvementQuote, improvementEventId, verifiedProductionIds: _untrustedIds, verifiedProductionTexts: _untrustedTexts, ...rest } = raw as unknown as WeaknessPattern & { improvementQuote?: unknown; improvementEventId?: unknown }
         const prior = priorById.get(rest.id)
         const priorConfidence = prior?.confidence ?? DEFAULT_CONFIDENCE
         const priorStatus = prior?.status ?? 'learning'
         let confidence = clamp01(rest.confidence) ?? priorConfidence
         let status: WeaknessPattern['status'] = rest.status === 'mastered' ? 'mastered' : 'learning'
         const claimsImprovement = confidence > priorConfidence || (status === 'mastered' && priorStatus !== 'mastered')
-        if (claimsImprovement && !isLearnerQuote(improvementQuote, byLane[lane])) {
+        const verifiedQuote = isLearnerQuote(improvementQuote, improvementEventId, byLane[lane])
+        const verifiedProductionIds = [...new Set([
+          ...(prior?.verifiedProductionIds ?? []),
+          ...(verifiedQuote && typeof improvementEventId === 'string' ? [improvementEventId] : []),
+        ])].slice(-8)
+        const event = byLane[lane].find(e => e.id === improvementEventId)
+        const verifiedProductionTexts = [...new Set([
+          ...(prior?.verifiedProductionTexts ?? []),
+          ...(verifiedQuote && event ? [normalizeForMatch(event.wordOrContext)] : []),
+        ])].slice(-8)
+        if (claimsImprovement && !verifiedQuote) {
           confidence = Math.min(confidence, priorConfidence)
           status = priorStatus
         }
+        // A single matching quote supports progress, not stable mastery.
+        if (status === 'mastered' && priorStatus !== 'mastered' && verifiedProductionTexts.length < 2) status = 'learning'
         return {
           ...rest,
           status,
           confidence,
+          verifiedProductionIds,
+          verifiedProductionTexts,
           lastExposedAt: rest.lastExposedAt || prior?.lastExposedAt || nowIso,
           ...stamp,
         } as WeaknessPattern

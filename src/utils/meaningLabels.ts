@@ -101,6 +101,9 @@ const VI_REGISTER_LABELS: Record<string, string> = Object.fromEntries(
 const VI_GRAMMAR_LABELS: Record<string, string> = {
   'số nhiều': 'số nhiều',
   'định ngữ': 'định ngữ',
+  '(thường) số nhiều': '(thường) số nhiều',
+  'số ít': 'số ít',
+  'thường số ít': 'thường số ít',
 }
 
 function isRegisterAtom(atom: string): boolean {
@@ -261,6 +264,10 @@ function hasBalancedFullWidthParens(s: string): boolean {
  * it is letter-free and paren-balanced, so a partially captured tail is ignored.
  */
 function trailingChineseGloss(en: string): string | null {
+  // Old OALD9 used an explicit bilingual separator before glosses containing
+  // Latin symbols (A 音, A 级公路). This boundary is safer than guessing at letters.
+  const symbolGloss = en.match(/\s\*\s+([A-Za-z][^*]*[一-鿿][^*]*)$/)?.[1]?.trim()
+  if (symbolGloss && hasBalancedFullWidthParens(symbolGloss)) return symbolGloss
   const m = en.match(TRAILING_CHINESE)
   if (!m || m.index === undefined || m.index === 0) return null
   const tail = m[1].trim()
@@ -279,7 +286,7 @@ export function cleanDictionaryMeaning(meaning: { zh?: string; en?: string }): C
   if (!recovered && zh === '') zh = rawZh
   if (recovered) {
     zh = recovered
-    en = en.slice(0, en.length - recovered.length).trim()
+    en = en.slice(0, en.length - recovered.length).trim().replace(/\s*\*$/, '').trim()
   } else {
     zh = repairChineseGloss(zh, en)
     en = dropTrailingGloss(en, zh)
@@ -299,7 +306,7 @@ export function cleanDictionaryMeaning(meaning: { zh?: string; en?: string }): C
  */
 export function isDictionaryHeaderFragment(text: string): boolean {
   const trimmed = (text ?? '').trim()
-  return trimmed.length <= 100 && /^[&,;]/.test(trimmed)
+  return trimmed.length <= 100 && /^[&,;]\s*(?:\(thường\)\s*)?(?:số nhiều|danh từ|(?:nội |ngoại )?động từ|tính từ|phó từ|trạng từ|thán từ|giới từ|liên từ|đại từ)(?=\s|$|[,(&])/u.test(trimmed)
 }
 
 /**
@@ -312,6 +319,7 @@ export function cleanDictionaryBrief(brief: string): string {
   const sep = brief.includes('；') ? '；' : '; '
   const kept = brief.split(sep).map((part) => {
     const trimmed = part.trim()
+    if (isDictionaryHeaderFragment(trimmed)) return ''
     // Grammar code truncated by the converter's fixed-width slice.
     if (/^\[\[?[a-z ,+]*\]?$/.test(trimmed)) return ''
     const rest = peelLabels(trimmed).rest
@@ -355,6 +363,12 @@ function lookupLabel(label: string, t: (key: string) => string): string | null {
  * Vietnamese SPDict labels, already in the gloss language) fall back to the raw text.
  */
 export function localizeMeaningLabel(label: string, t: (key: string) => string): string {
+  const viGrammar: Record<string, string> = {
+    'số nhiều': 'plural', 'số ít': 'singular', 'định ngữ': 'attributive',
+    '(thường) số nhiều': 'usually plural', 'thường số ít': 'usually singular',
+  }
+  const canonical = viGrammar[label]
+  if (canonical) return lookupLabel(canonical, t) ?? canonical
   if (/[^ -~]/.test(label)) return label
   return lookupLabel(label, t) ?? label
 }

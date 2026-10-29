@@ -1,0 +1,17 @@
+[
+  {
+    "name": "lexicon.db",
+    "bytes": 32878592,
+    "sha256": "6597ef317f4410c24c6647681ff54525407766d12bd401d46ea08f4f9ba283fc"
+  },
+  {
+    "name": "lexicon_en.db",
+    "bytes": 39706624,
+    "sha256": "a2bc42e79f4f128011b85edd35e6978ce8eba9a71c0350d0636526c4eb4f755d"
+  },
+  {
+    "name": "lexicon_vi.db",
+    "bytes": 46485504,
+    "sha256": "11ac312e830beccd204dd43e099710236153e5049a0546123b758766f40c1906"
+  }
+]

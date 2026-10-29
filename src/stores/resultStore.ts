@@ -7,6 +7,11 @@ import { aiFullToAnalysis } from '../utils/aiFullToAnalysis'
 
 export type AiStatus = 'idle' | 'loading' | 'success' | 'error'
 
+/** Keep old analyses usable while hiding tips that predate evidence validation. */
+function checkedCachedInsight<T extends { profileInsightVersion?: number; profileInsight?: string; profileInsightDirection?: string }>(value: T): T {
+  return value.profileInsightVersion === 4 ? value : { ...value, profileInsight: undefined, profileInsightDirection: undefined }
+}
+
 /**
  * Stage-1 resolution skeleton. Its job is NOT to enumerate senses for their own
  * sake — it is the disambiguation contract both halves must agree on:
@@ -553,7 +558,8 @@ export const useResultStore = create<ResultStore>()(
         const cache = get().combinedCache
         if (cache[key]) {
           const updated = { ...cache }
-          const val = updated[key]
+          const original = updated[key]
+          const val = { ...original, lookup: checkedCachedInsight(original.lookup), core: checkedCachedInsight(original.core) }
           delete updated[key]
           updated[key] = val
           set({ combinedCache: updated })
@@ -562,8 +568,8 @@ export const useResultStore = create<ResultStore>()(
         // Legacy fallback (normal tag only): reconstruct from old separate caches if available
         if (tag === 'normal') {
           const n = normalizeQuery(word)
-          const legacyLookup = get().aiFullCache[n] ?? null
-          const legacyCore = get().aiFullCache[cognitiveCacheKey(n, 'core')] ?? null
+          const legacyLookup = get().aiFullCache[n] ? checkedCachedInsight(get().aiFullCache[n]) : null
+          const legacyCore = get().aiFullCache[cognitiveCacheKey(n, 'core')] ? checkedCachedInsight(get().aiFullCache[cognitiveCacheKey(n, 'core')]) : null
           if (legacyLookup || legacyCore) {
             return reconstructFromLegacy(
               legacyLookup ?? legacyCore!,
@@ -578,7 +584,8 @@ export const useResultStore = create<ResultStore>()(
         const cache = get().combinedPhraseCache
         if (cache[key]) {
           const updated = { ...cache }
-          const val = updated[key]
+          const original = updated[key]
+          const val = { ...original, lookup: checkedCachedInsight(original.lookup), core: checkedCachedInsight(original.core) }
           delete updated[key]
           updated[key] = val
           set({ combinedPhraseCache: updated })
@@ -586,8 +593,8 @@ export const useResultStore = create<ResultStore>()(
         }
         if (tag === 'normal') {
           const n = normalizeQuery(phrase)
-          const legacyLookup = get().phraseCache[n] ?? null
-          const legacyCore = get().phraseCache[cognitiveCacheKey(n, 'core')] ?? null
+          const legacyLookup = get().phraseCache[n] ? checkedCachedInsight(get().phraseCache[n]) : null
+          const legacyCore = get().phraseCache[cognitiveCacheKey(n, 'core')] ? checkedCachedInsight(get().phraseCache[cognitiveCacheKey(n, 'core')]) : null
           if (legacyLookup || legacyCore) {
             return reconstructPhraseFromLegacy(
               legacyLookup ?? legacyCore!,
@@ -624,7 +631,7 @@ export const useResultStore = create<ResultStore>()(
         const cache = get().aiFullCache
         if (cache[cacheKey]) {
           const updated = { ...cache }
-          const val = updated[cacheKey]
+          const val = checkedCachedInsight(updated[cacheKey])
           delete updated[cacheKey]
           updated[cacheKey] = val
           set({ aiFullCache: updated })
@@ -637,7 +644,7 @@ export const useResultStore = create<ResultStore>()(
         const cache = get().phraseCache
         if (cache[cacheKey]) {
           const updated = { ...cache }
-          const val = updated[cacheKey]
+          const val = checkedCachedInsight(updated[cacheKey])
           delete updated[cacheKey]
           updated[cacheKey] = val
           set({ phraseCache: updated })

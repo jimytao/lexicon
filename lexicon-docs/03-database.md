@@ -133,6 +133,7 @@ export async function warmupDictionary(): Promise<void>
 ```ts
 // scripts/mdx-to-sqlite.mjs → public/assets/databases/lexicon.db
 // scripts/mdx-en-to-sqlite.mjs → public/assets/databases/lexicon_en.db
+// scripts/mdx-en-vi-to-sqlite.mjs → public/assets/databases/lexicon_vi.db
 ```
 
 推荐的 MDX 解析库：`mdict-analysis`（npm）或 Python 的 `readmdict`（先生成 TSV 再用 Node 导入）。
@@ -140,9 +141,9 @@ export async function warmupDictionary(): Promise<void>
 ### 释义单元格里的标签与已知转换损伤（2026-10-29）
 
 - `meanings.zh` / `meanings.en` 开头内联语法与语体标签：`[grammar] (labels) 释义`（OALD9 / OALD10），SPDict 为越南语领域标签 `(y học)` 等。UI 不直接显示原文，而是经 `src/utils/meaningLabels.ts` 的 `cleanDictionaryMeaning()` 剥成小标签。
-- **当前随包发布的 `lexicon.db` 仍带旧转换器的损伤，在显示时修复**：`[[countable]` 双括号、中文释义丢失开头的 `（`（约 1.8 万行）、约 7.7k 行把情景标签译文（如「金融」「足球」）误当成释义（从英文列末尾的完整中文恢复）、英文列末尾重复中文。`lexicon_en.db` 有约 1.5k 条被截断的学科标签 `(music the 6th …`。
+- **修复前基线 `0dcc889` 的旧库损伤**：`lexicon.db` 有 `[[countable]` 双括号、中文释义丢失开头的 `（`（约 1.8 万行）、约 7.7k 行把情景标签译文（如「金融」「足球」）误当成释义（从英文列末尾的完整中文恢复）、英文列末尾重复中文；`lexicon_en.db` 有约 1.5k 条被截断的学科标签 `(music the 6th …`。显示兼容仍保留，供旧版下载资产使用；本地已应用的新库状态见下。
 - `db.ops.ts` 的 `lookupWithRunner` 过滤 SPDict 被拆成「义项」的词性头碎片（`& phó từ`、`, số nhiều abaci`）；若某词条全部都是碎片则保留原样，绝不让词条变空。
-- 三个转换脚本已修复上述问题，导出 `parseEntry` 等纯函数，仅在直接执行时才建库。**尚未重新生成任何 `.db`**；下次重建 SPDict 义项数会从约 13.5 万升到约 14.6 万（此前被例句正则吞掉的义项会恢复）。现有 `lexicon.db` 例句中的少量旧损伤（约 67 条孤立 `）`）只能靠重建修复。
+- 上述为 `0dcc889` 的旧库兼容背景。2026-10-29 核验后已从原始 MDX 在临时目录生成、对比并应用三库：英汉 99,477、英英 112,040、英越 146,901 条义项。无旧词条丢失；完整性检查通过。详见 `12-learner-evidence-audit.md`。
 
 ## 词库文件大小估算
 
@@ -153,3 +154,23 @@ export async function warmupDictionary(): Promise<void>
 | 压缩后（Brotli） | ~20MB |
 
 建议首次启动时懒加载：先加载 suggest 表（快），用户查词时再按需解压完整词条，或者将完整 db 整体加载（sql.js 支持内存模式）。
+
+### 2026-10-29 重建与标签核验
+
+- `scripts/mdx-to-sqlite.mjs` / `mdx-en-to-sqlite.mjs` / `mdx-en-vi-to-sqlite.mjs` 接收可选输入、输出路径。构建使用 Node 内置 `node:sqlite`（本轮 Node 24.18），App 存储引擎不变。生成输出先放临时目录，经 `scripts/audit-dictionaries.mjs` 只读比对后再应用。禁止把未经比较的数量增加当作已正确转换。
+- `scripts/dictionary-entries.mjs` 提供转换用 SQLite 包装和按义项词性拆 entry；沿用现有 schema，不新增运行时迁移。英汉 / 英英的例句也按词性分配，英越无例句词性标记时每词只存一份。
+- 英汉空中文释义但英文定义有效时保留英文（aren't），不丢词条、不冒充中文翻译；原始 MDX 不修改。
+- 英越继承独立星号段落前的 POS、保留联合词性、复数头只删到下一义项分隔符；保留词义里的“plural of”信息。
+- 三库共用运行时标签提取：英汉 / 英英有 countable、uncountable、及物 / 不及物等原始标记，显示为标签并随 UI 本地化。SPDict 不提供统一 countability 信息；不推断或补造，可识别的 số nhiều / định ngữ 等按复数 / 定语本地化，领域术语继续保留越南语。
+- 原生随包资产版本升为 `2026-10-29-labels-pos2`，安装新版时重新导入生成库。扩展仍下载 GitHub Release 资产；本轮没有发布新库或修改线上清单，扩展线上旧资产仅得到兼容显示修复，新增义项须后续正式发布。
+
+复查使用 Node 24.18（本轮已验证的版本），三转换器参数依次是原始 MDX 与输出 DB 路径；省略参数会使用脚本默认路径。核验时显式指定临时输出，保留旧库：
+
+```powershell
+node scripts/mdx-to-sqlite.mjs "INPUT_ENZH.mdx" "GENERATED_DIR/lexicon.db"
+node scripts/mdx-en-to-sqlite.mjs "INPUT_ENEN.mdx" "GENERATED_DIR/lexicon_en.db"
+node scripts/mdx-en-vi-to-sqlite.mjs "INPUT_ENVI.mdx" "GENERATED_DIR/lexicon_vi.db"
+node --import tsx scripts/audit-dictionaries.mjs "BASELINE_DIR" "GENERATED_DIR" "REPORT.json"
+```
+
+以上路径是待替换的占位符；输出目录须已存在。审计工具只读打开新旧三库，报告 SHA-256、quick_check、词条 / 义项 / 例句数、丢失旧词条、标签 / 头碎片和样例。结构扫描不能证明所有词义正确，仍须对照 MDX 与实际界面抽查；本轮报告与备份位置见 `12`。

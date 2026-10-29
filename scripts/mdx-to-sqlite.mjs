@@ -7,10 +7,10 @@
  */
 
 import { MDX } from 'js-mdict'
-import Database from 'better-sqlite3'
 import { existsSync, mkdirSync, unlinkSync } from 'fs'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
+import { openDictionaryDatabase, splitEntryByPos } from './dictionary-entries.mjs'
 
 // ── 配置 ──────────────────────────────────────────────────────────────────────
 const MDX_PATH = "D:/vibe coding/牛津高阶英汉双解词典（第9版）- 带高清版图片/牛津高阶英汉双解词典（第9版）- 带高清版图片/牛津高阶英汉双解词典（第9版）.mdx"
@@ -77,7 +77,6 @@ export function parseSense(block) {
 
   const defChn = [...defMatch[1].matchAll(/<chn>(.*?)<\/chn>/gs)].pop()
   const chnHtml = defChn ? defChn[1] : block.match(/<chn>(.*?)<\/chn>/s)?.[1]
-  if (!chnHtml) return null
 
   // <gram-blk> 自带方括号，多个 <gram> 分散在多个 gram-blk：[intransitive, transitive]。
   // 旧版 /<gram[^>]*>/ 先命中 <gram-g>，于是把「[countable」再包一层成了「[[countable]」
@@ -100,9 +99,11 @@ export function parseSense(block) {
   }
 
   const prefix = [gram, label].filter(Boolean).map((p) => `${p} `).join('')
-  const gloss = cleanChinese(chnHtml)
   const def = englishOnly(defMatch[1])
-  if (!gloss || !def) return null
+  if (!def) return null
+  // Some contraction entries have an intentionally empty translation (aren't).
+  // Preserve the supplied English definition instead of dropping the entry.
+  const gloss = cleanChinese(chnHtml ?? '') || def
   return { en: prefix + def, zh: prefix + gloss, gloss }
 }
 
@@ -117,15 +118,20 @@ export function parseEntry(word, rawDef) {
   if (phonetic && !phonetic.endsWith('/')) phonetic = phonetic + '/'
 
   // 词性（取第一个 <pos>）
-  const posMatch = html.match(/<pos[^>]*>(.*?)<\/pos>/s)
+  const posMatch = html.match(/<pos(?:\s[^>]*)?>(.*?)<\/pos>/s)
   const pos = posMatch ? normalizePos(stripTags(posMatch[1])) : 'noun'
+  const positions = [...html.matchAll(/<pos(?:\s[^>]*)?>(.*?)<\/pos>/gs)]
+  const posAt = index => {
+    const found = positions.filter(m => m.index <= index).at(-1)
+    return found ? normalizePos(stripTags(found[1])) : pos
+  }
 
   // 释义：从 <sn-g> 中提取 <def>（EN）和 def 内的 <chn>（ZH）
   const meanings = []
   const snMatches = [...html.matchAll(/<sn-g[^>]*>(.*?)(?=<sn-g |<\/sn-blk>|<\/h-g>)/gs)]
   for (const sm of snMatches) {
     const sense = parseSense(sm[1])
-    if (sense) meanings.push(sense)
+    if (sense) meanings.push({ ...sense, pos: posAt(sm.index) })
   }
 
   // 例句：从 <x-g-blk> 提取英文 <x> 和中文 <chn>
@@ -138,7 +144,7 @@ export function parseEntry(word, rawDef) {
     if (xMatch && chnMatch) {
       const en = englishOnly(xMatch[1]).replace(/^◆\s*/, '').replace(/\s+[\u4e00-\u9fff].*$/, '').trim()
       const zh = cleanChinese(chnMatch[1])
-      if (en && zh && en.length > 3) examples.push({ en, zh })
+      if (en && zh && en.length > 3) examples.push({ en, zh, pos: posAt(em.index) })
     }
   }
 
@@ -159,25 +165,26 @@ function getDefinitionResolved(mdx, word, depth = 0) {
 }
 
 // ── 主程序 ────────────────────────────────────────────────────────────────────
-function main() {
+export async function buildDatabase(mdxPath = MDX_PATH, dbPath = DB_PATH) {
+  if (!existsSync(mdxPath)) throw new Error(`MDX not found: ${mdxPath}`)
 
   console.log('📖 Loading MDX file...')
-  const mdx = new MDX(MDX_PATH)
+  const mdx = new MDX(mdxPath)
 
   const total = mdx.keywordList?.length ?? 0
   console.log(`📊 Total entries: ${total.toLocaleString()}`)
 
   // 准备输出目录
-  const dbDir = dirname(DB_PATH)
+  const dbDir = dirname(dbPath)
   if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true })
 
   // 删除旧 DB
-  if (existsSync(DB_PATH)) {
+  if (existsSync(dbPath)) {
     console.log('🗑  Removing old database...')
-    unlinkSync(DB_PATH)
+    unlinkSync(dbPath)
   }
 
-  const db = new Database(DB_PATH)
+  const db = await openDictionaryDatabase(dbPath)
 
   // WAL 模式 + 关闭同步，大幅提速
   db.pragma('journal_mode = WAL')
@@ -229,7 +236,7 @@ function main() {
   const insertSuggest = db.prepare(`INSERT OR IGNORE INTO suggest(word, zh_brief) VALUES(?,?)`)
 
   const batchInsert = db.transaction((entries) => {
-    for (const e of entries) {
+    for (const e of entries.flatMap(splitEntryByPos)) {
       // 跳过空词条（纯短语/特殊格式词条过滤掉大部分噪音）
       if (!e.word || e.word.length > 60 || e.meanings.length === 0) continue
       // 只收录英文词汇（排除全汉字词条）
@@ -296,13 +303,16 @@ function main() {
     CREATE INDEX IF NOT EXISTS idx_entry_id_examples ON examples(entry_id);
   `)
 
+  const counts = Object.fromEntries(['entries', 'meanings', 'examples', 'suggest'].map(table => [table, db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]))
+  db.pragma('wal_checkpoint(TRUNCATE)')
   db.close()
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
   console.log(`\n✅ Done! ${written.toLocaleString()} entries written in ${elapsed}s`)
   console.log(`   Errors: ${errors}`)
-  console.log(`   Output: ${DB_PATH}`)
+  console.log(`   Output: ${dbPath}`)
+  return { dbPath, errors, ...counts }
 }
 
 // 仅在直接运行脚本时执行转换；被 import 时只暴露 parseEntry 供抽样验证
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) console.log(JSON.stringify(await buildDatabase(process.argv[2] || MDX_PATH, process.argv[3] || DB_PATH)))

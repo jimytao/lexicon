@@ -158,6 +158,11 @@ describe('repairChineseGloss', () => {
 })
 
 describe('cleanDictionaryMeaning', () => {
+  it('repairs OALD9 glosses with a Latin symbol only at the explicit bilingual separator', () => {
+    const r = cleanDictionaryMeaning({ zh: '[[countable] 音乐', en: '[[countable] the 6th note in the scale of C major * A 音（C 大调音阶的第六级音）' })
+    expect(r.zh).toBe('A 音（C 大调音阶的第六级音）')
+    expect(r.en).toBe('the 6th note in the scale of C major')
+  })
   it('cleans the OALD9 "bay" row end to end', () => {
     expect(
       cleanDictionaryMeaning({
@@ -236,6 +241,11 @@ describe('isDictionaryHeaderFragment', () => {
 })
 
 describe('cleanDictionaryBrief', () => {
+  it('removes recognizable Vietnamese headers without swallowing legitimate punctuation content', () => {
+    expect(cleanDictionaryBrief(', số nhiều abatis; (quân sự) đống cây chướng ngại')).toBe('đống cây chướng ngại')
+    expect(cleanDictionaryBrief('& phó từ; theo cách suy diễn')).toBe('theo cách suy diễn')
+    expect(isDictionaryHeaderFragment(', a genuine definition')).toBe(false)
+  })
   it('drops truncated label-only pieces', () => {
     expect(cleanDictionaryBrief('[[uncounta；[[singular')).toBe('')
     expect(cleanDictionaryBrief('以…为中心；有…中心；(often dis')).toBe('以…为中心；有…中心')
@@ -255,9 +265,22 @@ describe('cleanDictionaryBrief', () => {
   })
 })
 
+describe('three-dictionary label policy', () => {
+  it.each([
+    ['OALD9', '[[countable, uncountable] 含义', ['countable', 'uncountable']],
+    ['OALD10', '[countable, uncountable] a meaning', ['countable', 'uncountable']],
+    ['SPDict with supplied grammar', '(số nhiều) vòng nguyệt quế', ['số nhiều']],
+    ['SPDict without countability information', '(y học) bệnh', []],
+  ])('%s extracts only grammar supplied by that dictionary', (_name, text, grammar) => {
+    expect(parseMeaningLabels(text as string).grammar).toEqual(grammar)
+  })
+})
+
 describe('localizeMeaningLabel', () => {
   const zh: Record<string, string> = {
     'meaning.label.countable': '可数',
+    'meaning.label.plural': '复数',
+    'meaning.label.attributive': '定语',
     'meaning.label.informal': '非正式',
     'meaning.label.formal': '正式',
     'meaning.label.literary': '文学',
@@ -272,6 +295,9 @@ describe('localizeMeaningLabel', () => {
   const tEn = (key: string) => key
 
   it('uses direct translations', () => {
+    expect(localizeMeaningLabel('số nhiều', tZh)).toBe('复数')
+    expect(localizeMeaningLabel('định ngữ', tZh)).toBe('定语')
+    expect(localizeMeaningLabel('số nhiều', tEn)).toBe('plural')
     expect(localizeMeaningLabel('countable', tZh)).toBe('可数')
     expect(localizeMeaningLabel('countable + singular or plural verb', tZh)).toBe('可数（动词单复数皆可）')
   })

@@ -3,7 +3,7 @@
 # Lexicon 智能学习系统、轻量 User Profile 与第二大脑 (Lexicon Memory) 架构规范
 
 > **状态**：Phase 5 后端已落地；弱项看板 UI（Memory Tab / Digest）已雪藏  
-> **更新日期**：2026-09-25
+> **更新日期**：2026-10-30（文档核对；代码验收为 2026-10-29）
 > **适用版本**：v0.9.25+
 
 ---
@@ -30,8 +30,8 @@
 
 1. **旧 Profile 状态 (`~1,000 Tokens`)**：按 IN / OUT 分组，**只发送本批次有新证据的那几条线**的 `weaknessPatterns`、`explorationFocus` 与推荐；无方向旧数据不发送。
 2. **高价值行为增量 (`~1,500 Tokens`)**，包含三类信息：
-   - **[源 A: 单词搜索]**：查过的词汇及对应的 Core 意象/空间延伸标签。
-   - **[源 B: 句子/表达订正]**：用户的原始输入 + AI 剖析的 **`unnaturalMindModel` (思维违和感)**（例: 传入 *My eyesight is deep* 及 *“英文不用 depth 抽象视力”* 的剖析）。
+   - **[源 A: 单词搜索]**：查过的字符串及对应的 AI Core 意象/空间延伸标签；检索串可能拼错或无意义，记录本身不证明它是合法词或其词义。
+   - **[源 B: 句子/表达]**：订正事件包含用户原始输入 + AI 剖析的 **`unnaturalMindModel` (思维违和感)**（例: 传入 *My eyesight is deep* 及 *“英文不用 depth 抽象视力”* 的剖析）；无实质订正的 OUT 表达作为 `production`，不算错误，延迟批处理。
    - **[源 C: 最高价值——用户 AI 对话]**：用户在搜索过程中向 AI 发起的**追问记录 (Q&A History)**。*（因为提问处即是知识薄弱与最具兴趣之处）*
 
 ---
@@ -58,6 +58,8 @@ export interface UserLanguageProfile {
     contrastExample?: string; // 错例 -> 正例
     // Direction G (2026-09-07) — 本地「热度」引擎输入：
     confidence?: number;      // 0~1，AI 估计「用户是否已改过来」。复犯降、用对升。缺省 0.2
+    verifiedProductionIds?: string[];   // 程序核验的 OUT 表达事件 ID，最多保留最近 8 个
+    verifiedProductionTexts?: string[]; // 去重归一化原文，最多最近 8 个；模型提供的同名字段不采信
     lastExposedAt?: string;   // ISO，最近一次触碰该弱点的事件时间。缺省 profile.lastUpdated
     learningDirection?: 'in' | 'out'; // 必填于新数据；缺省代表旧数据，隔离不注入 AI
     learnerLanguage?: 'en' | 'zh' | 'vi'; // 当前有效词典拥有的学习者身份
@@ -109,7 +111,7 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
   - **硬边界立刻 flush**（取消 idle）：换词搜索、Lookup ↔ Pure Core 切换、离开 Dictionary Tab、`pagehide` / `visibility hidden`、Settings 手动刷新。
 * **路径 A2（OUT 英文句子订正 — 仍即时）**：
   - 只有 `learningDirection='out'`、原文为英文、且原文与 `correctForm` 存在实质差异时，`recordSentenceCorrectionEvent` 才写入高权重 sentence 事件并立即 flush。
-  - 原样返回及纯大小写、空白、装饰性标点变化不构成错误；撇号 / 连字符等可能改变语法或词形的差异仍保留。
+  - 原样返回及纯大小写、空白、装饰性标点变化不构成错误；记录为延迟归纳的 production（自主输出）事件，仍可作为真实进步证据，不即时判错。撇号 / 连字符等可能改变语法或词形的差异仍保留为订正。
   - IN 英文材料与支持语言 OUT 查询降级为普通 lookup 证据，绝不由 `correctForm` 反推出用户语法弱点。
 * **路径 B（查词累计，阈值 12）**：
   - 普通查词 `unprocessed_count +1`，达到 **12** 时 flush；若队列里已有未冲刷的 chat，一并带上。
@@ -117,7 +119,7 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
   - 发起诊断时固定本轮事件快照；仅 AI 诊断成功后，按事件 `id` 删除该快照（`removeEventsByIds`），并把 `unprocessed_count` 重算为队列中仍存在的 lookup 数，而不是无条件归零。
   - 失败 / 杀进程：**不删 pending、不重置 count**。
 * **冷启动续跑**：
-  - App mount 后约 2s 调用 `resumePendingProfileDiagnostics`：pending 含 `chat` / `sentence` 则立刻 flush；**仅 lookup** 则继续等路径 B。
+  - App mount 后约 2s 调用 `resumePendingProfileDiagnostics`：pending 含 `chat` / `sentence` / `production` 则立刻 flush；**仅 lookup** 则继续等路径 B。
 * **飞行中入队**：
   - 诊断进行中新事件保留在 pending；旧请求返回不能删除或清零它们。若剩余队列含高价值事件或再次达到 12 个 lookup，结束后自动 **queued re-flush**。
 * **语言批次隔离**：
@@ -149,45 +151,58 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
 
 | 标签 | 模块 | 含义 |
 |--|--|--|
-| 来源（provenance） | `provenance.ts` | `<learner_original>` = 学习者原样输入；`<external_material>` = 学习者在读的外部材料（IN）；`<ai_generated>` = AI 写的订正 / 分析 / 回答，**永远不是学习者能力的证据** |
+| 来源（provenance） | `provenance.ts` | `<learner_original>` = 学习者原样输入；`<external_material>` = 学习者在读的外部材料（IN）；`<ai_generated>` = AI 写的订正 / 分析 / 回答，**永远不是学习者能力的证据**；`<learner_question>` = 追问，只表示兴趣 / 困惑，其引文不能代替自主输出 |
 | 方向（lane） | `lanes.ts` | IN / OUT 在提交时由 `resolveLearningRoute` 决定并写入每条事件；AI 返回的方向字段一律不采信 |
 
 | 模块 | 职责 |
 |--|--|
 | `profileContext.ts` | `buildLaneProfileContext(profile, variant, route, lang)`：按方向 + 词典语言过滤后注入日常 prompt；`profile.ts` 的 `buildProfilePromptContext` 只是读存储后的薄包装 |
 | `insightGate.ts` | 结果页弱点气泡的 schema（`buildProfileInsightField`）与代码校验（`gateProfileInsight`），见 4.2.2 |
-| `diagnostic.ts` | 批量蒸馏：`buildDiagnosticPrompts` 组装分线 prompt，`applyDiagnosticResult` 按线合并并校验，见 4.5 |
+| `diagnostic.ts` | 批量蒸馏：`selectDiagnosticSnapshot` 限定发送快照，`buildDiagnosticPrompts` 组装分线 prompt，`applyDiagnosticResult` 按线合并并校验，见下方规则 |
 
 **批量蒸馏的分线规则（省 token 的批处理保持不变：约 12 次查词或硬边界才跑一次）**：
 1. 本批事件按 `### OUT LANE` / `### IN LANE` 分组，每段文字带来源标签和时间戳；
+   发送前按队列顺序取最早 12 条非 lookup 高价值事件与最早 40 条 lookup；同一快照用于发送、验收和成功后出队。超预算事件继续排队，成功后按剩余触发条件续批，不删除未发送记录。
 2. 只发送有新证据的那几条线的旧画像；
 3. AI 必须按 `{ "in": {...}, "out": {...} }` 分键返回，条目归属哪条线**由所在的键决定**，条目内的方向字段被覆盖；
-4. 本批没有新证据的线（或 AI 漏掉该键）保持原样，AI 无权改写；
+4. 本批没有新证据的线保持原样，AI 无权改写；本批有证据的线必须完整返回 weaknessPatterns / recentExplorationFocus / recommendations 三数组，条目类型与必填字段亦校验，漏键 / 坏结构则整批拒绝、不出队；
 5. 混合批次返回旧的扁平格式 → 视为不可用，事件保留到下次；单一方向批次仍兼容扁平格式；
-6. 提高 `confidence` 或标记 `mastered` 必须附 `improvementQuote`：一段学习者亲手写下、且没被 AI 订正改动的原文（OUT 句子原文中订正后仍保留的部分，或学习者的追问原文）。校验失败 → 置信度与状态回退到原值。`improvementQuote` 不落盘；
-7. 每条线 active 弱点上限 8 条，不再要求「保持 8–12 条」（那条规则会诱导 AI 凑数编造弱点）。
+6. 提高 `confidence` 或标记 `mastered` 必须附 `improvementQuote`：一段学习者亲手写下、且没被 AI 订正改动的原文（OUT sentence / production 原文中，且订正后仍保留的部分）；同时必须提供该事件 improvementEventId，Chat 问句不能代替自主输出。校验失败 → 置信度与状态回退到原值。`improvementQuote` / `improvementEventId` 不直接落盘；程序累计 verifiedProductionIds / verifiedProductionTexts，至少两条不同原文才能接受新 mastered；
+7. Prompt 要求每条线 active 弱点最多 8 条，不再要求「保持 8–12 条」（那条规则会诱导 AI 凑数编造弱点）；当前代码未额外按数量裁剪，不能把此提示约束记作程序硬上限。
 
 缺方向的旧事件无法归属任何一条线：不发给 AI，flush 成功后直接消费。flush 失败（无 Key、坏 JSON、离线）后**不再立即自我重试**，避免同一批事件空转；等下一次触发。
 
-### 4.2.2 Profile 上下文注入所有 AI 出口（Direction A，2026-09-07）
+### 4.2.2 可选学习联系与上下文注入（2026-10-29 核验后）
+
+用户确认气泡可省略，无数量要求。它可以回顾旧错 / 真实进步，也可以对比不同但相关的结构、联系过去的探索，或作一句有价值的延伸。解释由 AI 自然表达，不以固定评分模板替代。
+
+- `repeat` / `improved` 需真实弱点 referenceId 与本人 OUT 英文 learnerSpan；进步片段必须在订正后仍保留。
+- `related` 可连接不同结构，需真实弱点或 `focus:category` 编号；不评价当前写作表现。
+- `extension` 无需历史记录，不能编造历史或宣告进步 / 掌握；无价值就不生成。
+- UI 中性文案为“学习联想 / Learning connection”。旧缓存分析保留，未经新版门禁的旧气泡隐藏。
+- 原文、订正版、问句分别标来源；其中 learner_question 只表示理解兴趣 / 困惑，不自动证明自主英文输出能力。
+- 语言是否自然、类比是否有帮助仍需 AI 判断；代码核验来源 / 方向 / 引用与记录关联，并拦截常见分类与正文矛盾，不能把规则匹配当作语言理解的完整证明。
+
+原有上下文预算与入口：
 
 `buildProfilePromptContext(variant, learningRoute, learnerLanguage)`（`src/services/profile.ts`，实现在 `src/harness/profileContext.ts`）：
 
 | variant | 内容 | 注入点 |
 |--|--|--|
-| `'full'` | 当前方向 + 当前语言按 heat 排序的 active 弱项（≤6）+ 近期探索（≤3）+ 分方向的「mentor tip」指令（OUT：只拿 `<learner_original>` 比对、同一种错误才算、如实优先于鼓励；IN：输入不是学习者写的，不得表扬或批评其措辞） | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
+| `'full'` | 当前方向 + 当前语言按 heat 排序的 active 弱项（≤6）+ 近期探索（≤3）+ 可选学习联系指令（OUT：表现判断只拿 `<learner_original>` 比对，结构类比无需同一错误；IN：输入不是学习者写的，不得表扬或批评其措辞） | `aiPhrasePrompt.ts` 的 `queryType === 'sentence'` 分支 |
 | `'compact'` | 当前方向 + 当前语言 `hotWeaknesses(≤3)` + 近期探索（≤2）+ opt-in 指令；两者均空 → `''` | `ai.ts` `getFullLookupPrompt`（单词 Lookup/Core）、`aiPhrasePrompt.ts` `buildPhrasePrompt`（词组）、`ai.ts` `askQuestion`（追问 system prompt） |
 
 两种 variant 都排除 `mastered`，而且 Profile 只能补充标准分析，绝不能替代、缩短或删除原有 schema 字段职责。`learningRoute='irrelevant'` 直接返回空字符串。方向缺失的 legacy 弱点、探索与推荐不进入任何 prompt，等待未来有明确证据后由诊断 AI 重新建立带方向记录。
 
 > 注入点是 **live 路径**；`aiCombinedPrompt.ts`（`buildCombinedWordPrompt` 等）自 v0.9.15 起 `@deprecated`，不在注入范围。
 
-**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 可选 `profileInsight?: string`，客户端同时保存 `profileInsightDirection?: 'in' | 'out'`。AI 侧返回的是对象 `{ kind, learnerSpan?, text }`，经 `gateProfileInsight` 校验后才写成字符串：
-- `related`：只说「涉及这个模式」，不表扬不批评；所有方向可用（单词查询、IN、中文 OUT 只允许这一种）；
+**`profileInsight`（结果字段）**：`AiFullResult` / `PhraseResult` 可选 `profileInsight?: string`，客户端同时保存 `profileInsightDirection?: 'in' | 'out'` 与 `profileInsightVersion?: number`（当前为 4）。AI 侧返回的是对象 `{ kind, learnerSpan?, referenceId?, text }`，经 `gateProfileInsight` 校验后才写成字符串：
+- `related`：有真实学习记录依据的中性联系，可对比不同结构，不表扬不批评；
+- `extension`：无历史评价的一句有用延伸；单词查询、IN、辅助语言 OUT 可选择 related / extension，也可完全省略；
 - `repeat`：仅 OUT 英文原文；`learnerSpan` 必须逐字出现在学习者原文里，且被 AI 订正改掉了；
 - `improved`：仅 OUT 英文原文；`learnerSpan` 必须逐字出现在原文里，且订正后仍保留。
 
-校验不通过、或 AI 返回裸字符串（无法校验）→ 不显示气泡。比对忽略大小写、弯引号、空白和标点，按整词匹配。方向取提交时快照，不采信 AI。旧缓存没有方向元数据时不显示。
+校验不通过、或 AI 返回裸字符串（无法校验）→ 不显示气泡。比对忽略大小写、弯引号、空白和标点，按整词匹配。方向取提交时快照，不采信 AI。缓存读取保留原分析，但版本不是 4 时隐藏旧气泡；没有方向元数据亦不显示。
 
 **`ProfileInsightChip`**（`src/components/ResultView/ProfileInsightChip.tsx`）：仅当结果含 `profileInsight`、方向与当前结果的提交时 `learningRoute` 快照一致、且未被 `sessionStorage` dismiss 时渲染；不能跟随之后为下一条搜索切换的按钮。兼容回退必须使用原始 `routeQuery`，不能用 AI 的 `correctForm`。`AiChatBox` 同样必须把原始 `routeQuery` 和冻结的 `learningRoute` 传给 `askQuestion` 与 `recordAiChatEvent`。
 
@@ -214,10 +229,10 @@ Profile 仍是一份 `UserLanguageProfile`，不是多本互不相识的账；�
 ### 4.5 诊断 Prompt 的不可越界规则
 
 - IN 原文是外部材料：可推断词汇 / 理解缺口，不得推断用户偏爱长句、某种文风或会犯该句中的语法问题。
-- 只有 OUT 英文 sentence correction 能新增 syntax / collocation 弱点；支持语言 OUT 只能形成表达需求或概念缺口。
+- 只有 OUT 英文 sentence correction 能新增 syntax / collocation 错误弱点；production 是未发现实质改动的表达，不自动判错。支持语言 OUT 只能形成表达需求或概念缺口。
 - AI Chat 的证据主体是用户提出的问题，不是被查词条或作为上下文附带的教材段落。
 - 方向由分键决定：AI 把条目放在 `"in"` 还是 `"out"` 键下，代码据此写入 `learningDirection`，并统一写入当前 `learnerLanguage`；条目自带的方向字段不采信（见 4.2.1b）。
-- AI 的订正是「犯错」的证据，永远不是「掌握」的证据；置信度上升 / mastered 必须有通过代码校验的 `improvementQuote`。
+- AI 的订正是「犯错」的证据，永远不是「掌握」的证据；置信度上升需通过 `improvementEventId` 绑定本轮 OUT 自主表达的 `improvementQuote`；新 mastered 还需至少两条不同原文的已验证输出。
 
 ---
 

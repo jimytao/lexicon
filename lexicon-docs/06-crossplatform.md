@@ -219,6 +219,8 @@ npx cap sync
 
 ### 冒烟清单
 
+2026-10-29 三库已本地重建并核验，`db.native.ts` 的 `LEXICON_ASSET_VERSION` 为 `2026-10-29-labels-pos2`。Capacitor 检测到版本变化时通过 `copyFromAssets(true)` 重导入；Web / Tauri 使用构建内资产，扩展使用远程 Release / OPFS。此处是代码路径说明：本轮完成 Web Chrome 验收与构建，尚未做 iOS / Android / Tauri 实机升级验证，也未发布扩展新词库。后续发版需按平台验证，不能把 Web 通过视作原生升级已通过。
+
 - Android：冷启动 → 搜 `satisfaction` → 切设置拨深色 → 回 Dict（应仍秒开，不应整库重灌 JS）
 - iOS：同上；再手动切换英英/英汉词典各查一词
 - Web：回归联想 + 精确查词 + 中文反查；Network 可见 `/assets/databases/*.db`

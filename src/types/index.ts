@@ -207,10 +207,11 @@ export interface AiFullResult {
   wordChoiceContrast?: WordChoiceContrastItem[]
   /** Pure Core：母语者常用场景/句式（非词典释义墙） */
   usageScenes?: Array<{ label: string; description: string }>
-  /** Direction A: one short sentence linking this word to a recurring learner confusion. Omitted unless clearly relevant. */
+  /** Optional checked learning connection: a grounded review, comparison, or useful extension. */
   profileInsight?: string
   /** Evidence lane used to generate profileInsight; absent on legacy caches. */
   profileInsightDirection?: LearningDirection
+  profileInsightVersion?: number
 }
 
 export type WordAIResult = AiFullResult
@@ -257,9 +258,10 @@ export interface PhraseResult {
     subculture?: string
   }
   prepSpatial?: PrepSpatialData
-  /** Direction A: one short sentence linking this phrase to a recurring learner confusion. Omitted unless clearly relevant. */
+  /** Optional checked learning connection: a grounded review, comparison, or useful extension. */
   profileInsight?: string
   profileInsightDirection?: LearningDirection
+  profileInsightVersion?: number
 }
 
 export type PhraseAnalysisResult = PhraseResult
@@ -317,6 +319,9 @@ export interface WeaknessPattern {
   contrastExample?: string
   /** 0..1 — has the learner internalised the fix? Drives local "heat" (see utils/profileHeat). Default 0.2. */
   confidence?: number
+  /** App-verified independent OUT examples; never accepted from the AI payload. */
+  verifiedProductionIds?: string[]
+  verifiedProductionTexts?: string[]
   /** ISO — most recent event that touched this pattern. Default: profile.lastUpdated. */
   lastExposedAt?: string
   /** Evidence lane. Missing means legacy/unattributed and is never injected into prompts. */

@@ -41,6 +41,21 @@ const skeleton: QuerySkeleton = {
   senses: [{ senseIndex: 1, zh: '跑', en: 'run' }],
 }
 
+describe('cached insight validation revision', () => {
+  it('keeps old analysis while hiding an unchecked legacy tip', () => {
+    const old = fullResult({ profileInsight: '你已掌握', profileInsightDirection: 'out' })
+    useResultStore.setState({ aiFullCache: { run: old } })
+    const cached = useResultStore.getState().getCachedAiFull('run')
+    expect(cached?.meanings).toEqual(old.meanings)
+    expect(cached?.profileInsight).toBeUndefined()
+  })
+  it('preserves a tip verified by the current evidence gate', () => {
+    const checked = fullResult({ profileInsight: 'A useful connection.', profileInsightDirection: 'in', profileInsightVersion: 4 })
+    useResultStore.setState({ aiFullCache: { run: checked } })
+    expect(useResultStore.getState().getCachedAiFull('run')?.profileInsight).toBe(checked.profileInsight)
+  })
+})
+
 function freshStore() {
   memoryStorage.clear()
   useResultStore.setState({

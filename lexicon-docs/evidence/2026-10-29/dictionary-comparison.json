@@ -1,0 +1,1321 @@
+{
+  "lexicon.db": {
+    "before": {
+      "sha256": "6597ef317f4410c24c6647681ff54525407766d12bd401d46ea08f4f9ba283fc",
+      "integrity": "ok",
+      "entries": 52867,
+      "words": 51902,
+      "meanings": 99392,
+      "examples": 67701,
+      "grammar": {
+        "not before noun": 207,
+        "uncountable": 3505,
+        "singular": 1084,
+        "countable": 5221,
+        "after noun": 3,
+        "usually passive": 438,
+        "intransitive": 3350,
+        "transitive": 3421,
+        "only before noun": 577,
+        "often passive": 251,
+        "not usually before noun": 122,
+        "usually before noun": 328,
+        "usually plural": 103,
+        "plural": 594,
+        "no passive": 213,
+        "usually singular": 242,
+        "countable + singular or plural verb": 123,
+        "singular + singular or plural verb": 54,
+        "uncountable + singular or plural verb": 22
+      },
+      "headerFragments": 0,
+      "dirtyBriefs": 0,
+      "bilingualExampleEchoes": 19308,
+      "samples": {
+        "bay": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（海或湖的）湾",
+            "en": "a part of the sea, or of a large lake, partly surrounded by a wide curve of the land"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "分隔间（户外或室内的，用以停放车辆、存放货物等）",
+            "en": "a marked section of ground either inside or outside a building, for example for a vehicle to park in, for storing things, etc."
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（建筑物的）突出结构",
+            "en": "a curved area of a room or building that sticks out from the rest of the building"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "深棕色马；栗色马",
+            "en": "a horse of a dark brown colour"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（尤指猎犬捕猎时的）低沉吠声",
+            "en": "a deep noise, especially the noise made by dogs when hunting"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "月桂（用作香料）",
+            "en": "a herb used to give flavour to food, made of the leaves of the bay tree"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "（猎物）被围困，被迫作困兽之斗",
+            "en": "when an animal that is being hunted is at bay, it must turn and face the dogs and hunters because it is impossible to escape from them"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "不让（敌人）接近；防止（问题）恶化",
+            "en": "to prevent an enemy from coming close or a problem from having a bad effect"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "（尤指捕猎时）发出长嗥，低沉地吠叫",
+            "en": "to make a long deep sound, especially while hunting"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "厉声强要",
+            "en": "to demand sth in a loud and angry way"
+          }
+        ],
+        "bench": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（木制）长凳，长椅",
+            "en": "a long seat for two or more people, usually made of wood"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "singular"
+            ],
+            "register": [],
+            "zh": "法官；法官席位；法官（或裁判官）的职位",
+            "en": "a judge in court or the seat where he/she sits; the position of being a judge or magistrate"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（英国议会的）议员席",
+            "en": "(in the British parliament) a seat where a particular group of politicians sit"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "singular"
+            ],
+            "register": [],
+            "zh": "（场边的）运动员休息区",
+            "en": "the seats where players sit when they are not playing in the game"
+          }
+        ],
+        "a": [
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于可数名词或单数名词前，表示未曾提到的）一（人、事、物）",
+            "en": "used before countable or singular nouns referring to people or things that have not already been mentioned"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于前有形容词或后有短语的不可数名词前）",
+            "en": "used before uncountable nouns when these have an adjective in front of them, or phrase following them"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "任何一；每一",
+            "en": "any; every"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（表示为某一群体或职业中的一员）",
+            "en": "used to show that sb/sth is a member of a group or profession"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于视为一体的两个名词之前）",
+            "en": "used in front of two nouns that are seen as a single unit"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于某些数字前，代替 one）",
+            "en": "used instead of one before some numbers"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于价格、数量、比率等）一，每一",
+            "en": "used when talking about prices, quantities and rates"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "像（某人）的人；…式的人物",
+            "en": "a person like sb"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于某人姓名前，表示说话者不认识此人）有个",
+            "en": "used before sb's name to show that the speaker does not know the person"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于一星期中某天的名称前，表示具体某一天）",
+            "en": "used before the names of days of the week to talk about one particular day"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "英语字母表的第 1 个字母",
+            "en": "the first letter of the English alphabet"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "A 音（C 大调音阶的第六级音）",
+            "en": "the 6th note in the scale of C major"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（学业成绩）第一等，优，甲",
+            "en": "the highest mark/grade that a student can get for a piece of work or course of study"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "（表示两个或更多可能性中的）第一个",
+            "en": "used to represent the first of two or more possibilities"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "（代表一个假设的或不指名的人）甲",
+            "en": "used to represent a person, for example in an imagined situation or to hide their identity"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "从一地到另一地",
+            "en": "from one place to another"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "从头到尾；彻底地；完全",
+            "en": "including everything there is to know about sth"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "级公路，干线公路（英国公路代号，后接数字）",
+            "en": "used in Britain before a number to refer to a particular important road * A"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "（除美国外，用于数字前表示标准纸张尺寸）A…纸（尺寸）",
+            "en": "used (but not in the US) before numbers which show standard metric sizes of paper"
+          }
+        ]
+      }
+    },
+    "after": {
+      "sha256": "dbba9d1b3a94bfba783792b547afb93f750d62b7ef2238b7e35fa928fe168a1f",
+      "integrity": "ok",
+      "entries": 55749,
+      "words": 51959,
+      "meanings": 99477,
+      "examples": 64461,
+      "grammar": {
+        "uncountable": 4339,
+        "singular": 1270,
+        "countable": 5933,
+        "not before noun": 170,
+        "after noun": 3,
+        "usually passive": 552,
+        "intransitive": 4190,
+        "transitive": 4726,
+        "only before noun": 522,
+        "often passive": 274,
+        "not usually before noun": 91,
+        "plural": 594,
+        "usually before noun": 317,
+        "usually plural": 343,
+        "usually singular": 679,
+        "no passive": 276,
+        "countable + singular or plural verb": 123,
+        "singular + singular or plural verb": 55,
+        "uncountable + singular or plural verb": 22
+      },
+      "headerFragments": 0,
+      "dirtyBriefs": 0,
+      "bilingualExampleEchoes": 0,
+      "samples": {
+        "bay": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（海或湖的）湾",
+            "en": "a part of the sea, or of a large lake, partly surrounded by a wide curve of the land"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "分隔间（户外或室内的，用以停放车辆、存放货物等）",
+            "en": "a marked section of ground either inside or outside a building, for example for a vehicle to park in, for storing things, etc."
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（建筑物的）突出结构",
+            "en": "a curved area of a room or building that sticks out from the rest of the building"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "深棕色马；栗色马",
+            "en": "a horse of a dark brown colour"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（尤指猎犬捕猎时的）低沉吠声",
+            "en": "a deep noise, especially the noise made by dogs when hunting"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "月桂（用作香料）",
+            "en": "a herb used to give flavour to food, made of the leaves of the bay tree"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "（猎物）被围困，被迫作困兽之斗",
+            "en": "when an animal that is being hunted is at bay, it must turn and face the dogs and hunters because it is impossible to escape from them"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "不让（敌人）接近；防止（问题）恶化",
+            "en": "to prevent an enemy from coming close or a problem from having a bad effect"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "（尤指捕猎时）发出长嗥，低沉地吠叫",
+            "en": "to make a long deep sound, especially while hunting"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "厉声强要",
+            "en": "to demand sth in a loud and angry way"
+          }
+        ],
+        "bench": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "（木制）长凳，长椅",
+            "en": "a long seat for two or more people, usually made of wood"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "singular"
+            ],
+            "register": [
+              "law"
+            ],
+            "zh": "法官；法官席位；法官（或裁判官）的职位",
+            "en": "a judge in court or the seat where he/she sits; the position of being a judge or magistrate"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable",
+              "usually plural"
+            ],
+            "register": [],
+            "zh": "（英国议会的）议员席",
+            "en": "(in the British parliament) a seat where a particular group of politicians sit"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "singular"
+            ],
+            "register": [
+              "sport"
+            ],
+            "zh": "（场边的）运动员休息区",
+            "en": "the seats where players sit when they are not playing in the game"
+          }
+        ],
+        "a": [
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于可数名词或单数名词前，表示未曾提到的）一（人、事、物）",
+            "en": "used before countable or singular nouns referring to people or things that have not already been mentioned"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于前有形容词或后有短语的不可数名词前）",
+            "en": "used before uncountable nouns when these have an adjective in front of them, or phrase following them"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "任何一；每一",
+            "en": "any; every"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（表示为某一群体或职业中的一员）",
+            "en": "used to show that sb/sth is a member of a group or profession"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于视为一体的两个名词之前）",
+            "en": "used in front of two nouns that are seen as a single unit"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于某些数字前，代替 one）",
+            "en": "used instead of one before some numbers"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于价格、数量、比率等）一，每一",
+            "en": "used when talking about prices, quantities and rates"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "像（某人）的人；…式的人物",
+            "en": "a person like sb"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于某人姓名前，表示说话者不认识此人）有个",
+            "en": "used before sb's name to show that the speaker does not know the person"
+          },
+          {
+            "pos": "indefinite article",
+            "grammar": [],
+            "register": [],
+            "zh": "（用于一星期中某天的名称前，表示具体某一天）",
+            "en": "used before the names of days of the week to talk about one particular day"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable",
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "英语字母表的第 1 个字母",
+            "en": "the first letter of the English alphabet"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable",
+              "uncountable"
+            ],
+            "register": [
+              "music"
+            ],
+            "zh": "A 音（C 大调音阶的第六级音）",
+            "en": "the 6th note in the scale of C major"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable",
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "（学业成绩）第一等，优，甲",
+            "en": "the highest mark/grade that a student can get for a piece of work or course of study"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "（表示两个或更多可能性中的）第一个",
+            "en": "used to represent the first of two or more possibilities"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "（代表一个假设的或不指名的人）甲",
+            "en": "used to represent a person, for example in an imagined situation or to hide their identity"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "从一地到另一地",
+            "en": "from one place to another"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "从头到尾；彻底地；完全",
+            "en": "including everything there is to know about sth"
+          },
+          {
+            "pos": "symbol",
+            "grammar": [],
+            "register": [],
+            "zh": "A 级公路，干线公路（英国公路代号，后接数字）",
+            "en": "used in Britain before a number to refer to a particular important road"
+          },
+          {
+            "pos": "symbol",
+            "grammar": [],
+            "register": [],
+            "zh": "（除美国外，用于数字前表示标准纸张尺寸）A…纸（尺寸）",
+            "en": "used (but not in the US) before numbers which show standard metric sizes of paper"
+          }
+        ]
+      }
+    },
+    "missingWords": []
+  },
+  "lexicon_en.db": {
+    "before": {
+      "sha256": "a2bc42e79f4f128011b85edd35e6978ce8eba9a71c0350d0636526c4eb4f755d",
+      "integrity": "ok",
+      "entries": 61211,
+      "words": 61206,
+      "meanings": 112040,
+      "examples": 87601,
+      "grammar": {
+        "uncountable": 4563,
+        "singular": 1257,
+        "countable": 6337,
+        "not before noun": 144,
+        "after noun": 3,
+        "intransitive": 3719,
+        "transitive": 4557,
+        "only before noun": 481,
+        "often passive": 202,
+        "plural": 641,
+        "usually before noun": 325,
+        "usually plural": 358,
+        "usually passive": 379,
+        "usually singular": 684,
+        "no passive": 181,
+        "not usually before noun": 85,
+        "countable + singular or plural verb": 122,
+        "singular + singular or plural verb": 56,
+        "uncountable + singular or plural verb": 22,
+        "singular or plural verb": 1
+      },
+      "headerFragments": 0,
+      "dirtyBriefs": 1,
+      "bilingualExampleEchoes": 0,
+      "samples": {
+        "bay": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a part of the sea, or of a large lake, partly surrounded by a wide curve of the land",
+            "en": "a part of the sea, or of a large lake, partly surrounded by a wide curve of the land"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a marked section of ground either inside or outside a building, for example for a vehicle to park in, for storing things, etc.",
+            "en": "a marked section of ground either inside or outside a building, for example for a vehicle to park in, for storing things, etc."
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a curved area of a room or building that sticks out from the rest of the building",
+            "en": "a curved area of a room or building that sticks out from the rest of the building"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a horse of a dark brown colour",
+            "en": "a horse of a dark brown colour"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a deep noise, especially the noise made by dogs when hunting",
+            "en": "a deep noise, especially the noise made by dogs when hunting"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a small tree with dark green leaves with a sweet smell that are used in cooking",
+            "en": "a small tree with dark green leaves with a sweet smell that are used in cooking"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "the leaves of the bay tree, used in cooking as a herb",
+            "en": "the leaves of the bay tree, used in cooking as a herb"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "when an animal that is being hunted is at bay, it must turn and face the dogs and hunters because it is impossible to escape from them",
+            "en": "when an animal that is being hunted is at bay, it must turn and face the dogs and hunters because it is impossible to escape from them"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "to prevent an enemy from coming close or a problem from having a bad effect",
+            "en": "to prevent an enemy from coming close or a problem from having a bad effect"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "to make a long deep sound, especially while hunting",
+            "en": "to make a long deep sound, especially while hunting"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "to demand something in a loud and angry way",
+            "en": "to demand something in a loud and angry way"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "dark brown in colour",
+            "en": "dark brown in colour"
+          }
+        ],
+        "acceleration": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable",
+              "singular"
+            ],
+            "register": [],
+            "zh": "an increase in how fast something happens",
+            "en": "an increase in how fast something happens"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "the rate at which a vehicle increases speed",
+            "en": "the rate at which a vehicle increases speed"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [
+              "physics"
+            ],
+            "zh": "the rate at which the velocity (= speed in a particular direction) of an object changes",
+            "en": "the rate at which the velocity (= speed in a particular direction) of an object changes"
+          }
+        ],
+        "abort": [
+          {
+            "pos": "verb",
+            "grammar": [
+              "transitive"
+            ],
+            "register": [],
+            "zh": "to end a pregnancy early in order to prevent a baby from developing and being born alive",
+            "en": "to end a pregnancy early in order to prevent a baby from developing and being born alive"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [
+              "specialist"
+            ],
+            "zh": "to give birth to a child or young animal too early for it to survive",
+            "en": "to give birth to a child or young animal too early for it to survive"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive",
+              "transitive"
+            ],
+            "register": [
+              "computing"
+            ],
+            "zh": "to end or cause something to end before it has been completed, especially because it is likely to fail",
+            "en": "to end or cause something to end before it has been completed, especially because it is likely to fail"
+          }
+        ]
+      }
+    },
+    "after": {
+      "sha256": "fd22bae098346bfe46f58f1f51336f8309e1d9221d0c446ab73f7762c273c3ef",
+      "integrity": "ok",
+      "entries": 66700,
+      "words": 61206,
+      "meanings": 112040,
+      "examples": 87601,
+      "grammar": {
+        "uncountable": 4563,
+        "singular": 1257,
+        "countable": 6337,
+        "not before noun": 144,
+        "after noun": 3,
+        "intransitive": 3719,
+        "transitive": 4557,
+        "only before noun": 481,
+        "often passive": 202,
+        "plural": 641,
+        "usually before noun": 325,
+        "usually plural": 358,
+        "usually passive": 379,
+        "usually singular": 684,
+        "no passive": 181,
+        "not usually before noun": 85,
+        "countable + singular or plural verb": 122,
+        "singular + singular or plural verb": 56,
+        "uncountable + singular or plural verb": 22,
+        "singular or plural verb": 1
+      },
+      "headerFragments": 0,
+      "dirtyBriefs": 1,
+      "bilingualExampleEchoes": 0,
+      "samples": {
+        "bay": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a part of the sea, or of a large lake, partly surrounded by a wide curve of the land",
+            "en": "a part of the sea, or of a large lake, partly surrounded by a wide curve of the land"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a marked section of ground either inside or outside a building, for example for a vehicle to park in, for storing things, etc.",
+            "en": "a marked section of ground either inside or outside a building, for example for a vehicle to park in, for storing things, etc."
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a curved area of a room or building that sticks out from the rest of the building",
+            "en": "a curved area of a room or building that sticks out from the rest of the building"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a horse of a dark brown colour",
+            "en": "a horse of a dark brown colour"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a deep noise, especially the noise made by dogs when hunting",
+            "en": "a deep noise, especially the noise made by dogs when hunting"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "countable"
+            ],
+            "register": [],
+            "zh": "a small tree with dark green leaves with a sweet smell that are used in cooking",
+            "en": "a small tree with dark green leaves with a sweet smell that are used in cooking"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "the leaves of the bay tree, used in cooking as a herb",
+            "en": "the leaves of the bay tree, used in cooking as a herb"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "when an animal that is being hunted is at bay, it must turn and face the dogs and hunters because it is impossible to escape from them",
+            "en": "when an animal that is being hunted is at bay, it must turn and face the dogs and hunters because it is impossible to escape from them"
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "to prevent an enemy from coming close or a problem from having a bad effect",
+            "en": "to prevent an enemy from coming close or a problem from having a bad effect"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "to make a long deep sound, especially while hunting",
+            "en": "to make a long deep sound, especially while hunting"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [],
+            "zh": "to demand something in a loud and angry way",
+            "en": "to demand something in a loud and angry way"
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "dark brown in colour",
+            "en": "dark brown in colour"
+          }
+        ],
+        "acceleration": [
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable",
+              "singular"
+            ],
+            "register": [],
+            "zh": "an increase in how fast something happens",
+            "en": "an increase in how fast something happens"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [],
+            "zh": "the rate at which a vehicle increases speed",
+            "en": "the rate at which a vehicle increases speed"
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "uncountable"
+            ],
+            "register": [
+              "physics"
+            ],
+            "zh": "the rate at which the velocity (= speed in a particular direction) of an object changes",
+            "en": "the rate at which the velocity (= speed in a particular direction) of an object changes"
+          }
+        ],
+        "abort": [
+          {
+            "pos": "verb",
+            "grammar": [
+              "transitive"
+            ],
+            "register": [],
+            "zh": "to end a pregnancy early in order to prevent a baby from developing and being born alive",
+            "en": "to end a pregnancy early in order to prevent a baby from developing and being born alive"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive"
+            ],
+            "register": [
+              "specialist"
+            ],
+            "zh": "to give birth to a child or young animal too early for it to survive",
+            "en": "to give birth to a child or young animal too early for it to survive"
+          },
+          {
+            "pos": "verb",
+            "grammar": [
+              "intransitive",
+              "transitive"
+            ],
+            "register": [],
+            "zh": "to end or cause something to end before it has been completed, especially because it is likely to fail",
+            "en": "to end or cause something to end before it has been completed, especially because it is likely to fail"
+          }
+        ]
+      }
+    },
+    "missingWords": []
+  },
+  "lexicon_vi.db": {
+    "before": {
+      "sha256": "11ac312e830beccd204dd43e099710236153e5049a0546123b758766f40c1906",
+      "integrity": "ok",
+      "entries": 83067,
+      "words": 83066,
+      "meanings": 135194,
+      "examples": 20927,
+      "grammar": {
+        "số nhiều": 471,
+        "(thường) số nhiều": 84,
+        "định ngữ": 76,
+        "thường số ít": 1
+      },
+      "headerFragments": 1733,
+      "dirtyBriefs": 417,
+      "bilingualExampleEchoes": 0,
+      "samples": {
+        "bay": [
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "hồng",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "ngựa hồng",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [
+              "địa lý, địa chất"
+            ],
+            "zh": "vịnh",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "gian (nhà); ô (chuồng ngựa)",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "phần nhà xây lồi ra ngoài",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "nhịp (cầu)",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [
+              "quân sự"
+            ],
+            "zh": "chỗ tránh nhau (trong chiến hào)",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [
+              "thực vật học"
+            ],
+            "zh": "cây nguyệt quế",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [
+              "số nhiều"
+            ],
+            "register": [],
+            "zh": "vòng nguyệt quế",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "tiếng chó sủa",
+            "en": ""
+          },
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "sủa (chó)",
+            "en": ""
+          }
+        ],
+        "abacus": [
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": ", số nhiều abaci, abacuses",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "bàn tính",
+            "en": ""
+          }
+        ],
+        "aback": [
+          {
+            "pos": "adv",
+            "grammar": [],
+            "register": [],
+            "zh": "lùi lại, trở lại phía sau",
+            "en": ""
+          }
+        ]
+      }
+    },
+    "after": {
+      "sha256": "608e4f052a6f22dfb0c514cc0dee5fbac755537243c7ee7fc1b4f221a41142a6",
+      "integrity": "ok",
+      "entries": 91026,
+      "words": 83071,
+      "meanings": 146901,
+      "examples": 20929,
+      "grammar": {
+        "số nhiều": 756,
+        "(thường) số nhiều": 125,
+        "định ngữ": 126,
+        "thường số ít": 1
+      },
+      "headerFragments": 0,
+      "dirtyBriefs": 50,
+      "bilingualExampleEchoes": 0,
+      "samples": {
+        "bay": [
+          {
+            "pos": "adj",
+            "grammar": [],
+            "register": [],
+            "zh": "hồng",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "ngựa hồng",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [
+              "địa lý, địa chất"
+            ],
+            "zh": "vịnh",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "gian (nhà); ô (chuồng ngựa)",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "phần nhà xây lồi ra ngoài",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "nhịp (cầu)",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [
+              "quân sự"
+            ],
+            "zh": "chỗ tránh nhau (trong chiến hào)",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [
+              "thực vật học"
+            ],
+            "zh": "cây nguyệt quế",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [
+              "số nhiều"
+            ],
+            "register": [],
+            "zh": "vòng nguyệt quế",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "tiếng chó sủa",
+            "en": ""
+          },
+          {
+            "pos": "verb",
+            "grammar": [],
+            "register": [],
+            "zh": "sủa (chó)",
+            "en": ""
+          }
+        ],
+        "abacus": [
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [],
+            "zh": "bàn tính",
+            "en": ""
+          },
+          {
+            "pos": "noun",
+            "grammar": [],
+            "register": [
+              "kiến trúc"
+            ],
+            "zh": "đầu cột, đỉnh cột",
+            "en": ""
+          }
+        ],
+        "aback": [
+          {
+            "pos": "adv",
+            "grammar": [],
+            "register": [],
+            "zh": "lùi lại, trở lại phía sau",
+            "en": ""
+          },
+          {
+            "pos": "adv",
+            "grammar": [],
+            "register": [
+              "hàng hải"
+            ],
+            "zh": "bị thổi ép vào cột buồm (buồm)",
+            "en": ""
+          },
+          {
+            "pos": "adv",
+            "grammar": [],
+            "register": [
+              "nghĩa bóng"
+            ],
+            "zh": "sửng sốt, ngạc nhiên",
+            "en": ""
+          }
+        ]
+      }
+    },
+    "missingWords": []
+  }
+}

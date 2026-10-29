@@ -12,12 +12,13 @@
  *   - diagnostic.ts     — batched profile distillation, split and re-stamped by lane.
  * Storage, queueing and flush timing stay in services/profile.ts.
  */
-export { PROVENANCE_LEGEND, containsSpan, normalizeForMatch, tagText, type TextSource } from './provenance'
+export { PROVENANCE_LEGEND, buildStudyContext, containsSpan, normalizeForMatch, tagText, type TextSource } from './provenance'
 export { LANES, LANE_TITLE, isLane, partitionByLane, querySource } from './lanes'
 export { buildLaneProfileContext, laneProfile, type ProfileContextVariant } from './profileContext'
-export { buildProfileInsightField, gateProfileInsight, type InsightCheckContext, type InsightKind } from './insightGate'
+export { buildProfileInsightField, gateProfileInsight, learningReferences, type InsightCheckContext, type InsightKind } from './insightGate'
 export {
   activeLanes,
+  selectDiagnosticSnapshot,
   applyDiagnosticResult,
   buildDiagnosticPrompts,
   type ApplyDiagnosticArgs,

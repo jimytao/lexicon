@@ -16,7 +16,7 @@
 
 核心理念：不只是翻译，而是真正理解词的语义情景、情感质感、词源脉络。
 
-当前版本：**v0.9.20**（以 `package.json` / `src/stores/updateStore.ts` 为准）。
+当前版本：**v0.9.28**（以 `package.json` / `src/stores/updateStore.ts` 为准；本轮修改尚未发版）。
 
 ---
 
@@ -45,6 +45,7 @@
 | `lexicon-docs/07-cognitive-and-settings-architecture.md` | 深度认知、Mode 3 (Pure Core)、设置架构 |
 | `lexicon-docs/08-ai-learning-system-and-profile.md` | User Profile、Lexicon Memory |
 | `lexicon-docs/09-ui-ux-design-system.md` | UI/UX 规范、间距、反模式（**改 UI 必读**） |
+| `lexicon-docs/12-learner-evidence-audit.md` | 2026-10-29 基线、问题证据、气泡要求、执行 / 验收与 10-30 文档覆盖复核；附三库比对报告（后续改动先查此记录） |
 | `lexicon-docs/10-browser-extension.md` | 浏览器扩展（MV3）：**P0–P4 已完成，待 Chromium 人工验收与商店提交**（动扩展相关代码前必读） |
 | `lexicon-docs/README.md` | docs 目录总览 |
 | `workflow.md`（根目录） | 发版 SOP（版本号、Release Notes、打包） |
@@ -66,7 +67,7 @@ React 18 + TypeScript（strict）
 Vite 5
 Tailwind CSS v4（配置在 src/index.css，@variant dark 为 class-based）
 Zustand（状态管理 + 部分 persist）
-sql.js（本地 SQLite，WASM；全平台当前仍用此实现）
+sql.js（Web / Tauri / 扩展）；Capacitor 优先 @capacitor-community/sqlite，初始化失败回退 sql.js
 Tesseract.js（WASM OCR，嵌字/图片模式文字定位）
 Capacitor 8（Android / iOS）
 Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
@@ -205,9 +206,9 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - 类型与表：`UserLanguageProfile`、`UserWordMemory`、`user_word_memory` 等（见 `08`）
 - 服务：`src/services/profile.ts`；开关 `enableProfileDiagnostic`
 - **证据分轨**：同一个 Profile 内同时以 `learningDirection: 'in' | 'out'` 与 `learnerLanguage: 'en' | 'zh' | 'vi'` 分隔输入 / 输出和词典语言；旧的无方向数据禁止注入 prompt，旧的无语言数据只兼容中文分区。英文与当前有效词典的辅助语言均服从手动 IN / OUT；英英没有辅助语言，其他外语归 `irrelevant`。方向按钮始终可切换，搜索必须在首个异步等待前冻结提交时 route，后续切换只影响下一条查询。
-- **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；只有存在实质修改的 OUT 英文订正即时；查词累计 12；诊断固定事件快照，成功只删该快照并按剩余 lookup 重算计数；冷启动对含 chat/sentence 的队列续跑。
+- **诊断触发**：AI 追问只入队 + 90s idle / 硬边界（换词、Lookup↔Core、离 Dictionary、pagehide）再 flush；只有存在实质修改的 OUT 英文订正即时；查词累计 12；诊断固定事件快照，成功只删该快照并按剩余 lookup 重算计数；冷启动对含 chat/sentence/production 的队列续跑。正确且无需实质订正的 OUT 英文记 production，延迟归纳而非即时判错；本轮全部方向及三数组完整验收才出队，预算外记录保留。
 - **Profile 注入**：`buildProfilePromptContext(variant, route, learnerLanguage)` 只读取同方向同语言证据并排除 mastered；compact 最多 3 条热弱点 + 2 条探索方向，full 最多 6 条 active 弱点 + 3 条探索方向，均只能补充而不能取代标准分析。
-- **学习者证据 Harness（`src/harness/`，硬约束）**：凡是「AI 被告知关于学习者的内容」和「App 接受的 AI 关于学习者的结论」都必须经 harness。两种标签都由代码打、AI 只读：来源（`<learner_original>` / `<external_material>` / `<ai_generated>`）与 IN / OUT 方向。结果页弱点气泡必须通过 `gateProfileInsight`（引用学习者原文逐字校验，AI 自己的 `correctForm` 不算学习者证据）；批量诊断按方向分键返回、由所在键盖方向章、无新证据的方向不许改写、置信度上升 / mastered 必须有通过校验的 `improvementQuote`。Harness 模块保持纯函数，存储与 flush 时机留在 `profile.ts`。详见 `08` §4.2.1b。
+- **学习者证据 Harness（`src/harness/`，硬约束）**：凡是「AI 被告知关于学习者的内容」和「App 接受的 AI 关于学习者的结论」都必须经 harness。两种标签都由代码打、AI 只读：来源（`<learner_original>` / `<external_material>` / `<ai_generated>` / `<learner_question>`）与 IN / OUT 方向。结果页气泡是可省略的学习联系：回顾、不同结构的对比或一句延伸均可，AI 自选，无数量要求，不得做成必出评分。必须经 `gateProfileInsight`；历史联系用真实 referenceId，表现判断还需本人英文片段，AI correctForm / 问句中的引述不算自主输出；批量诊断按方向分键返回、由所在键盖方向章、无新证据的方向不许改写、置信度上升必须有绑定 OUT 表达事件 ID 的 `improvementQuote`；mastered 至少有两条不同原文的已验证输出。Harness 模块保持纯函数，存储与 flush 时机留在 `profile.ts`。历史检索串未验证，不可当成权威词义；无依据不得为旧查询编造释义。详见 `08` §4.2.1b。
 - 笔记 / 对话 / Core 意象经 DBService API 持久化；Web 侧有 localStorage 备份防护
 
 ---
@@ -277,7 +278,11 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 **2026-10-29（未发版）** — 学习者证据 Harness + 词典标签显示修复：
 - 新增 `src/harness/`：来源标签（学习者 / 外部材料 / AI）与 IN / OUT 分线全部由代码打；弱点气泡经 `gateProfileInsight` 逐字校验；批量诊断按方向分键返回、由键盖章、无新证据的方向不许改写。见上方「学习者证据 Harness」与 `08` §4.2.1b。
-- 词典释义标签在显示时由 `src/utils/meaningLabels.ts` 剥成小标签并修复旧转换损伤；**随包 `.db` 未重建**，转换脚本已修好待下次重建。见 `03-database.md`。
+- 词典释义标签在显示时由 `src/utils/meaningLabels.ts` 剥成小标签并修复旧转换损伤；**三份随包 .db 已从原始 MDX 临时生成、核验并应用**，无旧词条丢失；旧库备份和新旧 hash 见执行记录。按义项词性拆 entry，schema 不变；原生资产版本更新。线上扩展词库尚未发布。见 `03-database.md`。
+
+- 本轮执行记录：`lexicon-docs/12-learner-evidence-audit.md`；转换工具用 Node 内置 node:sqlite（本轮 Node 24.18），App SQLite 引擎不变。
+- 2026-10-30 文档复核：CHANGELOG、01–06 / 08、双语 README 与本文同步；11 标为历史规划。证据报告保存在 `lexicon-docs/evidence/2026-10-29/`。提示门禁当前 v4；生产表达验证字段由程序维护；active≤8 是诊断 prompt 要求，未增加代码数量裁剪。最终代码验收为 44 文件 / 452 测试、Web / extension / TypeScript 通过、lint 0 error / 87 warning；原生升级与扩展新库发布仍未完成。
+- 文档复核后用户授权将本轮代码、测试、三库（含英越）和记录在当前 `feat/learner-evidence-harness` 分支本地提交；未要求推送或发版，详情见 `12` 文末。早先“未提交”的说明是授权前状态。
 
 此前：
 **2026-09-07** — Brave Search 适配（桌面走 Rust HTTP）+ 联网图片候选轮询 + 联网判定收敛：
@@ -331,7 +336,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
   - 签名与发版细节见 `workflow.md`
 - **Capacitor（Android）**：`android/`；`npx cap sync android` 后 Gradle 构建
   - 词库从 `dist/` 复制到 Android assets
-  - 当前仍用 sql.js；后续可切 `@capacitor-community/sqlite`（依赖已在 package 中）
+  - `db.ts` 优先加载 `db.native.ts`（`@capacitor-community/sqlite`）；初始化失败回退 sql.js。资产版本变化触发 `copyFromAssets`；当前版本与实机验证限制见 `06` 和 `12`
 - **Capacitor（iOS）**：`ios/`；GitHub Actions（`.github/workflows/ios-build.yml`）
   - 触发：推 tag（`git tag vX.Y.Z && git push origin vX.Y.Z`）或 Actions 手动触发
   - 输出：未签名 `Lexicon.ipa` → GitHub Release

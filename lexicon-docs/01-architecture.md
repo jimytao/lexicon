@@ -2,6 +2,10 @@
 
 ## 技术栈
 
+词典构建工具（`scripts/mdx-*.mjs`）使用 Node 内置 `node:sqlite`，本轮用 Node 24.18 生成验证；App 的 sql.js / 原生 SQLite 实现与依赖保持不变。
+
+2026-10-29 类型补充（完整定义以 `src/types/index.ts` 为准）：`AiFullResult` / `PhraseResult` 增可选 `profileInsightVersion`，当前由代码写 4，控制旧缓存提示能否显示；`WeaknessPattern` 增可选 `verifiedProductionIds` / `verifiedProductionTexts`，由程序累计独立 OUT 表达证据，不能采信模型自行提供的验证记录。事件联合类型另在 `src/harness/diagnostic.ts` 增 `production`，表示无实质订正的自主表达。
+
 | 层 | 技术 | 说明 |
 |----|------|------|
 | 框架 | React 18 + TypeScript | |

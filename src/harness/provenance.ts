@@ -6,15 +6,16 @@
  * correction into "something the learner wrote".
  */
 
-export type TextSource = 'learner' | 'external' | 'ai'
+export type TextSource = 'learner' | 'external' | 'ai' | 'question'
 
 const TAG_NAME: Record<TextSource, string> = {
   learner: 'learner_original',
   external: 'external_material',
   ai: 'ai_generated',
+  question: 'learner_question',
 }
 
-const ANY_TAG = /<\/?\s*(learner_original|external_material|ai_generated)\s*>/gi
+const ANY_TAG = /<\/?\s*(learner_original|external_material|ai_generated|learner_question)\s*>/gi
 
 export function tagText(source: TextSource, text: string): string {
   const name = TAG_NAME[source]
@@ -27,8 +28,16 @@ TEXT PROVENANCE TAGS (set by the app, never by you):
 - <learner_original>…</learner_original> = exactly what the learner typed. The ONLY evidence of the learner's own language.
 - <external_material>…</external_material> = text the learner is reading or looking up; someone else wrote it. Never treat it as the learner's writing.
 - <ai_generated>…</ai_generated> = written by an AI (corrections, analyses, answers). NEVER evidence of what the learner can or cannot do.
+- <learner_question>…</learner_question> = a question, possibly quoting external or AI wording. Evidence of interest/confusion, NEVER proof of independent correct production or mastery.
 - Anything you produce yourself in this response (correctForm, nativeForm, explanations) also counts as AI-generated.
 `
+
+/** Keep the submitted text distinct even when the page title is an AI correction. */
+export function buildStudyContext(original: string, displayed: string, source: TextSource): string {
+  const submitted = `Submitted input: ${tagText(source, original)}`
+  return original === displayed ? submitted
+    : `${submitted}\nAI display / correction (not the submitted input): ${tagText('ai', displayed)}`
+}
 
 /**
  * Case, curly quotes, whitespace and punctuation must not decide whether the

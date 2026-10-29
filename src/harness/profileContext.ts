@@ -7,8 +7,10 @@ import { hotWeaknesses, sortActiveByHeat } from '../utils/profileHeat'
 
 export type ProfileContextVariant = 'full' | 'compact'
 
+const HISTORY_EVIDENCE_RULE = '\nHISTORY EVIDENCE: searchedItems are unverified search strings, NOT authoritative vocabulary or definitions. A past query may be misspelled or meaningless. Never invent a meaning for a historical token or present it as an established term unless a supporting definition was supplied. Prefer a grounded structural comparison or omit the tip.\n'
+
 const weaknessLine = (w: WeaknessPattern) =>
-  `- [${w.track || 'grammar'}]: ${w.description || ''}${w.contrastExample ? ` (e.g. ${w.contrastExample})` : ''}`
+  `- [referenceId=${w.id}] [${w.track || 'grammar'}]: ${w.description || ''}${w.contrastExample ? ` (e.g. ${w.contrastExample})` : ''}`
 
 /** Only the active lane and dictionary language; mastered items never steer live answers. */
 export function laneProfile(
@@ -27,7 +29,7 @@ export function laneProfile(
 }
 
 const FULL_INSTRUCTION: Record<'in' | 'out', string> = {
-  out: `INSTRUCTION (personalized mentor tip, only if relevant): these are the learner's own past mistakes (OUT lane). Compare them ONLY with the text inside <learner_original>; your own correctForm / nativeForm is not learner evidence. A link needs the SAME mistake pattern, not just the same topic. Be honest rather than encouraging: if the learner made that mistake again, say so plainly; say they improved only when <learner_original> itself already uses the correct form.\n`,
+  out: `INSTRUCTION (optional learning connection): these are the learner's own past mistakes (OUT lane). Compare them ONLY with the text inside <learner_original>; your own correctForm / nativeForm is not learner evidence. A comparison may connect different but instructively related patterns (such as to do vs doing); explain the shared logic or distinction. Claim repetition only for the SAME mistake, progress only when the submitted text already uses it correctly, and never stable mastery from one sentence. A useful brief extension is also allowed. Omit the insight when nothing adds value; no quota or forced encouragement.\n`,
   in: `INSTRUCTION (personalized mentor tip, only if relevant): these weak spots come from the learner's reading (IN lane). The input is external material, NOT the learner's writing — never praise or blame the learner for its wording; you may only point out that it contains a pattern they have been learning.\n`,
 }
 
@@ -55,11 +57,11 @@ export function buildLaneProfileContext(
       : ''
     const focusSection = focus.length > 0
       ? '\n=== RECENT LEARNING FOCUS (soft relevance only) ===\n' + focus
-          .map((item) => `- ${item.category}: ${(item.searchedItems || []).slice(0, 3).join(', ')}`)
+          .map((item) => `- [referenceId=focus:${item.category}] ${item.category}: ${(item.searchedItems || []).slice(0, 3).join(', ')}`)
           .join('\n')
       : ''
     return (
-      `\n${weaknessSection}${focusSection}` +
+      `\n${weaknessSection}${focusSection}${HISTORY_EVIDENCE_RULE}` +
       '\nINSTRUCTION: ONLY IF clearly relevant, you MAY add one short contrast or choose one fitting example angle. Never replace, shorten, or distort the standard analysis; if there is no clear link, ignore this section.\n'
     )
   }
@@ -68,12 +70,12 @@ export function buildLaneProfileContext(
   const weaknesses = sortActiveByHeat(lane, now).slice(0, 6).map(weaknessLine).join('\n')
   const focus = lane.recentExplorationFocus
     .slice(0, 3)
-    .map((f) => `- Category: ${f.category} (${(f.searchedItems || []).slice(0, 5).join(', ')})`)
+    .map((f) => `- [referenceId=focus:${f.category}] Category: ${f.category} (${(f.searchedItems || []).slice(0, 5).join(', ')})`)
     .join('\n')
 
   let res = '\n\n=== USER LEARNING PROFILE & HISTORY ===\n'
   if (weaknesses) res += `Known Weak Spots & Recurring Errors:\n${weaknesses}\n`
   if (focus) res += `Recent Focus Areas:\n${focus}\n`
-  res += FULL_INSTRUCTION[route]
+  res += HISTORY_EVIDENCE_RULE + FULL_INSTRUCTION[route]
   return res
 }

@@ -25,7 +25,7 @@ function persistDismissed(set: Set<string>): void {
 }
 
 interface ProfileInsightChipProps {
-  /** One short sentence from the AI linking this result to a recurring weak spot. */
+  /** Optional AI-written reflection, comparison, or useful brief extension. */
   insight?: string | null
   /** Stable key (normalised query) so a per-session dismiss sticks to this query. */
   dismissKey: string
@@ -40,9 +40,8 @@ interface ProfileInsightChipProps {
 }
 
 /**
- * Direction A — ambient "this connects to your weak spot" chip. Renders only when
- * the AI decided the current word/phrase genuinely relates to a hot weakness, and
- * only until the learner dismisses it for this query this session.
+ * Optional learning connection. AI decides whether anything adds value; the
+ * evidence gate checks historical/evaluative claims before this text reaches UI.
  */
 export function ProfileInsightChip({ insight, dismissKey, routeQuery, learningRoute, direction, onOpen }: ProfileInsightChipProps) {
   const t = useT()

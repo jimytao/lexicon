@@ -26,8 +26,8 @@ import {
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
-import { buildProfilePromptContext, resolveCurrentLearningRoute } from './profile'
-import { PROVENANCE_LEGEND, buildProfileInsightField, gateProfileInsight, isLane, querySource, tagText, type InsightCheckContext } from '../harness'
+import { buildProfilePromptContext, getProfile, resolveCurrentLearningRoute } from './profile'
+import { PROVENANCE_LEGEND, buildStudyContext, buildProfileInsightField, gateProfileInsight, learningReferences, isLane, querySource, tagText, type InsightCheckContext } from '../harness'
 import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { buildCultureAwareInputRule, buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
@@ -1002,13 +1002,14 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
  * Replace the AI's raw `profileInsight` with the harness-checked bubble text (or
  * nothing). The lane is the submitted route, never something the AI reported.
  */
-function withCheckedInsight<T extends { profileInsight?: string; profileInsightDirection?: LearningDirection }>(
+function withCheckedInsight<T extends { profileInsight?: string; profileInsightDirection?: LearningDirection; profileInsightVersion?: number }>(
   parsed: T,
   ctx: InsightCheckContext,
 ): T {
   const insight = gateProfileInsight(parsed.profileInsight as unknown, ctx)
   parsed.profileInsight = insight
   parsed.profileInsightDirection = insight && isLane(ctx.route) ? ctx.route : undefined
+  parsed.profileInsightVersion = 4
   return parsed
 }
 
@@ -1032,6 +1033,7 @@ export async function aiFullLookup(
 
   const activeModules = modulesForCognitive(config, cognitive)
   const dictionaryContext = resolveDictionaryContext(word, config)
+  const referenceIds = learningReferences(getProfile(), learningRoute, dictionaryContext.explanationLanguage)
   const cleaned = await callApi(
     getFullLookupPrompt(activeModules, lang, webResults, isFull, config.triLingualExamples,
       cognitive, dictionaryContext.explanationLanguage, opts.anchor, learningRoute),
@@ -1042,7 +1044,7 @@ export async function aiFullLookup(
     const parsed = JSON.parse(cleaned) as AiFullResult
     if (!parsed.meanings) parsed.meanings = []
     if (!parsed.examples) parsed.examples = []
-    return withCheckedInsight(parsed, { route: learningRoute })
+    return withCheckedInsight(parsed, { route: learningRoute, referenceIds })
   } catch { /* fall through */ }
   const objMatch = cleaned.match(/\{[\s\S]*\}/)
   if (objMatch) {
@@ -1050,7 +1052,7 @@ export async function aiFullLookup(
       const parsed = JSON.parse(objMatch[0]) as AiFullResult
       if (!parsed.meanings) parsed.meanings = []
       if (!parsed.examples) parsed.examples = []
-      return withCheckedInsight(parsed, { route: learningRoute })
+      return withCheckedInsight(parsed, { route: learningRoute, referenceIds })
     } catch { /* fall through */ }
   }
   throw new Error(`AI returned invalid JSON for full lookup`)
@@ -1138,6 +1140,7 @@ export async function aiPhraseQuery(
   const langName = langNames[lang] || 'Foreign Language'
 
   const dictionaryContext = resolveDictionaryContext(phrase, config)
+  const referenceIds = learningReferences(getProfile(), learningRoute, dictionaryContext.explanationLanguage)
   const qType = dictionaryContext.queryType
 
   const phraseQueryType: PhrasePromptQueryType = qType === 'sentence' ? 'sentence' : 'phrase'
@@ -1178,6 +1181,7 @@ export async function aiPhraseQuery(
     route: learningRoute,
     learnerText,
     correctedText: learnerText ? parsed.correctForm : undefined,
+    referenceIds,
   })
 }
 
@@ -1201,7 +1205,7 @@ export async function askQuestion(
   const route = learningRoute ?? resolveCurrentLearningRoute(routingQuery)
   const tagged = route !== 'irrelevant'
   // The displayed analysis is AI-written; the studied text belongs to its lane.
-  const studied = tagged ? tagText(querySource(route), context) : `"${context}"`
+  const studied = tagged ? buildStudyContext(routingQuery, context, querySource(route)) : `"${context}"`
   const richSection = richContext
     ? `\n\nHere is the analysis already displayed to the user for reference:\n${tagged ? tagText('ai', richContext) : richContext}\n\nAnswer based on this context where relevant.`
     : ''

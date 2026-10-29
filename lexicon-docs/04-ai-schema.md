@@ -1,5 +1,13 @@
 # 04 — AI 调用与 Prompt Schema
 
+## 2026-10-29 核验后契约
+
+- `askQuestion` 分别携带原始提交（OUT=`learner_original`，IN=`external_material`）与 AI 订正版 / 分析（`ai_generated`）。`learner_question` 标注追问，其引述不能证明自主写作能力。富语境开关不改变来源。
+- `profileInsight` 是 **可选学习联系**，可省略，无数量要求。原始返回对象 `{ kind: 'repeat'|'improved'|'related'|'extension', text, referenceId?, learnerSpan? }`：repeat/improved 需真实弱点 ID、OUT 英文原文和通过订正比对的片段；related 允许不同结构的有用类比，需同线同语言的真实弱点 / 探索 ID；extension 是无历史评价的简短扩展。AI 自选是否输出，自然语言解释保留。
+- 结果类型中 `profileInsight` 仍是经门禁后的字符串；`profileInsightDirection` 与 `profileInsightVersion=4` 由代码写入。旧缓存只隐藏未经新版校验的提示，保留分析。
+- 诊断本轮所有方向必须各自完整返回三个数组（weaknessPatterns / recentExplorationFocus / recommendations），结构或方向缺失即整批拒绝。提高置信度需 `improvementQuote` + `improvementEventId`，只接受对应 OUT sentence/production 中未被 AI 改动的片段；Chat 引文不算。mastered 还需代码累计两条不同原文，单句写对只支持进步。
+- 程序核验来源、方向、记录与引用；语法自然性及学习价值仍由 AI 判断。完整基线 / 限制 / 验收见 `12-learner-evidence-audit.md`。
+
 ## 设计原则
 
 - 词库有结果时，AI 只负责**增量解析**：语义情景、词根词缀 + 派生词、近义词辨析、课后练习
@@ -202,7 +210,7 @@ Analyze this word and return the JSON.`
 - **练习**：Lookup `evaluateMeaningCheck`（释义核对）；Core 既有场景造句 `evaluateAnswer`
 - **conceptGraph.examples**（Core）：对象 `{ phrase, meaning, mindHint }`——短语 + 释义 + 母语心智延伸；禁止只返回裸字符串
 - 适用于缩写（RAG、OOC）、非正式词汇、拼写错误等词库未收录的情况，以及 Mode 3 对词库词的全量认知视图
-- **`profileInsight?` + `profileInsightDirection?`（可选）**：仅当本词明确关联当前 IN / OUT + 当前词典学习者语言证据线中的某条「反复混淆」时返回一句话；否则省略。`getFullLookupPrompt` 使用 `buildProfilePromptContext('compact', learningRoute, learnerLanguage)`，最多注入同方向同语言 3 条热弱点与 2 条近期探索方向；这些信息只能作为可选补充，不能替代或缩短标准分析。解析后由客户端把实际 `learningRoute` 写入 `profileInsightDirection`，旧缓存缺该字段时 UI 不展示洞察。
+- **`profileInsight?` / `profileInsightDirection?` / `profileInsightVersion?`（可选）**：AI 可选择回顾、结构联系或一句延伸，无合适内容就省略。`getFullLookupPrompt` 使用 `buildProfilePromptContext('compact', learningRoute, learnerLanguage)`，最多注入同方向同语言 3 条热弱点与 2 条近期探索方向；这些信息只能作为可选补充，不能替代或缩短标准分析。历史联系须有真实 referenceId，普通 extension 无需历史；历史搜索字符串本身不能证明词义。解析后由代码写实际方向与版本 4；缓存保留旧分析，但隐藏无 v4 标记的气泡。
 
 ### `aiPhraseQuery(phrase, isFull?, signal?, cognitive?)`
 词组/句子 AI 查询。返回 `PhraseResult`。`cognitive: 'lookup' | 'core'`（默认 `lookup`）决定 prompt 重心与缓存分轨。  
@@ -225,8 +233,8 @@ Prompt 实现：`src/services/aiPhrasePrompt.ts` → `buildPhrasePrompt`（按 `
 - 大小写/标点等只在影响意义时才提及；无改动时省略 `correctionNote`
 - 输入有语法/介词错误时，AI 分析正确形式并在 usageIntro / usageScenes 中说明差异
 - Core 单词全量：`coreConcept.explanation` 停留在意象→用法分支层；**具体** when/where 交际场景写入 `usageScenes`，勿把场景长文塞进 explanation
-- **`profileInsight?` + `profileInsightDirection?`（可选）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入同方向、同学习者语言的 `'compact'`，对 `'sentence'` 注入 `'full'`；full 最多包含 6 条 active 弱点与 3 条探索方向，mastered 一律排除；`learningRoute='irrelevant'` 时完全不注入 Profile。
-- **来源标签（Harness）**：`learningRoute !== 'irrelevant'` 时，User Prompt 中的输入由代码包成 `<learner_original>`（OUT）或 `<external_material>`（IN），System Prompt 末尾追加 `PROVENANCE_LEGEND`。AI 返回的 `profileInsight` 为 `{ kind: 'repeat' | 'improved' | 'related', learnerSpan?, text }`；只有 OUT 且输入为英文时 schema 才提供 `repeat` / `improved`。解析后由 `gateProfileInsight` 用原文与 `correctForm` 逐字校验，不通过即丢弃（规则见 `08` §4.2.2）。
+- **`profileInsight?` / `profileInsightDirection?` / `profileInsightVersion?`（可选）**：同 `aiFullLookup`。`buildPhrasePrompt` 对 `queryType='phrase'` 注入同方向、同学习者语言的 `'compact'`，对 `'sentence'` 注入 `'full'`；full 最多包含 6 条 active 弱点与 3 条探索方向，mastered 一律排除；`learningRoute='irrelevant'` 时完全不注入 Profile。
+- **来源标签（Harness）**：`learningRoute !== 'irrelevant'` 时，User Prompt 中的输入由代码包成 `<learner_original>`（OUT）或 `<external_material>`（IN），System Prompt 末尾追加 `PROVENANCE_LEGEND`。AI 返回的 `profileInsight` 为 `{ kind: 'repeat' | 'improved' | 'related' | 'extension', learnerSpan?, referenceId?, text }`；只有 OUT 且输入为英文时 schema 才提供 `repeat` / `improved`。解析后由 `gateProfileInsight` 核对原文、`correctForm`、实际学习记录与常见类别冲突，不通过即丢弃（规则见 `08` §4.2.2）。
 
 ### `askQuestion(context, history, signal?, richContext?, routeQuery?, learningRoute?)`
 AI 问答，以当前单词/词组为上下文。返回 `string`（AI 回复）。`routeQuery` 必须传当前结果对应的**原始查询**，不能用 AI 修正后的 `context` 重新猜语言；`learningRoute` 传该结果提交时冻结的路线，避免用户为下一条搜索切换按钮后反改当前问答。system prompt 据此拼入同方向同语言的 compact Profile；第三语言或无相关证据时静默。

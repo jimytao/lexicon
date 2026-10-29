@@ -1,7 +1,7 @@
 /** Convert SPDict Anh–Việt MDX into Lexicon's SQLite schema. */
 import { MDX } from 'js-mdict'
-import initSqlJs from 'sql.js'
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs'
+import { openDictionaryDatabase } from './dictionary-entries.mjs'
+import { existsSync, mkdirSync, unlinkSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -32,11 +32,24 @@ export function parseSpdictEntry(word, rawDefinition) {
 
   const meanings = []
   const blocks = text.split(/\s*\*\s+/u).filter(Boolean)
+  let currentPositions = []
   for (const block of blocks) {
     const posLabel = [...POS.keys()].find((label) => block.toLocaleLowerCase('vi').startsWith(label))
-    if (!posLabel) continue
-    const pos = POS.get(posLabel)
-    let body = block.slice(posLabel.length)
+    let body = block
+    if (posLabel) {
+      currentPositions = [POS.get(posLabel)]
+      body = block.slice(posLabel.length).trim()
+      while (/^[&,]/u.test(body)) {
+        const rest = body.slice(1).trim()
+        const extra = [...POS.keys()].find(label => rest.toLocaleLowerCase('vi').startsWith(label))
+        if (!extra) break
+        currentPositions.push(POS.get(extra))
+        body = rest.slice(extra.length).trim()
+      }
+      if (/^,\s*số nhiều của\s/u.test(body)) body = body.replace(/^,\s*/u, '')
+      else if (/^,\s*số nhiều\b/u.test(body)) body = body.replace(/^,\s*số nhiều.*?(?=\s+-\s|$)/u, '')
+    }
+    if (!currentPositions.length) continue
     // The example translation stops at the next ` - ` sense separator. Letting it
     // run to the next `+` swallowed `- (+ in) …`, merging two senses into
     // `… đúng + in) sự tồn tại`.
@@ -50,9 +63,10 @@ export function parseSpdictEntry(word, rawDefinition) {
     for (const part of body.split(/\s+-\s+/u)) {
       const zh = clean(part).replace(/^[-–—]\s*/u, '')
       if (!zh || zh.length > 300) continue
+      if (zh === 'interj') { currentPositions = ['interjection']; continue }
       // A bare `(kiến trúc)` labels the following sense; keep it instead of dropping it.
       if (/^\([^)]*\)$/u.test(zh)) { pendingLabel = `${pendingLabel}${zh} `; continue }
-      meanings.push({ zh: pendingLabel + zh, en: '', pos })
+      for (const pos of new Set(currentPositions)) meanings.push({ zh: pendingLabel + zh, en: '', pos })
       pendingLabel = ''
       if (meanings.length >= 30) break
     }
@@ -76,9 +90,8 @@ export async function buildDatabase(mdxPath = DEFAULT_MDX, dbPath = DEFAULT_DB) 
   if (existsSync(dbPath)) unlinkSync(dbPath)
 
   const mdx = new MDX(mdxPath)
-  const SQL = await initSqlJs()
-  const db = new SQL.Database()
-  db.run(`
+  const db = await openDictionaryDatabase(dbPath)
+  db.exec(`
     CREATE TABLE entries (id INTEGER PRIMARY KEY, word TEXT NOT NULL, word_lower TEXT NOT NULL, phonetic TEXT, pos TEXT, source TEXT DEFAULT 'spdict');
     CREATE TABLE meanings (id INTEGER PRIMARY KEY, entry_id INTEGER, seq INTEGER, zh TEXT NOT NULL, en TEXT);
     CREATE TABLE examples (id INTEGER PRIMARY KEY, entry_id INTEGER, en TEXT NOT NULL, zh TEXT);
@@ -93,19 +106,29 @@ export async function buildDatabase(mdxPath = DEFAULT_MDX, dbPath = DEFAULT_DB) 
   const addReverse = db.prepare('INSERT OR IGNORE INTO reverse_lookup(term, word, rank) VALUES (?, ?, ?)')
   let nextEntryId = 1
   const insert = (entries) => {
-    db.run('BEGIN')
+    db.exec('BEGIN')
     for (const entry of entries) {
       if (!entry.word || entry.word.length > 100 || entry.meanings.length === 0) continue
-      const id = nextEntryId++
-      addEntry.run([id, entry.word, entry.word.toLocaleLowerCase('en'), entry.phonetic, entry.pos, 'spdict'])
-      entry.meanings.forEach((m, i) => {
-        addMeaning.run([id, i + 1, m.zh, m.en])
-        for (const term of reverseTerms(m.zh)) addReverse.run([term.toLocaleLowerCase('vi'), entry.word, i])
-      })
-      entry.examples.forEach((ex) => addExample.run([id, ex.en, ex.zh]))
+      const byPos = new Map()
+      for (const m of entry.meanings) {
+        if (!byPos.has(m.pos)) byPos.set(m.pos, [])
+        byPos.get(m.pos).push(m)
+      }
+      let first = true
+      for (const [pos, meanings] of byPos) {
+        const id = nextEntryId++
+        addEntry.run([id, entry.word, entry.word.toLocaleLowerCase('en'), entry.phonetic, pos, 'spdict'])
+        meanings.forEach((m, i) => {
+          addMeaning.run([id, i + 1, m.zh, m.en])
+          for (const term of reverseTerms(m.zh)) addReverse.run([term.toLocaleLowerCase('vi'), entry.word, i])
+        })
+        // Examples lack per-sense attribution in SPDict; store once per headword.
+        if (first) entry.examples.forEach((ex) => addExample.run([id, ex.en, ex.zh]))
+        first = false
+      }
       addSuggest.run([entry.word.toLocaleLowerCase('en'), entry.meanings.slice(0, 2).map((m) => m.zh).join('; ').slice(0, 180)])
     }
-    db.run('COMMIT')
+    db.exec('COMMIT')
   }
 
   const keywords = mdx.keywordList ?? []
@@ -117,14 +140,14 @@ export async function buildDatabase(mdxPath = DEFAULT_MDX, dbPath = DEFAULT_DB) 
     if (batch.length >= 1000) { insert(batch); parsed += batch.length; batch = [] }
   }
   if (batch.length) { insert(batch); parsed += batch.length }
-  db.run(`
+  db.exec(`
     CREATE INDEX idx_entries_word_lower ON entries(word_lower);
     CREATE INDEX idx_meanings_entry ON meanings(entry_id);
     CREATE INDEX idx_examples_entry ON examples(entry_id);
     CREATE INDEX idx_suggest_word ON suggest(word);
     CREATE INDEX idx_reverse_term ON reverse_lookup(term);
   `)
-  const count = (table) => Number(db.exec(`SELECT count(*) AS n FROM ${table}`)[0]?.values[0]?.[0] ?? 0)
+  const count = (table) => Number(db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n)
   const counts = {
     scanned: keywords.length,
     parsed,
@@ -134,7 +157,6 @@ export async function buildDatabase(mdxPath = DEFAULT_MDX, dbPath = DEFAULT_DB) 
     reverseTerms: count('reverse_lookup'),
   }
   for (const stmt of [addEntry, addMeaning, addExample, addSuggest, addReverse]) stmt.free()
-  writeFileSync(dbPath, db.export())
   db.close()
   return { dbPath, ...counts }
 }

@@ -11,20 +11,20 @@ export function useSearch() {
   const { setWordResult, setRelatedPhrases } = useResultStore()
   const { historyEnabled } = useSettingsStore()
   const { add: addToHistory } = useHistoryStore()
-  const skipNextSuggestRef = useRef(false)
+  const skipNextSuggestRef = useRef<string | null>(null)
   const suggestRequestIdRef = useRef(0)
 
   useEffect(() => {
     const currentQuery = normalizeQuery(query)
     if (currentQuery.length < 1) {
+      skipNextSuggestRef.current = null
       setSuggestions([])
       return
     }
 
-    if (skipNextSuggestRef.current) {
-      skipNextSuggestRef.current = false
-      return
-    }
+    const submittedQuery = skipNextSuggestRef.current
+    skipNextSuggestRef.current = null
+    if (submittedQuery === currentQuery) return
 
     const requestId = ++suggestRequestIdRef.current
     const timer = setTimeout(async () => {
@@ -38,7 +38,7 @@ export function useSearch() {
   }, [query, setSuggestions])
 
   const selectWord = useCallback(async (word: string) => {
-    skipNextSuggestRef.current = true
+    skipNextSuggestRef.current = normalizeQuery(word)
     const queryType = detectQueryType(word)
 
     // Optimistic history write: make latest searched word visible immediately,

@@ -97,7 +97,7 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
         addMessage(wordKey, assistantMsg, requestCognitive)
         const updatedAll = useChatStore.getState().getMessages(wordKey, requestCognitive)
         void db.saveUserWordConversation(wordKey, JSON.stringify(updatedAll), requestCognitive)
-        recordAiChatEvent(wordKey, question, reply, requestCognitive, requestLearningRoute, requestRouteQuery)
+        recordAiChatEvent(requestRouteQuery, question, reply, requestCognitive, requestLearningRoute, requestRouteQuery)
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return

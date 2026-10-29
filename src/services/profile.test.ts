@@ -270,7 +270,7 @@ describe('recordSentenceCorrectionEvent — still immediate', () => {
     await flushMicrotasks()
 
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(getPendingEvents()).toHaveLength(0)
+    expect(getPendingEvents()[0]?.type).toBe('production')
   })
 
   it('ignores formatting-only changes as correction evidence', async () => {
@@ -281,7 +281,7 @@ describe('recordSentenceCorrectionEvent — still immediate', () => {
     await flushMicrotasks()
 
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(getPendingEvents()).toHaveLength(0)
+    expect(getPendingEvents()[0]?.type).toBe('production')
   })
 
   it('keeps grammar-significant apostrophe corrections as evidence', async () => {
@@ -494,6 +494,28 @@ describe('resumePendingProfileDiagnostics — cold start', () => {
 describe('CHAT_IDLE_MS constant', () => {
   it('is 90 seconds', () => {
     expect(CHAT_IDLE_MS).toBe(90_000)
+  })
+})
+
+describe('diagnostic acceptance and bounded dequeue', () => {
+  it.each([{ out: {} }, { out: { weaknessPatterns: [], recentExplorationFocus: [], recommendations: [] } }])('keeps both lanes queued on an incomplete mixed response: %j', async parsed => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify(parsed) } }] }) }))
+    vi.stubGlobal('fetch', fetchMock)
+    recordAiChatEvent('reading', 'why?', 'explanation', 'lookup', 'in')
+    recordAiChatEvent('writing', 'why?', 'explanation', 'lookup', 'out')
+    const before = getPendingEvents().map(e => e.id)
+    expect(await flushPendingProfileDiagnostics('manual')).toBeNull()
+    expect(getPendingEvents().map(e => e.id)).toEqual(before)
+    expect(getProfile().totalDiagnosticsRun).toBe(0)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('removes only the actual bounded feed and leaves the excess lookup records pending', async () => {
+    vi.stubGlobal('fetch', mockDiagnosticSuccess({ weaknessPatterns: [] }))
+    const events = Array.from({ length: 45 }, (_, i) => ({ id: `queued-${i}`, type: 'lookup', wordOrContext: `word${i}`, learningDirection: 'in', learnerLanguage: 'zh', timestamp: new Date().toISOString() }))
+    localStorage.setItem(PENDING_KEY, JSON.stringify(events))
+    await flushPendingProfileDiagnostics('manual')
+    expect(getPendingEvents().map(e => e.id)).toEqual(events.slice(40).map(e => e.id))
+    expect(getUnprocessedCount()).toBe(5)
   })
 })
 

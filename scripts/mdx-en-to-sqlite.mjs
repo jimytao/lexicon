@@ -7,10 +7,10 @@
  */
 
 import { MDX } from 'js-mdict'
-import Database from 'better-sqlite3'
 import { existsSync, mkdirSync, unlinkSync } from 'fs'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
+import { openDictionaryDatabase, splitEntryByPos } from './dictionary-entries.mjs'
 
 // ── 配置 ──────────────────────────────────────────────────────────────────────
 const MDX_PATH = "D:/vibe coding/牛津高阶英汉双解词典（第9版）- 带高清版图片/Oxford Advanced Learner's Dictionary 10th.mdx"
@@ -74,7 +74,7 @@ function getOuterTagContent(html, className, tagName = 'span') {
 // <span class="subj">，用非贪婪 (.*?)</span> 会在内层 </span> 截断，得到「(music」
 // 这种缺右括号的前缀，所以按嵌套深度取外层内容
 function senseLabelPrefix(html) {
-  const defAt = html.search(/<span[^>]*class="[^"]*def[^"]*"/)
+  const defAt = html.search(/<span[^>]*class="[^"]*\bdef\b[^"]*"/)
   const head = defAt >= 0 ? html.slice(0, defAt) : html
   return ['grammar', 'labels']
     .map((cls) => getOuterTagContent(head, cls, 'span'))
@@ -96,6 +96,11 @@ export function parseEntry(word, html) {
   // 2. Part of Speech
   const posMatch = html.match(/<span[^>]*class="pos"[^>]*>(.*?)<\/span>/s)
   const pos = posMatch ? normalizePos(stripTags(posMatch[1])) : 'noun'
+  const positions = [...html.matchAll(/<span[^>]*class="pos"[^>]*>(.*?)<\/span>/gs)]
+  const posAt = index => {
+    const found = positions.filter(m => m.index <= index).at(-1)
+    return found ? normalizePos(stripTags(found[1])) : pos
+  }
 
   // 3. Senses and Examples
   const meanings = []
@@ -110,14 +115,14 @@ export function parseEntry(word, html) {
     if (defContent) {
       const gloss = stripTags(defContent)
       const en = senseLabelPrefix(block) + gloss
-      meanings.push({ en, zh: en, gloss })
+      meanings.push({ en, zh: en, gloss, pos: posAt(sm.index) })
 
       // Extract examples inside this sense block
       const exMatches = [...block.matchAll(/<span[^>]*class="x"[^>]*>(.*?)<\/span>/gs)]
       for (const em of exMatches) {
         const exText = stripTags(em[1]).replace(/^◆\s*/, '').trim()
         if (exText && exText.length > 3) {
-          examples.push({ en: exText, zh: '' })
+          examples.push({ en: exText, zh: '', pos: posAt(sm.index) })
         }
       }
     }
@@ -157,25 +162,26 @@ function getDefinitionResolved(mdx, word, depth = 0) {
 }
 
 // ── 主程序 ────────────────────────────────────────────────────────────────────
-function main() {
+export async function buildDatabase(mdxPath = MDX_PATH, dbPath = DB_PATH) {
+  if (!existsSync(mdxPath)) throw new Error(`MDX not found: ${mdxPath}`)
 
   console.log('📖 Loading OALD10 MDX file...')
-  const mdx = new MDX(MDX_PATH)
+  const mdx = new MDX(mdxPath)
 
   const total = mdx.keywordList?.length ?? 0
   console.log(`📊 Total entries: ${total.toLocaleString()}`)
 
   // 准备输出目录
-  const dbDir = dirname(DB_PATH)
+  const dbDir = dirname(dbPath)
   if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true })
 
   // 删除旧 DB
-  if (existsSync(DB_PATH)) {
+  if (existsSync(dbPath)) {
     console.log('🗑  Removing old database...')
-    unlinkSync(DB_PATH)
+    unlinkSync(dbPath)
   }
 
-  const db = new Database(DB_PATH)
+  const db = await openDictionaryDatabase(dbPath)
 
   // WAL 模式 + 关闭同步，大幅提速
   db.pragma('journal_mode = WAL')
@@ -227,7 +233,7 @@ function main() {
   const insertSuggest = db.prepare(`INSERT OR IGNORE INTO suggest(word, zh_brief) VALUES(?,?)`)
 
   const batchInsert = db.transaction((entries) => {
-    for (const e of entries) {
+    for (const e of entries.flatMap(splitEntryByPos)) {
       if (!e.word || e.word.length > 60 || e.meanings.length === 0) continue
       if (/^[\u4e00-\u9fff]/.test(e.word)) continue
 
@@ -292,13 +298,16 @@ function main() {
     CREATE INDEX IF NOT EXISTS idx_entry_id_examples ON examples(entry_id);
   `)
 
+  const counts = Object.fromEntries(['entries', 'meanings', 'examples', 'suggest'].map(table => [table, db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]))
+  db.pragma('wal_checkpoint(TRUNCATE)')
   db.close()
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
   console.log(`\n✅ Done! ${written.toLocaleString()} entries written in ${elapsed}s`)
   console.log(`   Errors: ${errors}`)
-  console.log(`   Output: ${DB_PATH}`)
+  console.log(`   Output: ${dbPath}`)
+  return { dbPath, errors, ...counts }
 }
 
 // 仅在直接运行脚本时执行转换；被 import 时只暴露 parseEntry 供抽样验证
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) console.log(JSON.stringify(await buildDatabase(process.argv[2] || MDX_PATH, process.argv[3] || DB_PATH)))

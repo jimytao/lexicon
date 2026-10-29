@@ -16,6 +16,7 @@ import {
   buildDiagnosticPrompts,
   buildLaneProfileContext,
   isLane,
+  selectDiagnosticSnapshot,
   type DiagnosticEvent,
 } from '../harness'
 import { learnerLanguagePolicyFor, resolveLearnerLanguagePolicy, type LearnerLanguagePolicy } from './dictionaryContext'
@@ -361,7 +362,7 @@ export async function flushPendingProfileDiagnostics(
     return null
   }
   const targetLanguage = pending[0]?.learnerLanguage ?? 'zh'
-  const snapshot = pending.filter((event) => (event.learnerLanguage ?? 'zh') === targetLanguage)
+  const snapshot = selectDiagnosticSnapshot(pending.filter((event) => (event.learnerLanguage ?? 'zh') === targetLanguage))
 
   _isDiagnosticRunning = true
   clearChatIdleTimer()
@@ -385,10 +386,10 @@ export async function flushPendingProfileDiagnostics(
     // Only chain after progress: a failed run (no key, bad JSON, offline) left the
     // same events pending, and re-running at once would spin without end.
     const shouldContinue = succeeded && (
-      remaining.some((event) => event.type === 'chat' || event.type === 'sentence')
+      remaining.some((event) => event.type !== 'lookup')
       || remaining.filter((event) => event.type === 'lookup').length >= LOOKUP_FLUSH_THRESHOLD
     )
-    if ((_queuedFlushReason || shouldContinue) && remaining.length > 0) {
+    if (succeeded && (_queuedFlushReason || shouldContinue) && remaining.length > 0) {
       const next = _queuedFlushReason ?? 'cold_start'
       _queuedFlushReason = null
       void flushPendingProfileDiagnostics(next)
@@ -405,7 +406,7 @@ export async function resumePendingProfileDiagnostics(): Promise<UserLanguagePro
   if (!isDiagnosticEnabled()) return null
   const pending = getPendingEvents()
   if (pending.length === 0) return null
-  const hasHighValue = pending.some((e) => e.type === 'chat' || e.type === 'sentence')
+  const hasHighValue = pending.some((e) => e.type !== 'lookup')
   if (!hasHighValue) return null
   return flushPendingProfileDiagnostics('cold_start')
 }
@@ -484,12 +485,13 @@ export function recordSentenceCorrectionEvent(
     .replace(/’/g, "'")
     .replace(/\p{P}/gu, (mark) => (mark === "'" || mark === '-' ? mark : ''))
     .replace(/[\p{S}\s]+/gu, '')
-  if (!correction.trim() || comparable(original) === comparable(correction)) return
+  if (!correction.trim()) return
+  const changed = comparable(original) !== comparable(correction)
 
   const events = getPendingEvents()
   events.push({
     id: newEventId(),
-    type: 'sentence',
+    type: changed ? 'sentence' : 'production',
     wordOrContext: original,
     details: correction,
     unnaturalMindModel,
@@ -499,7 +501,8 @@ export function recordSentenceCorrectionEvent(
   })
   savePendingEvents(events)
 
-  void flushPendingProfileDiagnostics('high_priority')
+  if (changed) void flushPendingProfileDiagnostics('high_priority')
+  else scheduleChatIdleFlush()
 }
 
 export function recordAiChatEvent(

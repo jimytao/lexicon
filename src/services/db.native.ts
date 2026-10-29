@@ -21,7 +21,7 @@ import {
 import { useSettingsStore } from '../stores/settingsStore'
 
 /** Bump when bundled lexicon*.db content changes so devices re-copy from assets. */
-export const LEXICON_ASSET_VERSION = '0.7.37-envi1'
+export const LEXICON_ASSET_VERSION = '2026-10-29-labels-pos2'
 const ASSET_VERSION_KEY = 'lexicon.db.asset.version'
 
 const CONN_ENZH = 'lexicon'

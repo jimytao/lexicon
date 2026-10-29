@@ -1,5 +1,12 @@
 # 05 — React 组件树与状态管理
 
+## 2026-10-29 核验后的学习联系
+
+- `ProfileInsightChip` 文案改为“学习联想 / Learning connection”，仍只在有经校验的文本时挂载，不增加常驻卡片。支持可选回顾、结构对比或一句延伸，不要求每次给表现评价。
+- `AiChatBox` 的 context 可是订正版，但 routeQuery 始终是提交原文；`askQuestion` 分别标记两者，`recordAiChatEvent` 保存原始 routeQuery 作为事件上下文。
+- `AiFullResult` / `PhraseResult` 增 `profileInsightVersion`；代码写入当前版本 4，缓存读取保留旧分析，隐藏版本不是 4 的提示。
+- `WeaknessPattern` 增由程序维护的 `verifiedProductionIds` / `verifiedProductionTexts`，禁止从模型负载直接采纳；详见 `08` 和 `12`。
+
 ## 组件树总览
 
 ```
@@ -31,7 +38,7 @@
 - **`src/utils/profileHeat.ts`**（纯函数）：`recencyWeight` / `weaknessHeat` / `weaknessTier` / `sortActiveByHeat` / `hotWeaknesses(limit=3)` + `DEFAULT_CONFIDENCE = 0.2`。详见 `08-ai-learning-system-and-profile.md` §4.2.1。
 - **`WeaknessPattern`** 新增可选 `confidence?: number`（0–1）+ `lastExposedAt?: string`（ISO）；`getProfile()` 读时回填。
 - **`buildProfilePromptContext(variant, route, learnerLanguage)`**（`src/services/profile.ts`）：compact 只注入同方向同词典语言的 hot 弱点（≤3）与近期探索（≤2）；full 注入 active 弱点（≤6）与探索（≤3）；mastered 不进入 live prompt。详见 `08` §4.2.2。
-- **`AiFullResult` / `PhraseResult`** 新增可选 `profileInsight?: string`（AI 按需返回；`JSON.parse` 透传）。
+- **`AiFullResult` / `PhraseResult`** 新增可选 `profileInsight?: string`（AI 按需返回对象，经 gateProfileInsight 后保存文本，不直接透传）。
 - **`<ProfileInsightChip insight dismissKey onOpen />`**（`src/components/ResultView/ProfileInsightChip.tsx`）：结果头部浅色 chip，`sessionStorage` 记 dismiss；挂载于 `ResultView/index.tsx`（App 传 `combinedResult?.lookup?.profileInsight`）+ `AiFullView` / `CoreCognitiveView` / `PhraseView`。
 
 ### IN / OUT 学习方向（2026-09-24）
@@ -232,6 +239,8 @@ interface HistoryStore {
 ## 核心自定义 Hook
 
 ### useSearch
+
+`skipNextSuggestRef` 保存已提交的归一化查询或 `null`，只跳过同次提交造成的回填；不同前缀必须正常请求补全，清空输入时重置。这样重复搜索同词后一次粘贴新前缀也能出现词典联想（执行记录 S01）。
 
 ```ts
 // src/hooks/useSearch.ts

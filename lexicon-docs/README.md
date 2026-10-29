@@ -17,6 +17,7 @@
 | `09-ui-ux-design-system.md` | UI/UX 规范（改 UI 必读） |
 | `10-browser-extension.md` | 浏览器扩展（MV3）设计方案 — **P0–P3 已完成，P4 进行中** |
 | `11-multilingual-dictionary-roadmap.md` | 临时执行计划：英越词典 MVP、AI 语言联动与冲突审计 |
+| `12-learner-evidence-audit.md` | 2026-10-29 修复前基线、问题证据、气泡要求、执行 / 验收及 10-30 文档覆盖复核；附三库比对 JSON |
 | `CC-INSTRUCTIONS.md` | 历史初始化步骤档案 + 少量持续 Agent 指令 |
 | `scripts/check-doc-sync.sh` | 文档同步检查（开发文件变动是否漏更 docs） |
 

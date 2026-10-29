@@ -44,10 +44,14 @@ There are many vocabulary flashcard apps (such as Anki, RemNote, etc.) focused o
 - **Independent Reading Positions**: Within one query, Instant, AI Lookup, and Pure Core each remember their own scroll position. Unvisited modes start at the top, and a new query resets all three.
 - **IN / OUT Learner Profile**: The search-bar control stays switchable while typing and after results appear. Each submission snapshots its IN/OUT direction, so later toggles only prepare the next search. English-Chinese accepts English/Chinese evidence, English-Vietnamese accepts English/Vietnamese evidence, and English-English accepts English only; unrelated languages stay outside the profile, while evidence remains isolated by direction and dictionary-owned learner language.
 
+- **Optional learning connections**: AI may briefly revisit a real earlier mistake or improvement, compare related constructions, or add a useful extension. It omits the tip when nothing adds value; there is no quota. External reading and AI corrections are not treated as your own writing.
+
 ### 2. Multi-Dictionary Local Engines & Smart Routing
 - **Authoritative Offline Engines**: Oxford 9th Edition Bilingual (~52k entries) + 10th Edition Monolingual (~84k entries) + SPDict English-Vietnamese dictionary (~83k entries with 200k reverse index entries).
 - **Main Dictionary & Monolingual Hot-Toggle**: Choose English-Chinese, English-Vietnamese, or English-English as the main dictionary; per-type monolingual switches temporarily override it with English-English, and the dictionary, AI response language, and Profile identity switch together.
 - **Reverse Routing for Chinese & Vietnamese**: Type Chinese or Vietnamese to instantly reverse-match authentic English counterparts with native speaker mindset analysis.
+
+- **Dictionary labels**: English-Chinese and English-English show supplied countability and transitivity labels; English-Vietnamese preserves its supplied grammar/domain labels without inventing missing countability information.
 
 ### 3. Cognitive Preposition Imagery
 - Cognitive breakdown of core metaphoric prepositions (`up`, `out`, `off`, `through`, etc.).
