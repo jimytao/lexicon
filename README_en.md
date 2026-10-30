@@ -83,9 +83,9 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 
 ### Download & First Installation
 
-1. Download the package for your system (it ships in the same [Releases v0.9.28](https://github.com/jimytao/lexicon/releases/tag/v0.9.28) as the desktop, Android and iOS builds):
-   - Windows / Linux: **[lexicon-extension-0.9.28.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.28/lexicon-extension-0.9.28.zip)**
-   - macOS: **[lexicon-extension-0.9.28-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.28/lexicon-extension-0.9.28-macos.zip)**
+1. Download the package for your system (it ships in the same [Releases v0.9.29](https://github.com/jimytao/lexicon/releases/tag/v0.9.29) as the desktop, Android and iOS builds):
+   - Windows / Linux: **[lexicon-extension-0.9.29.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.29/lexicon-extension-0.9.29.zip)**
+   - macOS: **[lexicon-extension-0.9.29-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.29/lexicon-extension-0.9.29-macos.zip)**
    - Both packages have the same features; do not download Source code or any `.db` files.
 2. **Extract the ZIP completely** into a permanent folder, such as `Documents/Lexicon Extension`. Do not run directly inside the archive, and do not move or delete this folder after installation.
 3. Open your browser's extension management page:
@@ -131,11 +131,11 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.28_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.28/Lexicon_0.9.28_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.28_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.28/Lexicon_0.9.28_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.29_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.29_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.28)
-- **[Lexicon_0.9.28_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.28/Lexicon_0.9.28_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.29)
+- **[Lexicon_0.9.29_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -146,9 +146,9 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.28)
-- **[Lexicon_0.9.28_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.28/Lexicon_0.9.28_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.28](https://github.com/jimytao/lexicon/releases/tag/v0.9.28).
+### Android (v0.9.29)
+- **[Lexicon_0.9.29_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.29](https://github.com/jimytao/lexicon/releases/tag/v0.9.29).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).

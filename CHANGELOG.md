@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## Unreleased — 学习者证据 Harness、Profile 归纳可靠性与三词典标签修复
+## 2026-10-30 — 学习者证据 Harness、Profile 归纳可靠性与三词典标签修复 (v0.9.29)
 
-> 版本号待定。完整证据、问题编号（E01–E04 / D01–D07 / S01–S03）、修复前后对比与验收记录见 [`lexicon-docs/12-learner-evidence-audit.md`](lexicon-docs/12-learner-evidence-audit.md)。
+> 完整证据、问题编号（E01–E04 / D01–D07 / S01–S03）、修复前后对比与验收记录见 [`lexicon-docs/12-learner-evidence-audit.md`](lexicon-docs/12-learner-evidence-audit.md)。
 
 ### 用户可见
 1. **学习联想气泡不再把 AI 的改正当成你的进步**：此前句子查询中，AI 先把 “fails charging” 改成 “fails to charge”，又在紫色气泡里夸你“这次正确使用了 fails to charge”。现在说“你用对了 / 又犯了”时，气泡必须逐字引用你原文里的词：用对的词必须是你自己写的且订正后仍保留，犯错的词必须确实被订正改掉；核对不通过就不显示。
