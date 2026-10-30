@@ -153,3 +153,9 @@
 - 原因：`max_tokens: 3000`（本轮之前已有）对思考型模型偏小；基线画像越写越长，且 E02 新增的 `verifiedProductionIds/Texts` 也随基线发出并被模型原样回写。
 - 补法：`DIAGNOSTIC_MAX_TOKENS = 8192`；`baselineFor` 去掉两项程序自有字段；截断 / 非法 JSON / 校验不通过分别 `console.warn('[profile] …')`。失败仍保留整批，不改变 E04 的严格校验与出队语义。
 - 验证：新增 3 项回归；44 文件 / 455 项通过，`tsc -b` 通过，ESLint 0 error。修复后未再用真实 API 重跑 Chrome 归纳。
+
+### 2026-10-30 复核追加 S04：追问看不到 AI 自己的订正说明（Claude 复核）
+
+- 现象：E01 修复后追问已分块拿到原文与 AI 改句，但页面上的「为什么这么改？」、地道表达 / 选词理由、思维违和感剖析只在富语境开关（`chatRichContextDefault` 默认 false）打开时发送，`nativeForm` / `nativeRationale` 从未发送。用户追问 AI 的改动时，模型只能重新推理，可能与页面说法不一致。
+- 补法：`buildChatCorrectionContext()` 生成订正段，经 `AiChatBox.correctionContext` → `askQuestion` 始终发送，非 irrelevant 路线标 `<ai_generated>`（不进入学习者证据）；富语境中去掉重复项。irrelevant 路线追问同时注明原始输入。
+- 验证：新增 5 项回归；46 文件 / 466 项通过，`tsc -b` 通过。浏览器以模拟 AI 实测富语境关 / 开两种请求内容，订正各项恰好出现一次。未用真实 API 重跑。

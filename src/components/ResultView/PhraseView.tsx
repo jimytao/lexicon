@@ -23,6 +23,7 @@ import { SectionHeading } from './SectionHeading'
 import { phraseCognitiveFromSearchMode } from '../../utils/text'
 import { migrateNativeMindToCoreFields } from '../../utils/coreMindsetPipeline'
 import { isCorrectFormLong } from '../../utils/phraseHeaderFold'
+import { buildChatCorrectionContext } from '../../utils/chatCorrectionContext'
 
 interface PhraseViewProps {
   phrase: string
@@ -490,18 +491,11 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
               case 'chat': {
                 const corrected = phraseResult.correctForm || phrase
                 const parts: string[] = []
-                if (phrase.toLowerCase() !== corrected.toLowerCase()) {
-                  parts.push(`用户原始输入: "${phrase}" → 纠正为: "${corrected}"`)
-                  if (phraseResult.correctionNote) parts.push(`纠正说明: ${phraseResult.correctionNote}`)
-                }
                 if (phraseMind.coreConcept?.feelAnchor || phraseMind.coreConcept?.emotionalTone) {
                   parts.push(
                     `感觉/情绪: ${phraseMind.coreConcept?.feelAnchor || ''}`
                     + (phraseMind.coreConcept?.emotionalTone ? ` | ${phraseMind.coreConcept.emotionalTone}` : ''),
                   )
-                }
-                if (phraseResult.unnaturalMindModel) {
-                  parts.push(`思维违和感剖析: 原语言迁移("${phraseResult.unnaturalMindModel.chineseThought}") → 英语母语心智("${phraseResult.unnaturalMindModel.nativeConcept}") [法则: ${phraseResult.unnaturalMindModel.reusablePrinciple}]`)
                 }
                 if (phraseResult.meaning) parts.push(`释义: ${phraseResult.meaning}`)
                 if (usageIntro) parts.push(`使用场景开场: ${usageIntro}`)
@@ -524,7 +518,18 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
                   parts.push(`文化背景: ${phraseResult.culturalLore.content}`)
                 }
                 const enrichedContext = parts.length > 0 ? parts.join('\n') : undefined
-                return <AiChatBox key={module.id} context={corrected} routeQuery={phrase} learningRoute={learningRoute} cognitive={phraseCognitive} enrichedContext={enrichedContext} />
+                const correctionContext = buildChatCorrectionContext({ ...phraseResult, original: phrase })
+                return (
+                  <AiChatBox
+                    key={module.id}
+                    context={corrected}
+                    routeQuery={phrase}
+                    learningRoute={learningRoute}
+                    cognitive={phraseCognitive}
+                    enrichedContext={enrichedContext}
+                    correctionContext={correctionContext}
+                  />
+                )
               }
               case 'preposition': {
                 const preps = detectSpatialPreps(phraseResult.correctForm || phrase)

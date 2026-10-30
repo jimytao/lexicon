@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Unreleased — 追问能看到 AI 自己的订正
+
+### 用户可见
+1. **追问可以针对 AI 的改动细问**：词组 / 句子页上「为什么这么改？」的说明、「地道表达」及其选词理由、思维违和感剖析，此前只有打开追问框的“完整语境”开关（默认关闭）才会发给追问 AI，地道表达和选词理由开了也不发。所以问“为什么改成 really”或“be into 为什么更地道”时，AI 看不到页面上的解释，只能重新推理，答案可能和页面不一致。现在这些订正信息每次追问都会带上，并标记为 AI 生成，不会被画像当作你的写作能力。“完整语境”开关只控制释义、例句、助记等其余分析。
+2. **与学习无关的查询追问时也保留原文**：此前只发 AI 改后的文本；现在会同时注明你原本输入的内容。
+
+### 工程与验证
+- 新增 `src/utils/chatCorrectionContext.ts`（`buildChatCorrectionContext`）；`askQuestion` 新增末位参数 `correctionContext`，在 study context 后、富语境前插入，非 `irrelevant` 路线包 `<ai_generated>`；`AiChatBox` 新增同名 prop；`PhraseView` 富语境中移除重复的原文 → 改正、纠正说明与思维违和感剖析。
+- 新增 `src/services/aiFollowUp.test.ts`（5 项：富语境关闭时仍发送订正、irrelevant 路线保留原文、无订正不加段落、helper 的大小写与仅地道表达情形）。全量 46 个文件 / 466 项通过，`tsc -b` 通过，改动文件 ESLint 0 error。
+- 浏览器实测（本地 dev server，模拟 AI 回复）：句子 `I very like this idea` → `I really like this idea`；完整语境关闭时追问请求含改正、原因、地道表达、选词理由与剖析；打开后各项只出现一次，历史对话完整。测试数据与设置已恢复。
+- 文档：`04-ai-schema.md`、`05-components.md`、`12-learner-evidence-audit.md`（S04）同步。
+
 ## 2026-10-30 — 学习者证据 Harness、Profile 归纳可靠性与三词典标签修复 (v0.9.29)
 
 > 完整证据、问题编号（E01–E04 / D01–D07 / S01–S03）、修复前后对比与验收记录见 [`lexicon-docs/12-learner-evidence-audit.md`](lexicon-docs/12-learner-evidence-audit.md)。

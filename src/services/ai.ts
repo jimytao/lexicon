@@ -1195,6 +1195,7 @@ export async function askQuestion(
   richContext?: string,
   routeQuery?: string,
   learningRoute?: LearningRoute,
+  correctionContext?: string,
 ): Promise<string> {
   const config = getConfig()
   if (!config.apiKey) throw new Error('API key not configured')
@@ -1206,7 +1207,13 @@ export async function askQuestion(
   const route = learningRoute ?? resolveCurrentLearningRoute(routingQuery)
   const tagged = route !== 'irrelevant'
   // The displayed analysis is AI-written; the studied text belongs to its lane.
-  const studied = tagged ? buildStudyContext(routingQuery, context, querySource(route)) : `"${context}"`
+  const studied = tagged
+    ? buildStudyContext(routingQuery, context, querySource(route))
+    : routingQuery === context ? `"${context}"` : `"${context}" (the user typed "${routingQuery}")`
+  // Independent of rich mode: without it the AI cannot discuss its own fix.
+  const correctionSection = correctionContext
+    ? `\n\nCorrection notes already shown to the user (they may ask about these; stay consistent with them unless they are wrong):\n${tagged ? tagText('ai', correctionContext) : correctionContext}`
+    : ''
   const richSection = richContext
     ? `\n\nHere is the analysis already displayed to the user for reference:\n${tagged ? tagText('ai', richContext) : richContext}\n\nAnswer based on this context where relevant.`
     : ''
@@ -1217,7 +1224,7 @@ export async function askQuestion(
   const audienceRule = spec.isEnglish
     ? 'You are a helpful English language assistant for native or monolingual English users.\nAnswer in clear, natural English without assuming any second-language transfer.'
     : `You are a helpful English learning assistant for ${spec.audience}.\nAnswer in ${spec.name}, with English examples where appropriate.`
-  const systemPrompt = `${audienceRule}\nThe user is currently studying: ${studied}.${richSection}${tagged ? PROVENANCE_LEGEND : ''}${profileSection}\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.${buildNativeLanguageContract(spec)}`
+  const systemPrompt = `${audienceRule}\nThe user is currently studying: ${studied}.${correctionSection}${richSection}${tagged ? PROVENANCE_LEGEND : ''}${profileSection}\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.${buildNativeLanguageContract(spec)}`
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },

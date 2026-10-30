@@ -21,11 +21,13 @@ interface AiChatBoxProps {
   learningRoute?: LearningRoute
   cognitive: CognitiveMode
   enrichedContext?: string
+  /** Fix / native-expression notes shown on the page; sent even when rich mode is off. */
+  correctionContext?: string
 }
 
 const EMPTY_MESSAGES: ChatMessage[] = []
 
-export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enrichedContext }: AiChatBoxProps) {
+export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enrichedContext, correctionContext }: AiChatBoxProps) {
   const t = useT()
   const chatKey = cognitiveCacheKey(context, cognitive)
   const legacyLookupKey = cognitive === 'lookup' ? (normalizeQuery(context) || context) : null
@@ -87,6 +89,7 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
         richMode && enrichedContext ? enrichedContext : undefined,
         requestRouteQuery,
         requestLearningRoute,
+        correctionContext,
       )
       if (
         contextRef.current === requestContext

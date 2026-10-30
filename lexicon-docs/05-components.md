@@ -440,8 +440,9 @@ interface SkeletonBlockProps {
   → 返回 correctForm="it's good for me to do" + 释义/场景/例句/练习
   → 大字显示正确形式，小字标注用户输入错误
 
-用户在 AiChatBox 提问（props: context + cognitive + routeQuery + learningRoute）
-  → askQuestion(context, history, signal, richContext, routeQuery, learningRoute) [1-3s]
+用户在 AiChatBox 提问（props: context + cognitive + routeQuery + learningRoute + correctionContext）
+  → askQuestion(context, history, signal, richContext, routeQuery, learningRoute, correctionContext) [1-3s]
+  → correctionContext（订正 / 地道表达说明）始终发送；richContext 仅在完整语境开关打开时发送
   → 回答写入 chatStore[cognitiveCacheKey]（Lookup / Core 分轨，persist）
   → 成功后双写 user_word_memory.ai_conversations_json 对应桶 + Profile chat 事件
   → 问答语言 / learnerLanguage 按原始 routeQuery 判定，IN/OUT 使用当前结果的提交时快照；都不按 AI correctForm 或之后的按钮状态重猜
