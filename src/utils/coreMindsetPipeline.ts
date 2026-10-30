@@ -8,6 +8,7 @@ export interface WordChoiceContrastItem {
 
 /** Pure Core 单词出厂模组 id 顺序（P1） */
 export const CORE_WORD_MODULE_P1_IDS = [
+  'dictMeanings',
   'coreConcept',
   'wordGraph',
   'chunks',

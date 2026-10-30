@@ -128,8 +128,8 @@ export interface WordAIResult {
 | | AI Lookup (`modules`) | Pure Core (`coreModules`) |
 |--|----------------------|---------------------------|
 | 角色 | 理解与记忆 | 母语者如何用 |
-| 出厂模组 | dictionary, coreConcept(轻), etymology, mnemonic, examples, related, preposition, practice(释义核对), chat | coreConcept(厚+感觉锚/情绪), wordGraph, **chunks**, **collocations**, synonyms, **wordChoice**, usageScenes, culture, practice(造句), chat |
-| 明确不含 | chunks / collocations / synonyms / culture / wordChoice（迁 Core） | dictionary、preposition 意象、etymology、mnemonic；**不再置顶 nativeMindModel** |
+| 出厂模组 | dictionary, coreConcept(轻), etymology, mnemonic, examples, related, preposition, practice(释义核对), chat | **dictMeanings**（本地词典释义，非 AI）, coreConcept(厚+感觉锚/情绪), wordGraph, **chunks**, **collocations**, synonyms, **wordChoice**, usageScenes, culture, practice(造句), chat |
+| 明确不含 | chunks / collocations / synonyms / culture / wordChoice（迁 Core） | AI 释义模组 dictionary（旧 persist 中的 `dictionary` id 仍被剔除，与 `dictMeanings` 不混用）、preposition 意象、etymology、mnemonic；**不再置顶 nativeMindModel** |
 | 词组 UI | 绑 `modules` | 绑 **`corePhraseModules`**（含 wordChoice）；释义轻量固定展示，可附感觉/情绪 |
 | 顺序 | **可拖拽**；表中仅为出厂默认 | 单词 / 词组两套列表均可拖拽（含 wordChoice） |
 | 中文反查 | 完整 meanings | Core：2–5 个短英文候选（非释义墙） |
@@ -175,7 +175,8 @@ SettingsModal
 - **Sub-Tab 1：AI Lookup — 理解与记忆**（`modules`）
   - 释义、轻量意象、词根、助记、例句、介词意象、释义核对、Chat 等；拖拽排序。
 - **Sub-Tab 2：Pure Core — 母语者用法**（`coreModules`）
-  - 用法意象、概念树、介词语组、其他词组、近义、用法场景、语域、造句练习、Chat；拖拽排序。无 dictionary。
+  - 词典释义（`dictMeanings`，本地 L1 义项）、用法意象、概念树、介词语组、其他词组、近义、用法场景、语域、造句练习、Chat；拖拽排序，每项可关闭。无 AI 释义墙。
+  - `dictMeanings`（2026-10-30）：只控制本地词典义项列表的位置与显隐，词头（词、音标、词性）始终置顶；不进入任何 prompt。出厂排第一；升级前保存的列表缺此项时插到最前，与旧版“释义固定第一”一致。AI 未返回 / 失败时：排在所有已开启 AI 模组之前 → 留在词头下；否则先显示在 AI 区域下方，AI 返回后归位。
 
 ### 4.3 空间利用率优化规则
 - 所有高级 API 调试参数、数据库路径等低频配置项，包裹在 `<Accordion title="高级参数" defaultOpen={false}>` 中。

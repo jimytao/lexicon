@@ -178,7 +178,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 - Instant：本地 L1 释义 / 例句；AI **不替换** L1
 - AI Lookup：增量偏理解记忆（情景、词根、助记、轻量 coreConcept）；默认不拉搭配/近义墙
-- Pure Core：按 `coreModules` 拉心智/概念树/介词语组/其他词组/用法场景/语域；**不拉释义墙**
+- Pure Core：按 `coreModules` 拉心智/概念树/介词语组/其他词组/用法场景/语域；**不拉释义墙**。本地词典义项是 `coreModules` 里的 `dictMeanings` 模组（可排序 / 关闭，非 AI，不进 prompt；勿与旧 `dictionary` id 混用）
 - 必须异步，不阻塞 L1 渲染；切换词时用 `AbortController` 取消
 - Session / persist 缓存见 `resultStore`（按规范化 query）
 - 单英文模式与双语模式：助记、练习、写作批改、问答等 prompt 均需适配（见 `04-ai-schema.md`）

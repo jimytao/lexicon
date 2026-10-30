@@ -61,6 +61,16 @@ export function CoreCognitiveView({
     : {}
   const showDictL1 = Boolean(dictWordResult?.meanings?.length)
   const corePending = useResultStore(state => state.aiPendingHalves.core)
+  // Dictionary senses are a local, orderable module. They need no AI, so they show
+  // while AI is loading or failed: at the top when ordered before every enabled AI
+  // module (and stay there), otherwise below the AI area until it arrives.
+  const enabledModules = coreModules.filter((m) => m.enabled)
+  const showDictMeanings = showDictL1 && enabledModules.some((m) => m.id === 'dictMeanings')
+  const dictFirst = enabledModules[0]?.id === 'dictMeanings'
+  const aiReady = aiStatus === 'success' && Boolean(aiFullResult)
+  const dictMeanings = showDictMeanings && dictWordResult
+    ? <MeaningList meanings={dictWordResult.meanings} />
+    : null
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
@@ -91,7 +101,7 @@ export function CoreCognitiveView({
             phonetic={dictWordResult.phonetic}
             pos={dictWordResult.pos}
           />
-          <MeaningList meanings={dictWordResult.meanings} />
+          {dictFirst && dictMeanings}
         </div>
       )}
 
@@ -112,6 +122,8 @@ export function CoreCognitiveView({
           <SkeletonBlock lines={4} variant="pill" />
         </div>
       )}
+
+      {!dictFirst && !aiReady && dictMeanings && <div className="mt-3">{dictMeanings}</div>}
 
       {aiStatus === 'success' && aiFullResult && (
         <div className="space-y-3">
@@ -157,6 +169,8 @@ export function CoreCognitiveView({
             if (!module.enabled) return null
 
             switch (module.id) {
+              case 'dictMeanings':
+                return dictFirst || !dictMeanings ? null : <div key={module.id}>{dictMeanings}</div>
               case 'coreConcept':
                 return (
                   <CoreConceptCard

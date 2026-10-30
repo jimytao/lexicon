@@ -72,6 +72,7 @@ const DEFAULT_LOOKUP_MODULES: ModuleFlag[] = [
 ]
 
 const DEFAULT_CORE_MODULE_FLAGS: ModuleFlag[] = [
+  { id: 'dictMeanings', enabled: true },
   { id: 'coreConcept', enabled: true },
   { id: 'wordGraph', enabled: true },
   { id: 'chunks', enabled: true },

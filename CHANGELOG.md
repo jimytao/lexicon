@@ -20,6 +20,7 @@
 13. **英英词典修复**：学科标签不再截断或误取，如 acceleration 正确显示「不可数」「物理」。
 14. **搜索联想修复**：重复搜索同一个词之后，一次粘贴进新的前缀，现在会立即出现联想，不必再多打一个字。
 15. **浏览器扩展与其他平台同一个 Release 发版**：扩展 ZIP 不再累积在长期 `extension-preview` Release 里，而是和 Windows / macOS / Android / iOS 安装包一起挂在对应版本号（`vX.Y.Z`）下；扩展内的更新提示直接打开新版本的 Release 页面，README 的扩展下载链接也改为指向具体版本。
+16. **Pure Core 的词典释义可以调位置、可以关闭**：单词 Pure Core 结果里的本地词典释义原来固定排在第一位，现在是 Settings → Pure Core → 单词 里的「词典释义」模块，可以像其他模块一样拖动排序或取消勾选。词头（单词、音标、词性）始终在最上方；升级后默认仍排第一，不改变原有样子。词典释义不依赖 AI，所以 AI 还没返回或失败时，它会先显示在 AI 区域下方，AI 返回后回到你设定的位置。
 
 ### 工程与验证
 - 新增 `src/harness/`（纯函数，不读存储 / store / 网络），`index.ts` 统一出口：
@@ -34,9 +35,10 @@
 - 词典显示：新增 `src/utils/meaningLabels.ts`（`cleanDictionaryMeaning` / `cleanDictionaryBrief` / `isDictionaryHeaderFragment` / `localizeMeaningLabel`，只剥离每一段都是已知标签的前缀，`(in Britain)` 等正文保留）；`MeaningList`、`SuggestList`、`PhrasesSection`、`db.ops.ts` 接入；`i18n` 新增约 120 个 `meaning.label.*` 中文键。`useSearch` 的联想跳过标记改为绑定已提交的词面。
 - 词库重建：三个转换脚本（`mdx-to-sqlite.mjs` / `mdx-en-to-sqlite.mjs` / `mdx-en-vi-to-sqlite.mjs`）修复括号、标签边界（英英脚本中误写的 U+0008）、`<chn>` 取值、SPDict 例句正则吞义项等问题，按义项词性拆分条目（schema 不变），改用 Node 内置 `node:sqlite`（Node 24.18 验证，App 的 SQLite 引擎不变）。三库已重建：英汉 51,902→51,959 词条 / 99,392→99,477 义项，英英不变，英越 83,066→83,071 词条 / 135,194→146,901 义项，旧词条零丢失、`quick_check` 均为 ok。`lexicon_vi.db` 首次纳入 Git；`LEXICON_ASSET_VERSION` 升为 `2026-10-29-labels-pos2`，原生端会重新拷贝词库。新增 `scripts/audit-dictionaries.mjs` / `dictionary-entries.mjs` 与 `lexicon-docs/evidence/2026-10-29/` 比对报告。
 - 发版流程：`updateStore.ts` 以 `extensionReleaseUrl(manifest.version)` 打开 `releases/tag/v<版本>`，取代硬编码的 `extension-preview`（新增 `updateStore.test.ts`）。`workflow.md` 改为“一个版本号一个 Release”：§6 删除向 `extension-preview` 追加 ZIP 的步骤（该 Release 自 v0.9.28 冻结、保留不删），§0 / §7 核对扩展链接指向本版；§8 本地产物清理改为强制，补删 `dist-ext/` 与 Tauri bundle，并新增必须执行的清理核验脚本。`AGENT.md` 同步这两条约束；双语 README 的扩展下载改为 v0.9.28 直链。
+- Pure Core 词典释义模组：`DEFAULT_CORE_MODULES` / `CORE_WORD_MODULE_P1_IDS` 首位新增 `dictMeanings`（新 id，避免与 `normalizeCoreModules` 继续剔除的旧 `dictionary` 混淆）；旧列表缺此项时插到最前；`CoreCognitiveView` 按模组顺序渲染 `MeaningList`，关闭即隐藏；不进入任何 prompt。新增 `module.dictMeanings` 中英文案与 4 项归一化回归测试。
 - 测试：新增 `harness/insightGate.test.ts`、`harness/diagnostic.test.ts`（含 “fails charging” 原始案例）、`utils/meaningLabels.test.ts`、`services/dictionaryConverters.test.ts`，以及截断 / 校验失败可见、基线不含验证字段等回归；`profile.test.ts`、`profileWiring.test.ts`、`aiPhrasePrompt.test.ts`、`spdictParser.test.ts`、`resultStoreSplit.test.ts` 同步更新。
 - 文档：新增 `lexicon-docs/12-learner-evidence-audit.md`；`08-ai-learning-system-and-profile.md`（§4.2.1b 等）、`04-ai-schema.md`、`01`、`02`、`03`、`05`、`06`、`11`、`lexicon-docs/README.md`、双语 README、`AGENT.md` 同步。
-- 全量回归：45 个测试文件、457 项测试全部通过；`tsc -b` 通过；Web build 通过（extension build 于 10-29 验收通过）；ESLint 0 error（89 个 warning，多为测试中的非空断言）。
+- 全量回归：45 个测试文件、461 项测试全部通过；`tsc -b` 通过；Web build 通过（extension build 于 10-29 验收通过）；ESLint 0 error（89 个 warning，多为测试中的非空断言）。
 - Chrome 实测（真实 Gemini API）：OUT 错句气泡如实提示“再次误用”、对句的进步提示有原文依据；追问逐字引用原句；归纳请求上限 8192、正常结束、JSON 完整，画像写入正确方向，队列清空且无 `[profile]` 警告；三库标签、恢复的义项与一次粘贴联想均正常。
 
 ### 已知限制

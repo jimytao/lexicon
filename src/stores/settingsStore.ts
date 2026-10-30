@@ -44,6 +44,8 @@ export const DEFAULT_MODULES: AppModule[] = [
 
 /** Pure Core 单词出厂模组 — P1 顺序可拖拽（选用对照已并入 synonyms.whenToUse） */
 export const DEFAULT_CORE_MODULES: AppModule[] = [
+  // Local dictionary senses (no AI): its own id, because legacy `dictionary` entries are stripped below.
+  { id: 'dictMeanings', label: 'Dictionary Meanings',    enabled: true },
   { id: 'coreConcept',  label: 'Usage Image',            enabled: true },
   { id: 'wordGraph',    label: 'Concept Tree Graph',     enabled: true },
   { id: 'chunks',       label: 'Prep Phrases',           enabled: true },
@@ -147,6 +149,11 @@ export function normalizeCoreModules(modules?: AppModule[]): AppModule[] {
     seen.add(m.id)
     return true
   })
+
+  // Before dictMeanings existed the dictionary always rendered first; keep that for upgraded lists.
+  if (!deduped.some((m) => m.id === 'dictMeanings')) {
+    deduped.unshift({ ...defaultsById.get('dictMeanings')! })
+  }
 
   return insertMissingDefaults(deduped, DEFAULT_CORE_MODULES)
 }

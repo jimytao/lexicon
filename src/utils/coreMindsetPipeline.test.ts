@@ -24,7 +24,8 @@ describe('Pure Core P1 module order (factory defaults)', () => {
     expect(ids).toEqual([...CORE_WORD_MODULE_P1_IDS])
     expect(ids).not.toContain('wordChoice')
     expect(ids.indexOf('wordGraph')).toBeLessThan(ids.indexOf('synonyms'))
-    expect(ids.indexOf('coreConcept')).toBe(0)
+    expect(ids.indexOf('dictMeanings')).toBe(0)
+    expect(ids.indexOf('coreConcept')).toBe(1)
   })
 
   it('synonyms module remains enabled by default for mental-fit contrast', () => {
@@ -59,6 +60,49 @@ describe('Pure Core P1 module order (factory defaults)', () => {
     expect(ids).not.toContain('wordChoice')
     expect(ids).toContain('synonyms')
     expect(normalized.find((m) => m.id === 'chunks')?.enabled).toBe(false)
+  })
+})
+
+describe('Pure Core dictionary meanings module', () => {
+  const ids = (modules: { id: string }[]) => modules.map((m) => m.id)
+
+  it('puts dictionary meanings first for lists saved before the module existed, even if the user reordered others', () => {
+    const saved = [
+      { id: 'synonyms', label: '', enabled: true },
+      { id: 'coreConcept', label: '', enabled: false },
+      { id: 'chat', label: '', enabled: true },
+    ]
+    const normalized = normalizeCoreModules(saved)
+    expect(normalized[0]).toMatchObject({ id: 'dictMeanings', enabled: true })
+    expect(ids(normalized).filter((id) => ['synonyms', 'coreConcept', 'chat'].includes(id))).toEqual(['synonyms', 'coreConcept', 'chat'])
+  })
+
+  it('keeps the position and on/off choice once the user has set them', () => {
+    const saved = [
+      { id: 'coreConcept', label: '', enabled: true },
+      { id: 'synonyms', label: '', enabled: true },
+      { id: 'dictMeanings', label: '', enabled: false },
+    ]
+    const normalized = normalizeCoreModules(saved)
+    expect(ids(normalized).filter((id) => ['coreConcept', 'synonyms', 'dictMeanings'].includes(id))).toEqual(['coreConcept', 'synonyms', 'dictMeanings'])
+    expect(normalized[0]?.id).toBe('coreConcept')
+    expect(normalized.find((m) => m.id === 'dictMeanings')?.enabled).toBe(false)
+    expect(normalizeCoreModules(normalized)).toEqual(normalized)
+  })
+
+  it('still drops the legacy Lookup `dictionary` id instead of treating it as this module', () => {
+    const normalized = normalizeCoreModules([
+      { id: 'coreConcept', label: '', enabled: true },
+      { id: 'dictionary', label: '', enabled: false },
+    ])
+    expect(ids(normalized)).not.toContain('dictionary')
+    expect(normalized[0]).toMatchObject({ id: 'dictMeanings', enabled: true })
+  })
+
+  it('is not an AI prompt module and is never sent to the phrase list', () => {
+    expect(ids(DEFAULT_CORE_PHRASE_MODULES)).not.toContain('dictMeanings')
+    const combined = readFileSync(join(process.cwd(), 'src/services/aiCombinedPrompt.ts'), 'utf8')
+    expect(combined).not.toContain('dictMeanings')
   })
 })
 
