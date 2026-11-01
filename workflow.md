@@ -223,7 +223,7 @@ Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前
 | 使用已废弃名 `TAURI_PRIVATE_KEY` | 当前 Tauri CLI **不认**，等于没设签名 |
 | 手写 `version.json` 用 `Set-Content -Encoding UTF8` | 写入 **UTF-8 BOM**，更新器解析失败 |
 | `platforms` 里放 android/ios 空 signature | Tauri 校验整个 JSON 失败 |
-| `.env.release` 的 `ANDROID_*` 未映射到 `KEYSTORE_PASSWORD` | Gradle 可能用到错误默认密码 |
+| `.env.release` 的 `ANDROID_*` 未映射到 `KEYSTORE_PASSWORD` | `assembleRelease` 直接报错 `KEYSTORE_PASSWORD / KEY_PASSWORD not set`（build.gradle 自 2026-11-01 起无明文默认值；禁止再加回 `?: "..."` 之类的密码兜底） |
 | 用 `--password` 等**命令行参数**传密码（脚本或手动命令） | 命令行会被 npx / 日志回显，也出现在进程列表，密码泄露。CLI 一律从环境变量读取（`tauri signer` 自动读 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`） |
 | Agent 读取并输出 `.env.release` 内容、或在报告 / 日志里复述密码 | 密钥进入对话记录与日志；只允许脚本加载，禁止 `cat` / `Get-Content` 该文件 |
 
@@ -279,7 +279,7 @@ if ($LASTEXITCODE -ne 0) { throw "assembleRelease failed" }
 .\scripts\release\Prepare-AndroidApks.ps1 -Version $V
 ```
 
-Agent 执行时把 `Load-ReleaseEnv.ps1` 与 `gradlew` 写在同一条命令里（§3.0），否则 Gradle 拿不到 `KEYSTORE_PASSWORD` / `KEY_PASSWORD`。需要日志时同 §3.1 用 `cmd /c "... > gradle-build.log 2>&1"`。
+Agent 执行时把 `Load-ReleaseEnv.ps1` 与 `gradlew` 写在同一条命令里（§3.0），否则 Gradle 拿不到 `KEYSTORE_PASSWORD` / `KEY_PASSWORD`，构建会以 `not set` 报错停止。签名密钥库为 `android/lexicon-release.keystore`（PKCS12，alias `lexicon`，密钥库与私钥同一密码；2026-11-01 已轮换密码，证书不变，SHA-256 指纹 `3A:FE:F8:2E:…:43:96`）。需要日志时同 §3.1 用 `cmd /c "... > gradle-build.log 2>&1"`。
 
 Gradle 在 `signingConfigs.release` 中签名；输出在 `android/app/build/outputs/apk/release/`，脚本会拷到仓库根目录的 `Lexicon_${V}_*_signed.apk`（供 `gh release upload`）。
 

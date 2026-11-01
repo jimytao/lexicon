@@ -27,9 +27,11 @@ android {
     signingConfigs {
         release {
             storeFile file('../../android/lexicon-release.keystore')
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "lexicon2024"
+            // Passwords come only from the environment (scripts/release/Load-ReleaseEnv.ps1
+            // maps them from the untracked .env.release). Never add a literal fallback.
+            storePassword System.getenv("KEYSTORE_PASSWORD")
             keyAlias "lexicon"
-            keyPassword System.getenv("KEY_PASSWORD") ?: "lexicon2024"
+            keyPassword System.getenv("KEY_PASSWORD")
         }
     }
     buildTypes {
@@ -38,6 +40,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
+    }
+}
+
+// Release signing needs both passwords: fail early with a pointer instead of a keystore error.
+gradle.taskGraph.whenReady { graph ->
+    def wantsRelease = graph.allTasks.any { it.project == project && it.name.toLowerCase().contains('release') }
+    if (wantsRelease && (!System.getenv("KEYSTORE_PASSWORD") || !System.getenv("KEY_PASSWORD"))) {
+        throw new GradleException("KEYSTORE_PASSWORD / KEY_PASSWORD not set: dot-source scripts/release/Load-ReleaseEnv.ps1 in the same command before assembleRelease")
     }
 }
 
