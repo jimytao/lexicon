@@ -200,6 +200,10 @@ export const useSettingsStore = create<SettingsStore>()(
 )
 ```
 
+- `setAiProvider(id)` 只恢复 `aiModels[id]`，未配置时设为空；不继承上一 provider 的模型。`setAiModel` 同时写当前 `aiModel` 与对应 `aiModels[id]`。Settings 的模型列表 / 测试连接结果绑定 provider、endpoint、key（测试另含 model）；配置变化时隐藏旧状态并取消旧请求。
+- `AiChatBox` 把 `askQuestion` 的 `onDelta` 流式片段累积到本地 `streamingText` 并以 `ChatMarkdown` 渲染（未收到首段前显示 thinking 动画）；完成后仍以完整回复写入 chatStore / DB。`settingsStore.aiSpeedFirst`（默认 true）控制前台速度优先梯子，Settings 在 AI Provider 区下方提供开关。
+- `AiChatBox` 收到 `askQuestion` 的可选 metadata 回调后，将 `reasoningContent / aiProvider / aiModel` 与 assistant `ChatMessage` 一起保存；仅用于 Kimi 的同模型协议回放，不渲染到对话正文、不进入学习者事件。旧 JSON 对话仍兼容，不修改 DB 表结构。
+- `AiFullView` / `CoreCognitiveView` / `PhraseView` 在 loading 时可通过 `shouldShowAiPreview` 展示当前 partial skeleton 的只读词义 / 译文；完整模块、补全、练习和 Chat 仍等正式半结果。不要把 pending 清空或把预览当最终 success 来实现早显示。
 - 导出纯函数 `resolveSearchApiKey({ searchProvider, searchApiKeys, tavilyApiKey })` → 返回「当前联网搜索服务商」对应的 Key（含旧 `tavilyApiKey` 兼容）。`ai.ts` 的 `getConfig()` 与 `SettingsView` / `MeaningList` 均经此解析，不要各自读 `searchApiKeys[...]`。
 - 联网搜索是否发请求，唯一入口在 `ai.ts` 的 `webSearchReady(config)`：`webSearchEnabled === true && searchApiKey.length > 0`。开关切换**不**触碰结果缓存。
 - `ai.ts` 的 `searchFetch(url, init)`：4 个搜索函数专用的 `fetch`——`isTauri()` 时动态 import `@tauri-apps/plugin-http` 的 `fetch`（Rust 发请求、无 CORS，Brave 桌面端靠它），否则全局 `fetch`（Capacitor 上已是原生）；插件加载失败回退全局 `fetch`。

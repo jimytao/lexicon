@@ -43,6 +43,7 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
 
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [streamingText, setStreamingText] = useState('')
   const [richMode, setRichMode] = useState(chatRichContextDefault)
   const abortRef = useRef<AbortController | null>(null)
   const contextRef = useRef(context)
@@ -63,7 +64,8 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
     if (!question || loading) return
 
     abortRef.current?.abort()
-    abortRef.current = new AbortController()
+    const controller = new AbortController()
+    abortRef.current = controller
     const requestContext = context
     const requestRouteQuery = routeQuery || requestContext
     const requestCognitive = cognitive
@@ -74,6 +76,7 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
     addMessage(wordKey, userMsg, requestCognitive)
     setInput('')
     setLoading(true)
+    setStreamingText('')
 
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -82,33 +85,41 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
     try {
       // Read latest messages at send time (includes the one just added above)
       const allMessages = useChatStore.getState().getMessages(wordKey, requestCognitive)
+      let metadata: Pick<ChatMessage, 'reasoningContent' | 'aiProvider' | 'aiModel'> = {}
       const reply = await askQuestion(
         requestContext,
         allMessages,
-        abortRef.current.signal,
+        controller.signal,
         richMode && enrichedContext ? enrichedContext : undefined,
         requestRouteQuery,
         requestLearningRoute,
         correctionContext,
+        value => { metadata = value },
+        text => { if (abortRef.current === controller) setStreamingText(prev => prev + text) },
       )
       if (
-        contextRef.current === requestContext
+        !controller.signal.aborted
+        && abortRef.current === controller
+        && contextRef.current === requestContext
         && (routeQueryRef.current || contextRef.current) === requestRouteQuery
         && cognitiveRef.current === requestCognitive
       ) {
-        const assistantMsg: ChatMessage = { role: 'assistant', content: reply }
+        const assistantMsg: ChatMessage = { role: 'assistant', content: reply, ...metadata }
         addMessage(wordKey, assistantMsg, requestCognitive)
         const updatedAll = useChatStore.getState().getMessages(wordKey, requestCognitive)
         void db.saveUserWordConversation(wordKey, JSON.stringify(updatedAll), requestCognitive)
         recordAiChatEvent(requestRouteQuery, question, reply, requestCognitive, requestLearningRoute, requestRouteQuery)
       }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if (controller.signal.aborted || abortRef.current !== controller || (e as Error).name === 'AbortError') return
       if (contextRef.current === requestContext && cognitiveRef.current === requestCognitive) {
         addMessage(wordKey, { role: 'assistant', content: `${t('chat.error')}${(e as Error).message}` }, requestCognitive)
       }
     } finally {
-      setLoading(false)
+      if (abortRef.current === controller) {
+        setLoading(false)
+        setStreamingText('')
+      }
     }
   }
 
@@ -145,7 +156,12 @@ export function AiChatBox({ context, routeQuery, learningRoute, cognitive, enric
               )}
             </div>
           ))}
-          {loading && (
+          {loading && streamingText && (
+            <div className="text-sm rounded-xl px-3 py-2 bg-background-soft text-foreground mr-8">
+              <ChatMarkdown content={streamingText} />
+            </div>
+          )}
+          {loading && !streamingText && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2 mr-8">
               <div className="flex items-center gap-1.5 text-xs text-gray-400">
                 <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">

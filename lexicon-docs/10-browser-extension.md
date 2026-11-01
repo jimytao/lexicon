@@ -170,10 +170,12 @@ async function searchFetch(url, init) {
 
 改为在 `isTauri()` 之前先判 `isExtension()`，走 `proxyFetch`。同一函数内加分支，**签名不变**，其余调用点（`braveTextSearch` / `tavilyTextSearch` / `braveImageSearch` / `tavilyImageSearch`）全部无改动。
 
-主 AI 调用（`fetch(config.endpoint + '/chat/completions')`，`ai.ts` 内多处）目前是**裸 `fetch`**。需抽出统一的 `aiFetch()` 再替换，扩展才能受益于 CORS 豁免。
+主 AI 调用已统一经过 `aiRequest.ts` → `aiTransport.ts` 的 `aiFetch()`；2026-11-01 起，模型列表和 `profile.ts` 后台诊断也共用这个出口。扩展经 `extensionProxy.ts` 走 SW，取消信号仍按既有 requestId 协议转发。
 
 **已确认：`ai.ts` 全程无 stream / SSE**（无 `getReader` / `text/event-stream`；`ai.ts:2148` 注释亦明确 "being non-streaming"）。所有 AI 响应都是整包 JSON
 → **message 通道足够，无需长连接分片**。此结论若因将来引入流式渲染而失效，本节需重写。
+
+> 2026-11-01 更新：追问（`askQuestion`）在 Web / App 端改为 SSE 流式（`streamChatCompletion`）。扩展**仍走 message 通道**：`isExtension()` 时不请求 `stream`，整包返回后一次性输出，所以本节结论对扩展依旧成立。若要让扩展也流式，需要改成 `chrome.runtime.connect` 长连接分片。
 
 ---
 

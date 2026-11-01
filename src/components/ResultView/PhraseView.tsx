@@ -10,6 +10,7 @@ import { MnemonicCard } from './AiSection/MnemonicCard'
 import { useResultStore } from '../../stores/resultStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useT } from '../../i18n'
+import { shouldShowAiPreview } from '../../utils/resultAiVisibility'
 import { useSearchStore, detectLanguage } from '../../stores/searchStore'
 import { PrepImageryCard } from './AiSection/PrepImageryCard'
 import { detectSpatialPreps } from '../../utils/prepDetect'
@@ -54,6 +55,9 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
   const isCoreMode = searchMode === 'core'
   const halfPending = useResultStore(state =>
     isCoreMode ? state.aiPendingHalves.core : state.aiPendingHalves.lookup)
+  const aiSkeleton = useResultStore(state => state.aiSkeleton)
+  const aiIsPartial = useResultStore(state => state.aiIsPartial)
+  const showPreview = shouldShowAiPreview({ status: aiStatus, pending: halfPending, isPartial: aiIsPartial, skeleton: aiSkeleton, correctForm: phraseResult?.correctForm })
   const activeModules = isCoreMode ? corePhraseModules : modules
   const phraseCognitive = phraseCognitiveFromSearchMode(searchMode)
   const hideTranslation = (queryType === 'phrase' && monolingualPhrase) || (queryType === 'sentence' && monolingualSentence)
@@ -295,6 +299,13 @@ export function PhraseView({ phrase, phraseResult, aiStatus, aiError, onRetry, o
           </button>
         )}
       </div>
+
+      {showPreview && phraseResult?.meaning && (isCoreMode || activeModules.some(module => module.id === 'dictionary' && module.enabled)) && (
+        <div className="mb-3">
+          <SectionHeading title={t('phrase.meaning')} />
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">{phraseResult.meaning}</p>
+        </div>
+      )}
 
       <AiStatusBar status={aiStatus} error={aiError} onRetry={onRetry} onGoToSettings={onGoToSettings} word={phrase} />
 

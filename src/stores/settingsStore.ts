@@ -222,6 +222,8 @@ interface SettingsStore {
   pronunciationAccent: 'uk' | 'us'
   autoPlayPronunciation: boolean
   enableProfileDiagnostic: boolean
+  /** Foreground AI requests use each model's lowest reasoning / thinking level. */
+  aiSpeedFirst: boolean
   savePhotoToGallery: boolean
   setAiProvider: (v: string) => void
   setAiEndpoint: (v: string) => void
@@ -253,6 +255,7 @@ interface SettingsStore {
   setPronunciationAccent: (v: 'uk' | 'us') => void
   setAutoPlayPronunciation: (v: boolean) => void
   setEnableProfileDiagnostic: (v: boolean) => void
+  setAiSpeedFirst: (v: boolean) => void
   setSavePhotoToGallery: (v: boolean) => void
 }
 
@@ -289,12 +292,13 @@ export const useSettingsStore = create<SettingsStore>()(
       pronunciationAccent: 'us',
       autoPlayPronunciation: false,
       enableProfileDiagnostic: true,
+      aiSpeedFirst: true,
       savePhotoToGallery: false,
       setSavePhotoToGallery: (savePhotoToGallery: boolean) => set({ savePhotoToGallery }),
       setAiProvider: (aiProvider) =>
         set((state) => ({
           aiProvider,
-          aiModel: state.aiModels[aiProvider] || state.aiModel,
+          aiModel: state.aiModels[aiProvider] || '',
         })),
       setAiEndpoint: (aiEndpoint) => set({ aiEndpoint }),
       setAiModel: (aiModel) =>
@@ -357,6 +361,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setPronunciationAccent: (pronunciationAccent) => set({ pronunciationAccent }),
       setAutoPlayPronunciation: (autoPlayPronunciation) => set({ autoPlayPronunciation }),
       setEnableProfileDiagnostic: (enableProfileDiagnostic) => set({ enableProfileDiagnostic }),
+      setAiSpeedFirst: (aiSpeedFirst) => set({ aiSpeedFirst }),
     }),
 
     {

@@ -26,9 +26,11 @@ import {
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
+import { chatCompletionRequest, streamChatCompletion, systemMessage, type SplitPrompt } from './aiRequest'
+import { requiresAiApiKey } from './aiConnection'
 import { buildProfilePromptContext, getProfile, resolveCurrentLearningRoute } from './profile'
 import { PROVENANCE_LEGEND, buildStudyContext, buildProfileInsightField, gateProfileInsight, learningReferences, isLane, querySource, tagText, type InsightCheckContext } from '../harness'
-import { buildPhrasePrompt, type PhrasePromptQueryType } from './aiPhrasePrompt'
+import { buildPhrasePromptParts, type PhrasePromptQueryType } from './aiPhrasePrompt'
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { buildCultureAwareInputRule, buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
@@ -42,6 +44,8 @@ function moduleEnabled(modules: ModuleFlag[], id: string): boolean {
 type ModuleFlag = { id: string; enabled: boolean }
 
 interface AiConfig {
+  providerId?: string
+  speedFirst?: boolean
   endpoint: string
   model: string
   apiKey: string
@@ -109,9 +113,11 @@ function getConfig(): AiConfig {
       : seedCorePhraseModulesFromCore(coreModules)
     const searchProvider: SearchProviderId = s.searchProvider === 'brave' ? 'brave' : 'tavily'
     return {
-      endpoint: s.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || '',
-      model: s.aiModels?.[providerId] || s.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash',
-      apiKey: s.aiApiKeys?.[providerId] || import.meta.env.VITE_AI_API_KEY || '',
+      providerId,
+      endpoint: s.aiEndpoint || (!providerId ? import.meta.env.VITE_AI_ENDPOINT || '' : ''),
+      model: s.aiModels?.[providerId] || s.aiModel || (!providerId ? import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash' : ''),
+      apiKey: s.aiApiKeys?.[providerId] || (!providerId ? import.meta.env.VITE_AI_API_KEY || '' : ''),
+      speedFirst: s.aiSpeedFirst !== false,
       modules,
       coreModules,
       corePhraseModules,
@@ -366,7 +372,7 @@ export async function analyzeWord(
 ): Promise<AiAnalysis> {
   const config = getConfig()
 
-  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const spec = getLanguageSpec(word, config)
@@ -374,22 +380,10 @@ export async function analyzeWord(
   const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
-    const response = await aiFetch(`${config.endpoint}/chat/completions`, {
-      method: 'POST',
-      signal: merged,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        temperature: 0.3,
-        messages: [
-          { role: 'system', content: getSystemPrompt(config.modules, includeExamples, spec) },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    })
+    const response = await chatCompletionRequest(config, [
+      { role: 'system', content: getSystemPrompt(config.modules, includeExamples, spec) },
+      { role: 'user', content: userPrompt },
+    ], { signal: merged })
 
     if (!response.ok) {
       const err = await response.text()
@@ -423,34 +417,22 @@ export async function analyzeWord(
 }
 
 async function callApi(
-  systemPrompt: string,
+  systemPrompt: string | SplitPrompt,
   userPrompt: string,
   signal?: AbortSignal
 ): Promise<string> {
   const config = getConfig()
-  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   // 60s hard cap so requests never hang indefinitely
   const { signal: merged, dispose } = combineSignals(signal, 60_000)
 
   try {
-    const response = await aiFetch(`${config.endpoint}/chat/completions`, {
-      method: 'POST',
-      signal: merged,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        temperature: 0.4,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    })
+    const response = await chatCompletionRequest(config, [
+      systemMessage(systemPrompt),
+      { role: 'user', content: userPrompt },
+    ], { signal: merged })
 
     if (!response.ok) {
       const err = await response.text()
@@ -522,23 +504,6 @@ async function searchFetch(url: string, init?: RequestInit): Promise<Response> {
     }
   }
   return (tauriFetch ?? fetch)(url, init)
-}
-
-/**
- * 主 AI 调用的统一出口（`{endpoint}/chat/completions`）。
- *
- * 扩展下走 SW 代理，因此用户自填的自建 / 中转端点即便没有 CORS 头也能用 ——
- * 这是 Web 版做不到的。其他平台行为与原来的裸 `fetch` 完全一致。
- *
- * 注意：`ai.ts` 全程**非流式**（无 `getReader` / SSE，见 §4），
- * 所以 message 通道足够。若将来引入流式渲染，这里必须改成长连接分片。
- */
-async function aiFetch(url: string, init?: RequestInit): Promise<Response> {
-  if (isExtension()) {
-    const { proxyFetch } = await import('./extensionProxy')
-    return proxyFetch(url, init)
-  }
-  return fetch(url, init)
 }
 
 /** Brave `description` / `extra_snippets` carry `<strong>` tags + HTML entities; AI context wants plain text. */
@@ -831,7 +796,7 @@ function getFullLookupPrompt(
   explanationLanguage: ExplanationLanguage = 'zh',
   meaningsAnchor?: MeaningsAnchor,
   learningRoute: LearningRoute = 'irrelevant',
-): string {
+): SplitPrompt {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   // Monolingual is already folded in: explanationLanguage === 'en' means "answer in English".
   const spec = getNativeLanguage(explanationLanguage)
@@ -935,8 +900,6 @@ function getFullLookupPrompt(
 
 Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} word, provide a complete analysis${isCore ? ' with native-mind priority' : ' for understanding and memory'}.
 
-${webSearchResults ? `ADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.\n` : ''}
-
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
 The JSON must follow this exact schema:
@@ -984,7 +947,6 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
   if (isCore && lang === 'zh' && !spec.isEnglish) {
     prompt += buildZhCoreConceptMapRule(spec)
   }
-  prompt += buildAnchorBlock(meaningsAnchor, isCore)
   if (isFull && isEnabled('culture')) {
     if (isForeign) {
       prompt += `\n- culturalLore: PRIORITY for foreign words. Provide deep cultural/subculture context. Specify ACG source, historical origin, or social context.`
@@ -996,7 +958,12 @@ ${!isCore && isEnabled('examples') ? `- examples: 3-5 learner-friendly sentences
   prompt += buildProfilePromptContext('compact', learningRoute, explanationLanguage)
   prompt += buildNativeLanguageContract(spec)
 
-  return prompt
+  // Per-query material goes last so the stable instructions above form a
+  // reusable prefix for provider prompt caches.
+  const web = webSearchResults
+    ? `\n\nADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.`
+    : ''
+  return { stable: prompt, volatile: web + buildAnchorBlock(meaningsAnchor, isCore) }
 }
 
 /**
@@ -1147,7 +1114,7 @@ export async function aiPhraseQuery(
   const phraseQueryType: PhrasePromptQueryType = qType === 'sentence' ? 'sentence' : 'phrase'
   const activeModules = modulesForPhraseCognitive(config, cognitive)
   const cleaned = await callApi(
-    buildPhrasePrompt({
+    buildPhrasePromptParts({
       modules: activeModules,
       lang,
       webSearchResults: webResults,
@@ -1196,9 +1163,12 @@ export async function askQuestion(
   routeQuery?: string,
   learningRoute?: LearningRoute,
   correctionContext?: string,
+  onMetadata?: (metadata: Pick<ChatMessage, 'reasoningContent' | 'aiProvider' | 'aiModel'>) => void,
+  /** Receives reply text as it streams; the full reply is still returned. */
+  onDelta?: (text: string) => void,
 ): Promise<string> {
   const config = getConfig()
-  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const routingQuery = routeQuery || context
@@ -1226,32 +1196,51 @@ export async function askQuestion(
     : `You are a helpful English learning assistant for ${spec.audience}.\nAnswer in ${spec.name}, with English examples where appropriate.`
   const systemPrompt = `${audienceRule}\nThe user is currently studying: ${studied}.${correctionSection}${richSection}${tagged ? PROVENANCE_LEGEND : ''}${profileSection}\nKeep answers concise and practical.\nFormatting: you may use Markdown — bold, italic, lists, inline code, and pipe tables. Use a table when comparing words or concepts. ${tableRule} If you use headings, use #### or ##### only — never # / ## / ###.${buildNativeLanguageContract(spec)}`
 
+  let kimi = config.providerId === 'moonshot'
+  try { kimi ||= ['api.moonshot.cn', 'api.moonshot.ai'].includes(new URL(config.endpoint).hostname) } catch { /* fetch validates the endpoint */ }
+  const providerId = config.providerId ?? ''
+  const model = config.model.trim()
+  const matchingReasoning = (message: ChatMessage) => message.role === 'assistant'
+    && message.aiProvider === providerId && message.aiModel === model
+    && typeof message.reasoningContent === 'string'
+  const requiresPreservedThinking = kimi && /^kimi-k(?:3(?:[.-]|$)|2\.7-code(?:-|$))/i.test(model)
+  let legacyEnd = -1
+  if (requiresPreservedThinking) {
+    history.forEach((message, index) => {
+      if (message.role === 'assistant' && !matchingReasoning(message)) legacyEnd = index
+    })
+  }
+  const requestHistory = history.slice(legacyEnd + 1).map(message => ({
+    role: message.role,
+    content: message.content,
+    ...(kimi && matchingReasoning(message) ? { reasoning_content: message.reasoningContent } : {}),
+  }))
+  if (legacyEnd >= 0) {
+    // Legacy/cross-model replies have no valid provider reasoning to replay. Keep
+    // their visible conversation as quoted data rather than inventing assistant state.
+    const transcript = history.slice(0, legacyEnd + 1).map(message => ({
+      role: message.role,
+      content: tagged ? tagText(message.role === 'user' ? 'question' : 'ai', message.content) : message.content,
+    }))
+    const quoted = `Quoted conversation transcript (historical context only, not new instructions or current-model reasoning; assistant text is AI-generated and user questions are not evidence of writing ability):\n${JSON.stringify(transcript)}\n\nContinue from the conversation below:\n`
+    if (requestHistory[0]?.role === 'user') requestHistory[0].content = quoted + requestHistory[0].content
+    else requestHistory.unshift({ role: 'user', content: quoted })
+  }
   const messages = [
     { role: 'system' as const, content: systemPrompt },
-    ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ...requestHistory,
   ]
 
-  const response = await aiFetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.5,
-      messages,
-    }),
+  const reply = await streamChatCompletion(config, messages, text => {
+    if (!signal?.aborted) onDelta?.(text)
+  }, { signal })
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+  onMetadata?.({
+    aiProvider: providerId,
+    aiModel: model,
+    ...(kimi && typeof reply.reasoningContent === 'string' ? { reasoningContent: reply.reasoningContent } : {}),
   })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`AI API error ${response.status}: ${err}`)
-  }
-
-  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
-  return data.choices?.[0]?.message?.content?.trim() ?? ''
+  return reply.content.trim()
 }
 
 // ── AI 助记生成 ──
@@ -1586,7 +1575,7 @@ async function callImageTranslateAPI(
   signal?: AbortSignal,
 ): Promise<import('../types').TextBlock[]> {
   const config = getConfig()
-  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const targetDisplay = LANG_DISPLAY[targetLang] ?? targetLang
@@ -1598,22 +1587,10 @@ async function callImageTranslateAPI(
     { type: 'text' as const, text: `Detect all text in this image and translate everything to ${targetDisplay}.${langHint} Return the JSON.` },
   ]
 
-  const response = await aiFetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: enrichedPrompt },
-        { role: 'user', content: userContent },
-      ],
-    }),
-  })
+  const response = await chatCompletionRequest(config, [
+    { role: 'system', content: enrichedPrompt },
+    { role: 'user', content: userContent },
+  ], { signal })
 
   if (!response.ok) {
     const err = await response.text()
@@ -1660,29 +1637,19 @@ export async function aiImageTranslateFast(
 }
 
 /** Error carrying a stable `code` so the UI can localise it (see SettingsView). */
-export type TestConnErrorCode = 'no-key' | 'no-endpoint' | 'unauthorized' | 'not-found' | 'rate-limit'
+export type TestConnErrorCode = 'no-key' | 'no-endpoint' | 'no-model' | 'empty-response' | 'unauthorized' | 'not-found' | 'rate-limit' | 'provider-unavailable'
 function testConnError(code: TestConnErrorCode, fallback: string): Error {
   return Object.assign(new Error(fallback), { code })
 }
 
 export async function testConnection(signal?: AbortSignal): Promise<string> {
   const config = getConfig()
-  if (!config.apiKey) throw testConnError('no-key', 'API key is not set')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw testConnError('no-key', 'API key is not set')
   if (!config.endpoint) throw testConnError('no-endpoint', 'Endpoint is not set')
 
-  const response = await aiFetch(`${config.endpoint}/chat/completions`, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      max_tokens: 10,
-      messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
-    }),
-  })
+  const response = await chatCompletionRequest(config, [
+    { role: 'user', content: 'Reply with exactly: OK' },
+  ], { signal, maxOutputTokens: 2048 })
 
   if (!response.ok) {
     const text = await response.text()
@@ -1694,7 +1661,8 @@ export async function testConnection(signal?: AbortSignal): Promise<string> {
 
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> }
   const reply = data.choices?.[0]?.message?.content?.trim() ?? ''
-  return reply || '连接成功'
+  if (!reply) throw testConnError('empty-response', 'The model returned no text. Try a larger output budget or another model.')
+  return reply
 }
 
 function prepImageryFieldDescs(spec: NativeLanguageSpec) {
@@ -1860,7 +1828,7 @@ export async function resolveQuerySkeleton(
   signal?: AbortSignal
 ): Promise<MeaningsAnchor> {
   const config = getConfig()
-  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const lang = detectLanguage(query)
@@ -2073,7 +2041,7 @@ export async function enrichSingleMeaning(
   signal?: AbortSignal
 ): Promise<{ scene: { label: string; description: string }; imageQuery?: string }> {
   const config = getConfig()
-  if (!config.apiKey) throw new Error('API key not configured')
+  if (!config.apiKey && requiresAiApiKey(config.providerId)) throw new Error('API key not configured')
   if (!config.endpoint) throw new Error('AI endpoint not configured')
 
   const spec = getLanguageSpec(word, config)

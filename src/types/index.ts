@@ -288,6 +288,10 @@ export interface CombinedPhraseResult {
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  /** Provider metadata for resuming thinking models; never displayed as an answer or learner evidence. */
+  reasoningContent?: string
+  aiProvider?: string
+  aiModel?: string
 }
 
 // ── 图片翻译 ──

@@ -47,7 +47,7 @@ describe('compact profile context is injected into the everyday AI prompts', () 
   })
 
   it('AI follow-up (askQuestion) injects the compact learner context', () => {
-    const fn = aiSrc.slice(aiSrc.indexOf('export async function askQuestion'), aiSrc.indexOf('export async function askQuestion') + 2000)
+    const fn = aiSrc.slice(aiSrc.indexOf('export async function askQuestion'), aiSrc.indexOf('export async function askQuestion') + 2500)
     expect(fn).toMatch(/buildProfilePromptContext\(\s*['"]compact['"]\s*,/)
   })
 

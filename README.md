@@ -158,7 +158,7 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 
 ## ⚙️ 配置 API Key 与服务指南 (AI Setup)
 
-为了解锁 AI 深度解析能力，您只需在设置中配置喜欢的 AI 密钥。Lexicon 原生支持 OpenAI 兼容协议与 Google Gemini 官方协议。
+为了解锁 AI 深度解析能力，您只需在设置中配置喜欢的 AI 密钥。Lexicon 使用 OpenAI 兼容协议连接各家模型（包括 Google Gemini、Anthropic Claude），并适配新模型的令牌参数与默认采样设置。
 
 > **💡 模型选择建议**：大模型更新迅速，在查词分析与语言学习场景下，**强烈建议优先选择各大平台主打「轻量极速、成本低廉」的小模型系列**（如 `gemini-3.1-flash-lite-preview` / `Flash` / `Flash Lite` / `Mini` / `Haiku` / `Small` 等）。
 
@@ -166,7 +166,7 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 |---|---|---|
 | **Google Gemini** | [Google AI Studio](https://aistudio.google.com/app/apikey) | `Flash` / `Flash Lite` 系列（极速免费/低成本） |
 | **DeepSeek** | [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) | `DeepSeek Chat` 轻量高速模型 |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` 等轻量系列 |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-6-luna` 等轻量系列，以账号模型列表为准 |
 | **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | 聚合全球模型，选择带 `Flash` / `Mini` 标识的模型 |
 | **SiliconFlow (硅基流动)** | [硅基流动 Cloud](https://cloud.siliconflow.cn/account/ak) | 选择 `DeepSeek` / `Qwen` 托管的轻量高速模型 |
 | **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Claude Haiku` 轻量系列 |
@@ -178,8 +178,14 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 1. 从上表申请复制您的 API Key。
 2. 打开 Lexicon，点击底栏最右侧 **Settings**。
 3. 在 **「AI 服务商与模型」** 栏选择厂商并粘贴 API Key。
-4. 点击 **「获取模型 (Fetch Models)」** 下拉选择模型（推荐 Flash / Mini）。
+4. 点击 **「获取模型 (Fetch Models)」** 获取服务商当前模型并选择；Anthropic 会读取完整分页列表。没有模型查询接口的服务使用注明来源的目录，也可手动填写模型 ID。切换服务商后，各自保存的模型独立恢复。
 5. 点击 **「测试连接」** 校验成功后即可开始使用！
+
+模型目录只展示适合文本对话的候选，不代表账号权限或剩余额度。智谱使用带来源与核对日期的官方目录；零一万物官方 API 已停服。Perplexity 使用现行 Agent API，旧 Sonar 配置需重新获取并选择模型。
+
+**响应速度**：设置中的「速度优先」（默认开）会让查词、翻译与追问使用各家模型支持的最低思考档位（关闭思考或最低 effort），服务商拒绝某档时自动退一档；设置页会显示当前模型的实际策略。Claude 走原生接口并开启 prompt 缓存，追问回答流式显示。后台学习画像归纳保留模型默认推理。词库外单词与词组 / 句子的短释义预览可先于完整分析显示；实际速度仍受模型、网络、联网搜索及生成内容量影响。
+
+**未内置的平台 / 本地模型**：选择「自定义」，填写 OpenAI 兼容 API 基础地址，例如 `http://localhost:11434/v1`（Ollama）或 `http://localhost:1234/v1`（LM Studio）。无需鉴权的服务可以留空 Key；点击「获取模型」查询该服务的 `/models`，支持常见列表格式和分页。若服务不提供此接口，请从其官方文档复制模型 ID 手填；未知服务无法仅凭 Key 自动判断协议或地址。
 
 ---
 

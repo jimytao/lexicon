@@ -17,19 +17,88 @@
 - 释义和例句在词库有结果时始终来自本地词库（L1），AI 不替换它们
 - 输出格式固定为 JSON，system prompt 严格约束，前端直接 parse
 - 所有主动 AI 查词入口共用**条件式文化表达识别闸门**：先判断输入是否有足够证据属于俚语、网络梗、文字游戏、谐音/故意错写或地域用法；仅命中时恢复源语言社群含义并给自然目标语对应，否则普通词义/翻译流程完全不变。此规则只改变输入解释，不得覆盖 JSON schema、字段职责或原有模块内容。
-- 模型推荐：Gemini 2.0 Flash（快、便宜、质量足够）
+- 模型选择：从服务商实时模型列表选适合查词的轻量模型，避免将历史模型 ID 当作当前可用保证。
 - 练习按需生成（用户点击"生成练习"触发），评分每题独立调用
 
 ## API 调用配置
 
 支持任何 OpenAI-compatible endpoint，包括：
 
+2026-11-01：`aiRequest.ts` 统一所有生成入口（含 `profile.ts` 画像诊断）的请求体。OpenAI、Groq、Kimi 用 `max_completion_tokens`；其他 Chat 兼容服务保留 `max_tokens`，Perplexity Agent 使用 `max_output_tokens`。未知自定义服务按模型名给初始字段，明确的参数拒绝可触发一次兼容重试；本地别名不套 GPT 名称推断。连接测试上限 2048（含推理），画像诊断仍为 8192；普通分析通常不设上限；Anthropic 原生 Messages 按必填要求缺省 16000，Perplexity 的 Anthropic 后端缺省 8192。所有入口省略 `temperature` / `top_p` / `top_k`；思考 / 推理参数只由下文「速度优先」梯子发送，不发送 Gemini `thinking_budget`。现有 Gemini OpenAI 兼容路径继续使用，不迁移 Interactions。
+
+`aiProviders.ts` 管理设置页 provider 与模型发现；Anthropic 原生模型列表需版本头和密钥头、按游标完整分页；生成（含画像诊断）全部走原生 Messages（`aiAnthropic.ts`），因官方兼容层忽略 `reasoning_effort`、不支持 prompt 缓存。支持查询的服务商实时请求模型，失败明确展示错误；不支持发现的服务商显示带官方来源的目录。`aiTransport.ts` 为查询、模型发现和后台诊断共用传输，扩展走 SW 代理，其余平台保持现有 fetch。各 provider 的模型和 key 独立保存；切换到尚未配置的 provider 时须选择模型，禁止继承上一家的模型或构建环境密钥。
+
+参数依据：[OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)、[Claude OpenAI compatibility](https://platform.claude.com/docs/en/cli-sdks-libraries/libraries/openai-sdk)、[Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai)、[Gemini 参数弃用说明](https://ai.google.dev/gemini-api/docs/troubleshooting)。
+
 | 提供商 | endpoint | 推荐模型 |
 |--------|----------|----------|
-| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.0-flash` |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | 当前可用 Flash / Flash Lite |
 | Anthropic | `https://api.anthropic.com/v1` | `claude-haiku-4-5-20251001` |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
-| 本地 Ollama | `http://localhost:11434/v1` | `qwen2.5:7b` |
+| OpenAI | `https://api.openai.com/v1` | `gpt-6-luna`（以账号列表为准） |
+| 本地 Ollama | `http://localhost:11434/v1` | 本机已安装模型（自定义 Key 可留空） |
+
+### 2026-11-01 全 Provider 复核
+
+模型列表的「完整」以服务商公布的接口及账号返回为边界；本轮核对官方 API 契约并用模拟请求回归，未用用户密钥逐一做付费推理。列表不是配额、权限或图片能力的保证。
+
+| Provider | 模型发现 / 调用结论 | 官方依据 |
+|---|---|---|
+| OpenAI | `/models` 全列表；过滤明确非对话用途家族；Chat 的限长字段为 `max_completion_tokens` | [Models](https://developers.openai.com/api/reference/resources/models/methods/list) |
+| Gemini | 原生 `/v1beta/models` 全分页，保留 `generateContent`；生成沿用兼容接口、使用模型默认思考 | [Models](https://ai.google.dev/api/models) |
+| Anthropic | 原生 `/models`、`has_more` + `after_id` 全分页；生成使用原生 Messages | [Models](https://platform.claude.com/docs/en/api/models/list) |
+| DeepSeek | 标准 `/models`，无已公布分页；Chat 保留 `max_tokens` | [Models](https://api-docs.deepseek.com/api/list-models/) |
+| Mistral | `/models` 同时接受数组与 `data` 包装；排除 archived / 不支持 completion_chat 的条目 | [Models](https://docs.mistral.ai/api/endpoint/models) |
+| Groq | 标准 `/models`，排除 inactive / Whisper / TTS；限长改为 `max_completion_tokens` | [API](https://console.groq.com/docs/api-reference) |
+| Together | 官方默认基地址改为 `https://api.together.ai/v1`；接受数组与包装列表 | [Compatibility](https://docs.together.ai/docs/inference/openai-compatibility) |
+| OpenRouter | 默认完整 `/models`；按输出模态 / endpoints 排除非对话与 batch-only，保留未知模型 | [Models](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties) |
+| xAI | 官方 `/language-models`、`models[]`，包含文本模型与别名；兼容 Chat 仍受支持但已是 legacy | [Models](https://docs.x.ai/developers/rest-api-reference/inference/models) |
+| Moonshot / Kimi | 标准 `/models`；限长改为 `max_completion_tokens`；新模型多轮需真实 reasoning 历史 | [Models](https://platform.kimi.com/docs/api/list-models)、[Thinking](https://platform.kimi.ai/docs/guide/use-thinking-models) |
+| SiliconFlow | `/models?sub_type=chat`；保留 `max_tokens`，不猜测图片 / thinking 能力 | [Models](https://api-docs.siliconflow.cn/docs/api/models-get) |
+| 智谱 GLM | 未找到官方 Models 列表契约；使用 26 项官方文本 / 视觉 Chat 目录，带来源与核对日期，允许手填 | [Chat](https://docs.bigmodel.cn/api-reference/模型-api/对话补全)、[Model overview](https://docs.bigmodel.cn/cn/guide/start/model-overview) |
+| 零一万物 Yi | 官方平台公告 2026-09-03 停止公众 API；禁用内置入口与官方端点调用，旧配置仍保留 | [停服公告](https://platform.lingyiwanwu.com/) |
+| Perplexity | 旧 Sonar 已 legacy；改用 `/v1/models` 实时 Agent 目录与 `/v1/agent` 调用；旧 ID 需重新选择 | [Compatibility](https://docs.perplexity.ai/docs/agent-api/openai-compatibility)、[Schema](https://docs.perplexity.ai/openapi.json) |
+| Custom | OpenAI 兼容 `/models`；支持数组 / data / models、同源 next 链接或游标；本地服务可无 Key；无接口时明确手填 | [Ollama](https://docs.ollama.com/api/openai-compatibility)、[LM Studio](https://lmstudio.ai/docs/developer/openai-compat/models) |
+
+`aiConnection.ts` 规范化基础地址并按已知官方 host 识别协议；未知自定义 ID 不套内置模型名称过滤。通用发现不能保证所有私有协议；分页错误或后续页失败拒绝整份结果，不把首页当完整列表。自定义限长字段仅在明确 HTTP 400 且同时提到两种字段时重试一次，不重试鉴权 / 配额 / 网络失败。
+
+`aiPerplexity.ts` 把现行 Agent 请求（必填 `type: message`，图片 `input_image`）及 typed output 归一化到既有消费者的 `choices` 结构。`anthropic/*` 未传输出上限时用 8192；显式上限优先。工具为空且 `tool_choice: none`，不额外引入 provider 端搜索 / 工具，仍由 App 的联网设置控制外部检索。拒绝、失败、空文本不伪装成功，截断保留 length 信号。旧 Sonar ID 明确报需刷新模型，不自动映射到不同费用的模型。
+
+Kimi：`ChatMessage` 可选保存 `reasoningContent / aiProvider / aiModel`，仅同 Moonshot provider + model 回传 `reasoning_content` 原文；不在页面显示或进入 learner evidence。K3 / K2.7-code 历史缺少匹配 reasoning 时，将不兼容前缀作为标明来源的 quoted transcript 传入，不伪造思考。`askQuestion` 仍返回字符串，新增可选 metadata 回调给 UI 持久化。
+
+### 前台速度优先策略与等待点（2026-11-01）
+
+官方默认值并不相等：GPT-6 Luna 默认 medium reasoning，Gemini 3.1 Flash-Lite 默认 minimal，Haiku 4.5 默认不启用扩展思考，而 Haiku 5.5 默认 adaptive thinking + medium effort。这是参数事实，不能代替同一查询的真实测速。[Luna](https://developers.openai.com/api/docs/models/gpt-6-luna)、[Gemini](https://ai.google.dev/gemini-api/docs/gemini-3)、[Haiku](https://platform.claude.com/docs/en/models/haiku-5-5/overview)。
+
+**速度优先梯子（`aiSpeed.ts`）**：设置 `aiSpeedFirst`（默认开）时，所有前台请求（查词、翻译、追问、测试连接）按 provider + 型号取一组「最低思考档位」补丁依次尝试；`purpose: 'diagnostic'`（Profile 归纳）或开关关闭时不发送任何覆盖。服务端以 400 / 422 且错误正文点名该补丁字段时退一档，成功或退档结果按 `host|model` 记入 `localStorage`（`lexicon.aiSpeedStep.v1`），下次直接从可用档位开始；梯子走完即不发覆盖。无关的 400（如图片错误）、鉴权、配额、5xx 不退档。设置页用同一 `describeSpeedPolicy()` 显示：已降档 / 默认不思考 / 无已核实参数。
+
+各家档位（2026-11-01 由子代理逐家核对官方文档；文档未写明处以退档兜底）：
+
+| Provider | 补丁（依次） | 依据要点 |
+|---|---|---|
+| OpenAI | `reasoning_effort` none → minimal → low；gpt-6-astra / gpt-6.1-sol 直接 low；gpt-3/4、chatgpt-* 不发 | 不支持的值返回 400 |
+| Gemini（兼容层） | 2.5 Flash 系 `none`；Pro / 3.8 Flash / Gemini 4 `low`；其余（3 / 3.6 Flash、Flash-Lite）`minimal` | 兼容层**静默忽略**不支持的值，无法靠退档，只能按型号直给 |
+| Anthropic（原生） | Haiku 5.5 / Opus 5 / Sonnet 5 / 未知新族：`thinking: disabled` + `effort: low`；Sonnet 5.5：`thinking: between_tools` + low（`disabled` 会 400）；Opus 5.5 / Fable / Mythos：仅 `effort: low`（不可关思考）；Claude 3 / 4.x：默认不思考，不发 | 兼容层忽略 `reasoning_effort` |
+| OpenRouter | `reasoning.effort` none → minimal → low | 强制推理模型拒绝 none |
+| Groq | `reasoning_effort` none → low | qwen3 支持 none，gpt-oss 最低 low；越界 400 |
+| xAI | `reasoning_effort` none → low | grok-4.3 可 none；4.5+ 不可关（默认 high） |
+| DeepSeek | `thinking: disabled` → `reasoning_effort: low` | 默认思考开、high |
+| Kimi | K3 / K3.1：`reasoning_effort: low`（不可关，默认 max）；k2.7-code：不发；其余 `thinking: disabled` | K3 仍思考，追问 reasoning 回放逻辑不变 |
+| 智谱 GLM | GLM-5.3：`reasoning_effort: low`；glm-4-flash*：不发；其余 `thinking: disabled` → low | |
+| SiliconFlow | `enable_thinking: false` | |
+| Together | `reasoning: {enabled: false}` → `reasoning_effort: low` | |
+| Mistral | `reasoning_effort` none → minimal → low | 各型号支持子集不同 |
+| Perplexity Agent | `reasoning.effort` minimal → low | |
+| Custom | 本机端点 `reasoning_effort: none`（Ollama 文档：不支持时静默回落）；远程中转按型号名族（gpt-5+/o 系、gemini、qwen3、kimi、glm、deepseek、gpt-oss）套上表 | |
+
+**Anthropic 原生与缓存**：`api.anthropic.com` 上所有型号（含诊断）走 `requestAnthropicMessages`，响应归一化回 `choices`，不展示思考块，`stop_reason: max_tokens` 映射 length。system 第一块打 `cache_control: ephemeral`（最低可缓存前缀 Haiku 5.5 / Sonnet 5.5 等 512 token，Haiku 4.5 为 4096，不足时静默不缓存）。
+
+**Prompt 前缀稳定**：`getFullLookupPrompt` 与 `buildPhrasePromptParts` 返回 `{ stable, volatile }`：网页检索结果与 RESOLVED TARGET 锚点放在 `volatile`（system 末尾），固定 schema / 规则 / 画像段落在前。`callApi` 经 `systemMessage()` 组成两段 text；兼容服务端拼回字符串（OpenAI 自动前缀缓存 ≥1024 token 受益），Anthropic 只缓存 stable 段。`buildPhrasePrompt` 仍返回拼接字符串供测试与旧调用。
+
+**追问流式**：`askQuestion` 经 `streamChatCompletion` 以 SSE 读取（`aiStream.ts`：OpenAI 兼容 `delta.content` / Kimi `reasoning_content`，Anthropic `content_block_delta`），`AiChatBox` 逐段渲染，完成后仍以完整回复入库。扩展的 SW 代理与 Perplexity Agent 不支持流，自动退回一次性回复；中转忽略 `stream` 返回普通 JSON 时也兼容。
+
+本轮性能排查确认：普通 combined 路径早已将 Lookup / Core 拆为两半并行，每半独立提交，旧 `aiCombinedLookup` mega-JSON 已弃用。缓存外英文单词 / 词组 / 句子另有非阻塞短预览；中文 word 反查的意义锚点仍串行以统一候选。启用的网页检索仍在两半生成之前等待。查词两半仍须完整 JSON 返回后才提交（只有追问是流式）；输出量会影响完成时间，不能把连接测试的一词 OK 当作真实查词 benchmark。Profile 归纳网络调用不在前台 await 链上；Harness 是本地来源与结构验收，不应作为删减目标。
+
+预览展示修复：App 继续把 pending 半结果标记为 loading，三个结果视图通过 `shouldShowAiPreview` 只读展示已规范化的词义 / 译文；后台 pending、缓存、完整模块与交互、来源门禁均按原协议。旧 generation / 旧词 / Instant 不得提交预览。此改动缩短首次可读内容的等待，不改变完整响应的模型生成耗时，也不等于实现流式输出。
 
 ## System Prompt
 

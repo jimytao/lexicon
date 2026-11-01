@@ -160,7 +160,7 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 
 ## ⚙️ API Key & AI Configuration Guide
 
-To activate AI enhancements, configure an API Key for your preferred provider. Lexicon natively supports standard OpenAI-compatible endpoints as well as the official Google Gemini protocol.
+To activate AI enhancements, configure an API Key for your preferred provider. Lexicon uses OpenAI-compatible endpoints (including Google Gemini and Anthropic Claude), with current token parameters and provider-default sampling settings.
 
 > **💡 Model Selection Advice**: For dictionary lookups and language learning workflows, **we strongly recommend selecting lightweight, high-speed model series** (such as `gemini-3.1-flash-lite-preview`, `Flash`, `Flash Lite`, `Mini`, `Haiku`, `Small`, etc.).
 
@@ -168,7 +168,7 @@ To activate AI enhancements, configure an API Key for your preferred provider. L
 |---|---|---|
 | **Google Gemini** | [Google AI Studio](https://aistudio.google.com/app/apikey) | `Flash` / `Flash Lite` series (ultra fast & low cost) |
 | **DeepSeek** | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | `DeepSeek Chat` fast lightweight model |
-| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | `gpt-4o-mini` lightweight series |
+| **OpenAI (ChatGPT)** | [OpenAI API Platform](https://platform.openai.com/api-keys) | Lightweight models such as `gpt-6-luna`, subject to your account's model list |
 | **OpenRouter** | [OpenRouter Keys](https://openrouter.ai/keys) | Global aggregator; pick models tagged with `Flash` or `Mini` |
 | **SiliconFlow** | [SiliconFlow Cloud](https://cloud.siliconflow.cn/account/ak) | Free & low-cost hosted endpoints for `DeepSeek` / `Qwen` |
 | **Anthropic (Claude)** | [Anthropic Console](https://console.anthropic.com/settings/keys) | `Claude Haiku` lightweight series |
@@ -180,8 +180,14 @@ To activate AI enhancements, configure an API Key for your preferred provider. L
 1. Obtain an API Key from any provider portal above.
 2. Launch Lexicon and click **Settings** on the bottom navigation bar.
 3. Expand **"AI Provider & Model"**, select your provider, and paste your API Key.
-4. Click **"Fetch Models"** and pick a lightweight model (e.g., Flash or Mini).
+4. Click **"Fetch Models"** to load the provider's current list, including all Anthropic pages. Services without model discovery use a catalog with its source shown; you can also enter a model ID manually. Each provider restores its own saved model when you switch.
 5. Click **"Test Connection"** to verify and start searching!
+
+Model lists contain text-chat candidates and do not guarantee account access or quota. GLM uses an official documentation catalog with a source and check date; Yi's public API has been discontinued. Perplexity now uses the Agent API; legacy Sonar configurations require a new model selection.
+
+**Response speed**: "Speed first" in Settings (on by default) runs lookup, translation and chat at the lowest reasoning level each model supports (thinking off or the lowest effort); if a provider rejects a level, the next one is tried automatically. Settings shows the active policy for the current model. Claude uses the native API with prompt caching, and chat replies stream as they are generated. Background profile diagnostics retain the model default. Short meaning or translation previews can appear before full analysis for out-of-dictionary words and phrases/sentences. Actual latency still depends on the model, network, web retrieval, and output size.
+
+**Other providers and local servers**: Select **Custom** and enter the OpenAI-compatible API base URL, such as `http://localhost:11434/v1` for Ollama or `http://localhost:1234/v1` for LM Studio. Leave the key empty if authentication is disabled. **Fetch Models** queries that server's `/models`, accepting common list formats and pagination. If discovery is unavailable, enter an ID from the provider's documentation. An API key alone cannot identify an unknown service's protocol or base URL.
 
 ---
 

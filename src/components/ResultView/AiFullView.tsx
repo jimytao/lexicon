@@ -21,7 +21,7 @@ import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 import { ProfileInsightChip } from './ProfileInsightChip'
 import { cognitiveFromSearchMode } from '../../utils/text'
 import { detectSpatialPreps } from '../../utils/prepDetect'
-import { shouldShowPrepImageryModule } from '../../utils/resultAiVisibility'
+import { shouldShowAiPreview, shouldShowPrepImageryModule } from '../../utils/resultAiVisibility'
 import { useSearchStore } from '../../stores/searchStore'
 import { useAiLookup } from '../../hooks/useAiLookup'
 
@@ -47,6 +47,9 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
   // the input language — the prompt side stopped gating it too.
   const shouldHideTranslation = monolingualWord
   const lookupPending = useResultStore(state => state.aiPendingHalves.lookup)
+  const aiSkeleton = useResultStore(state => state.aiSkeleton)
+  const aiIsPartial = useResultStore(state => state.aiIsPartial)
+  const showPreview = shouldShowAiPreview({ status: aiStatus, pending: lookupPending, isPartial: aiIsPartial, skeleton: aiSkeleton, correctForm: aiFullResult?.correctForm })
 
   return (
     <div className="px-3 py-3 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
@@ -70,9 +73,19 @@ export function AiFullView({ word, aiFullResult, aiStatus, aiError, onRetry, onW
         </div>
       )}
 
-      {aiStatus !== 'success' && (
+      {aiStatus !== 'success' && !showPreview && (
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] max-w-full">{word}</h1>
+        </div>
+      )}
+
+      {showPreview && aiFullResult && (
+        <div className="mb-3 space-y-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground break-words">{aiFullResult.correctForm || word}</h1>
+          <p className="text-sm text-foreground-muted">{[aiFullResult.phonetic, aiFullResult.pos].filter(Boolean).join(' · ')}</p>
+          {modules.some(module => module.id === 'dictionary' && module.enabled) && (
+            <MeaningList meanings={aiFullResult.meanings ?? []} enableSceneGenerate={false} />
+          )}
         </div>
       )}
 

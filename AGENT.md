@@ -176,6 +176,10 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 
 ### AI 调用
 
+- 速度优先（2026-11-01）：`aiSpeed.ts` 为每家 provider / 型号给出「最低思考档位」梯子（设置 `aiSpeedFirst`，默认开），前台请求从最低档试起，服务端明确拒绝该字段才退一档并按 host+model 记住；Gemini 兼容层静默忽略不支持值，只能按型号直给。`api.anthropic.com` 全部型号走 `aiAnthropic.ts` 原生 Messages（按型号关思考 / low effort，system 首块 prompt 缓存）。查词 prompt 拆 `{ stable, volatile }`，网页结果与锚点置尾以复用缓存前缀。追问经 `streamChatCompletion` 流式渲染（扩展 / Perplexity 退回一次性）。Profile 请求显式 `purpose: diagnostic` 不发速度覆盖。loading 半结果可只读展示当前 skeleton 的词义 / 译文预览，完整模块与交互仍等真实结果，不能提前结束 pending 或旁路 Harness。详见 `04-ai-schema.md`。
+
+- Provider 兼容策略（2026-11-01）：`aiRequest.ts` 统一生成请求（含画像诊断），OpenAI / Groq / Kimi 用 `max_completion_tokens`，其他 Chat 服务保留 `max_tokens`；Perplexity 经 `aiPerplexity.ts` 使用 Agent API 并归一化响应。省略自定义采样；思考参数只由速度优先梯子发送。Kimi 追问保存并回放同 provider/model 的真实 reasoning，旧不兼容历史转为标明来源的上下文，不作为学习者证据。`aiProviders.ts` 实时发现（Anthropic / Google 原生分页、xAI 语言模型目录）；GLM 仅有带日期官方目录，Yi 官方已停服。Custom 支持无 Key 本地服务、常见列表形状与同源分页；失败禁止静默回退目录。切换 provider 只恢复自己的模型，禁止借用其他环境密钥。`aiConnection.ts` 负责端点规范化与已知 host 识别；`aiTransport.ts` 共用于生成、模型发现、后台诊断，扩展经 SW 代理。
+
 - Instant：本地 L1 释义 / 例句；AI **不替换** L1
 - AI Lookup：增量偏理解记忆（情景、词根、助记、轻量 coreConcept）；默认不拉搭配/近义墙
 - Pure Core：按 `coreModules` 拉心智/概念树/介词语组/其他词组/用法场景/语域；**不拉释义墙**。本地词典义项是 `coreModules` 里的 `dictMeanings` 模组（可排序 / 关闭，非 AI，不进 prompt；勿与旧 `dictionary` id 混用）

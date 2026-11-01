@@ -6,6 +6,8 @@
 > **更新日期**：2026-10-30（文档核对；代码验收为 2026-10-29）
 > **适用版本**：v0.9.25+
 
+2026-11-01 Provider 协议补充：Kimi 追问的 assistant `ChatMessage` 可保存 `reasoningContent / aiProvider / aiModel`，只用于同 provider/model 的协议回放；不展示为学习者文本、不作为诊断证据。旧历史缺少推理元数据时以标明来源的 quoted transcript 保留可见内容，不生成虚构 reasoning。Profile 诊断通过共享 `aiRequest.ts` 适配各家令牌字段及 Perplexity Agent 响应，仍由 Harness 校验快照并决定出队，协议失败不清队列。具体兼容清单见 `04-ai-schema.md` 的全 Provider 复核。
+
 ---
 
 ## 1. 概述与核心哲学

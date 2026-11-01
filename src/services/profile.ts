@@ -21,6 +21,8 @@ import {
 } from '../harness'
 import { learnerLanguagePolicyFor, resolveLearnerLanguagePolicy, type LearnerLanguagePolicy } from './dictionaryContext'
 import { buildNativeLanguageContract, getNativeLanguage } from './nativeLanguage'
+import { chatCompletionRequest } from './aiRequest'
+import { requiresAiApiKey } from './aiConnection'
 
 export type { DiagnosticEvent }
 
@@ -262,12 +264,12 @@ async function runDiagnosticAi(
 ): Promise<UserLanguageProfile | null> {
   const settings = useSettingsStore.getState()
   const providerId = settings.aiProvider || ''
-  const endpoint = settings.aiEndpoint || import.meta.env.VITE_AI_ENDPOINT || ''
-  const apiKey = settings.aiApiKeys[providerId] || import.meta.env.VITE_AI_API_KEY || ''
+  const endpoint = settings.aiEndpoint || (!providerId ? import.meta.env.VITE_AI_ENDPOINT || '' : '')
+  const apiKey = settings.aiApiKeys[providerId] || (!providerId ? import.meta.env.VITE_AI_API_KEY || '' : '')
   const model =
-    settings.aiModels[providerId] || settings.aiModel || import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash'
+    settings.aiModels[providerId] || settings.aiModel || (!providerId ? import.meta.env.VITE_AI_MODEL || 'gemini-2.0-flash' : '')
 
-  if (!apiKey || !endpoint) {
+  if ((!apiKey && requiresAiApiKey(providerId)) || !endpoint) {
     return null
   }
 
@@ -295,22 +297,10 @@ async function runDiagnosticAi(
   // Nothing attributable to a lane (e.g. only legacy events): nothing to distil.
   if (prompts.lanes.length === 0) return currentProfile
 
-  const res = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.3,
-      max_tokens: DIAGNOSTIC_MAX_TOKENS,
-      messages: [
-        { role: 'system', content: prompts.system + buildNativeLanguageContract(spec) },
-        { role: 'user', content: prompts.user },
-      ],
-    }),
-  })
+  const res = await chatCompletionRequest({ providerId, endpoint, apiKey, model }, [
+    { role: 'system', content: prompts.system + buildNativeLanguageContract(spec) },
+    { role: 'user', content: prompts.user },
+  ], { maxOutputTokens: DIAGNOSTIC_MAX_TOKENS, purpose: 'diagnostic' })
 
   if (!res.ok) {
     throw new Error(`Profile diagnostic AI API error ${res.status}`)

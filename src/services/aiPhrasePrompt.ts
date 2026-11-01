@@ -18,6 +18,7 @@ import {
 } from './nativeLanguage'
 import type { MeaningsAnchor } from './ai'
 import type { LearningRoute } from '../types'
+import type { SplitPrompt } from './aiRequest'
 
 export type PhrasePromptQueryType = 'phrase' | 'sentence'
 
@@ -41,7 +42,8 @@ function moduleEnabled(modules: Array<{ id: string; enabled: boolean }>, id: str
   return modules.some((m) => m.id === id && m.enabled)
 }
 
-export function buildPhrasePrompt({
+/** Stable instructions plus the per-query tail (web results, resolved anchor). */
+export function buildPhrasePromptParts({
   modules,
   lang = 'en',
   webSearchResults,
@@ -52,7 +54,7 @@ export function buildPhrasePrompt({
   meaningsAnchor,
   explanationLanguage = 'zh',
   learningRoute = 'irrelevant',
-}: BuildPhrasePromptOptions): string {
+}: BuildPhrasePromptOptions): SplitPrompt {
   const isEnabled = (id: string) => moduleEnabled(modules, id)
   const isCore = cognitive === 'core'
   const spec = getNativeLanguage(explanationLanguage)
@@ -152,8 +154,6 @@ export function buildPhrasePrompt({
 
 Given an ${lang === 'en' ? 'English' : lang === 'ja' ? 'Japanese' : lang === 'ko' ? 'Korean' : 'foreign language'} phrase or sentence, provide a complete analysis${isCore ? ' with native-mind priority' : ''}.
 
-${webSearchResults ? `ADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.\n` : ''}
-
 Return ONLY a valid JSON object. No markdown code fences. No explanation. No preamble.
 
 The JSON must follow this exact schema:
@@ -193,18 +193,6 @@ ${wantUsage ? `- Provide usageIntro (1 blurb) + 2-4 usage scenes${isCore ? '' : 
     }
   }
 
-  if (meaningsAnchor?.correctForm) {
-    prompt += `
-
-RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
-- The expression being explained is: "${meaningsAnchor.correctForm}". Use it as correctForm verbatim.`
-    const senses = meaningsAnchor.senses ?? []
-    if (senses.length > 0) {
-      prompt += `
-- Stay consistent with this resolved reading: ${senses.map(sn => sn.zh || sn.en || '').filter(Boolean).join(' / ')}`
-    }
-  }
-
   // aiPhraseQuery wraps the input in a provenance tag; explain the tags once.
   if (learningRoute !== 'irrelevant') prompt += PROVENANCE_LEGEND
 
@@ -216,5 +204,27 @@ RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
 
   prompt += buildNativeLanguageContract(spec)
 
-  return prompt
+  // Per-query material goes last so the stable instructions above form a
+  // reusable prefix for provider prompt caches.
+  let volatile = webSearchResults
+    ? `\n\nADDITIONAL CONTEXT (Web Search Results):\n${webSearchResults}\nUse this information to ensure your analysis is up-to-date and accurate.`
+    : ''
+  if (meaningsAnchor?.correctForm) {
+    volatile += `
+
+RESOLVED TARGET (stage 1 — already decided, do not re-litigate):
+- The expression being explained is: "${meaningsAnchor.correctForm}". Use it as correctForm verbatim.`
+    const senses = meaningsAnchor.senses ?? []
+    if (senses.length > 0) {
+      volatile += `
+- Stay consistent with this resolved reading: ${senses.map(sn => sn.zh || sn.en || '').filter(Boolean).join(' / ')}`
+    }
+  }
+
+  return { stable: prompt, volatile }
+}
+
+export function buildPhrasePrompt(options: BuildPhrasePromptOptions): string {
+  const { stable, volatile } = buildPhrasePromptParts(options)
+  return stable + volatile
 }

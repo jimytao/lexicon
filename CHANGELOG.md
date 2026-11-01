@@ -1,12 +1,31 @@
 # CHANGELOG
 
-## Unreleased — 追问能看到 AI 自己的订正
+## Unreleased — Provider 兼容性与追问订正语境
 
 ### 用户可见
 1. **追问可以针对 AI 的改动细问**：词组 / 句子页上「为什么这么改？」的说明、「地道表达」及其选词理由、思维违和感剖析，此前只有打开追问框的“完整语境”开关（默认关闭）才会发给追问 AI，地道表达和选词理由开了也不发。所以问“为什么改成 really”或“be into 为什么更地道”时，AI 看不到页面上的解释，只能重新推理，答案可能和页面不一致。现在这些订正信息每次追问都会带上，并标记为 AI 生成，不会被画像当作你的写作能力。“完整语境”开关只控制释义、例句、助记等其余分析。
 2. **与学习无关的查询追问时也保留原文**：此前只发 AI 改后的文本；现在会同时注明你原本输入的内容。
+3. **新模型参数兼容**：OpenAI 连接测试与画像归纳使用 `max_completion_tokens`；所有 AI 入口移除固定采样参数，未知型号保留默认思考设置，已核实型号采用第 10 项前台速度策略。连接测试为推理预留输出额度，空文本不再误报成功。
+4. **模型列表更新**：支持查询的服务商从 API 实时获取模型，Anthropic 使用原生分页模型接口；不再用陈旧静态列表掩盖网络或密钥错误。切换服务商只恢复其自己的模型，列表请求随服务商、地址或密钥变化失效。
+5. **逐家 Provider 核验**：修复 Groq / Kimi 新令牌参数、Mistral 数组模型响应，xAI 使用含模态与别名的语言模型接口，Together 默认地址更新为官方 `.ai` 域名。列表过滤明确的归档、停用、音频专用与非 Chat endpoint 模型；未知自定义模型不按名称误删。
+6. **Kimi 连续追问**：保留并回传同服务商、同模型的真实 `reasoning_content`；旧对话缺少所需元数据时转成标明来源的历史上下文，不伪造思考内容。
+7. **Perplexity 接入现行 Agent API**：实时获取完整 Agent 模型目录，适配消息、图片、输出文本与截断状态；Anthropic 后端补必需的输出上限。不自动替换旧 Sonar 模型，提示重新获取后选择。
+8. **目录与停服状态如实展示**：智谱没有已确认的公开模型列表协议，改用带来源和核对日期的 26 项官方文本 / 视觉目录，仍可手填；零一万物公众 API 已停服，内置入口标记并禁用，第三方 Yi 托管仍可走自定义。
+9. **自定义 / 本地服务**：支持无需 Key 的 Ollama / LM Studio、常见模型列表形状及同源分页；可粘贴兼容基础地址或标准资源地址。只有服务端明确拒绝令牌字段并指定另一个字段时，才尝试一次参数兼容重试。
+10. **全模型速度优先**：设置里新增「速度优先」开关（默认开）。查词、翻译、追问和连接测试会把每家模型降到它支持的最低思考档位：OpenAI / Mistral / OpenRouter / Groq / xAI 用最低 effort，Gemini 按型号直接给 none / minimal / low，DeepSeek / Kimi / 智谱 / SiliconFlow / Together 关闭思考，不能关的（如 Kimi K3、GLM-5.3、Claude Opus 5.5）用 low，Perplexity 用 minimal，本地 Ollama 用 none。若服务商拒绝某一档，会自动退一档并记住，不会让查词失败。设置页显示当前模型的实际策略。后台画像归纳不受影响。
+11. **Claude 全系改走原生接口**：官方 Anthropic 地址上的所有 Claude 模型都改用原生 Messages。Haiku 5.5 / Sonnet 5.5 / Opus 5.x 按各自规则关闭或压低思考，Haiku 4.5 等本来不思考的型号不加参数；system 提示的固定部分开启 prompt 缓存。
+12. **缓存友好的 prompt 顺序**：网页检索结果和已确定的词义锚点移到 system 提示末尾，前面固定的说明在不同查询之间保持一致，OpenAI 自动缓存与 Claude 缓存都能命中，减少首字等待。
+13. **追问流式输出**：追问回答边生成边显示，不再等整段写完。浏览器扩展与 Perplexity 暂时仍一次性显示。
+14. **先显示已返回的短预览**：词库未命中的单词、词组 / 句子的简短词义或译文预览此前被 loading 门控挡住。现在预览到达后即可阅读，同时保留完整分析的加载状态，正式模块在各自半结果完成后接替。预览标题只读，避免预览与正式结果重复挂载自动发音。
 
 ### 工程与验证
+- 新增 `aiRequest.ts` / `aiTransport.ts`，查词、追问、图片翻译、测试连接与 Profile 诊断共用请求策略；Anthropic 补浏览器直连所需的 opt-in 头；模型发现与后台诊断在扩展中也走既有 SW 代理。其他 OpenAI 兼容服务保留 `max_tokens`；未指定输出上限的查询不擅自加上限；不发送 `thinking_budget` 或猜测模型支持的思考等级。
+- 新增 provider 请求、模型发现契约回归；覆盖 Luna 令牌字段、Gemini/Claude 参数、图片消息与取消信号、空回复、模型隔离、诊断截断时保留 Harness 队列。
+- 本次验证：48 个测试文件 / 523 项全部通过；`tsc -b`、Web 构建、改动文件 ESLint 通过（settingsStore 既有 6 项非空断言 warning）。扩展主包与 content 构建通过；沙箱首次创建 `dist-ext/assets` 报 EPERM，预建目录后用 `--emptyOutDir false` 验证同一配置。未使用真实 Key 发起付费请求，账号权限 / 额度仍需实际连接测试确认。
+- 全 Provider 复核后验证：49 个测试文件 / 563 项通过，TypeScript 与本轮改动文件 ESLint 通过；Web、扩展主包（保留输出目录规避沙箱权限）与 content 构建通过。核对官方 API / OpenAPI schema；另只读查看 OpenRouter 公共实时列表，确认并排除 `endpoints: []` 的 batch-only 项，未使用用户密钥做付费推理。逐家来源与限制见 `04-ai-schema.md`「全 Provider 复核」。
+- 低延迟修复验证：51 个测试文件 / 583 项通过，TypeScript、Web 与扩展构建通过；定向 ESLint 无 error，PhraseView 保留原有 effect 依赖 warning。新增 Haiku 原生协议及前台 / 诊断策略隔离测试；SSR + Store 回归确认预览在 loading 中可读，pending / 缓存 / v4 证据元数据不被提前修改。未做真实账号性能 benchmark，不承诺跨厂商绝对排名或具体提速秒数。
+- 全模型速度优先：新增 `aiSpeed.ts`（按 provider / 型号的最低思考梯子 + 明确拒绝时退档并按 host|model 记忆）、`aiStream.ts`（OpenAI 兼容 / Anthropic SSE 解析）。`aiAnthropic.ts` 由 Haiku 5.5 专用改为 `requestAnthropicMessages` 覆盖全部 Claude，system 首块 `cache_control`；`aiRequest.ts` 新增 `streamChatCompletion`、`SplitPrompt` / `systemMessage`，删除 `interactiveLatencyMode`；`aiPerplexity.ts` 接受 `reasoning` 补丁；`settingsStore.aiSpeedFirst` 默认开。各家参数由两路子代理逐家核对官方文档（见 `04-ai-schema.md`「前台速度优先策略」表），文档未写明的错误形态靠退档兜底。
+- 本次验证：51 个测试文件 / 605 项通过，`tsc -b`、Web 构建、扩展构建通过；改动文件 ESLint 0 error（settingsStore 既有 6 项非空断言 warning）。内置浏览器确认设置页开关与按型号的策略说明渲染、无控制台错误，测试设置已还原。未用真实 Key 发请求：各家对档位参数的实际接受情况、prompt 缓存命中率与提速幅度仍需实际使用确认。
 - 新增 `src/utils/chatCorrectionContext.ts`（`buildChatCorrectionContext`）；`askQuestion` 新增末位参数 `correctionContext`，在 study context 后、富语境前插入，非 `irrelevant` 路线包 `<ai_generated>`；`AiChatBox` 新增同名 prop；`PhraseView` 富语境中移除重复的原文 → 改正、纠正说明与思维违和感剖析。
 - 新增 `src/services/aiFollowUp.test.ts`（5 项：富语境关闭时仍发送订正、irrelevant 路线保留原文、无订正不加段落、helper 的大小写与仅地道表达情形）。全量 46 个文件 / 466 项通过，`tsc -b` 通过，改动文件 ESLint 0 error。
 - 浏览器实测（本地 dev server，模拟 AI 回复）：句子 `I very like this idea` → `I really like this idea`；完整语境关闭时追问请求含改正、原因、地道表达、选词理由与剖析；打开后各项只出现一次，历史对话完整。测试数据与设置已恢复。

@@ -183,7 +183,7 @@ describe('source wiring — phrase prompt + PhraseView usageIntro', () => {
 
   it('ai.ts uses buildPhrasePrompt and passes queryType', () => {
     expect(aiSrc).toContain('buildPhrasePrompt')
-    expect(aiSrc).toMatch(/buildPhrasePrompt\([\s\S]*queryType/)
+    expect(aiSrc).toMatch(/buildPhrasePrompt(?:Parts)?\([\s\S]*queryType/)
     expect(aiSrc).not.toMatch(/function getPhrasePrompt\s*\(/)
   })
 

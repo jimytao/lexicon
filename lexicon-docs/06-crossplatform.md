@@ -278,6 +278,10 @@ PC 端可以继续用 sql.js（WASM 在 Tauri webview 里正常工作），无�
 
 ## AI 请求的跨平台注意
 
+`api.anthropic.com` 的所有请求经 `aiAnthropic.ts` 使用原生 Messages（前台按型号关思考 / low effort），然后归一化为既有响应结构；仍走同一 `aiTransport.ts`，包含浏览器直连 opt-in 头，扩展继续经 SW。后台画像诊断不使用前台速度覆盖。追问在 Web / Tauri / Capacitor 用 fetch 读 SSE 流；扩展的 message 代理不支持流，`streamChatCompletion` 在扩展中自动改发非流式请求并一次性输出。
+
+2026-11-01：`aiTransport.ts` 的 `aiFetch` 由生成请求、模型发现和后台 Profile 诊断共用。扩展调用既有 `extensionProxy.ts`，其他平台保持全局 fetch（Capacitor 的原生补丁仍生效）。`aiRequest.ts` 负责 provider 参数差异，不在平台分支中重复组装请求。Anthropic 生成与模型发现均带官方 SDK 使用的 `anthropic-dangerous-direct-browser-access: true`，以支持此 BYOK 客户端的 WebView / 浏览器直连；其他 provider 不发送此头。
+
 Capacitor 的 webview 在 Android 上有时会拦截 HTTPS 请求（证书问题）。如果 AI API 调用失败，检查：
 
 ```json

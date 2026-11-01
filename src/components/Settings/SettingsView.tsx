@@ -14,7 +14,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useSettingsStore, DEFAULT_CORE_PHRASE_MODULES, resolveSearchApiKey } from '../../stores/settingsStore'
 import type { AppModule, SearchProviderId } from '../../stores/settingsStore'
 import { isWeb } from '../../services/platform'
@@ -22,6 +22,10 @@ import { useHistoryStore } from '../../stores/historyStore'
 import { useSearchStore } from '../../stores/searchStore'
 import { useResultStore } from '../../stores/resultStore'
 import { testConnection } from '../../services/ai'
+import { describeSpeedPolicy } from '../../services/aiSpeed'
+import { PROVIDERS, ProviderModelsError, fetchProviderModels } from '../../services/aiProviders'
+import type { ProviderDef } from '../../services/aiProviders'
+import { effectiveAiProvider, isRetiredAiEndpoint, normalizeAiEndpoint, requiresAiApiKey } from '../../services/aiConnection'
 import { useUpdateStore } from '../../stores/updateStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useT } from '../../i18n'
@@ -32,55 +36,6 @@ import { DictionaryStorageRow } from './DictionaryStorageRow'
 import { SelectionButtonRow } from './SelectionButtonRow'
 import { resetProfile } from '../../services/profile'
 
-
-interface ProviderDef {
-  id: string
-  name: string
-  endpoint: string
-  staticModels?: string[]
-}
-
-const PROVIDERS: ProviderDef[] = [
-  { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1' },
-  {
-    id: 'gemini',
-    name: 'Google Gemini',
-    endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    staticModels: [
-      'gemini-2.0-flash', 'gemini-2.0-flash-lite',
-      'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-05-06',
-      'gemini-1.5-pro', 'gemini-1.5-flash',
-    ],
-  },
-  {
-    id: 'anthropic', name: 'Anthropic', endpoint: 'https://api.anthropic.com/v1',
-    staticModels: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
-  },
-  { id: 'openrouter', name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1' },
-  {
-    id: 'deepseek', name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1',
-    staticModels: ['deepseek-chat', 'deepseek-reasoner'],
-  },
-  { id: 'mistral', name: 'Mistral', endpoint: 'https://api.mistral.ai/v1' },
-  { id: 'groq', name: 'Groq', endpoint: 'https://api.groq.com/openai/v1' },
-  { id: 'together', name: 'Together AI', endpoint: 'https://api.together.xyz/v1' },
-  {
-    id: 'xai', name: 'xAI / Grok', endpoint: 'https://api.x.ai/v1',
-    staticModels: ['grok-3', 'grok-3-mini', 'grok-2-1212'],
-  },
-  {
-    id: 'perplexity', name: 'Perplexity', endpoint: 'https://api.perplexity.ai',
-    staticModels: ['sonar', 'sonar-pro', 'sonar-reasoning', 'sonar-reasoning-pro'],
-  },
-  {
-    id: 'moonshot', name: 'Moonshot / Kimi', endpoint: 'https://api.moonshot.cn/v1',
-    staticModels: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-  },
-  { id: 'siliconflow', name: 'SiliconFlow', endpoint: 'https://api.siliconflow.cn/v1' },
-  { id: 'zhipu', name: '智谱 GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4' },
-  { id: 'yi', name: '零一万物', endpoint: 'https://api.lingyiwanwu.com/v1' },
-  { id: 'custom', name: '自定义', endpoint: '' },
-]
 
 interface SearchProviderDef {
   id: SearchProviderId
@@ -95,6 +50,7 @@ const SEARCH_PROVIDERS: SearchProviderDef[] = [
 ]
 
 type FetchStatus = 'idle' | 'loading' | 'success' | 'error'
+const EMPTY_MODELS: string[] = []
 
 function normalizeModelQuery(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9.]+/g, ' ').trim().split(/\s+/).filter(Boolean)
@@ -270,6 +226,7 @@ export function SettingsView() {
     pronunciationAccent, setPronunciationAccent,
     autoPlayPronunciation, setAutoPlayPronunciation,
     enableProfileDiagnostic, setEnableProfileDiagnostic,
+    aiSpeedFirst, setAiSpeedFirst,
     savePhotoToGallery, setSavePhotoToGallery,
   } = useSettingsStore()
 
@@ -280,60 +237,95 @@ export function SettingsView() {
   const activeSearchProvider = SEARCH_PROVIDERS.find((sp) => sp.id === searchProvider) ?? SEARCH_PROVIDERS[0]
 
   const [showKey, setShowKey] = useState(false)
-  const [fetchedModels, setFetchedModels] = useState<string[]>([])
-  const [fetchStatus, setFetchStatus] = useState<FetchStatus>('idle')
+  const modelsContext = JSON.stringify([aiProvider, aiEndpoint, currentApiKey])
+  const [modelDiscovery, setModelDiscovery] = useState<{
+    context: string; models: string[]; status: FetchStatus; error?: ProviderModelsError; sourceUrl?: string; verifiedAt?: string
+  }>({ context: '', models: [], status: 'idle' })
+  const discoveryIsCurrent = modelDiscovery.context === modelsContext
+  const fetchedModels = discoveryIsCurrent ? modelDiscovery.models : EMPTY_MODELS
+  const fetchStatus = discoveryIsCurrent ? modelDiscovery.status : 'idle'
+  const modelsAbortRef = useRef<AbortController | null>(null)
+  const selectedProvider = PROVIDERS.find(p => p.id === aiProvider)
+  const usesCatalog = !!selectedProvider?.modelCatalog && normalizeAiEndpoint(aiEndpoint) === selectedProvider.endpoint
+  const keyRequired = requiresAiApiKey(aiProvider)
+  const latencyMode = describeSpeedPolicy({ providerId: aiProvider, endpoint: aiEndpoint, model: aiModel }, aiSpeedFirst)
+  const discoveryKeyRequired = keyRequired && effectiveAiProvider({ providerId: aiProvider, endpoint: aiEndpoint }) !== 'perplexity'
+  const unavailable = isRetiredAiEndpoint({ endpoint: aiEndpoint })
   const [showModelList, setShowModelList] = useState(false)
   const [hoveredModuleId, setHoveredModuleId] = useState<string | null>(null)
   const [coreModuleScope, setCoreModuleScope] = useState<'word' | 'phrase'>('word')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
 
   type TestStatus = 'idle' | 'testing' | 'success' | 'error'
-  const [testStatus, setTestStatus] = useState<TestStatus>('idle')
-  const [testMessage, setTestMessage] = useState('')
+  const testContext = JSON.stringify([aiProvider, aiEndpoint, currentApiKey, aiModel])
+  const [connectionTest, setConnectionTest] = useState<{ context: string; status: TestStatus; message: string }>({ context: '', status: 'idle', message: '' })
+  const testStatus = connectionTest.context === testContext ? connectionTest.status : 'idle'
+  const testMessage = connectionTest.context === testContext ? connectionTest.message : ''
   const testAbortRef = useRef<AbortController | null>(null)
 
+  useEffect(() => {
+    setModelDiscovery({ context: modelsContext, models: [], status: 'idle' })
+    setShowModelList(false)
+    return () => { modelsAbortRef.current?.abort() }
+  }, [modelsContext])
+
+  useEffect(() => {
+    setConnectionTest({ context: testContext, status: 'idle', message: '' })
+    return () => { testAbortRef.current?.abort() }
+  }, [testContext])
+
   function handleProviderSelect(p: ProviderDef) {
+    if (p.id === aiProvider) return
+    modelsAbortRef.current?.abort()
+    testAbortRef.current?.abort()
     setAiProvider(p.id)
-    if (p.endpoint) setAiEndpoint(p.endpoint)
-    if (!aiModels[p.id] && p.staticModels?.length) setAiModel(p.staticModels[0])
-    setFetchedModels([]); setFetchStatus('idle'); setShowModelList(false)
-    setTestStatus('idle'); setTestMessage('')
+    setAiEndpoint(p.endpoint)
+    setAiModel(aiModels[p.id] ?? p.defaultModel ?? '')
+    setShowModelList(false)
   }
 
   async function handleTest() {
     testAbortRef.current?.abort()
-    testAbortRef.current = new AbortController()
-    setTestStatus('testing'); setTestMessage('')
+    const controller = new AbortController()
+    testAbortRef.current = controller
+    setConnectionTest({ context: testContext, status: 'testing', message: '' })
     try {
-      const reply = await testConnection(testAbortRef.current.signal)
-      setTestStatus('success'); setTestMessage(reply)
+      const reply = await testConnection(controller.signal)
+      if (controller.signal.aborted || testAbortRef.current !== controller) return
+      setConnectionTest({ context: testContext, status: 'success', message: reply })
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if (controller.signal.aborted || testAbortRef.current !== controller || (e as Error).name === 'AbortError') return
       // testConnection tags known failures with a stable `code` → localise it here;
       // anything else (raw server text) falls through untranslated.
       const code = (e as { code?: string }).code
-      setTestStatus('error')
-      setTestMessage(code ? t(`settings.testErr.${code}`) : (e as Error).message)
+      setConnectionTest({ context: testContext, status: 'error', message: code ? t(`settings.testErr.${code}`) : (e as Error).message })
     }
   }
 
   async function handleFetchModels() {
-    if (!aiEndpoint || !currentApiKey) return
-    setFetchStatus('loading'); setShowModelList(false)
-    const provider = PROVIDERS.find(p => p.id === aiProvider)
+    if (unavailable || !aiEndpoint || (!currentApiKey && discoveryKeyRequired && !usesCatalog)) return
+    modelsAbortRef.current?.abort()
+    const controller = new AbortController()
+    modelsAbortRef.current = controller
+    setModelDiscovery({ context: modelsContext, models: [], status: 'loading' })
+    setShowModelList(false)
     try {
-      const res = await fetch(`${aiEndpoint}/models`, { headers: { Authorization: `Bearer ${currentApiKey}` } })
-      if (!res.ok) throw new Error(`${res.status}`)
-      const data = (await res.json()) as { data?: Array<{ id: string }> }
-      const ids = (data.data ?? []).map(m => m.id).sort()
-      if (ids.length === 0) throw new Error('empty')
-      setFetchedModels(ids); setFetchStatus('success'); setShowModelList(true)
-    } catch {
-      const statics = provider?.staticModels ?? []
-      if (statics.length > 0) { setFetchedModels(statics); setFetchStatus('success'); setShowModelList(true) }
-      else setFetchStatus('error')
+      const result = await fetchProviderModels({ providerId: aiProvider, endpoint: aiEndpoint, apiKey: currentApiKey, signal: controller.signal })
+      if (controller.signal.aborted || modelsAbortRef.current !== controller) return
+      setModelDiscovery({ context: modelsContext, models: result.models, status: 'success', sourceUrl: result.sourceUrl, verifiedAt: result.verifiedAt })
+      setShowModelList(true)
+    } catch (error) {
+      if (controller.signal.aborted || modelsAbortRef.current !== controller) return
+      setModelDiscovery({ context: modelsContext, models: [], status: 'error', error: error instanceof ProviderModelsError ? error : new ProviderModelsError('network') })
     }
   }
+
+  const fetchError = discoveryIsCurrent ? modelDiscovery.error : undefined
+  const fetchErrorKey = fetchError?.code === 'http'
+    ? [401, 403].includes(fetchError.status ?? 0) ? 'unauthorized'
+      : [404, 405].includes(fetchError.status ?? 0) ? 'unsupported'
+        : fetchError.status === 429 ? 'rate-limit' : 'http'
+    : fetchError?.code
 
   function handleModelSelect(m: string) { setAiModel(m); setShowModelList(false) }
 
@@ -443,26 +435,33 @@ export function SettingsView() {
                       return (
                         <button
                           key={p.id}
+                          disabled={!!p.retired}
                           onClick={() => handleProviderSelect(p)}
-                          className={`text-xs px-3 py-2.5 rounded-xl border transition-all text-left truncate font-medium cursor-pointer ${
+                          className={`text-xs px-3 py-2.5 rounded-xl border transition-all text-left truncate font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                             aiProvider === p.id
                               ? 'bg-accent/10 border-accent text-accent shadow-sm ring-2 ring-accent/5'
                               : 'bg-background border-border text-foreground-muted hover:border-foreground-muted/30 hover:text-foreground'
                           }`}
                         >
-                          {displayName}
+                          {displayName}{p.retired ? ` · ${t('settings.providerRetired')}` : ''}
                         </button>
                       )
                     })}
                   </div>
                 </div>
 
+                {unavailable && (
+                  <p role="alert" className="text-[11px] text-red-500 leading-snug">
+                    {t('settings.providerUnavailable')}{' '}
+                    <a href="https://platform.lingyiwanwu.com/" target="_blank" rel="noreferrer" className="underline">{t('settings.modelCatalogSource')}</a>
+                  </p>
+                )}
                 {/* Endpoint */}
                 <div>
                   <label className="block text-[10px] font-black text-foreground-muted/40 uppercase tracking-widest mb-1.5">{t('settings.apiEndpoint')}</label>
                   <input
                     type="text" value={aiEndpoint}
-                    onChange={(e) => { setAiEndpoint(e.target.value); setAiProvider('custom') }}
+                    onChange={(e) => setAiEndpoint(e.target.value)}
                     placeholder="https://api.example.com/v1"
                     className="w-full text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background text-foreground placeholder-foreground-muted/30 font-mono transition-all"
                   />
@@ -482,7 +481,7 @@ export function SettingsView() {
                     <input
                       type={showKey ? 'text' : 'password'} value={currentApiKey}
                       onChange={(e) => setApiKeyForProvider(aiProvider || 'custom', e.target.value)}
-                      placeholder="sk-..."
+                      placeholder={keyRequired ? 'sk-...' : t('settings.apiKeyOptional')}
                       className="w-full text-sm border border-border rounded-xl px-4 py-2.5 pr-10 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background text-foreground placeholder-foreground-muted/30 transition-all"
                     />
                     <button type="button" onClick={() => setShowKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted/50 hover:text-foreground transition-colors cursor-pointer" tabIndex={-1}>
@@ -502,17 +501,32 @@ export function SettingsView() {
                       type="text" value={aiModel}
                       onChange={(e) => { setAiModel(e.target.value); if (fetchedModels.length > 0) setShowModelList(true) }}
                       onFocus={() => { if (fetchedModels.length > 0) setShowModelList(true) }}
-                      placeholder="gemini-2.0-flash"
+                      placeholder={t('settings.modelPlaceholder')}
                       className="flex-1 text-sm border border-border rounded-xl px-4 py-2.5 outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 bg-background text-foreground placeholder-foreground-muted/30 font-mono transition-all min-w-0"
                     />
                     <button
                       onClick={handleFetchModels}
-                      disabled={fetchStatus === 'loading' || !aiEndpoint || !currentApiKey}
-                      className="shrink-0 text-[10px] font-bold px-3 py-2.5 rounded-xl border border-border text-foreground-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider cursor-pointer"
+                      disabled={unavailable || fetchStatus === 'loading' || !aiEndpoint || (!currentApiKey && discoveryKeyRequired && !usesCatalog)}
+                      className="shrink-0 whitespace-nowrap text-[10px] font-bold px-3 py-2.5 rounded-xl border border-border text-foreground-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider cursor-pointer"
                     >
-                      {fetchStatus === 'loading' ? t('settings.fetchingModels') : t('settings.fetchModels')}
+                      {fetchStatus === 'loading' ? t('settings.fetchingModels') : t(usesCatalog ? 'settings.modelCatalog' : 'settings.fetchModels')}
                     </button>
                   </div>
+                  {fetchStatus === 'error' && fetchErrorKey && (
+                    <p role="alert" className="mt-2 text-[11px] text-red-500 leading-snug">
+                      {t(`settings.modelsErr.${fetchErrorKey}`).replace('{status}', String(fetchError?.status ?? ''))}
+                    </p>
+                  )}
+                  {discoveryIsCurrent && modelDiscovery.sourceUrl && (
+                    <p className="mt-2 text-[11px] text-foreground-muted leading-snug">
+                      {t('settings.modelCatalogNote')}{' '}
+                      {modelDiscovery.verifiedAt ? t('settings.catalogVerifiedAt').replace('{date}', modelDiscovery.verifiedAt) : ''}{' '}
+                      <a href={modelDiscovery.sourceUrl} target="_blank" rel="noreferrer" className="text-accent underline">{t('settings.modelCatalogSource')}</a>
+                    </p>
+                  )}
+                  {aiProvider === 'custom' && <p className="mt-2 text-[11px] text-foreground-muted leading-snug">{t('settings.customModelsNote')}</p>}
+                  {latencyMode !== 'off' && aiModel.trim() && <p className="mt-2 text-[11px] text-foreground-muted leading-snug">{t(`settings.latency.${latencyMode}`)}</p>}
+                  {aiProvider === 'perplexity' && <p className="mt-2 text-[11px] text-foreground-muted leading-snug">{t('settings.perplexityModelsNote')}</p>}
                   {showModelList && fetchedModels.length > 0 && (
                     <div className="mt-2 rounded-2xl border border-border bg-background shadow-2xl max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
                       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background-soft/50">
@@ -534,7 +548,7 @@ export function SettingsView() {
                 <div>
                   <button
                     onClick={handleTest}
-                    disabled={testStatus === 'testing' || !currentApiKey || !aiEndpoint || !aiModel}
+                    disabled={unavailable || testStatus === 'testing' || (!currentApiKey && keyRequired) || !aiEndpoint || !aiModel}
                     className={`w-full text-xs font-bold py-3 rounded-xl border transition-all flex items-center justify-center gap-2 uppercase tracking-widest cursor-pointer ${
                       testStatus === 'testing'
                         ? 'bg-background border-border text-foreground-muted opacity-50 cursor-not-allowed'
@@ -555,6 +569,10 @@ export function SettingsView() {
                 </div>
               </div>
             </Accordion>
+
+            <RowDivider />
+
+            <ToggleRow label={t('settings.speedFirst')} desc={t('settings.speedFirstDesc')} value={aiSpeedFirst} onChange={setAiSpeedFirst} />
 
             <RowDivider />
 

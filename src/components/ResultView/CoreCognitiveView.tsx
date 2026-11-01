@@ -15,6 +15,7 @@ import { useResultStore } from '../../stores/resultStore'
 import { LexiconMemoryBadge } from './LexiconMemoryBadge'
 import { ProfileInsightChip } from './ProfileInsightChip'
 import { useAiLookup } from '../../hooks/useAiLookup'
+import { shouldShowAiPreview } from '../../utils/resultAiVisibility'
 import { CulturalLoreCard } from './AiSection/CulturalLoreCard'
 import { PracticeSection } from './AiSection/PracticeSection'
 import { UsageScenesCard } from './AiSection/UsageScenesCard'
@@ -61,6 +62,9 @@ export function CoreCognitiveView({
     : {}
   const showDictL1 = Boolean(dictWordResult?.meanings?.length)
   const corePending = useResultStore(state => state.aiPendingHalves.core)
+  const aiSkeleton = useResultStore(state => state.aiSkeleton)
+  const aiIsPartial = useResultStore(state => state.aiIsPartial)
+  const showPreview = shouldShowAiPreview({ status: aiStatus, pending: corePending, isPartial: aiIsPartial, skeleton: aiSkeleton, correctForm: aiFullResult?.correctForm })
   // Dictionary senses are a local, orderable module. They need no AI, so they show
   // while AI is loading or failed: at the top when ordered before every enabled AI
   // module (and stay there), otherwise below the AI area until it arrives.
@@ -105,11 +109,23 @@ export function CoreCognitiveView({
         </div>
       )}
 
-      {!showDictL1 && aiStatus !== 'success' && (
+      {!showDictL1 && aiStatus !== 'success' && !showPreview && (
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words [overflow-wrap:anywhere] max-w-full">
             {word}
           </h1>
+        </div>
+      )}
+
+      {!showDictL1 && showPreview && aiFullResult && (
+        <div className="mb-3 space-y-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground break-words">{aiFullResult.correctForm || word}</h1>
+          <p className="text-sm text-foreground-muted">{[aiFullResult.phonetic, aiFullResult.pos].filter(Boolean).join(' · ')}</p>
+          {(aiFullResult.meanings?.[0]?.zh || aiFullResult.meanings?.[0]?.en) && (
+            <p className="text-sm text-foreground leading-relaxed">
+              {aiFullResult.meanings[0].zh || aiFullResult.meanings[0].en}
+            </p>
+          )}
         </div>
       )}
 
