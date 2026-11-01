@@ -81,9 +81,9 @@ Lexicon 浏览器扩展完整复用 App 的 Dict / Image / Settings 界面与 In
 
 ### 下载与首次安装
 
-1. 下载对应系统的扩展包（与桌面端、Android、iOS 安装包同在 [Releases v0.9.29](https://github.com/jimytao/lexicon/releases/tag/v0.9.29) 下）：
-   - Windows / Linux：**[lexicon-extension-0.9.29.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.29/lexicon-extension-0.9.29.zip)**
-   - macOS：**[lexicon-extension-0.9.29-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.29/lexicon-extension-0.9.29-macos.zip)**
+1. 下载对应系统的扩展包（与桌面端、Android、iOS 安装包同在 [Releases v0.9.30](https://github.com/jimytao/lexicon/releases/tag/v0.9.30) 下）：
+   - Windows / Linux：**[lexicon-extension-0.9.30.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.30/lexicon-extension-0.9.30.zip)**
+   - macOS：**[lexicon-extension-0.9.30-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.30/lexicon-extension-0.9.30-macos.zip)**
    - 两个包的功能相同；不要下载 Source code，也不需要下载任何 `.db` 文件。
 2. 将 ZIP **完整解压**到一个准备长期保留的文件夹，例如 `Documents/Lexicon Extension`。不要直接在压缩包内打开，也不要在安装后删除或移动这个文件夹。
 3. 打开浏览器扩展管理页：
@@ -129,11 +129,11 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 > **Windows** 桌面端与 **Android** 移动端原生支持**软件内自动检测与一键升级**。当发布新版本时，软件会自动弹出更新提醒，您也可在 Settings 设置页面直接检查更新并在线升级，无需每次重新手动下载安装包。
 
 ### Windows
-- **[Lexicon_0.9.29_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_x64-setup.exe)**（推荐，支持软件内自动更新）
-- **[Lexicon_0.9.29_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_x64_en-US.msi)**（MSI 安装包）
+- **[Lexicon_0.9.30_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_x64-setup.exe)**（推荐，支持软件内自动更新）
+- **[Lexicon_0.9.30_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_x64_en-US.msi)**（MSI 安装包）
 
-### macOS 桌面端 (v0.9.29)
-- **[Lexicon_0.9.29_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
+### macOS 桌面端 (v0.9.30)
+- **[Lexicon_0.9.30_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_universal.dmg)**（通用二进制，原生支持 Apple Silicon M1-M4 及 Intel Mac）
 
 > **⚠️ macOS 首次打开提示“无法验证开发者”或“已损坏”解决方案（三种方式）：**  
 > 由于独立开源版本未购买 Apple 付费开发者 ID 证书，macOS Gatekeeper 默认会阻挡未签名应用。请按以下任意一种方法解除限制：
@@ -144,9 +144,9 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android 手机 / 平板 (v0.9.29)
-- **[Lexicon_0.9.29_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
-- 更多架构分包请见 [Releases v0.9.29](https://github.com/jimytao/lexicon/releases/tag/v0.9.29)。
+### Android 手机 / 平板 (v0.9.30)
+- **[Lexicon_0.9.30_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_universal_signed.apk)**（推荐通用包，支持软件内自动检测升级）
+- 更多架构分包请见 [Releases v0.9.30](https://github.com/jimytao/lexicon/releases/tag/v0.9.30)。
 
 ### iOS（自签侧载）
 1. 安装 **[Sideloadly](https://sideloadly.io/)**（需官网版 iTunes + iCloud）。
@@ -158,7 +158,7 @@ Extension 的版本号随 Lexicon 主版本同步。检测到新版本时，扩�
 
 ## ⚙️ 配置 API Key 与服务指南 (AI Setup)
 
-为了解锁 AI 深度解析能力，您只需在设置中配置喜欢的 AI 密钥。Lexicon 使用 OpenAI 兼容协议连接各家模型（包括 Google Gemini、Anthropic Claude），并适配新模型的令牌参数与默认采样设置。
+为了解锁 AI 深度解析能力，您只需在设置中配置喜欢的 AI 密钥。Lexicon 通过 OpenAI 兼容协议连接多数服务商（包括 Google Gemini），Anthropic Claude 与 Perplexity 使用各自的原生接口，并适配新模型的令牌参数与默认采样设置。
 
 > **💡 模型选择建议**：大模型更新迅速，在查词分析与语言学习场景下，**强烈建议优先选择各大平台主打「轻量极速、成本低廉」的小模型系列**（如 `gemini-3.1-flash-lite-preview` / `Flash` / `Flash Lite` / `Mini` / `Haiku` / `Small` 等）。
 

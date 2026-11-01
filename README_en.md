@@ -83,9 +83,9 @@ The Lexicon extension reuses the complete App experience: Dict / Image / Setting
 
 ### Download & First Installation
 
-1. Download the package for your system (it ships in the same [Releases v0.9.29](https://github.com/jimytao/lexicon/releases/tag/v0.9.29) as the desktop, Android and iOS builds):
-   - Windows / Linux: **[lexicon-extension-0.9.29.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.29/lexicon-extension-0.9.29.zip)**
-   - macOS: **[lexicon-extension-0.9.29-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.29/lexicon-extension-0.9.29-macos.zip)**
+1. Download the package for your system (it ships in the same [Releases v0.9.30](https://github.com/jimytao/lexicon/releases/tag/v0.9.30) as the desktop, Android and iOS builds):
+   - Windows / Linux: **[lexicon-extension-0.9.30.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.30/lexicon-extension-0.9.30.zip)**
+   - macOS: **[lexicon-extension-0.9.30-macos.zip](https://github.com/jimytao/lexicon/releases/download/v0.9.30/lexicon-extension-0.9.30-macos.zip)**
    - Both packages have the same features; do not download Source code or any `.db` files.
 2. **Extract the ZIP completely** into a permanent folder, such as `Documents/Lexicon Extension`. Do not run directly inside the archive, and do not move or delete this folder after installation.
 3. Open your browser's extension management page:
@@ -131,11 +131,11 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 > Both **Windows** and **Android** native builds feature **seamless in-app automatic update checks**. When a new release is available, Lexicon will automatically prompt you with update notes or allow a one-click update directly in Settings, eliminating the need to manually re-download installer files.
 
 ### Windows
-- **[Lexicon_0.9.29_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_x64-setup.exe)** (recommended, supports in-app auto updates)
-- **[Lexicon_0.9.29_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_x64_en-US.msi)** (MSI Package)
+- **[Lexicon_0.9.30_x64-setup.exe](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_x64-setup.exe)** (recommended, supports in-app auto updates)
+- **[Lexicon_0.9.30_x64_en-US.msi](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_x64_en-US.msi)** (MSI Package)
 
-### macOS Desktop (v0.9.29)
-- **[Lexicon_0.9.29_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
+### macOS Desktop (v0.9.30)
+- **[Lexicon_0.9.30_universal.dmg](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_universal.dmg)** (Universal binary supporting Apple Silicon M1-M4 & Intel Macs)
 
 > **⚠️ macOS First-Launch Guide ("Unidentified Developer" / "App Damaged" Bypass):**  
 > As an open-source build without a paid Apple Developer ID certificate, macOS Gatekeeper blocks opening by default. Use any of the 3 simple methods below:
@@ -146,9 +146,9 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 >    sudo xattr -rd com.apple.quarantine /Applications/Lexicon.app
 >    ```
 
-### Android (v0.9.29)
-- **[Lexicon_0.9.29_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.29/Lexicon_0.9.29_universal_signed.apk)** (recommended, supports in-app auto update checks)
-- For ABI splits, see [Releases v0.9.29](https://github.com/jimytao/lexicon/releases/tag/v0.9.29).
+### Android (v0.9.30)
+- **[Lexicon_0.9.30_universal_signed.apk](https://github.com/jimytao/lexicon/releases/download/v0.9.30/Lexicon_0.9.30_universal_signed.apk)** (recommended, supports in-app auto update checks)
+- For ABI splits, see [Releases v0.9.30](https://github.com/jimytao/lexicon/releases/tag/v0.9.30).
 
 ### iOS (Sideload)
 1. Install **[Sideloadly](https://sideloadly.io/)** (official iTunes + iCloud setup).
@@ -160,7 +160,7 @@ Locally saved settings, search history, AI cache, and downloaded dictionaries re
 
 ## ⚙️ API Key & AI Configuration Guide
 
-To activate AI enhancements, configure an API Key for your preferred provider. Lexicon uses OpenAI-compatible endpoints (including Google Gemini and Anthropic Claude), with current token parameters and provider-default sampling settings.
+To activate AI enhancements, configure an API Key for your preferred provider. Lexicon connects to most providers through OpenAI-compatible endpoints (including Google Gemini), while Anthropic Claude and Perplexity use their native APIs, with current token parameters and provider-default sampling settings.
 
 > **💡 Model Selection Advice**: For dictionary lookups and language learning workflows, **we strongly recommend selecting lightweight, high-speed model series** (such as `gemini-3.1-flash-lite-preview`, `Flash`, `Flash Lite`, `Mini`, `Haiku`, `Small`, etc.).
 
