@@ -69,6 +69,57 @@ function flattenSystem(messages: AiMessage[]): AiMessage[] {
     : message)
 }
 
+function hostOf(endpoint: string): string {
+  try { return new URL(endpoint).hostname } catch { return '' }
+}
+
+/** First system text: the stable prefix callers keep identical across queries. */
+function stablePrefix(messages: AiMessage[]): string {
+  const system = messages.find(message => message.role === 'system')
+  if (!system) return ''
+  if (typeof system.content === 'string') return system.content
+  const first = system.content[0]
+  return first?.type === 'text' ? first.text : ''
+}
+
+/** FNV-1a: a short deterministic id per prompt template; the prompt itself is never sent as the key. */
+function promptCacheKey(prefix: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < prefix.length; i++) {
+    hash ^= prefix.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `lexicon-${(hash >>> 0).toString(16).padStart(8, '0')}`
+}
+
+/**
+ * OpenRouter caches Claude and Gemini only at explicit `cache_control` marks.
+ * Claude: mark the stable system part and keep the per-query tail after it.
+ * Gemini caches the whole marked message, so its tail moves into the next user turn.
+ */
+function openRouterCacheMessages(model: string, messages: AiMessage[]): unknown[] | null {
+  const family = /^anthropic\//i.test(model) ? 'claude' : /^google\//i.test(model) ? 'gemini' : null
+  const index = messages.findIndex(message => message.role === 'system')
+  if (!family || index < 0) return null
+  const system = messages[index]
+  const parts = typeof system.content === 'string' ? [{ type: 'text' as const, text: system.content }] : system.content
+  const texts = parts.flatMap(part => part.type === 'text' ? [part.text] : [])
+  if (texts.length !== parts.length || !texts[0]) return null
+  const marked = { type: 'text', text: texts[0], cache_control: { type: 'ephemeral' } }
+  const tail = texts.slice(1).map(text => ({ type: 'text', text }))
+  const moveTail = family === 'gemini' && tail.length > 0 && messages.some((message, i) => i > index && message.role === 'user')
+  let pending = moveTail ? texts.slice(1).join('').trim() : ''
+  return flattenSystem(messages).map((message, i) => {
+    if (i === index) return { role: 'system', content: moveTail ? [marked] : [marked, ...tail] }
+    if (pending && i > index && message.role === 'user') {
+      const lead = { type: 'text', text: pending }
+      pending = ''
+      return { ...message, content: typeof message.content === 'string' ? [lead, { type: 'text', text: message.content }] : [lead, ...message.content] }
+    }
+    return message
+  })
+}
+
 function validate(config: AiConnection): void {
   if (!config.model.trim()) throw Object.assign(new Error('Model is not set'), { code: 'no-model' })
   if (isRetiredAiEndpoint(config)) throw Object.assign(new Error('This provider has discontinued its API service'), { code: 'provider-unavailable' })
@@ -87,8 +138,13 @@ function compatibleRequest(
   const limit = options.maxOutputTokens === undefined ? {} : {
     [usesCompletionTokenLimit(config) ? 'max_completion_tokens' : 'max_tokens']: options.maxOutputTokens,
   }
-  const flat = flattenSystem(messages)
-  const extra = { ...patch, ...(stream ? { stream: true } : {}) }
+  const host = hostOf(config.endpoint)
+  const flat = (host === 'openrouter.ai' && openRouterCacheMessages(config.model.trim(), messages)) || flattenSystem(messages)
+  // One cache key per prompt template routes same-prefix requests to the same
+  // cache. Only official hosts that document it: relays may reject unknown fields.
+  const prefix = stablePrefix(messages)
+  const cacheKey = prefix && (host === 'api.openai.com' || host === 'openrouter.ai') ? { prompt_cache_key: promptCacheKey(prefix) } : {}
+  const extra = { ...patch, ...cacheKey, ...(stream ? { stream: true } : {}) }
   // Sampling stays at provider defaults; `patch` is the speed-first reasoning step.
   const url = `${normalizeAiEndpoint(config.endpoint)}/chat/completions`
   const init: RequestInit = {

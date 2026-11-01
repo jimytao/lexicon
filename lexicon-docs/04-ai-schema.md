@@ -94,6 +94,12 @@ Kimi：`ChatMessage` 可选保存 `reasoningContent / aiProvider / aiModel`，�
 
 **Prompt 前缀稳定**：`getFullLookupPrompt` 与 `buildPhrasePromptParts` 返回 `{ stable, volatile }`：网页检索结果与 RESOLVED TARGET 锚点放在 `volatile`（system 末尾），固定 schema / 规则 / 画像段落在前。`callApi` 经 `systemMessage()` 组成两段 text；兼容服务端拼回字符串（OpenAI 自动前缀缓存 ≥1024 token 受益），Anthropic 只缓存 stable 段。`buildPhrasePrompt` 仍返回拼接字符串供测试与旧调用。
 
+**其他 provider 的缓存**（2026-11-01 子代理核对官方文档；查词 stable 前缀实测约 1.9K–2.9K token）：
+- `api.openai.com` 与 `openrouter.ai`：附 `prompt_cache_key = lexicon-<stable 段 FNV-1a 8 位 hex>`，同一模板（含设置 / 画像变体）共用一个 key，把同前缀请求路由到同一缓存；只发给这两个官方 host，中转可能拒绝未知字段。官方建议每 key 约 15 RPM 以内，单用户不会超。OpenAI 自动缓存门槛 1,024 token。
+- OpenRouter 上的 `anthropic/*`：system 首段加 `cache_control: ephemeral`，per-query 尾段留在其后；`google/*`：OpenRouter 文档要求动态内容不在被标记的消息里，故尾段移到下一条 user 消息开头。其他 OpenRouter 模型照常拼字符串（OpenAI / DeepSeek / Grok / Moonshot 等自动缓存）。
+- 自动缓存、无需改动：DeepSeek（默认开启）、Kimi（自动，无管理接口）、Groq 仅 gpt-oss 系列、Gemini 2.5 隐式（门槛 2,048）。
+- 不做：Gemini 3.x / 4 隐式门槛 4,096，前缀不够；显式 `cachedContents` 需原生接口建缓存、按小时计存储、设置一变前缀就变，Gemini 4 不支持。xAI 的 `x-grok-conv-id` 头文档未说明浏览器 CORS，未经实测不发。缓存对 2–3K 前缀主要是省输入费用，延迟收益远小于降思考档。
+
 **追问流式**：`askQuestion` 经 `streamChatCompletion` 以 SSE 读取（`aiStream.ts`：OpenAI 兼容 `delta.content` / Kimi `reasoning_content`，Anthropic `content_block_delta`），`AiChatBox` 逐段渲染，完成后仍以完整回复入库。扩展的 SW 代理与 Perplexity Agent 不支持流，自动退回一次性回复；中转忽略 `stream` 返回普通 JSON 时也兼容。
 
 本轮性能排查确认：普通 combined 路径早已将 Lookup / Core 拆为两半并行，每半独立提交，旧 `aiCombinedLookup` mega-JSON 已弃用。缓存外英文单词 / 词组 / 句子另有非阻塞短预览；中文 word 反查的意义锚点仍串行以统一候选。启用的网页检索仍在两半生成之前等待。查词两半仍须完整 JSON 返回后才提交（只有追问是流式）；输出量会影响完成时间，不能把连接测试的一词 OK 当作真实查词 benchmark。Profile 归纳网络调用不在前台 await 链上；Harness 是本地来源与结构验收，不应作为删减目标。

@@ -73,7 +73,8 @@ describe('provider generation compatibility', () => {
     expect(url).toBe(`${endpoint.replace(/\/+$/, '')}/chat/completions`)
     expect(init.signal).toBe(controller.signal)
     expect(body[limitField]).toBe(8192)
-    expect(Object.keys(body).sort()).toEqual([limitField, 'messages', 'model'].sort())
+    const cacheKeyField = ['openai', 'openrouter'].includes(providerId) ? ['prompt_cache_key'] : []
+    expect(Object.keys(body).sort()).toEqual([limitField, 'messages', 'model', ...cacheKeyField].sort())
     expect(body.messages[1].content[0].image_url.url).toContain('data:image/png')
   })
 
@@ -462,5 +463,66 @@ describe('cache-friendly prompt layout', () => {
     expect(body.system[0].text).not.toContain('WEB-RESULT')
     expect(body.system[1].text).toContain('WEB-RESULT')
     expect(body.system[1]).not.toHaveProperty('cache_control')
+  })
+})
+
+describe('provider prompt caching', () => {
+  const split = (stable: string, tail: string) => [
+    { role: 'system' as const, content: [{ type: 'text' as const, text: stable }, { type: 'text' as const, text: tail }] },
+    { role: 'user' as const, content: 'ice' },
+  ]
+
+  it('sends one prompt_cache_key per prompt template to OpenAI, ignoring the per-query tail', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => reply())
+    vi.stubGlobal('fetch', fetchMock)
+    const config = { providerId: 'openai', endpoint: 'https://api.openai.com/v1', model: 'gpt-6-luna', apiKey: 'key' }
+    await chatCompletionRequest(config, split('WORD TEMPLATE', 'WEB-A'))
+    await chatCompletionRequest(config, split('WORD TEMPLATE', 'WEB-B'))
+    await chatCompletionRequest(config, split('PHRASE TEMPLATE', 'WEB-A'))
+    const keys = fetchMock.mock.calls.map(call => JSON.parse(String(call[1]?.body)).prompt_cache_key)
+    expect(keys[0]).toMatch(/^lexicon-[0-9a-f]{8}$/)
+    expect(keys[1]).toBe(keys[0])
+    expect(keys[2]).not.toBe(keys[0])
+    expect(keys[0]).not.toContain('TEMPLATE')
+  })
+
+  it.each([
+    ['gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash'],
+    ['openai', 'https://relay.example/v1', 'gpt-6-luna'],
+    ['custom', 'http://localhost:11434/v1', 'qwen3:8b'],
+  ])('does not send the cache key to %s at %s', async (providerId, endpoint, model) => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => reply())
+    vi.stubGlobal('fetch', fetchMock)
+    await chatCompletionRequest({ providerId, endpoint, model, apiKey: 'key' }, split('S', 'T'))
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).not.toHaveProperty('prompt_cache_key')
+  })
+
+  it('marks the stable system part for Claude on OpenRouter and keeps the tail after it', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => reply())
+    vi.stubGlobal('fetch', fetchMock)
+    await chatCompletionRequest({ providerId: 'openrouter', endpoint: 'https://openrouter.ai/api/v1', model: 'anthropic/claude-haiku-5-5', apiKey: 'key' }, split('STABLE', 'WEB'))
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(body.messages).toEqual([
+      { role: 'system', content: [{ type: 'text', text: 'STABLE', cache_control: { type: 'ephemeral' } }, { type: 'text', text: 'WEB' }] },
+      { role: 'user', content: 'ice' },
+    ])
+    expect(body.prompt_cache_key).toMatch(/^lexicon-/)
+  })
+
+  it('moves the per-query tail into the user turn for Gemini on OpenRouter', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => reply())
+    vi.stubGlobal('fetch', fetchMock)
+    await chatCompletionRequest({ providerId: 'openrouter', endpoint: 'https://openrouter.ai/api/v1', model: 'google/gemini-2.5-flash', apiKey: 'key' }, split('STABLE', '\n\nWEB'))
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).messages).toEqual([
+      { role: 'system', content: [{ type: 'text', text: 'STABLE', cache_control: { type: 'ephemeral' } }] },
+      { role: 'user', content: [{ type: 'text', text: 'WEB' }, { type: 'text', text: 'ice' }] },
+    ])
+  })
+
+  it('keeps plain flattened messages for other OpenRouter models', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => reply())
+    vi.stubGlobal('fetch', fetchMock)
+    await chatCompletionRequest({ providerId: 'openrouter', endpoint: 'https://openrouter.ai/api/v1', model: 'deepseek/deepseek-v4-pro', apiKey: 'key' }, split('STABLE', 'WEB'))
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).messages[0]).toEqual({ role: 'system', content: 'STABLEWEB' })
   })
 })

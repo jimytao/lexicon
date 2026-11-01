@@ -14,7 +14,7 @@
 9. **自定义 / 本地服务**：支持无需 Key 的 Ollama / LM Studio、常见模型列表形状及同源分页；可粘贴兼容基础地址或标准资源地址。只有服务端明确拒绝令牌字段并指定另一个字段时，才尝试一次参数兼容重试。
 10. **全模型速度优先**：设置里新增「速度优先」开关（默认开）。查词、翻译、追问和连接测试会把每家模型降到它支持的最低思考档位：OpenAI / Mistral / OpenRouter / Groq / xAI 用最低 effort，Gemini 按型号直接给 none / minimal / low，DeepSeek / Kimi / 智谱 / SiliconFlow / Together 关闭思考，不能关的（如 Kimi K3、GLM-5.3、Claude Opus 5.5）用 low，Perplexity 用 minimal，本地 Ollama 用 none。若服务商拒绝某一档，会自动退一档并记住，不会让查词失败。设置页显示当前模型的实际策略。后台画像归纳不受影响。
 11. **Claude 全系改走原生接口**：官方 Anthropic 地址上的所有 Claude 模型都改用原生 Messages。Haiku 5.5 / Sonnet 5.5 / Opus 5.x 按各自规则关闭或压低思考，Haiku 4.5 等本来不思考的型号不加参数；system 提示的固定部分开启 prompt 缓存。
-12. **缓存友好的 prompt 顺序**：网页检索结果和已确定的词义锚点移到 system 提示末尾，前面固定的说明在不同查询之间保持一致，OpenAI 自动缓存与 Claude 缓存都能命中，减少首字等待。
+12. **缓存友好的 prompt 顺序**：网页检索结果和已确定的词义锚点移到 system 提示末尾，前面固定的说明在不同查询之间保持一致，OpenAI 自动缓存与 Claude 缓存都能命中，减少首字等待。OpenAI 与 OpenRouter 另带按模板生成的缓存键，提高命中率；OpenRouter 上的 Claude / Gemini 也加上了缓存标记。DeepSeek、Kimi 等本来就自动缓存；Gemini 3.x 因门槛 4,096 token 高于查词前缀，暂时缓存不上。
 13. **追问流式输出**：追问回答边生成边显示，不再等整段写完。浏览器扩展与 Perplexity 暂时仍一次性显示。
 14. **先显示已返回的短预览**：词库未命中的单词、词组 / 句子的简短词义或译文预览此前被 loading 门控挡住。现在预览到达后即可阅读，同时保留完整分析的加载状态，正式模块在各自半结果完成后接替。预览标题只读，避免预览与正式结果重复挂载自动发音。
 
@@ -26,6 +26,7 @@
 - 低延迟修复验证：51 个测试文件 / 583 项通过，TypeScript、Web 与扩展构建通过；定向 ESLint 无 error，PhraseView 保留原有 effect 依赖 warning。新增 Haiku 原生协议及前台 / 诊断策略隔离测试；SSR + Store 回归确认预览在 loading 中可读，pending / 缓存 / v4 证据元数据不被提前修改。未做真实账号性能 benchmark，不承诺跨厂商绝对排名或具体提速秒数。
 - 全模型速度优先：新增 `aiSpeed.ts`（按 provider / 型号的最低思考梯子 + 明确拒绝时退档并按 host|model 记忆）、`aiStream.ts`（OpenAI 兼容 / Anthropic SSE 解析）。`aiAnthropic.ts` 由 Haiku 5.5 专用改为 `requestAnthropicMessages` 覆盖全部 Claude，system 首块 `cache_control`；`aiRequest.ts` 新增 `streamChatCompletion`、`SplitPrompt` / `systemMessage`，删除 `interactiveLatencyMode`；`aiPerplexity.ts` 接受 `reasoning` 补丁；`settingsStore.aiSpeedFirst` 默认开。各家参数由两路子代理逐家核对官方文档（见 `04-ai-schema.md`「前台速度优先策略」表），文档未写明的错误形态靠退档兜底。
 - 本次验证：51 个测试文件 / 605 项通过，`tsc -b`、Web 构建、扩展构建通过；改动文件 ESLint 0 error（settingsStore 既有 6 项非空断言 warning）。内置浏览器确认设置页开关与按型号的策略说明渲染、无控制台错误，测试设置已还原。未用真实 Key 发请求：各家对档位参数的实际接受情况、prompt 缓存命中率与提速幅度仍需实际使用确认。
+- 跨 provider 缓存：`aiRequest.ts` 对 `api.openai.com` / `openrouter.ai` 附 `prompt_cache_key`（stable 段 FNV-1a 哈希，不含原文）；OpenRouter `anthropic/*` 标记 system 首段、`google/*` 另把 per-query 尾段移入 user 消息。各家缓存规则由子代理核对官方文档，见 `04-ai-schema.md`。新增 7 项缓存请求测试。
 - 新增 `src/utils/chatCorrectionContext.ts`（`buildChatCorrectionContext`）；`askQuestion` 新增末位参数 `correctionContext`，在 study context 后、富语境前插入，非 `irrelevant` 路线包 `<ai_generated>`；`AiChatBox` 新增同名 prop；`PhraseView` 富语境中移除重复的原文 → 改正、纠正说明与思维违和感剖析。
 - 新增 `src/services/aiFollowUp.test.ts`（5 项：富语境关闭时仍发送订正、irrelevant 路线保留原文、无订正不加段落、helper 的大小写与仅地道表达情形）。全量 46 个文件 / 466 项通过，`tsc -b` 通过，改动文件 ESLint 0 error。
 - 浏览器实测（本地 dev server，模拟 AI 回复）：句子 `I very like this idea` → `I really like this idea`；完整语境关闭时追问请求含改正、原因、地道表达、选词理由与剖析；打开后各项只出现一次，历史对话完整。测试数据与设置已恢复。
