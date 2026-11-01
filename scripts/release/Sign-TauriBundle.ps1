@@ -45,10 +45,15 @@ if (Test-Path $sig) {
   exit 0
 }
 
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+  throw "TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set — check .env.release"
+}
+
 Write-Host "[sign] No .sig after build — signing with private-key-path ..."
+# The CLI reads the password from TAURI_SIGNING_PRIVATE_KEY_PASSWORD. Never pass
+# it as an argument: arguments are echoed by npx and visible in process lists.
 npx tauri signer sign `
   --private-key-path $env:TAURI_SIGNING_PRIVATE_KEY_PATH `
-  --password $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD `
   $exe
 
 if (-not (Test-Path $sig)) {

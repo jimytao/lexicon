@@ -87,6 +87,7 @@ git diff --cached --stat
 3. 每条写清：**改了哪些文件 / 解决什么问题或新增什么能力**（与仓库现有 CHANGELOG 文风一致）。  
 4. 若 diff 里有改动但 CHANGELOG 未写 → **立刻补写**，然后重新自检本小节。  
 5. 纯文档笔误、仅本地构建缓存、与产品无关的噪声可省略；**功能增减不得省略**。
+6. 条目里的验证记录（测试文件数 / 测试项数、构建结果）必须与**本次发版最终一次** `npm test` / 构建输出一致。开发过程中写下的旧数字（例如后续又补了测试）在 §3.4 跑完 `npm test` 后立即改成最终结果，再进入 §5 提交。
 
 **禁止：** 用空话「杂项优化」吞掉多个独立功能；雪藏/删除的功能必须在 CHANGELOG 写明「已雪藏 / 已移除」，避免 README 与真实产品相反。
 
@@ -223,6 +224,8 @@ Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前
 | 手写 `version.json` 用 `Set-Content -Encoding UTF8` | 写入 **UTF-8 BOM**，更新器解析失败 |
 | `platforms` 里放 android/ios 空 signature | Tauri 校验整个 JSON 失败 |
 | `.env.release` 的 `ANDROID_*` 未映射到 `KEYSTORE_PASSWORD` | Gradle 可能用到错误默认密码 |
+| 用 `--password` 等**命令行参数**传密码（脚本或手动命令） | 命令行会被 npx / 日志回显，也出现在进程列表，密码泄露。CLI 一律从环境变量读取（`tauri signer` 自动读 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`） |
+| Agent 读取并输出 `.env.release` 内容、或在报告 / 日志里复述密码 | 密钥进入对话记录与日志；只允许脚本加载，禁止 `cat` / `Get-Content` 该文件 |
 
 **正确加载（每次构建前必跑）：**
 
@@ -231,6 +234,9 @@ Agent 在进入版本号滚动 / `git commit` / `git push` / `gh release` 之前
 . .\scripts\release\Load-ReleaseEnv.ps1
 # 此后：KEY_PATH 已设；TAURI_SIGNING_PRIVATE_KEY 已清除；Android KEY* 已映射
 ```
+
+> [!IMPORTANT]
+> **环境变量只在当前 shell 进程内有效。** Agent 每次调用终端工具都是新的 shell，上一步加载的签名变量、`cd` 后的目录都不会保留。因此 `Load-ReleaseEnv.ps1` 必须与需要签名的构建命令写在**同一次**执行里（同一条 PowerShell 命令，用 `;` 连接），不要「先单独加载、下一步再构建」；也不要依赖上一步的 `cd`，改用带路径的写法（见 §3.2）。
 
 ### 3.1 Windows PC (Tauri)
 
@@ -247,6 +253,13 @@ $sig = "src-tauri/target/release/bundle/nsis/Lexicon_${V}_x64-setup.exe.sig"
 if (-not (Test-Path $sig)) { throw "NO .sig — STOP. Do not write version.json or push." }
 ```
 
+> [!WARNING]
+> **Windows PowerShell 5.1 的 stderr 陷阱**：在 PowerShell 里对 npm / cargo / gradlew 用 `2>&1` 或把输出重定向到日志，会把它们正常写到 stderr 的进度信息包装成错误，构建被当场判定失败（v0.9.30 发版时实际发生）。需要保存日志时改由 cmd 重定向：
+> ```powershell
+> . .\scripts\release\Load-ReleaseEnv.ps1; cmd /c "npm run tauri:build > tauri-build.log 2>&1"; if ($LASTEXITCODE -ne 0) { throw "tauri:build failed — see tauri-build.log" }
+> ```
+> 日志属于临时文件，发版结束随 §8 一并删除，不得入库。
+
 产物期望路径：
 - `src-tauri/target/release/bundle/nsis/Lexicon_${V}_x64-setup.exe` + `.sig`
 - `src-tauri/target/release/bundle/msi/Lexicon_${V}_x64_en-US.msi`
@@ -260,11 +273,13 @@ $V = "X.X.X"
 . .\scripts\release\Load-ReleaseEnv.ps1   # 映射 KEYSTORE_PASSWORD / KEY_PASSWORD
 npm run build
 npx cap copy android
-cd android
-.\gradlew.bat assembleRelease   # macOS/Linux: ./gradlew assembleRelease
-cd ..
+# 不依赖 cd：-p 指定项目目录（macOS/Linux: ./android/gradlew -p android assembleRelease）
+& .\android\gradlew.bat -p android assembleRelease
+if ($LASTEXITCODE -ne 0) { throw "assembleRelease failed" }
 .\scripts\release\Prepare-AndroidApks.ps1 -Version $V
 ```
+
+Agent 执行时把 `Load-ReleaseEnv.ps1` 与 `gradlew` 写在同一条命令里（§3.0），否则 Gradle 拿不到 `KEYSTORE_PASSWORD` / `KEY_PASSWORD`。需要日志时同 §3.1 用 `cmd /c "... > gradle-build.log 2>&1"`。
 
 Gradle 在 `signingConfigs.release` 中签名；输出在 `android/app/build/outputs/apk/release/`，脚本会拷到仓库根目录的 `Lexicon_${V}_*_signed.apk`（供 `gh release upload`）。
 
@@ -278,7 +293,7 @@ Gradle 在 `signingConfigs.release` 中签名；输出在 `android/app/build/out
 
 ```powershell
 $V = "X.X.X"
-npm test
+npm test   # 结果数字若与 CHANGELOG 验证记录不同，现在就更新 CHANGELOG（§0.3 第 6 条）
 npm run pack:ext
 
 # 当前 manifest 同时定义 Windows/Linux 的 Alt+L 与 macOS 的 Command+Shift+L，
@@ -295,6 +310,9 @@ Copy-Item "lexicon-extension-$V.zip" "lexicon-extension-$V-macos.zip" -Force
 5. `dictionaries` Release 已包含 `manifest.json`、`lexicon.db`、`lexicon_en.db`，且 SHA-256 与 manifest 一致。
 
 人工验收：在 `chrome://extensions` 或 `edge://extensions` 开启开发者模式，加载已解压的 `dist-ext/`，验证首次词库下载、查词、网页划词、右键菜单、`Alt+L`、AI、Tavily/Brave，以及删除后重下词库。macOS 发布前还需真机验证 `Command+Shift+L`。
+
+> [!NOTE]
+> **Agent 无法做人工验收。** 由 Agent 执行发版时，这一步记为「未验证」，不要因此阻塞发版；但 §8 会删除 `dist-ext/`，所以最终回报里必须告诉用户补测方法：从本版 Release 下载 `lexicon-extension-$V.zip`，解压到任意文件夹，在扩展页「加载已解压的扩展程序」选择该文件夹，按上面清单验收（ZIP 与 `dist-ext/` 内容相同）。
 
 ### 3.5 构建后硬门禁（正式发版必跑）
 
@@ -446,7 +464,7 @@ gh run list --workflow=macos-build.yml --limit 1
 - [ ] GitHub Release 含 Windows + Android 产物  
 - [ ] GitHub Release 含 `lexicon-extension-$V.zip` + `lexicon-extension-$V-macos.zip`，两者 ZIP 根目录均直接含 `manifest.json`
 - [ ] README / README_en 的扩展下载链接指向本版 `v$V` 的两个 ZIP，且链接可下载；未向 `extension-preview` 追加任何资产
-- [ ] Chrome / Edge 加载 `dist-ext/` 验收通过；macOS 快捷键如未真机验证，必须明确向用户说明
+- [ ] Chrome / Edge 加载 `dist-ext/` 验收通过；未验收（如 Agent 发版）或 macOS 快捷键未真机验证时，必须明确向用户说明，并附 §3.4 的 Release ZIP 补测方法
 - [ ] iOS 与 macOS workflows 触发成功且产物挂上（或已向用户说明仍在构建）  
 - [ ] 向用户回报 Release URL  
 
@@ -468,7 +486,9 @@ Remove-Item release_notes.txt, release_notes_zh.md, release_notes_en.md -Force -
 # 3. 扩展构建目录（已打进 ZIP）
 Remove-Item -Recurse -Force dist-ext -ErrorAction SilentlyContinue
 # 4. Android 构建输出
-cd android; .\gradlew.bat clean; cd ..
+& .\android\gradlew.bat -p android clean
+# 4b. §3.1 / §3.2 若保存过构建日志
+Remove-Item tauri-build.log, gradle-build.log -Force -ErrorAction SilentlyContinue
 # 5. Tauri 安装包（EXE / MSI / .sig）；必须删除
 Remove-Item -Recurse -Force src-tauri\target\release\bundle -ErrorAction SilentlyContinue
 # 可选：彻底释放空间（下次 tauri:build 会较慢）
@@ -482,6 +502,7 @@ $left = @(
   Get-ChildItem -File -Filter "Lexicon_*.apk" -ErrorAction SilentlyContinue
   Get-ChildItem -File -Filter "lexicon-extension-*.zip" -ErrorAction SilentlyContinue
   Get-ChildItem -File -Filter "release_notes*" -ErrorAction SilentlyContinue
+  Get-ChildItem -File -Filter "*-build.log" -ErrorAction SilentlyContinue
   Get-ChildItem -Recurse -File "src-tauri\target\release\bundle" -Include *.exe, *.msi, *.sig -ErrorAction SilentlyContinue
   Get-ChildItem -Recurse -File "android\app\build\outputs\apk" -Filter *.apk -ErrorAction SilentlyContinue
 ) | Where-Object { $_ }
