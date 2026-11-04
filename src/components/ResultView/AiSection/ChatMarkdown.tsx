@@ -173,8 +173,12 @@ function tokenize(markdown: string): Token[] {
     // Blank line — skip
     if (line.trim() === '') { i++; continue }
 
-    // Paragraph — collect consecutive non-special lines
-    const paraLines: string[] = []
+    // Paragraph — collect consecutive non-special lines. The first line is taken
+    // unconditionally: a line no block above claimed can still fail the checks below
+    // (a table row without its separator yet, a bare "####"), and streamed replies
+    // stop on exactly those lines. Not consuming it here would spin forever.
+    const paraLines: string[] = [line]
+    i++
     while (
       i < lines.length &&
       lines[i].trim() !== '' &&
@@ -189,9 +193,7 @@ function tokenize(markdown: string): Token[] {
       paraLines.push(lines[i])
       i++
     }
-    if (paraLines.length) {
-      tokens.push({ type: 'paragraph', text: paraLines.join(' ') })
-    }
+    tokens.push({ type: 'paragraph', text: paraLines.join(' ') })
   }
 
   return tokens
