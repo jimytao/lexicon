@@ -11,7 +11,8 @@ param(
   [string]$Version,
   [string]$RepoRoot = '',
   [string]$NotesZhPath = '',
-  [string]$NotesEnPath = ''
+  [string]$NotesEnPath = '',
+  [switch]$Major
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,7 +53,7 @@ $obj = [ordered]@{
   notes     = $zh
   notes_zh  = $zh
   notes_en  = $en
-  is_major  = $false
+  is_major  = [bool]$Major
 }
 
 $json = $obj | ConvertTo-Json -Depth 6

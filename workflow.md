@@ -344,7 +344,8 @@ if ($manifest.version -ne $V) { throw "Extension manifest version mismatch — S
 ```powershell
 $V = "X.X.X"
 .\scripts\release\Write-VersionJson.ps1 -Version $V
-# 自动：从 .sig 读 signature；url 指向 v$V；UTF-8 **无 BOM**；is_major=false；仅 windows-x86_64
+# 自动：从 .sig 读 signature；url 指向 v$V；UTF-8 **无 BOM**；is_major 默认 false；仅 windows-x86_64
+# 用户明确要求重大版本时加 -Major（§2），写入 is_major=true，App 启动时自动弹更新窗口
 ```
 
 **禁止**手写把 `signature` 留成 `PLACEHOLDER` 就 push。  
