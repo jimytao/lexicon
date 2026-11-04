@@ -8,6 +8,15 @@
 ### 工程与验证
 - `ChatMarkdown.tokenize` 的段落分支无条件收下首行，保证外层循环前进；此前没有分支接受的行不推进 `i`。完整回答里的 `#parry`、孤立的表格行也会触发同一死循环，一并修复。
 - 新增 `ChatMarkdown.test.ts`：逐字符前缀模拟流式输出，并覆盖半截表格、裸标题与表格恢复。
+- 本次验证：52 个测试文件 / 622 项通过，`tsc -b` 与改动文件 ESLint 通过；未跑 Web 构建。修复前用真实组件复现 8 种半截或异常内容全部卡死，修复后全部正常。Web 开发环境用假 SSE 走真实追问流程：主线程最长停顿 64ms，表格逐步成形，提问与回答都写入 `lexicon-chat`。未连接真实 AI，未在 Tauri 桌面版验证。
+
+## 2026-11-01 — 发版签名安全加固（v0.9.30 发布后，未发版）
+
+### 工程与验证
+1. **Updater 私钥密码不再走命令行**：`Sign-TauriBundle.ps1` 原先用 `--password` 传密码，会被 npx 回显到构建输出，也出现在进程列表。现在由 Tauri CLI 从 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 读取，变量缺失时立即报错。
+2. **移除 Android 签名密码明文回退**：`android/app/build.gradle` 在 `KEYSTORE_PASSWORD` / `KEY_PASSWORD` 未设置时会回退到写死的密码，该值与正式密钥库密码相同，已随仓库公开。密钥库密码已在本地轮换（密钥与证书不变，已安装用户可继续升级）；Gradle 现在只读环境变量，release 任务缺变量时提前报错并提示 `Load-ReleaseEnv.ps1`。旧值仍在 git 历史里，但已打不开密钥库。
+3. **`workflow.md` 发版 SOP 加固**：禁止用命令行参数传密码或输出 `.env.release`；`Load-ReleaseEnv.ps1` 必须与构建写在同一次命令里；Gradle 改用 `gradlew -p android`，不依赖 `cd`；Windows PowerShell 5.1 下用 `cmd /c` 保存构建日志，并在 §8 清理；Agent 发版无法人工验收扩展时记为未验证，并给出 Release ZIP 补测方法；CHANGELOG 的验证数字必须与最终测试结果一致。
+- 本节是推送前按提交内容补记的，补记时未重新执行发版构建。
 
 ## 2026-11-01 — Provider 兼容性、全模型速度优先与追问订正语境 (v0.9.30)
 
