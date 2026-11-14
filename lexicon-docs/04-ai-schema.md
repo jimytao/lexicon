@@ -381,6 +381,7 @@ AI 服务直接解析此格式，不再依赖独立的 `localStorage.getItem('ai
 ## 性能注意
 
 - AI 调用是异步的，**不阻塞** L1 内容渲染
-- 切换单词时取消上一个未完成的 AI 请求（用 AbortController）
+- 双半请求按查询分轨：切换单词**不**取消上一个查询，它在后台写完自己的缓存；每次请求有独立 id，迟到回包只能写进自己的草稿（见 AGENT.md「按查询分轨的请求」）。同查询重试 / ⭐ 才 abort 旧请求
+- 手机端（CapacitorHttp）原生 fetch 不认 AbortSignal，`aiTransport.settleOnAbort` 让取消与超时在 JS 侧生效
 - 同一个词的 AI 结果在 session 内缓存（Map，key 为 word），避免重复调用
 - 推荐 max_tokens=1200，Gemini Flash 通常在 1-2 秒内返回

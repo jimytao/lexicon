@@ -15,32 +15,18 @@
  * 见 lexicon-docs/10-browser-extension.md §9（P3）。
  */
 import { isExtension } from './platform'
+import { normalizeSelection } from './selectionText'
+
+export { MAX_SELECTION_LENGTH, normalizeSelection } from './selectionText'
 
 /** SW 与侧栏共用同一个 key，故常量放在这里而不是各写一份。 */
 export const PENDING_QUERY_KEY = 'lexicon:pendingQuery'
-
-/**
- * 选区长度上限。超过就截断到词边界。
- *
- * 不设上限的话，用户全选一篇长文再点按钮，会被 `detectQueryType` 判成 sentence
- * 并原样塞进 AI prompt —— 既贵又必然超上下文。
- */
-export const MAX_QUERY_LENGTH = 300
 
 export interface PendingQuery {
   text: string
   /** 时间戳。必须有：storage.onChanged 在值相同时不触发，
    *  没有它连续选同一个词第二次就不会响应。 */
   at: number
-}
-
-/** 归一化外部选区：压空白、去首尾、超长截断到词边界。 */
-export function normalizeSelection(raw: string): string {
-  const collapsed = raw.replace(/\s+/g, ' ').trim()
-  if (collapsed.length <= MAX_QUERY_LENGTH) return collapsed
-  const cut = collapsed.slice(0, MAX_QUERY_LENGTH)
-  const lastSpace = cut.lastIndexOf(' ')
-  return (lastSpace > MAX_QUERY_LENGTH * 0.6 ? cut.slice(0, lastSpace) : cut).trim()
 }
 
 function isValidPending(value: unknown): value is PendingQuery {

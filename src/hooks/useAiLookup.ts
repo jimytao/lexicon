@@ -21,7 +21,7 @@ import { cognitiveFromSearchMode, normalizeQuery } from '../utils/text'
 import { aiFullNeedsExplanationFill, collocationsNeedFill, conceptGraphNeedsFill } from '../utils/aiCompleteness'
 import type { Meaning, CollocationData, ConceptGraph, ConceptGraphExample, LearningRoute, PhraseResult } from '../types'
 import type { CombinedHalf } from '../stores/resultStore'
-import type { SearchTag } from '../utils/combinedResult'
+import { combinedCacheKey, type SearchTag } from '../utils/combinedResult'
 
 function mergeCollocationNotes(
   data: CollocationData | undefined,
@@ -95,7 +95,7 @@ async function resolveWordAnchor(
   word: string,
   tag: SearchTag,
   signal: AbortSignal,
-  commitOk: () => boolean,
+  applySkeleton: (skeleton: MeaningsAnchor) => void,
 ): Promise<MeaningsAnchor | undefined> {
   const store = useResultStore.getState()
 
@@ -123,7 +123,7 @@ async function resolveWordAnchor(
   if (detectLanguage(word) === 'zh') {
     try {
       const skeleton = await resolveQuerySkeleton(word, 'word', language, signal)
-      if (commitOk()) useResultStore.getState().applyQuerySkeleton(word, skeleton, 'word')
+      applySkeleton(skeleton)
       return skeleton
     } catch (e) {
       // A real cancel must stop the whole request; a bad-JSON resolution must not.
@@ -132,7 +132,7 @@ async function resolveWordAnchor(
     }
   }
 
-  void previewSkeleton(word, 'word', language, signal, commitOk)
+  void previewSkeleton(word, 'word', language, signal, applySkeleton)
   return undefined
 }
 
@@ -140,14 +140,14 @@ async function resolveWordAnchor(
 async function resolvePhraseAnchor(
   phrase: string,
   signal: AbortSignal,
-  commitOk: () => boolean,
+  applySkeleton: (skeleton: MeaningsAnchor) => void,
 ): Promise<MeaningsAnchor | undefined> {
   const dictionaryContext = resolveDictionaryContext(phrase, useSettingsStore.getState())
   const isSentence = dictionaryContext.queryType === 'sentence'
 
   // A sentence has exactly one faithful reading and the halves cannot diverge on
   // it, so there is nothing to arbitrate — resolve only to paint the gist early.
-  void previewSkeleton(phrase, isSentence ? 'sentence' : 'phrase', dictionaryContext.explanationLanguage, signal, commitOk)
+  void previewSkeleton(phrase, isSentence ? 'sentence' : 'phrase', dictionaryContext.explanationLanguage, signal, applySkeleton)
   return undefined
 }
 
@@ -160,14 +160,97 @@ function previewSkeleton(
   kind: 'word' | 'phrase' | 'sentence',
   language: ExplanationLanguage,
   signal: AbortSignal,
-  commitOk: () => boolean,
+  applySkeleton: (skeleton: MeaningsAnchor) => void,
 ): Promise<void> {
   return resolveQuerySkeleton(query, kind, language, signal)
-    .then((skeleton) => {
-      if (!commitOk()) return
-      useResultStore.getState().applyQuerySkeleton(query, skeleton, kind === 'word' ? 'word' : 'phrase')
-    })
+    .then(applySkeleton)
     .catch(() => { /* preview only — the real halves carry the request */ })
+}
+
+/* ---------------- Per-query in-flight split requests ---------------- */
+
+/** Whole split request (anchor + web search + both halves). */
+const COMBINED_TIMEOUT_MS = 45_000
+/**
+ * How many different queries may keep running in the background at once. Each
+ * one is up to three HTTP requests; beyond this the oldest is cancelled.
+ */
+const MAX_BACKGROUND_QUERIES = 3
+
+interface InflightRequest {
+  id: number
+  controller: AbortController
+}
+
+/**
+ * query+tag -> its running request. Module-scoped: only App starts split
+ * requests, and a request must outlive any one render.
+ */
+const inflight = new Map<string, InflightRequest>()
+
+function inflightKey(kind: 'word' | 'phrase', query: string, tag: SearchTag): string {
+  return `${kind}:${combinedCacheKey(query, tag)}`
+}
+
+function abortInflight(key: string): void {
+  const entry = inflight.get(key)
+  if (!entry) return
+  inflight.delete(key)
+  entry.controller.abort()
+  useResultStore.getState().endCombined(entry.id)
+}
+
+/** Make room for one more query by cancelling the oldest background ones. */
+function enforceInflightLimit(): void {
+  while (inflight.size >= MAX_BACKGROUND_QUERIES) {
+    const oldest = inflight.keys().next().value
+    if (oldest === undefined) return
+    abortInflight(oldest)
+  }
+}
+
+function cancelAllInflight(): void {
+  for (const entry of inflight.values()) entry.controller.abort()
+  inflight.clear()
+  const store = useResultStore.getState()
+  store.dropAllCombinedDrafts()
+}
+
+/**
+ * Attach to a request already running for this query instead of starting a
+ * second one (tab flip, revisit from history). Returns true when attached.
+ */
+function attachInflight(kind: 'word' | 'phrase', query: string, tag: SearchTag): boolean {
+  const key = inflightKey(kind, query, tag)
+  if (!inflight.has(key)) return false
+  if (useResultStore.getState().showCombinedDraft(query, tag, kind)) return true
+  // The store forgot the draft (reset / cache clear): the request is orphaned.
+  abortInflight(key)
+  return false
+}
+
+function startInflight(kind: 'word' | 'phrase', query: string, tag: SearchTag): InflightRequest {
+  const key = inflightKey(kind, query, tag)
+  // Retry / force refresh of the same query: the new request replaces the old one.
+  abortInflight(key)
+  enforceInflightLimit()
+  const controller = new AbortController()
+  const id = useResultStore.getState().beginCombined(query, tag, kind)
+  const entry = { id, controller }
+  inflight.set(key, entry)
+  return entry
+}
+
+function finishInflight(kind: 'word' | 'phrase', query: string, tag: SearchTag, id: number): void {
+  const key = inflightKey(kind, query, tag)
+  if (inflight.get(key)?.id === id) inflight.delete(key)
+  useResultStore.getState().endCombined(id)
+}
+
+/** Readable reason for one failed half. */
+function halfFailureText(kind: ReturnType<typeof classifyAiRequestError>, e: unknown): string {
+  if (kind === 'timeout') return `请求超时（${COMBINED_TIMEOUT_MS / 1000} 秒内未返回），请重试`
+  return errorMessage(e)
 }
 
 export function useAiLookup() {
@@ -183,6 +266,7 @@ export function useAiLookup() {
   const cancelAi = useCallback(() => {
     gateRef.current.cancel()
     abortRef.current?.abort()
+    cancelAllInflight()
   }, [])
 
   /** Standard AI analysis for a word that exists in the dictionary */
@@ -322,27 +406,23 @@ export function useAiLookup() {
     tag: SearchTag = 'normal',
     learningRoute?: LearningRoute,
   ) => {
-    abortRef.current?.abort()
-    abortRef.current = new AbortController()
-    const token = gateRef.current.begin()
-
     if (!forceRefresh) {
+      // Already running for this word (tab flip / revisit): show it, do not restart.
+      if (attachInflight('word', word, tag)) return
       const cached = getCachedCombined(word, tag)
       if (cached) {
-        if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
-          setCombinedResult(word, cached, tag)
-        }
+        setCombinedResult(word, cached, tag)
         return
       }
     }
 
-    const { signal, dispose } = combineSignals(abortRef.current.signal, 45_000)
-    const commitOk = () => shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)
+    const { id, controller } = startInflight('word', word, tag)
+    const { signal, dispose } = combineSignals(controller.signal, COMBINED_TIMEOUT_MS)
     const store = () => useResultStore.getState()
-    store().beginCombined(word, tag, 'word')
+    const applySkeleton = (skeleton: MeaningsAnchor) => store().applyQuerySkeleton(id, skeleton)
 
     try {
-      const anchor = await resolveWordAnchor(word, tag, signal, commitOk)
+      const anchor = await resolveWordAnchor(word, tag, signal, applySkeleton)
 
       // One shared web search instead of one per half (it used to run twice).
       const webResults = await performWebSearch(word, signal)
@@ -353,46 +433,46 @@ export function useAiLookup() {
       let landed = 0
       let lastError: unknown = null
 
+      // Every write carries this request's id; the store ignores it once the
+      // request is superseded, so a late half can never touch another query.
       const runHalf = async (half: CombinedHalf) => {
         try {
           const r = await aiFullLookup(word, true, signal, half, { anchor, webResults, learningRoute })
-          if (!commitOk()) { store().settleCombinedHalf(half); return }
           landed += 1
-          store().commitCombinedHalf(word, half, r, tag)
+          store().commitCombinedHalf(id, half, r)
         } catch (e) {
           lastError = e
-          store().settleCombinedHalf(half)
+          const kind = classifyAiRequestError(e, signal.reason)
+          if (kind === 'abort') return
+          store().settleCombinedHalf(id, half, halfFailureText(kind, e))
         }
       }
 
       // Both fire immediately; the selected half is simply the one on screen, so it
       // is the one the user perceives. Ordering between them is not forced.
       await Promise.all([runHalf(selected), runHalf(other)])
-      dispose()
 
-      if (!commitOk()) return
       // Only a total failure is an error — one good half is still a usable result.
       if (landed === 0 && lastError) {
         const kind = classifyAiRequestError(lastError, signal.reason)
-        if (kind === 'abort') return
         if (kind === 'timeout') {
-          setAiError(`「${word}」较为生僻，AI 未能在时限内解析，建议直接向 AI 提问`)
-          return
+          store().failCombined(id, `「${word}」较为生僻，AI 未能在时限内解析，建议直接向 AI 提问`)
+        } else if (kind !== 'abort') {
+          store().failCombined(id, errorMessage(lastError))
         }
-        setAiError(errorMessage(lastError))
       }
     } catch (e) {
-      dispose()
-      if (!commitOk()) return
       const kind = classifyAiRequestError(e, signal.reason)
-      if (kind === 'abort') return
       if (kind === 'timeout') {
-        setAiError(`「${word}」较为生僻，AI 未能在时限内解析，建议直接向 AI 提问`)
-        return
+        store().failCombined(id, `「${word}」较为生僻，AI 未能在时限内解析，建议直接向 AI 提问`)
+      } else if (kind !== 'abort') {
+        store().failCombined(id, errorMessage(e))
       }
-      setAiError(errorMessage(e))
+    } finally {
+      dispose()
+      finishInflight('word', word, tag, id)
     }
-  }, [getCachedCombined, setCombinedResult, setAiError])
+  }, [getCachedCombined, setCombinedResult])
 
   /** v0.9.15: Split combined phrase/sentence call — same two-parallel-halves shape. */
   const triggerCombinedPhraseQuery = useCallback(async (
@@ -401,28 +481,24 @@ export function useAiLookup() {
     tag: SearchTag = 'normal',
     submittedRoute?: LearningRoute,
   ) => {
-    abortRef.current?.abort()
-    abortRef.current = new AbortController()
-    const token = gateRef.current.begin()
     const learningRoute = submittedRoute ?? resolveCurrentLearningRoute(phrase)
 
     if (!forceRefresh) {
+      if (attachInflight('phrase', phrase, tag)) return
       const cached = getCachedCombinedPhrase(phrase, tag)
       if (cached) {
-        if (shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)) {
-          setCombinedPhraseResult(phrase, cached, tag)
-        }
+        setCombinedPhraseResult(phrase, cached, tag)
         return
       }
     }
 
-    const { signal, dispose } = combineSignals(abortRef.current.signal, 45_000)
-    const commitOk = () => shouldCommitAiDisplay(token, gateRef.current, useSearchStore.getState().mode)
+    const { id, controller } = startInflight('phrase', phrase, tag)
+    const { signal, dispose } = combineSignals(controller.signal, COMBINED_TIMEOUT_MS)
     const store = () => useResultStore.getState()
-    store().beginCombined(phrase, tag, 'phrase')
+    const applySkeleton = (skeleton: MeaningsAnchor) => store().applyQuerySkeleton(id, skeleton)
 
     try {
-      const anchor = await resolvePhraseAnchor(phrase, signal, commitOk)
+      const anchor = await resolvePhraseAnchor(phrase, signal, applySkeleton)
       const webResults = await performWebSearch(phrase, signal)
 
       const selected: CombinedHalf = cognitiveFromSearchMode(useSearchStore.getState().mode)
@@ -435,48 +511,47 @@ export function useAiLookup() {
       const runHalf = async (half: CombinedHalf) => {
         try {
           const r = await aiPhraseQuery(phrase, true, signal, half, { anchor, webResults, learningRoute })
-          if (!commitOk()) { store().settleCombinedHalf(half); return }
           landed += 1
           if (half === 'lookup') captured.lookup = r
-          store().commitCombinedPhraseHalf(phrase, half, r, tag)
+          store().commitCombinedPhraseHalf(id, half, r)
         } catch (e) {
           lastError = e
-          store().settleCombinedHalf(half)
+          const kind = classifyAiRequestError(e, signal.reason)
+          if (kind === 'abort') return
+          store().settleCombinedHalf(id, half, halfFailureText(kind, e))
         }
       }
 
       await Promise.all([runHalf(selected), runHalf(other)])
-      dispose()
-
-      if (!commitOk()) return
 
       if (landed === 0 && lastError) {
         const kind = classifyAiRequestError(lastError, signal.reason)
-        if (kind === 'abort') return
         if (kind === 'timeout') {
-          setAiError(`「${phrase}」请求超时，请重试或检查网络`)
-          return
+          store().failCombined(id, `「${phrase}」请求超时，请重试或检查网络`)
+        } else if (kind !== 'abort') {
+          store().failCombined(id, errorMessage(lastError))
         }
-        setAiError(errorMessage(lastError))
         return
       }
 
+      // Learner evidence is recorded even when the user has moved on to another
+      // query: the sentence was still theirs, only the screen changed.
       const lr = captured.lookup
       if (lr && (lr.unnaturalMindModel || lr.correctForm)) {
         recordSentenceCorrectionEvent(phrase, lr.correctForm, lr.unnaturalMindModel, learningRoute)
       }
     } catch (e) {
-      dispose()
-      if (!commitOk()) return
       const kind = classifyAiRequestError(e, signal.reason)
-      if (kind === 'abort') return
       if (kind === 'timeout') {
-        setAiError(`「${phrase}」请求超时，请重试或检查网络`)
-        return
+        store().failCombined(id, `「${phrase}」请求超时，请重试或检查网络`)
+      } else if (kind !== 'abort') {
+        store().failCombined(id, errorMessage(e))
       }
-      setAiError(errorMessage(e))
+    } finally {
+      dispose()
+      finishInflight('phrase', phrase, tag, id)
     }
-  }, [getCachedCombinedPhrase, setCombinedPhraseResult, setAiError])
+  }, [getCachedCombinedPhrase, setCombinedPhraseResult])
 
   /** Repair only missing collocation notes on current full result (keeps good notes). */
   const repairCollocationNotes = useCallback(async (word: string) => {

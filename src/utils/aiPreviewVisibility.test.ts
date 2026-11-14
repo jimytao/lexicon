@@ -32,7 +32,6 @@ import { useResultStore, type QuerySkeleton } from '../stores/resultStore'
 import { useSearchStore } from '../stores/searchStore'
 import { DEFAULT_MODULES, DEFAULT_CORE_MODULES, DEFAULT_CORE_PHRASE_MODULES, useSettingsStore } from '../stores/settingsStore'
 import { translations } from '../i18n'
-import { createAiRequestGate, shouldCommitAiDisplay } from './aiRequestGate'
 import { shouldShowAiPreview } from './resultAiVisibility'
 
 const noop = () => {}
@@ -53,10 +52,11 @@ beforeEach(() => {
 
 afterEach(() => { vi.restoreAllMocks() })
 
-function previewWord() {
+function previewWord(): number {
   const store = useResultStore.getState()
-  store.beginCombined('run', 'normal', 'word')
-  store.applyQuerySkeleton('run', skeleton, 'word')
+  const id = store.beginCombined('run', 'normal', 'word')
+  store.applyQuerySkeleton(id, skeleton)
+  return id
 }
 
 function renderLookup(word = 'run', status: 'loading' | 'success' = 'loading') {
@@ -101,8 +101,8 @@ describe('readable previews while full AI halves are still loading', () => {
   it.each(['ai', 'core'] as const)('renders phrase/sentence translation in %s while its real half stays pending', mode => {
     useSearchStore.setState({ mode, query: 'run into', queryType: 'phrase' })
     const store = useResultStore.getState()
-    store.beginCombined('run into', 'normal', 'phrase')
-    store.applyQuerySkeleton('run into', { correctForm: 'run into', senses: [{ senseIndex: 1, zh: meaning }] }, 'phrase')
+    const id = store.beginCombined('run into', 'normal', 'phrase')
+    store.applyQuerySkeleton(id, { correctForm: 'run into', senses: [{ senseIndex: 1, zh: meaning }] })
     const state = useResultStore.getState()
     const html = renderToStaticMarkup(createElement(PhraseView, {
       phrase: 'run into', phraseResult: mode === 'core' ? state.combinedPhraseResult?.core ?? null : state.phraseResult,
@@ -125,30 +125,28 @@ describe('readable previews while full AI halves are still loading', () => {
   })
 
   it('never reveals a late skeleton from an older word', () => {
+    const older = useResultStore.getState().beginCombined('run', 'normal', 'word')
     useResultStore.getState().beginCombined('walk', 'normal', 'word')
-    useResultStore.getState().applyQuerySkeleton('run', skeleton, 'word')
+    useResultStore.getState().applyQuerySkeleton(older, skeleton)
     expect(renderLookup('walk')).not.toContain(meaning)
     expect(useResultStore.getState().aiSkeleton).toBeNull()
   })
 
-  it('does not allow a cancelled generation or Instant switch to publish a preview', () => {
-    const gate = createAiRequestGate()
-    const previous = gate.begin()
-    useResultStore.getState().beginCombined('run', 'normal', 'word')
-    gate.cancel()
-    const publish = (token: number, mode: string) => {
-      if (shouldCommitAiDisplay(token, gate, mode)) useResultStore.getState().applyQuerySkeleton('run', skeleton, 'word')
-    }
-    publish(previous, 'ai')
-    const current = gate.begin()
-    publish(current, 'instant')
+  it('does not allow a cancelled request or Instant switch to publish a preview', () => {
+    const store = useResultStore.getState()
+    const cancelled = store.beginCombined('run', 'normal', 'word')
+    store.dropAllCombinedDrafts() // cancelAi
+    store.applyQuerySkeleton(cancelled, skeleton)
+    const detached = store.beginCombined('run', 'normal', 'word')
+    store.detachCombinedDisplay() // screen handed to something else
+    store.applyQuerySkeleton(detached, skeleton)
     expect(renderLookup()).not.toContain(meaning)
     expect(useResultStore.getState().aiSkeleton).toBeNull()
   })
 
   it('lets Lookup become complete independently while Core retains its readable preview and loading state', () => {
-    previewWord()
-    useResultStore.getState().commitCombinedHalf('run', 'lookup', finalLookup)
+    const id = previewWord()
+    useResultStore.getState().commitCombinedHalf(id, 'lookup', finalLookup)
     expect(renderLookup('run', 'success')).toContain('完整词义')
     useSearchStore.setState({ mode: 'core' })
     const html = renderCore()
@@ -159,10 +157,10 @@ describe('readable previews while full AI halves are still loading', () => {
   })
 
   it('replaces the preview with the completed result without changing evidence metadata', () => {
-    previewWord()
+    const id = previewWord()
     const checked = { ...finalLookup, profileInsight: '已校验的学习联系', profileInsightDirection: 'in' as const, profileInsightVersion: 4 }
-    useResultStore.getState().commitCombinedHalf('run', 'lookup', checked)
-    useResultStore.getState().commitCombinedHalf('run', 'core', finalLookup)
+    useResultStore.getState().commitCombinedHalf(id, 'lookup', checked)
+    useResultStore.getState().commitCombinedHalf(id, 'core', finalLookup)
     const html = renderLookup('run', 'success')
     expect(html).toContain('完整词义')
     expect(html).not.toContain(meaning)

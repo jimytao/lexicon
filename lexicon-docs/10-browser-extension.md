@@ -466,6 +466,8 @@ node scripts/gen-dictionary-manifest.mjs   # → dist-dictionaries/manifest.json
 因此把「捕获词」与「打开侧栏」解耦：**先写 `storage.session`，再机会主义尝试 `open()`**。
 `open()` 失败也不丢词 —— 用户下次打开侧栏时 `takePendingQuery()` 会补查。
 
+**选区长度上限**：`src/services/selectionText.ts` 的 `MAX_SELECTION_LENGTH = 2000`，content script 与 SW（`writePendingQuery`）共用同一份 `normalizeSelection`，超长时按「句子边界 → 词边界 → 硬切」截断。（2026-11-14 前 content script 另有一份硬切 300 的副本，会把正常段落切成半个单词。）该模块必须保持零依赖，因为它被内联进注入每个网页的 IIFE。
+
 **复用而非新写**：`pendingQuery` 最终调用 `App.tsx` 的 `handleWordSelect` ——
 那就是「按 Enter / 点联想词」的同一个入口，所以中文反查、词组/句子分流、缓存分轨、
 历史双轨、Profile 事件全部自动继承，P3 没有新增任何查词逻辑。

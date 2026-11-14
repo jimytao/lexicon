@@ -116,7 +116,7 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - **强制 AI（⭐）**：旁路词库的全量路径（`ai-full` / phrase），文案须与「普通搜 = 词典+合并增量」区分
 - **Instant 词库未命中**（或强制 AI）：按 `defaultSearchMode` 落入 Lookup 或 Core（默认仍是 Instant 时 → Lookup）
 - **历史双轨**：`lookupAiMode` / `coreAiMode`；历史列表双星（Lookup 琥珀 / Core 靛色）；`historyPreferCognitive`（默认 lookup）决定双轨皆有时的回放优先；**双轨皆无** → 有词库则留 Instant，OOD/词组仍落入 preferred AI
-- **AI 超时**：fetch Abort + Timeout reason 须映射为可展示 error（禁止当静默 Abort 卡住 loading）
+- **AI 超时**：fetch Abort + Timeout reason 须映射为可展示 error（禁止当静默 Abort 卡住 loading）；双半请求整体 45 s
 - **释义补全**：全量结果缺 note/meaning 时静默重试一次；仍缺则板块「补全缺失释义」只补缺项
 
 ### 结果渲染路径
@@ -183,7 +183,9 @@ Tauri 2（PC: Windows 本地构建 / macOS GitHub Actions 云端构建）
 - Instant：本地 L1 释义 / 例句；AI **不替换** L1
 - AI Lookup：增量偏理解记忆（情景、词根、助记、轻量 coreConcept）；默认不拉搭配/近义墙
 - Pure Core：按 `coreModules` 拉心智/概念树/介词语组/其他词组/用法场景/语域；**不拉释义墙**。本地词典义项是 `coreModules` 里的 `dictMeanings` 模组（可排序 / 关闭，非 AI，不进 prompt；勿与旧 `dictionary` id 混用）
-- 必须异步，不阻塞 L1 渲染；切换词时用 `AbortController` 取消
+- 必须异步，不阻塞 L1 渲染
+- **按查询分轨的请求（2026-11-14）**：Lookup/Core 双半请求每次都有自己的请求 id（`resultStore.beginCombined` 返回）。所有写入（骨架 / 半结果 / 半失败 / 整体失败）必须带 id，id 已被同查询的新请求取代或已结束就丢弃，**绝不能**落到别的查询上（旧 bug：旧请求把新查询标成「AI analysis failed」）。换查询**不取消**旧请求：它在后台写完自己的草稿与缓存，回到该查询（历史 / 再搜 / 切标签）时挂回进行中的请求而不重发；同查询 Try Again 一律 `forceRefresh` 新 id 并 abort 旧请求；后台最多 3 个查询，超出取消最早的；`cancelAi()`（切 Instant / 语言路由变化）取消全部。失败半显示真实原因（`aiHalfErrors`）。实现见 `useAiLookup.ts` 的 inflight 表与 `resultStore` 的 drafts。
+- **手机端 abort**：Capacitor 的 `CapacitorHttp` 改写的 fetch 不读 `signal`，`aiTransport.settleOnAbort` 让取消 / 45 s 超时在 JS 侧真正生效（原生请求仍会跑完，但回包被丢弃）
 - Session / persist 缓存见 `resultStore`（按规范化 query）
 - 单英文模式与双语模式：助记、练习、写作批改、问答等 prompt 均需适配（见 `04-ai-schema.md`）
 - AI 可返回 `correctForm` 做拼写纠正；视图大字显示正确拼写

@@ -30,14 +30,35 @@ export type CombinedHalf = 'lookup' | 'core'
 export interface PendingHalves { lookup: boolean; core: boolean }
 export interface FailedHalves { lookup: boolean; core: boolean }
 
-interface CombinedDraft<T> {
+/** Per-half failure reason, shown on the failed half's card instead of a generic line. */
+export interface HalfErrors { lookup: string | null; core: string | null }
+
+type DraftKind = 'word' | 'phrase'
+
+/**
+ * One in-flight split combined request.
+ *
+ * Every request gets its own id (the "tag"). A half may only write into the draft
+ * whose id it was started with, and a draft only reaches the screen while it is
+ * the active one. A query the user navigated away from keeps filling its own
+ * draft and cache in the background, so revisiting it needs no new request.
+ */
+interface CombinedDraft {
+  id: number
   key: string
   tag: SearchTag
-  lookup: T | null
-  core: T | null
+  kind: DraftKind
+  query: string
+  lookup: AiFullResult | PhraseResult | null
+  core: AiFullResult | PhraseResult | null
+  skeleton: QuerySkeleton | null
+  pending: PendingHalves
+  failed: FailedHalves
+  errors: HalfErrors
 }
 
 const NO_PENDING: PendingHalves = { lookup: false, core: false }
+const NO_HALF_ERRORS: HalfErrors = { lookup: null, core: null }
 
 function emptyFull(skeleton: QuerySkeleton | null, fallbackWord: string): AiFullResult {
   return {
@@ -84,6 +105,8 @@ interface ResultStore {
   aiIsPartial: boolean
   /** Stage-1 skeleton for the active query (display only, never cached). */
   aiSkeleton: QuerySkeleton | null
+  /** Real failure reason per half of the active split request. */
+  aiHalfErrors: HalfErrors
   aiCache: Record<string, AiAnalysis>
   aiFullCache: Record<string, AiFullResult>
   phraseCache: Record<string, PhraseResult>
@@ -95,16 +118,32 @@ interface ResultStore {
   setRelatedPhrases: (phrases: SuggestItem[]) => void
   setAiStatus: (s: AiStatus) => void
   setAiAnalysis: (word: string, a: AiAnalysis) => void
-  /** Start a split combined request: resets the draft accumulator and pending flags. */
-  beginCombined: (query: string, tag: SearchTag, kind: 'word' | 'phrase') => void
+  /**
+   * Start a split combined request and put it on screen. Returns the request id
+   * every later write for this request must carry. Supersedes (drops) any earlier
+   * draft for the same query + tag.
+   */
+  beginCombined: (query: string, tag: SearchTag, kind: DraftKind) => number
+  /** True while a request for this query + tag is still filling its draft. */
+  hasCombinedDraft: (query: string, tag?: SearchTag) => boolean
+  /** Put an in-flight request back on screen (revisit). False when there is none. */
+  showCombinedDraft: (query: string, tag: SearchTag, kind: DraftKind) => boolean
   /** Apply the stage-1 skeleton as an early preview. Never writes to any cache. */
-  applyQuerySkeleton: (query: string, skeleton: QuerySkeleton, kind: 'word' | 'phrase') => void
+  applyQuerySkeleton: (requestId: number, skeleton: QuerySkeleton) => void
   /** Commit one half of a split word request; caches only once both halves land. */
-  commitCombinedHalf: (word: string, half: CombinedHalf, r: AiFullResult, tag?: SearchTag) => void
+  commitCombinedHalf: (requestId: number, half: CombinedHalf, r: AiFullResult) => void
   /** Commit one half of a split phrase request. */
-  commitCombinedPhraseHalf: (phrase: string, half: CombinedHalf, r: PhraseResult, tag?: SearchTag) => void
-  /** Mark a half as settled without a result (it failed) so its spinner stops. */
-  settleCombinedHalf: (half: CombinedHalf) => void
+  commitCombinedPhraseHalf: (requestId: number, half: CombinedHalf, r: PhraseResult) => void
+  /** Mark a half as failed so its spinner stops; `error` is shown on that half's card. */
+  settleCombinedHalf: (requestId: number, half: CombinedHalf, error?: string) => void
+  /** Both halves failed: the request ends in a single error state. */
+  failCombined: (requestId: number, error: string) => void
+  /** The request is over (landed, failed or cancelled): forget its draft. */
+  endCombined: (requestId: number) => void
+  /** Stop showing any in-flight request; background drafts keep filling their caches. */
+  detachCombinedDisplay: () => void
+  /** Forget every in-flight draft (cancel-all, e.g. language change). */
+  dropAllCombinedDrafts: () => void
   setAiFullResult: (word: string, r: AiFullResult, cognitive?: CognitiveMode) => void
   setPhraseResult: (key: string, r: PhraseResult, cognitive?: CognitiveMode) => void
   /** v0.9.0: store combined result and update active display */
@@ -130,13 +169,76 @@ interface ResultStore {
 const CACHE_LIMIT = 100
 
 /**
- * Transient accumulators for the two halves of a split combined request.
- * Module-scoped rather than store state: they change on every half and must not
- * trigger a re-render of their own. Keyed so a late half from a superseded query
- * is dropped even if the request gate somehow lets it through.
+ * Display fields for a draft that is (back) on screen. `revisit` repaints every
+ * field, because what is on screen right now belongs to another query.
  */
-let wordDraft: CombinedDraft<AiFullResult> | null = null
-let phraseDraft: CombinedDraft<PhraseResult> | null = null
+function paintDraft(d: CombinedDraft, revisit = false): Partial<ResultStore> {
+  const landed = Boolean(d.lookup || d.core)
+  const anyPending = d.pending.lookup || d.pending.core
+  const status: Partial<ResultStore> = {
+    aiStatus: landed || d.skeleton ? 'success' : 'loading',
+    aiError: null,
+    aiSkeleton: d.skeleton,
+    aiIsPartial: landed ? !(d.lookup && d.core) : Boolean(d.skeleton) && anyPending,
+    aiPendingHalves: d.pending,
+    aiFailedHalves: d.failed,
+    aiHalfErrors: d.errors,
+  }
+  if (!landed && !d.skeleton) return status
+
+  // Until the lookup half lands, the lookup view keeps the skeleton preview -
+  // never an empty shell built after core arrived first.
+  const showLookup = revisit || Boolean(d.lookup) || !landed
+  if (d.kind === 'word') {
+    const lookup = (d.lookup as AiFullResult | null) ?? emptyFull(d.skeleton, d.query)
+    const core = (d.core as AiFullResult | null) ?? emptyFull(d.skeleton, d.query)
+    return {
+      ...status,
+      combinedResult: { lookup, core },
+      ...(showLookup ? { aiFullResult: lookup, aiAnalysis: aiFullToAnalysis(lookup) } : {}),
+    }
+  }
+  const lookup = (d.lookup as PhraseResult | null) ?? emptyPhrase(d.skeleton, d.query)
+  const core = (d.core as PhraseResult | null) ?? emptyPhrase(d.skeleton, d.query)
+  return {
+    ...status,
+    combinedPhraseResult: { lookup, core },
+    ...(showLookup ? { phraseResult: lookup } : {}),
+  }
+}
+
+/**
+ * In-flight split requests. Module-scoped rather than store state: they change on
+ * every half and must not trigger a re-render of their own.
+ *
+ *   drafts       request id -> draft
+ *   latestByKey  query+tag  -> id of the newest request for it (retry supersedes)
+ *   activeId     the request currently on screen, or null
+ */
+const drafts = new Map<number, CombinedDraft>()
+const latestByKey = new Map<string, number>()
+let activeId: number | null = null
+let nextRequestId = 1
+
+function liveDraft(id: number): CombinedDraft | null {
+  const d = drafts.get(id)
+  if (!d || latestByKey.get(d.key) !== id) return null
+  return d
+}
+
+function forgetDraft(id: number): void {
+  const d = drafts.get(id)
+  if (!d) return
+  drafts.delete(id)
+  if (latestByKey.get(d.key) === id) latestByKey.delete(d.key)
+  if (activeId === id) activeId = null
+}
+
+function forgetAllDrafts(): void {
+  drafts.clear()
+  latestByKey.clear()
+  activeId = null
+}
 
 export const useResultStore = create<ResultStore>()(
   persist(
@@ -154,6 +256,7 @@ export const useResultStore = create<ResultStore>()(
       aiFailedHalves: NO_PENDING,
       aiIsPartial: false,
       aiSkeleton: null,
+      aiHalfErrors: NO_HALF_ERRORS,
       aiCache: {},
       aiFullCache: {},
       phraseCache: {},
@@ -162,8 +265,8 @@ export const useResultStore = create<ResultStore>()(
 
       setWordResult: (wordResult, clearAi = true) => {
         if (clearAi) {
-          wordDraft = null
-          phraseDraft = null
+          // A new query takes the screen; earlier requests keep filling in the background.
+          activeId = null
           set({ 
             wordResult, 
             relatedPhrases: [], 
@@ -176,6 +279,7 @@ export const useResultStore = create<ResultStore>()(
             aiFailedHalves: NO_PENDING,
             aiIsPartial: false,
             aiSkeleton: null,
+            aiHalfErrors: NO_HALF_ERRORS,
           })
         } else {
           set({ wordResult })
@@ -197,13 +301,21 @@ export const useResultStore = create<ResultStore>()(
       },
       beginCombined: (query, tag, kind) => {
         const key = combinedCacheKey(query, tag)
-        if (kind === 'word') {
-          wordDraft = { key, tag, lookup: null, core: null }
-          phraseDraft = null
-        } else {
-          phraseDraft = { key, tag, lookup: null, core: null }
-          wordDraft = null
-        }
+        const previous = latestByKey.get(key)
+        if (previous !== undefined) forgetDraft(previous)
+
+        const id = nextRequestId++
+        drafts.set(id, {
+          id, key, tag, kind, query,
+          lookup: null,
+          core: null,
+          skeleton: null,
+          pending: { lookup: true, core: true },
+          failed: NO_PENDING,
+          errors: NO_HALF_ERRORS,
+        })
+        latestByKey.set(key, id)
+        activeId = id
         set({
           aiStatus: 'loading',
           aiError: null,
@@ -211,137 +323,130 @@ export const useResultStore = create<ResultStore>()(
           aiIsPartial: false,
           aiPendingHalves: { lookup: true, core: true },
           aiFailedHalves: NO_PENDING,
+          aiHalfErrors: NO_HALF_ERRORS,
         })
+        return id
       },
 
-      applyQuerySkeleton: (query, skeleton, kind) => {
-        const draft = kind === 'word' ? wordDraft : phraseDraft
-        // Stale guard: a skeleton for a query we are no longer resolving must not paint.
-        if (!draft || draft.key !== combinedCacheKey(query, draft.tag)) return
+      hasCombinedDraft: (query, tag = 'normal') => latestByKey.has(combinedCacheKey(query, tag)),
+
+      showCombinedDraft: (query, tag, kind) => {
+        const id = latestByKey.get(combinedCacheKey(query, tag))
+        const d = id === undefined ? null : liveDraft(id)
+        if (!d || d.kind !== kind) return false
+        activeId = d.id
+        set(paintDraft(d, true))
+        return true
+      },
+
+      applyQuerySkeleton: (requestId, skeleton) => {
+        const d = liveDraft(requestId)
+        if (!d) return
         // Never downgrade: if a real half already landed, the skeleton is obsolete.
-        if (draft.lookup || draft.core) return
-
-        if (kind === 'word') {
-          const preview = emptyFull(skeleton, query)
-          set({
-            aiSkeleton: skeleton,
-            aiIsPartial: true,
-            aiStatus: 'success',
-            combinedResult: { lookup: preview, core: preview },
-            aiFullResult: preview,
-            aiAnalysis: aiFullToAnalysis(preview),
-          })
-        } else {
-          const preview = emptyPhrase(skeleton, query)
-          set({
-            aiSkeleton: skeleton,
-            aiIsPartial: true,
-            aiStatus: 'success',
-            combinedPhraseResult: { lookup: preview, core: preview },
-            phraseResult: preview,
-          })
-        }
+        if (d.lookup || d.core) return
+        d.skeleton = skeleton
+        if (activeId === d.id) set(paintDraft(d))
       },
 
-      commitCombinedHalf: (word, half, result, tag = 'normal') => {
-        const key = combinedCacheKey(word, tag)
-        if (!wordDraft || wordDraft.key !== key) return
-        wordDraft[half] = result
-
-        const skeleton = get().aiSkeleton
-        const lookup = wordDraft.lookup ?? emptyFull(skeleton, word)
-        const core = wordDraft.core ?? emptyFull(skeleton, word)
-        const complete = Boolean(wordDraft.lookup && wordDraft.core)
+      commitCombinedHalf: (requestId, half, result) => {
+        const d = liveDraft(requestId)
+        if (!d || d.kind !== 'word') return
+        d[half] = result
+        d.pending = { ...d.pending, [half]: false }
+        d.failed = { ...d.failed, [half]: false }
+        d.errors = { ...d.errors, [half]: null }
 
         // A single half is still worth persisting on its own: getCachedCombined's
         // legacy path can reconstruct from aiFullCache if the other half never lands.
         const fullCache = { ...get().aiFullCache }
-        const halfKey = cognitiveCacheKey(word, half)
+        const halfKey = cognitiveCacheKey(d.query, half)
         delete fullCache[halfKey]
         fullCache[halfKey] = result
         const fullKeys = Object.keys(fullCache)
         if (fullKeys.length > CACHE_LIMIT) delete fullCache[fullKeys[0]]
 
         const combinedCache = { ...get().combinedCache }
-        if (complete) {
-          delete combinedCache[key]
-          combinedCache[key] = { lookup, core }
+        if (d.lookup && d.core) {
+          delete combinedCache[d.key]
+          combinedCache[d.key] = { lookup: d.lookup as AiFullResult, core: d.core as AiFullResult }
           const keys = Object.keys(combinedCache)
           if (keys.length > CACHE_LIMIT) delete combinedCache[keys[0]]
         }
 
-        const displayPatch = wordDraft.lookup
-          ? {
-              aiFullResult: lookup,
-              aiAnalysis: aiFullToAnalysis(lookup),
-            }
-          : {}
-
         set({
           aiFullCache: fullCache,
           combinedCache,
-          combinedResult: { lookup, core },
-          ...displayPatch,
-          aiStatus: 'success',
-          aiError: null,
-          aiIsPartial: !complete,
-          aiPendingHalves: { ...get().aiPendingHalves, [half]: false },
-          aiFailedHalves: { ...get().aiFailedHalves, [half]: false },
+          ...(activeId === d.id ? paintDraft(d) : {}),
         })
       },
 
-      commitCombinedPhraseHalf: (phrase, half, result, tag = 'normal') => {
-        const key = combinedCacheKey(phrase, tag)
-        if (!phraseDraft || phraseDraft.key !== key) return
-        phraseDraft[half] = result
-
-        const skeleton = get().aiSkeleton
-        const lookup = phraseDraft.lookup ?? emptyPhrase(skeleton, phrase)
-        const core = phraseDraft.core ?? emptyPhrase(skeleton, phrase)
-        const complete = Boolean(phraseDraft.lookup && phraseDraft.core)
+      commitCombinedPhraseHalf: (requestId, half, result) => {
+        const d = liveDraft(requestId)
+        if (!d || d.kind !== 'phrase') return
+        d[half] = result
+        d.pending = { ...d.pending, [half]: false }
+        d.failed = { ...d.failed, [half]: false }
+        d.errors = { ...d.errors, [half]: null }
 
         const pCache = { ...get().phraseCache }
-        const halfKey = cognitiveCacheKey(phrase, half)
+        const halfKey = cognitiveCacheKey(d.query, half)
         delete pCache[halfKey]
         pCache[halfKey] = result
         const pKeys = Object.keys(pCache)
         if (pKeys.length > CACHE_LIMIT) delete pCache[pKeys[0]]
 
         const combinedPhraseCache = { ...get().combinedPhraseCache }
-        if (complete) {
-          delete combinedPhraseCache[key]
-          combinedPhraseCache[key] = { lookup, core }
+        if (d.lookup && d.core) {
+          delete combinedPhraseCache[d.key]
+          combinedPhraseCache[d.key] = { lookup: d.lookup as PhraseResult, core: d.core as PhraseResult }
           const keys = Object.keys(combinedPhraseCache)
           if (keys.length > CACHE_LIMIT) delete combinedPhraseCache[keys[0]]
         }
 
-        const displayPatch = phraseDraft.lookup ? { phraseResult: lookup } : {}
-
         set({
           phraseCache: pCache,
           combinedPhraseCache,
-          combinedPhraseResult: { lookup, core },
-          ...displayPatch,
-          aiStatus: 'success',
-          aiError: null,
-          aiIsPartial: !complete,
-          aiPendingHalves: { ...get().aiPendingHalves, [half]: false },
-          aiFailedHalves: { ...get().aiFailedHalves, [half]: false },
+          ...(activeId === d.id ? paintDraft(d) : {}),
         })
       },
 
-      settleCombinedHalf: (half) => {
-        const pending = { ...get().aiPendingHalves, [half]: false }
-        const failed = { ...get().aiFailedHalves, [half]: true }
-        const anyLanded = Boolean(wordDraft?.lookup || wordDraft?.core || phraseDraft?.lookup || phraseDraft?.core)
-        set({
-          aiPendingHalves: pending,
-          aiFailedHalves: failed,
-          // Both halves failed and nothing ever rendered — leave partial off so the
-          // caller's setAiError produces a clean error state instead of a stuck shimmer.
-          aiIsPartial: anyLanded ? get().aiIsPartial : false,
-        })
+      settleCombinedHalf: (requestId, half, error) => {
+        // The fix for "a superseded request marks the current one as failed":
+        // a half can only fail the request it was started with.
+        const d = liveDraft(requestId)
+        if (!d) return
+        d.pending = { ...d.pending, [half]: false }
+        d.failed = { ...d.failed, [half]: true }
+        d.errors = { ...d.errors, [half]: error ?? null }
+        if (activeId === d.id) set(paintDraft(d))
       },
+
+      failCombined: (requestId, error) => {
+        const d = liveDraft(requestId)
+        if (!d) return
+        const onScreen = activeId === d.id
+        forgetDraft(requestId)
+        if (onScreen) {
+          set({
+            aiError: error,
+            aiStatus: 'error',
+            aiPendingHalves: NO_PENDING,
+            aiFailedHalves: { lookup: true, core: true },
+            aiHalfErrors: NO_HALF_ERRORS,
+            aiIsPartial: false,
+          })
+        }
+      },
+
+      endCombined: (requestId) => {
+        // The screen stays as it is; a revisit now goes through the cache.
+        forgetDraft(requestId)
+      },
+
+      detachCombinedDisplay: () => { activeId = null },
+
+      dropAllCombinedDrafts: () => { forgetAllDrafts() },
+
       updateMnemonic: (word, mnemonic) => {
         const normalized = normalizeQuery(word)
         const current = get().aiAnalysis
@@ -510,6 +615,7 @@ export const useResultStore = create<ResultStore>()(
         aiStatus: 'error',
         aiPendingHalves: NO_PENDING,
         aiFailedHalves: { lookup: true, core: true },
+        aiHalfErrors: NO_HALF_ERRORS,
         aiIsPartial: false,
       }),
 
@@ -521,7 +627,8 @@ export const useResultStore = create<ResultStore>()(
         cache[key] = combinedResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
-        wordDraft = { key, tag, lookup: combinedResult.lookup, core: combinedResult.core }
+        // A finished result now owns the screen; in-flight requests stay in the background.
+        activeId = null
         set({
           combinedCache: cache,
           combinedResult,
@@ -532,6 +639,7 @@ export const useResultStore = create<ResultStore>()(
           aiFailedHalves: NO_PENDING,
           aiIsPartial: false,
           aiSkeleton: null,
+          aiHalfErrors: NO_HALF_ERRORS,
         })
       },
       setCombinedPhraseResult: (phrase, combinedPhraseResult, tag = 'normal') => {
@@ -541,7 +649,7 @@ export const useResultStore = create<ResultStore>()(
         cache[key] = combinedPhraseResult
         const keys = Object.keys(cache)
         if (keys.length > CACHE_LIMIT) delete cache[keys[0]]
-        phraseDraft = { key, tag, lookup: combinedPhraseResult.lookup, core: combinedPhraseResult.core }
+        activeId = null
         set({
           combinedPhraseCache: cache,
           combinedPhraseResult,
@@ -551,6 +659,7 @@ export const useResultStore = create<ResultStore>()(
           aiFailedHalves: NO_PENDING,
           aiIsPartial: false,
           aiSkeleton: null,
+          aiHalfErrors: NO_HALF_ERRORS,
         })
       },
       getCachedCombined: (word, tag = 'normal') => {
@@ -565,8 +674,10 @@ export const useResultStore = create<ResultStore>()(
           set({ combinedCache: updated })
           return val
         }
-        // Legacy fallback (normal tag only): reconstruct from old separate caches if available
-        if (tag === 'normal') {
+        // Legacy fallback (normal tag only): reconstruct from old separate caches if available.
+        // Skipped while a request for this query is still running: its lone first
+        // half is in aiFullCache too, and must not be passed off as a finished result.
+        if (tag === 'normal' && !latestByKey.has(key)) {
           const n = normalizeQuery(word)
           const legacyLookup = get().aiFullCache[n] ? checkedCachedInsight(get().aiFullCache[n]) : null
           const legacyCore = get().aiFullCache[cognitiveCacheKey(n, 'core')] ? checkedCachedInsight(get().aiFullCache[cognitiveCacheKey(n, 'core')]) : null
@@ -591,7 +702,7 @@ export const useResultStore = create<ResultStore>()(
           set({ combinedPhraseCache: updated })
           return val
         }
-        if (tag === 'normal') {
+        if (tag === 'normal' && !latestByKey.has(key)) {
           const n = normalizeQuery(phrase)
           const legacyLookup = get().phraseCache[n] ? checkedCachedInsight(get().phraseCache[n]) : null
           const legacyCore = get().phraseCache[cognitiveCacheKey(n, 'core')] ? checkedCachedInsight(get().phraseCache[cognitiveCacheKey(n, 'core')]) : null
@@ -652,7 +763,7 @@ export const useResultStore = create<ResultStore>()(
         }
         return null
       },
-      clearCache: () => { wordDraft = null; phraseDraft = null; return set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiFailedHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
+      clearCache: () => { forgetAllDrafts(); return set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {}, aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiFailedHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null, aiHalfErrors: NO_HALF_ERRORS }) },
       clearCacheOnly: () => set({ aiCache: {}, aiFullCache: {}, phraseCache: {}, combinedCache: {}, combinedPhraseCache: {} }),
       evictCacheEntry: (key) => {
         const normalized = normalizeQuery(key)
@@ -672,7 +783,7 @@ export const useResultStore = create<ResultStore>()(
           return { aiCache, aiFullCache, phraseCache, combinedCache, combinedPhraseCache }
         })
       },
-      reset: () => { wordDraft = null; phraseDraft = null; return set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiFailedHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null }) },
+      reset: () => { forgetAllDrafts(); return set({ wordResult: null, relatedPhrases: [], aiAnalysis: null, aiFullResult: null, phraseResult: null, combinedResult: null, combinedPhraseResult: null, aiStatus: 'idle', aiError: null, aiPendingHalves: NO_PENDING, aiFailedHalves: NO_PENDING, aiIsPartial: false, aiSkeleton: null, aiHalfErrors: NO_HALF_ERRORS }) },
     }),
     { 
       name: 'lexicon-results',

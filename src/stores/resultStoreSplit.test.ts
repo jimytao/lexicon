@@ -71,6 +71,7 @@ function freshStore() {
     aiFailedHalves: { lookup: false, core: false },
     aiIsPartial: false,
     aiSkeleton: null,
+    aiHalfErrors: { lookup: null, core: null },
     aiCache: {},
     aiFullCache: {},
     phraseCache: {},
@@ -86,31 +87,43 @@ beforeEach(freshStore)
 describe('partial results never masquerade as complete', () => {
   it('does not write combinedCache until BOTH halves land', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
+    const id = s.beginCombined('run', 'normal', 'word')
 
-    s.commitCombinedHalf('run', 'lookup', fullResult(), 'normal')
+    s.commitCombinedHalf(id, 'lookup', fullResult())
     expect(useResultStore.getState().combinedCache['run::combined']).toBeUndefined()
     expect(useResultStore.getState().aiIsPartial).toBe(true)
 
-    s.commitCombinedHalf('run', 'core', fullResult({ coreConcept: { image: 'x' } }), 'normal')
+    s.commitCombinedHalf(id, 'core', fullResult({ coreConcept: { image: 'x' } }))
     expect(useResultStore.getState().combinedCache['run::combined']).toBeDefined()
     expect(useResultStore.getState().aiIsPartial).toBe(false)
   })
 
   it('still persists a lone half on its own so it survives a revisit', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.commitCombinedHalf('run', 'lookup', fullResult(), 'normal')
-    s.settleCombinedHalf('core')
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(id, 'lookup', fullResult())
+    s.settleCombinedHalf(id, 'core')
+    s.endCombined(id)
 
     // getCachedCombined's legacy path reconstructs from aiFullCache.
     expect(useResultStore.getState().getCachedCombined('run', 'normal')).not.toBeNull()
   })
 
+  it('does not pass off the first half of a running request as a cached result', () => {
+    const s = useResultStore.getState()
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(id, 'lookup', fullResult())
+
+    // A tab flip mid-request used to get this lone half back as a "complete" result.
+    expect(s.getCachedCombined('run', 'normal')).toBeNull()
+    s.endCombined(id)
+    expect(s.getCachedCombined('run', 'normal')).not.toBeNull()
+  })
+
   it('a skeleton preview writes to no cache at all', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.applyQuerySkeleton('run', skeleton, 'word')
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.applyQuerySkeleton(id, skeleton)
 
     const st = useResultStore.getState()
     expect(st.aiIsPartial).toBe(true)
@@ -121,56 +134,139 @@ describe('partial results never masquerade as complete', () => {
   })
 })
 
-describe('stale arrivals are rejected', () => {
-  it('drops a half belonging to a superseded query', () => {
+describe('request tags: a request only ever writes into its own slot', () => {
+  it('a superseded request cannot mark the new query as failed (the collision bug)', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.beginCombined('walk', 'normal', 'word') // user searched again
+    const a = s.beginCombined('run', 'normal', 'word')
+    s.setWordResult(null) // user searches another word
+    const b = s.beginCombined('walk', 'normal', 'word')
 
-    s.commitCombinedHalf('run', 'lookup', fullResult({ correctForm: 'run' }), 'normal')
+    // run's request comes back with an error while walk is still loading
+    s.settleCombinedHalf(a, 'lookup', 'AI API error 503')
 
     const st = useResultStore.getState()
-    expect(st.combinedResult).toBeNull()
-    expect(st.combinedCache['run::combined']).toBeUndefined()
-    expect(st.aiFullCache['run']).toBeUndefined()
+    expect(st.aiFailedHalves).toEqual({ lookup: false, core: false })
+    expect(st.aiPendingHalves).toEqual({ lookup: true, core: true })
+    expect(st.aiHalfErrors.lookup).toBeNull()
+
+    s.commitCombinedHalf(b, 'lookup', fullResult({ correctForm: 'walk' }))
+    expect(useResultStore.getState().aiFullResult?.correctForm).toBe('walk')
   })
 
-  it('drops a skeleton for a query we are no longer resolving', () => {
+  it('a retry supersedes the old request of the same query', () => {
     const s = useResultStore.getState()
+    const first = s.beginCombined('run', 'normal', 'word')
+    const retry = s.beginCombined('run', 'normal', 'word')
+    expect(retry).not.toBe(first)
+
+    s.settleCombinedHalf(first, 'lookup', 'late failure from the old request')
+    s.commitCombinedHalf(first, 'core', fullResult({ correctForm: 'stale' }))
+
+    const st = useResultStore.getState()
+    expect(st.aiFailedHalves.lookup).toBe(false)
+    expect(st.aiPendingHalves).toEqual({ lookup: true, core: true })
+    expect(st.aiFullCache['run::core']).toBeUndefined()
+
+    s.commitCombinedHalf(retry, 'core', fullResult({ correctForm: 'run' }))
+    expect(useResultStore.getState().aiFullCache['run::core']?.correctForm).toBe('run')
+  })
+
+  it('a query the user left keeps filling its own cache without touching the screen', () => {
+    const s = useResultStore.getState()
+    const a = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(a, 'lookup', fullResult({ correctForm: 'run' }))
+
+    s.setWordResult(null)
+    const b = s.beginCombined('walk', 'normal', 'word')
+    s.applyQuerySkeleton(b, { correctForm: 'walk', senses: [{ senseIndex: 1, zh: '走' }] })
+
+    // run's second half lands while walk is on screen
+    s.commitCombinedHalf(a, 'core', fullResult({ correctForm: 'run', coreConcept: { image: 'forward' } }))
+
+    const st = useResultStore.getState()
+    expect(st.combinedCache['run::combined']?.core.coreConcept?.image).toBe('forward')
+    expect(st.aiFullResult?.correctForm).toBe('walk')
+    expect(st.combinedResult?.core.correctForm).toBe('walk')
+  })
+
+  it('revisiting a query that is still running shows what it has so far', () => {
+    const s = useResultStore.getState()
+    const a = s.beginCombined('run', 'normal', 'word')
+    s.applyQuerySkeleton(a, skeleton)
+    s.commitCombinedHalf(a, 'lookup', fullResult({ correctForm: 'run' }))
+
+    s.setWordResult(null)
     s.beginCombined('walk', 'normal', 'word')
-    s.applyQuerySkeleton('run', skeleton, 'word')
-    expect(useResultStore.getState().combinedResult).toBeNull()
+
+    expect(s.hasCombinedDraft('run')).toBe(true)
+    expect(s.showCombinedDraft('run', 'normal', 'word')).toBe(true)
+    let st = useResultStore.getState()
+    expect(st.aiFullResult?.correctForm).toBe('run')
+    expect(st.aiPendingHalves).toEqual({ lookup: false, core: true })
+
+    // and its remaining half paints on arrival, because it is on screen again
+    s.commitCombinedHalf(a, 'core', fullResult({ correctForm: 'run', coreConcept: { image: 'forward' } }))
+    st = useResultStore.getState()
+    expect(st.aiPendingHalves).toEqual({ lookup: false, core: false })
+    expect(st.combinedResult?.core.coreConcept?.image).toBe('forward')
+  })
+
+  it('a word request ignores a phrase-shaped write and vice versa', () => {
+    const s = useResultStore.getState()
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedPhraseHalf(id, 'lookup', { phrase: 'run', meaning: 'x', examples: [] })
+    expect(useResultStore.getState().phraseCache['run']).toBeUndefined()
+  })
+
+  it('drops a skeleton for a request that was superseded', () => {
+    const s = useResultStore.getState()
+    const old = s.beginCombined('run', 'normal', 'word')
+    s.beginCombined('run', 'normal', 'word')
+    s.applyQuerySkeleton(old, skeleton)
+    expect(useResultStore.getState().aiSkeleton).toBeNull()
   })
 
   it('never lets a late skeleton downgrade a half that already landed', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.commitCombinedHalf('run', 'lookup', fullResult({ etymology: { parts: [], story: 'real' } }), 'normal')
-    s.applyQuerySkeleton('run', skeleton, 'word')
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(id, 'lookup', fullResult({ etymology: { parts: [], story: 'real' } }))
+    s.applyQuerySkeleton(id, skeleton)
 
     expect(useResultStore.getState().combinedResult?.lookup.etymology?.story).toBe('real')
   })
 
   it('keeps bypass and normal results in separate slots', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'bypass', 'word')
-    s.commitCombinedHalf('run', 'lookup', fullResult(), 'normal') // wrong tag
-    expect(useResultStore.getState().combinedResult).toBeNull()
+    const normal = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(normal, 'lookup', fullResult({ correctForm: 'normal' }))
+    const bypass = s.beginCombined('run', 'bypass', 'word')
+    s.commitCombinedHalf(bypass, 'lookup', fullResult({ correctForm: 'bypass' }))
 
-    s.commitCombinedHalf('run', 'lookup', fullResult(), 'bypass')
-    expect(useResultStore.getState().combinedResult).not.toBeNull()
+    expect(useResultStore.getState().aiFullResult?.correctForm).toBe('bypass')
+    expect(s.hasCombinedDraft('run', 'normal')).toBe(true)
+    expect(s.hasCombinedDraft('run', 'bypass')).toBe(true)
+  })
+
+  it('cancel-all forgets every running request', () => {
+    const s = useResultStore.getState()
+    const a = s.beginCombined('run', 'normal', 'word')
+    s.dropAllCombinedDrafts()
+    s.commitCombinedHalf(a, 'lookup', fullResult())
+    expect(useResultStore.getState().aiFullCache['run']).toBeUndefined()
+    expect(s.hasCombinedDraft('run')).toBe(false)
   })
 })
 
 describe('no cross-word bleed', () => {
   it('a new query does not inherit the previous word\'s analysis', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.commitCombinedHalf('run', 'lookup', fullResult({ etymology: { parts: [], story: 'from Old English' } }), 'normal')
-    s.commitCombinedHalf('run', 'core', fullResult(), 'normal')
+    const run = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(run, 'lookup', fullResult({ etymology: { parts: [], story: 'from Old English' } }))
+    s.commitCombinedHalf(run, 'core', fullResult())
+    s.endCombined(run)
 
-    s.beginCombined('尴尬', 'normal', 'word')
-    s.applyQuerySkeleton('尴尬', { correctForm: 'awkward', senses: [{ senseIndex: 1, zh: '尴尬', en: 'awkward' }] }, 'word')
+    const awkward = s.beginCombined('尴尬', 'normal', 'word')
+    s.applyQuerySkeleton(awkward, { correctForm: 'awkward', senses: [{ senseIndex: 1, zh: '尴尬', en: 'awkward' }] })
 
     const st = useResultStore.getState()
     expect(st.aiFullResult?.correctForm).toBe('awkward')
@@ -186,28 +282,28 @@ describe('no cross-word bleed', () => {
 describe('pending flags drive the per-half shimmer', () => {
   it('clears only the half that settled', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
+    const id = s.beginCombined('run', 'normal', 'word')
     expect(useResultStore.getState().aiPendingHalves).toEqual({ lookup: true, core: true })
 
-    s.commitCombinedHalf('run', 'core', fullResult(), 'normal')
+    s.commitCombinedHalf(id, 'core', fullResult())
     expect(useResultStore.getState().aiPendingHalves).toEqual({ lookup: true, core: false })
   })
 
   it('does not replace the lookup display with an empty shell when core lands first', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.applyQuerySkeleton('run', skeleton, 'word')
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.applyQuerySkeleton(id, skeleton)
 
-    s.commitCombinedHalf('run', 'core', fullResult({
+    s.commitCombinedHalf(id, 'core', fullResult({
       meanings: [],
       coreConcept: { image: 'forward motion' },
-    }), 'normal')
+    }))
 
     const partial = useResultStore.getState()
     expect(partial.aiPendingHalves).toEqual({ lookup: true, core: false })
     expect(partial.aiFullResult?.meanings[0]?.zh).toBe('跑')
 
-    s.commitCombinedHalf('run', 'lookup', fullResult({
+    s.commitCombinedHalf(id, 'lookup', fullResult({
       meanings: [{
         senseIndex: 1,
         zh: '跑',
@@ -215,7 +311,7 @@ describe('pending flags drive the per-half shimmer', () => {
         scene: { label: '跑步', description: '向前快速移动' },
         imageQuery: 'person running outdoors',
       }],
-    }), 'normal')
+    }))
 
     const complete = useResultStore.getState()
     expect(complete.aiPendingHalves).toEqual({ lookup: false, core: false })
@@ -223,25 +319,40 @@ describe('pending flags drive the per-half shimmer', () => {
     expect(complete.aiAnalysis?.meanings[0]?.imageQuery).toBe('person running outdoors')
   })
 
-  it('tracks a failed half independently from a successful half', () => {
+  it('tracks a failed half independently and keeps its real reason', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.commitCombinedHalf('run', 'core', fullResult(), 'normal')
-    s.settleCombinedHalf('lookup')
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.commitCombinedHalf(id, 'core', fullResult())
+    s.settleCombinedHalf(id, 'lookup', 'AI API error 503: Server Overloaded')
 
-    expect(useResultStore.getState().aiFailedHalves).toEqual({ lookup: true, core: false })
-    expect(useResultStore.getState().aiPendingHalves).toEqual({ lookup: false, core: false })
+    const st = useResultStore.getState()
+    expect(st.aiFailedHalves).toEqual({ lookup: true, core: false })
+    expect(st.aiPendingHalves).toEqual({ lookup: false, core: false })
+    expect(st.aiHalfErrors).toEqual({ lookup: 'AI API error 503: Server Overloaded', core: null })
   })
 
-  it('an error clears both so nothing shimmers forever', () => {
+  it('a total failure clears both so nothing shimmers forever', () => {
     const s = useResultStore.getState()
-    s.beginCombined('run', 'normal', 'word')
-    s.setAiError('boom')
+    const id = s.beginCombined('run', 'normal', 'word')
+    s.failCombined(id, 'boom')
 
     const st = useResultStore.getState()
     expect(st.aiStatus).toBe('error')
+    expect(st.aiError).toBe('boom')
     expect(st.aiPendingHalves).toEqual({ lookup: false, core: false })
     expect(st.aiIsPartial).toBe(false)
+  })
+
+  it('a total failure of a background request leaves the screen alone', () => {
+    const s = useResultStore.getState()
+    const a = s.beginCombined('run', 'normal', 'word')
+    s.setWordResult(null)
+    s.beginCombined('walk', 'normal', 'word')
+    s.failCombined(a, 'boom')
+
+    const st = useResultStore.getState()
+    expect(st.aiStatus).toBe('loading')
+    expect(st.aiError).toBeNull()
   })
 
   it('a cache hit is fully settled on arrival', () => {

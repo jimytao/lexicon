@@ -268,7 +268,7 @@ export function useSearch() {
 
 ```ts
 // src/hooks/useAiLookup.ts
-// 负责：调用 AI API，管理 AbortController + generation gate，写入 cache
+// 负责：调用 AI API，管理 AbortController + generation gate（旧单请求路径）与按查询分轨的 inflight 表（双半请求），写入 cache
 // 导出：
 
 export function useAiLookup() {
@@ -276,8 +276,11 @@ export function useAiLookup() {
   // triggerFullLookup(word) — AI 全量查词（词库无结果时）；30s 超时 → setAiError
   // triggerPhraseQuery(phrase) — AI 词组/句子查询
   // repairCollocationNotes / repairConceptExamples — 只补缺失释义
-  // cancelAi() — Instant 切回时 abort + 作废 generation，防止迟到写入
-  // 主请求共享 AbortController，互斥执行；超时与用户取消经 classifyAiRequestError 区分
+  // triggerCombinedLookup / triggerCombinedPhraseQuery(q, forceRefresh, tag) — 双半请求：
+  //   每次有独立请求 id；同查询进行中则挂回（不重发），forceRefresh（Try Again / ⭐）换新 id 并 abort 旧请求；
+  //   换查询不取消旧请求（后台写完自己的缓存），最多 3 个查询并行，超出取消最早的；45 s 整体超时
+  // cancelAi() — Instant 切回 / 语言路由变化：取消全部（含后台查询），作废 generation
+  // 超时与用户取消经 classifyAiRequestError 区分；失败半的真实原因写入 aiHalfErrors
 
   return {
     trigger, triggerFullLookup, triggerPhraseQuery,

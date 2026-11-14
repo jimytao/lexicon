@@ -3,6 +3,7 @@ import {
   isBackwardSelection,
   selectFocusEdgeRect,
 } from './selectionGeometry'
+import { normalizeSelection } from '../services/selectionText'
 
 /**
  * 悬浮查词按钮（content script，注入所有页面）。
@@ -23,7 +24,6 @@ import {
  */
 
 const HOST_ID = 'lexicon-selection-host'
-const MAX_LEN = 300
 
 /** 与 09 号文档的 token 对齐；深色值取自 src/index.css 的 .dark 段 */
 const STYLE = `
@@ -66,9 +66,9 @@ let enabled = true
 let isDark = false
 
 function readSelection(): string {
-  const raw = window.getSelection()?.toString() ?? ''
-  const collapsed = raw.replace(/\s+/g, ' ').trim()
-  return collapsed.length > MAX_LEN ? collapsed.slice(0, MAX_LEN) : collapsed
+  // 与 SW 侧 writePendingQuery 共用同一份上限与截断规则（句子 / 词边界），
+  // 避免这里先硬切成半个单词、SW 那边的边界逻辑就再也轮不到。
+  return normalizeSelection(window.getSelection()?.toString() ?? '')
 }
 
 function ensureMounted(): HTMLButtonElement {

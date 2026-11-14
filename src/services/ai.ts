@@ -26,6 +26,7 @@ import {
 import { combineSignals } from '../utils/abortSignal'
 import { remapFetchAbortError } from '../utils/aiRequestErrors'
 import { isExtension, isTauri } from './platform'
+import { settleOnAbort } from './aiTransport'
 import { chatCompletionRequest, streamChatCompletion, systemMessage, type SplitPrompt } from './aiRequest'
 import { requiresAiApiKey } from './aiConnection'
 import { buildProfilePromptContext, getProfile, resolveCurrentLearningRoute } from './profile'
@@ -495,7 +496,7 @@ async function searchFetch(url: string, init?: RequestInit): Promise<Response> {
     const { proxyFetch } = await import('./extensionProxy')
     return proxyFetch(url, init)
   }
-  if (!isTauri()) return fetch(url, init)
+  if (!isTauri()) return settleOnAbort(fetch(url, init), init?.signal)
   if (tauriFetch === undefined) {
     try {
       tauriFetch = (await import('@tauri-apps/plugin-http')).fetch as unknown as FetchLike

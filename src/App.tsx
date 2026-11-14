@@ -186,7 +186,7 @@ export function App() {
   const {
     wordResult, relatedPhrases, aiAnalysis, aiFullResult, phraseResult,
     combinedResult, combinedPhraseResult, aiStatus, aiError,
-    aiPendingHalves, aiFailedHalves,
+    aiPendingHalves, aiFailedHalves, aiHalfErrors,
   } = useResultStore()
   const { selectWord } = useSearch()
   const { triggerCombinedLookup, triggerCombinedPhraseQuery, cancelAi } = useAiLookup()
@@ -544,13 +544,15 @@ export function App() {
   }
 
 
+  // Retry is always a fresh request with a new id: it must not be answered from a
+  // half-filled cache, and it supersedes whatever is still running for this query.
   function handleRetry() {
     if (searchSource === 'local' && wordResult && (mode === 'ai' || mode === 'core')) {
-      triggerCombinedLookup(wordResult.word, false, 'normal', activeLearningRouteRef.current)
+      triggerCombinedLookup(wordResult.word, true, 'normal', activeLearningRouteRef.current)
     } else if (searchSource === 'phrase' && query) {
-      triggerCombinedPhraseQuery(query, false, 'normal', activeLearningRouteRef.current)
+      triggerCombinedPhraseQuery(query, true, 'normal', activeLearningRouteRef.current)
     } else if (searchSource === 'ai-full' && query) {
-      triggerCombinedLookup(query, false, 'normal', activeLearningRouteRef.current)
+      triggerCombinedLookup(query, true, 'normal', activeLearningRouteRef.current)
     }
   }
 
@@ -751,7 +753,8 @@ export function App() {
     : aiFailedHalves.core
       ? 'error'
       : aiStatus
-  const splitError = aiError ?? t('aifull.halfFailed')
+  // A failed half shows its own reason (HTTP status, bad JSON, timeout) when known.
+  const halfError = (half: 'lookup' | 'core') => aiHalfErrors[half] ?? aiError ?? t('aifull.halfFailed')
   // 任意默认模式：无查询、无结果时一律显示小书空态（不被 Core 空壳抢走）
   // 词库下载/校验中：空态文案让位给进度（非扩展平台此值恒为 false）
   const dictionaryPhase = useDictionaryStore((s) => s.phase)
@@ -855,7 +858,7 @@ export function App() {
                     learningRoute={activeLearningRoute}
                     phraseResult={mode === 'core' ? (combinedPhraseResult?.core ?? phraseResult) : phraseResult}
                     aiStatus={mode === 'core' ? coreStatus : lookupStatus}
-                    aiError={(mode === 'core' ? aiFailedHalves.core : aiFailedHalves.lookup) ? splitError : aiError}
+                    aiError={(mode === 'core' ? aiFailedHalves.core : aiFailedHalves.lookup) ? halfError(mode === 'core' ? 'core' : 'lookup') : aiError}
                     onRetry={handleRetry}
                     onGoToSettings={() => setView('settings')}
                   />
@@ -866,7 +869,7 @@ export function App() {
                     aiFullResult={combinedResult?.core ?? aiFullResult}
                     dictWordResult={searchSource === 'local' ? wordResult : null}
                     aiStatus={coreStatus}
-                    aiError={aiFailedHalves.core ? splitError : aiError}
+                    aiError={aiFailedHalves.core ? halfError('core') : aiError}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
@@ -877,7 +880,7 @@ export function App() {
                     learningRoute={activeLearningRoute}
                     aiFullResult={combinedResult?.lookup ?? aiFullResult}
                     aiStatus={lookupStatus}
-                    aiError={aiFailedHalves.lookup ? splitError : aiError}
+                    aiError={aiFailedHalves.lookup ? halfError('lookup') : aiError}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
                     onGoToSettings={() => setView('settings')}
@@ -890,7 +893,7 @@ export function App() {
                     relatedPhrases={relatedPhrases}
                     aiAnalysis={aiAnalysis}
                     aiStatus={mode === 'ai' ? lookupStatus : aiStatus}
-                    aiError={mode === 'ai' && aiFailedHalves.lookup ? splitError : aiError}
+                    aiError={mode === 'ai' && aiFailedHalves.lookup ? halfError('lookup') : aiError}
                     mode={mode}
                     onRetry={handleRetry}
                     onWordClick={handleWordSelect}
