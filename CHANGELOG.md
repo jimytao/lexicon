@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-11-14 — 修复查词「AI analysis failed」误报与扩展选区截断 (v0.9.32)
+
+### 用户可见
+1. **查新词时不再误报「AI analysis failed」**：查词 A 的结果还没全部回来就去查词 B，A 的旧请求回来时会把 B 标成失败，弹出错误卡片，过一会儿 B 的结果到了才盖掉。DeepSeek 慢、高峰期还要排队，最容易撞上。现在每次 AI 请求都带自己的标签，回包只认自己那一次查询，不会再写到别的查询上。
+2. **离开的查询在后台继续加载**：查 B 时不再取消 A，A 在后台把结果收完、存进缓存。回到 A（重新搜索或从历史进入）时，已完成就直接显示；还在加载就先显示已到的部分并接着等，不再重新请求。后台最多同时保留 3 个查询，超出时取消最早的。
+3. **加载中切换 Lookup / Pure Core 不再重发请求**：只切换显示，并接上进行中的请求。此前切换会重新发起整组请求，还可能把只回来一半的结果当成完整结果缓存。
+4. **Try Again 总是重新请求**：重试会换新标签、停掉同一查询的旧请求，不再从只收到一半的缓存里取结果。
+5. **失败显示真实原因**：某一半请求失败时，错误卡片显示具体原因（如 `AI API error 503`、请求超时），不再只有一句「This AI result failed to load」。
+6. **手机端超时与取消生效**：Android / iOS 的 Capacitor 网络层不理会取消信号，45 秒超时与「切到 Instant / 改语言后取消」在手机上从未生效。现在会在 App 内及时结束等待；原生请求仍会跑完，但回包被丢弃。
+7. **浏览器扩展选中长段落不再被截断**：网页划词交给侧栏时，content script 把选区硬切到 300 个字符，正常段落会被切成半个单词（如 "slammed" 变成 "sla"）。上限改为 2000 个字符，超长时按句子边界、再按词边界截断。
+
+### 工程与验证
+- `src/stores/resultStore.ts`：双半请求从单一草稿改为按请求 id 的草稿表。`beginCombined` 返回 id，骨架 / 半结果 / 半失败 / 整体失败都必须带 id，只写入自己的草稿与缓存，只有当前在屏的请求更新显示。新增 `showCombinedDraft`、`failCombined`、`endCombined`、`aiHalfErrors`；请求进行中时 `getCachedCombined*` 不再用旧缓存拼出「完整结果」。
+- `src/hooks/useAiLookup.ts`：按查询 + 标签维护进行中请求表（挂回 / 新开 / 同查询重试取消旧请求 / 上限 3 个）；`cancelAi()` 取消全部。`src/App.tsx`：Try Again 改为 `forceRefresh`，失败半显示自己的错误。
+- `src/services/aiTransport.ts`：新增 `settleOnAbort`，AI 请求与网页搜索在取消或超时时立即结束（`src/services/ai.ts`）。
+- 新增 `src/services/selectionText.ts`（零依赖，content script 与 SW 共用的 `normalizeSelection` / `MAX_SELECTION_LENGTH`）；`src/extension/content.ts` 删除硬切 300 的副本，`src/services/pendingQuery.ts` 改为引用它。
+- 新增测试：`useAiLookup.test.ts`（手动控制回包顺序，复现旧请求误报失败、重试丢弃旧回包、离开后后台写缓存、回访挂回、切标签不重发、后台上限、取消全部）、`aiTransport.test.ts`、`selectionText.test.ts`；`resultStoreSplit.test.ts` 与 `aiPreviewVisibility.test.ts` 改用请求 id 接口。
+- 文档：`AGENT.md`（按查询分轨的请求、手机端 abort）、`lexicon-docs/04-ai-schema.md`、`05-components.md`、`10-browser-extension.md`。
+- 本次验证：55 个测试文件 / 645 项通过，`tsc -b`（随构建）与改动文件 ESLint 通过（0 错误）；Web、Tauri Windows、Android 与扩展构建通过，`Assert-ReleaseGates.ps1` 通过。Web 预览中未配置 AI 时的失败路径正常显示、控制台无报错。扩展未在 Chromium 中人工验收。
+- 未连接真实 DeepSeek，未在手机上实测；「刚打开 App 只查一个词也报错」的情况尚未查明原因，本版不涉及。
+
 ## 2026-11-04 — 修复 AI 追问时软件卡死 (v0.9.31)
 
 ### 用户可见

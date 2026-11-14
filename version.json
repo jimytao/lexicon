@@ -1,14 +1,14 @@
 {
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTE5YnBGOFhyNmd3UGpJdW4zUko5cVFGVXdRZ1hINlpncUpSK0E2dlNMM29lY2xwTFZIRUNKQ2Vvck1ydi9HbU5VUEpBRkszZVNXLzViZGRRSWQ0bWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNzg3MTU3CWZpbGU6TGV4aWNvbl8wLjkuMzFfeDY0LXNldHVwLmV4ZQp3VjFNc1pKZkpTUTBiWldIbnJZY21SREd6eW9QenpueVRjdUFGMmNDSGZrNGR4ZmpuZHdYMDFGSmRoaXBOZFlzeW0zeTRSRkJIYy8wUEtSNFdXaDJEUT09Cg==",
-                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.31/Lexicon_0.9.31_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUT1FqL1VnbDBDMTFvUEZMQVNoTzdBZXpGc3BoYmxaTDBWMUJEandMNlRzU3Bsam41RCtXYlNTR080ZzdmSTdDeVBZU2hpQXdteHozK2hvRlMyWkZiRGRKVmZDMGkvMVFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NjI4OTQ2CWZpbGU6TGV4aWNvbl8wLjkuMzJfeDY0LXNldHVwLmV4ZQo3OGNBdjFkOGJKUUw4QkdrWkJnZzlScXFMNDYyVWdBMlVYK2VQRVd0YXZzenJveDR3c2NaY2phZUZ5OUc2clU0R1F6bzYrMXNmWGQxSWVjdW4wWVRBdz09Cg==",
+                                             "url":  "https://github.com/jimytao/lexicon/releases/download/v0.9.32/Lexicon_0.9.32_x64-setup.exe"
                                          }
                   },
-    "pub_date":  "2026-11-04T10:16:24Z",
-    "version":  "0.9.31",
-    "notes":  "紧急修复：AI 追问时软件卡死\n1. 修复：AI 追问时，回答写到表格或标题的中途，软件可能整个卡死，只能强制关闭，重开后只剩提问、回答丢失。这个问题从 v0.9.30 的流式回答开始出现，建议所有用户尽快更新。\n2. 改进：回答里的表格在生成过程中先显示为文字，表头写完后自动变成表格。\n",
-    "notes_zh":  "紧急修复：AI 追问时软件卡死\n1. 修复：AI 追问时，回答写到表格或标题的中途，软件可能整个卡死，只能强制关闭，重开后只剩提问、回答丢失。这个问题从 v0.9.30 的流式回答开始出现，建议所有用户尽快更新。\n2. 改进：回答里的表格在生成过程中先显示为文字，表头写完后自动变成表格。\n",
-    "notes_en":  "Urgent fix: the app could freeze during AI follow-up chat\n1. **Fixed**: While an AI follow-up reply was being written, reaching a table or heading could freeze the whole app until it was force-closed. After reopening, only the question remained and the reply was lost. This started with the streamed replies in v0.9.30, so all users should update soon.\n2. **Improved**: A table in a reply now shows as plain text while it is being written, then turns into a table once its header is complete.\n",
-    "is_major":  true
+    "pub_date":  "2026-11-14T04:05:37Z",
+    "version":  "0.9.32",
+    "notes":  "修复查词时误报「AI analysis failed」，离开的查询后台继续加载，扩展选中长段落不再被截断\n1. 修复：查词 A 还没加载完就查词 B 时，A 的旧请求会把 B 误标为失败。现在每次请求都有独立标签，回包只认自己的查询（DeepSeek 等较慢的服务商最常遇到）。\n2. 新增：离开的查询在后台继续加载并存入缓存，回去看时不必重新查询；还在加载的会接着显示。后台最多同时保留 3 个查询。\n3. 改进：加载中切换 Lookup / Pure Core 只切换显示，不再重新请求。\n4. 改进：Try Again 总是重新请求并停掉旧请求；失败时显示具体原因（如 503、超时），不再只显示笼统提示。\n5. 修复：手机端 45 秒超时与取消此前不生效，现在会及时结束等待。\n6. 修复：浏览器扩展划词上限从 300 字符提高到 2000 字符，超长时按句子或单词边界截断，不再把单词切成半截。\n",
+    "notes_zh":  "修复查词时误报「AI analysis failed」，离开的查询后台继续加载，扩展选中长段落不再被截断\n1. 修复：查词 A 还没加载完就查词 B 时，A 的旧请求会把 B 误标为失败。现在每次请求都有独立标签，回包只认自己的查询（DeepSeek 等较慢的服务商最常遇到）。\n2. 新增：离开的查询在后台继续加载并存入缓存，回去看时不必重新查询；还在加载的会接着显示。后台最多同时保留 3 个查询。\n3. 改进：加载中切换 Lookup / Pure Core 只切换显示，不再重新请求。\n4. 改进：Try Again 总是重新请求并停掉旧请求；失败时显示具体原因（如 503、超时），不再只显示笼统提示。\n5. 修复：手机端 45 秒超时与取消此前不生效，现在会及时结束等待。\n6. 修复：浏览器扩展划词上限从 300 字符提高到 2000 字符，超长时按句子或单词边界截断，不再把单词切成半截。\n",
+    "notes_en":  "Fixes false \"AI analysis failed\" errors, keeps unfinished lookups loading in the background, and stops the extension from cutting off long selections.\n1. **Fix**: Searching word B before word A finished could make A\u0027s late reply mark B as failed. Every request now carries its own tag and replies only land on their own query (most noticeable with slower providers such as DeepSeek).\n2. **New**: A lookup you leave keeps loading in the background and is cached, so going back to it needs no new request; one still loading resumes where it is. Up to 3 lookups run in the background at once.\n3. **Improved**: Switching between Lookup and Pure Core while loading only switches the view instead of re-sending the request.\n4. **Improved**: Try Again always sends a fresh request and stops the old one; a failed section now shows the real reason (e.g. 503, timeout) instead of a generic message.\n5. **Fix**: The 45-second timeout and cancellation never took effect on Android / iOS; waiting now ends on time.\n6. **Fix**: The browser extension\u0027s selection limit rises from 300 to 2000 characters and cuts at a sentence or word boundary instead of mid-word.\n",
+    "is_major":  false
 }
