@@ -23,6 +23,7 @@ import { learnerLanguagePolicyFor, resolveLearnerLanguagePolicy, type LearnerLan
 import { buildNativeLanguageContract, getNativeLanguage } from './nativeLanguage'
 import { chatCompletionRequest } from './aiRequest'
 import { requiresAiApiKey } from './aiConnection'
+import { repairJsonText } from '../utils/lenientJson'
 
 export type { DiagnosticEvent }
 
@@ -308,7 +309,7 @@ async function runDiagnosticAi(
 
   const data = await res.json()
   const raw = data.choices?.[0]?.message?.content ?? ''
-  const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim()
+  const cleaned = repairJsonText(raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim())
   // A rejected answer keeps the events queued; say why, or the profile just stops updating.
   if (data.choices?.[0]?.finish_reason === 'length') {
     console.warn(`[profile] Diagnostic output hit max_tokens (${DIAGNOSTIC_MAX_TOKENS}); events stay queued.`)

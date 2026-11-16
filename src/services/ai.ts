@@ -35,6 +35,7 @@ import { buildPhrasePromptParts, type PhrasePromptQueryType } from './aiPhrasePr
 import { buildCombinedWordPrompt, buildCombinedPhrasePrompt } from './aiCombinedPrompt'
 import { buildCultureAwareInputRule, buildNativeSceneDescription, buildNativeSceneRules } from './aiPromptGuidance'
 import { splitCombinedJson, splitCombinedPhraseJson } from '../utils/combinedResult'
+import { repairJsonText } from '../utils/lenientJson'
 import type { AiAnalysis, AiFullResult, PhraseResult, Exercise, MeaningExercise, EvaluationResult, ChatMessage, PrepSpatialData, PrepSpatialItem, CombinedAiResult, CombinedPhraseResult, LearningDirection, LearningRoute } from '../types'
 
 /** 仅当模组出现在当前模式列表且 enabled 时才请求；不在列表 = 关闭（Lookup/Core 分轨依赖此语义） */
@@ -465,7 +466,9 @@ async function callApi(
         cleaned = cleaned.slice(firstBrace, lastBrace + 1)
       }
     }
-    return cleaned
+    // Valid JSON passes through untouched; only output that fails strict parsing gets
+    // repaired (trailing commas, bare inner quotes, raw newlines — seen with DeepSeek Flash).
+    return repairJsonText(cleaned)
   } catch (e) {
     throw remapFetchAbortError(e, merged.reason)
   } finally {

@@ -71,6 +71,9 @@ export function getNativeLanguage(code: ExplanationLanguage | undefined): Native
   return NATIVE_LANGUAGES[code ?? 'zh'] ?? NATIVE_LANGUAGES.zh
 }
 
+/** Bare ASCII quotes inside JSON string values break parsing (seen with DeepSeek Flash). */
+const JSON_QUOTE_RULE = `\n- In JSON output, never put a bare ASCII double quote (") inside a string value. To quote words inside text, use “ ” or 「 」, or escape it as \\".`
+
 /**
  * The one hard language rule every learner-facing prompt ends with. Placed last so it
  * wins over any wording above (schema descriptions, input-direction notes, profile).
@@ -81,7 +84,7 @@ export function buildNativeLanguageContract(spec: NativeLanguageSpec): string {
 
 LEARNER LANGUAGE CONTRACT (overrides any conflicting wording above):
 - ALL output text must be in English only. No Chinese, Vietnamese or other non-English text in explanations.
-- Use clear, learner-friendly English (CEFR B1–B2 level max) in explanations. Do not assume any second-language transfer.`
+- Use clear, learner-friendly English (CEFR B1–B2 level max) in explanations. Do not assume any second-language transfer.${JSON_QUOTE_RULE}`
   }
   const variant = spec.writingNote ? ` (${spec.writingNote})` : ''
   return `
@@ -89,7 +92,7 @@ LEARNER LANGUAGE CONTRACT (overrides any conflicting wording above):
 LEARNER LANGUAGE CONTRACT (overrides any conflicting wording above):
 - The learner's native language is ${spec.name}. ALL learner-facing explanatory text — glosses, translations, notes, reasons, correction explanations, scene labels and descriptions, stories, feedback — MUST be written in ${spec.name}${variant}.
 - Keep English ONLY for: the English headword/expression itself, quoted English spans (e.g. both sides of "original -> corrected"), English example sentences, and fixed enum/keyword values from the schema.
-- In JSON output, keys never change. A key named "zh" is a legacy name: fill it with ${spec.name}.`
+- In JSON output, keys never change. A key named "zh" is a legacy name: fill it with ${spec.name}.${JSON_QUOTE_RULE}`
 }
 
 /** How the learner's input relates to their native language — one line, language-agnostic. */
