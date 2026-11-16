@@ -241,6 +241,7 @@ Analyze this word and return the JSON.`
 
 - `signal`：AbortSignal，切换词时取消上一个请求
 - JSON 解析有两层 fallback：去 markdown 包裹 → regex 提取 `{...}`
+- 所有经 `callApi` 的结构化请求（及画像诊断）在返回前过 `repairJsonText`（`src/utils/lenientJson.ts`）：严格 `JSON.parse` 通过则原样返回；失败时依次修复尾随逗号、字符串内裸控制字符（换行等）、字符串内未转义的 ASCII 双引号，修复后能解析才采用。来源：DeepSeek Flash 约每 15–25 次全量查词出现一次此类输出（`finish_reason` 为 `stop`，非截断）。`buildNativeLanguageContract` 同时要求 JSON 字符串内不用裸 ASCII 双引号。
 
 ### `generateExercises(word, meanings, count, signal?)`
 按需生成练习场景。返回 `Exercise[]`。
@@ -372,7 +373,7 @@ AI 服务直接解析此格式，不再依赖独立的 `localStorage.getItem('ai
 |----------|----------|
 | API key 未配置 | 显示 "请先在设置中填写 API key" 提示，跳转 Settings |
 | 网络超时（>10s） | 显示 "AI 解析超时，请检查网络" |
-| JSON 解析失败 | 显示 "AI 返回格式异常，请重试" + console.error 原始内容 |
+| JSON 解析失败 | 先经 `repairJsonText` 修复常见格式问题（尾随逗号 / 裸换行 / 未转义引号）；仍失败才显示错误卡片（如 "AI returned invalid JSON for full lookup"） |
 | API 返回 4xx | 显示具体错误码（401 = key 无效，429 = 超频） |
 | API 返回 5xx | 显示 "AI 服务暂时不可用，请稍后重试" |
 

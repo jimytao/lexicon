@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-11-16 — 修复 DeepSeek Flash 偶发「AI returned invalid JSON」 (v0.9.33)
+
+### 用户可见
+1. **查词不再偶发「AI analysis failed — AI returned invalid JSON for full lookup」**：使用 DeepSeek Flash 时，AI Lookup / Pure Core 大约每 15–25 次查词会有一次返回不合规的 JSON，整次查询直接失败，需要手动 Try Again。原因不是输出被截断（`finish_reason` 为 `stop`），而是模型偶尔写出三类格式错误：对象或数组末尾多一个逗号；中文说明里直接用英文双引号（`"像木星的人"`）且没有转义；字符串里直接换行。现在这三类都会自动修复，查询正常显示。
+2. **其他服务商不受影响**：返回内容先按标准 JSON 严格解析，合法就原样使用；只有本来会报错的回答才进入修复，修复后仍无法解析才显示错误卡片。
+3. **AI 提示词补充约束**：所有学习者语言约定末尾新增一条「JSON 字符串里不要用裸 ASCII 双引号，改用 “ ” / 「 」 或转义」，从源头减少第 2 类错误。
+
+### 工程与验证
+- 新增 `src/utils/lenientJson.ts`：`repairJsonText` 先严格解析，失败后依次尝试 `escapeControlChars` + `stripTrailingCommas`、再加 `escapeStrayQuotes`，均只在字符串字面量内外按 JSON 词法处理，修复结果必须能 `JSON.parse` 才采用。
+- `src/services/ai.ts`：`callApi` 出口统一过 `repairJsonText`，覆盖全量查词、合并查词、词组、练习、助记、介词意象等所有结构化请求。`src/services/profile.ts`：画像诊断解析同样接入。
+- `src/services/nativeLanguage.ts`：`buildNativeLanguageContract`（英英与母语两个分支）追加 JSON 引号规则。
+- 新增 `src/utils/lenientJson.test.ts`，收录三类真实 DeepSeek Flash 坏样本及合法 JSON 原样不变的用例。
+- 文档：`lexicon-docs/04-ai-schema.md`（JSON 解析 fallback 与错误处理）。
+- 本次验证：Web 预览连接真实 DeepSeek Flash，修复前 16 次全量查词复现 1 次失败；修复后最后一轮 40 个单词（Lookup / Pure Core 各半）中 3 次原始返回不合规，全部修复，40/40 成功，界面查词正常。56 个测试文件 / 658 项通过，`tsc` 与改动文件 ESLint 通过。
+
 ## 2026-11-14 — 修复查词「AI analysis failed」误报与扩展选区截断 (v0.9.32)
 
 ### 用户可见
